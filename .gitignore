@@ -1,0 +1,5 @@
+# Original source files (large, and include private text-message screenshots).
+# Keep them locally; do not commit or upload them.
+assets-source/
+.DS_Store
+Thumbs.db

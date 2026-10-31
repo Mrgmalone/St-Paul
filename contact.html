@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact &amp; Prayer | St. Paul Apostolic Church of Jesus Christ</title>
+  <meta name="description" content="Contact St. Paul Apostolic Church of Jesus Christ, get directions to 4800 Holt Rd in Greensboro, or submit a prayer request.">
+  <meta name="theme-color" content="#0a1a48">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Contact &amp; Prayer | St. Paul Apostolic Church of Jesus Christ">
+  <meta property="og:description" content="A Christ-centered Apostolic church in Greensboro, North Carolina.">
+  <meta property="og:image" content="assets/img/brand/social-preview.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/brand/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/site.js" defer></script>
+</head>
+<body data-page="contact">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header id="site-header" class="site-header"></header>
+
+  <main id="main">
+    <section class="hero hero--page hero--plain" aria-labelledby="hero-title">
+      <div class="container hero-inner">
+        <div class="reveal">
+          <h1 id="hero-title" data-bind="contact.hero.title"></h1>
+          <p class="hero-loc" data-bind="contact.hero.subtitle"></p>
+        </div>
+        <div class="hero-cross reveal reveal-delay-2" data-cross></div>
+      </div>
+      <div class="hero-wave"></div>
+    </section>
+
+    <section class="section" id="visit" style="padding-top:clamp(2rem,4vw,3rem)">
+      <div class="container contact-top">
+        <div class="card reveal">
+          <h2 style="font-size:clamp(1.9rem,3vw,2.4rem)" data-bind="contact.infoTitle"></h2>
+          <ul class="contact-list" id="contact-list"></ul>
+        </div>
+        <div class="card map-card reveal reveal-delay-1">
+          <div class="map-frame" id="map-frame"></div>
+          <div class="map-actions"><a class="btn btn--gold" id="directions" href="#" target="_blank" rel="noopener"><span></span><span data-icon="arrow"></span></a></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--mist" id="prayer">
+      <div class="container prayer-layout">
+        <div class="card reveal">
+          <div class="prayer-head"><span data-icon="pray"></span><h2 data-bind="contact.prayer.title"></h2></div>
+          <p class="lead" data-bind="contact.prayer.text"></p>
+          <form data-form="prayer" name="prayer-request" method="POST" data-netlify="true" netlify-honeypot="company" novalidate>
+            <input type="hidden" name="form-name" value="prayer-request">
+            <div class="hp" aria-hidden="true"><label>Company <input name="company" tabindex="-1" autocomplete="off"></label></div>
+            <div class="form-grid">
+              <div class="field"><label for="p-first">First Name</label><input id="p-first" name="first_name" autocomplete="given-name" required></div>
+              <div class="field"><label for="p-last">Last Name</label><input id="p-last" name="last_name" autocomplete="family-name" required></div>
+              <div class="field"><label for="p-email">Email</label><input id="p-email" name="email" type="email" autocomplete="email" required></div>
+              <div class="field"><label for="p-phone">Phone <span class="opt">(optional)</span></label><input id="p-phone" name="phone" type="tel" autocomplete="tel"></div>
+              <div class="field field--full"><label for="p-request">Prayer Request</label><textarea id="p-request" name="prayer_request" required></textarea></div>
+              <div class="field field--full"><label class="check"><input type="checkbox" name="keep_private" value="yes"> <span data-bind="contact.prayer.privateLabel"></span></label></div>
+              <div class="field field--full"><button class="btn btn--block" type="submit" data-bind="contact.prayer.button"></button></div>
+            </div>
+            <div class="form-status" role="status" aria-live="polite" tabindex="-1"></div>
+          </form>
+        </div>
+
+        <div class="aside-stack">
+          <div class="card praise-card reveal reveal-delay-1">
+            <div class="flame" data-icon="flame"></div>
+            <h2 data-bind="contact.praise.title"></h2>
+            <p data-bind="contact.praise.text"></p>
+            <button class="btn btn--gold" type="button" id="open-praise" data-bind="contact.praise.button"></button>
+          </div>
+          <div class="card scripture-card reveal reveal-delay-2"><div data-divider></div><div data-quote="contact.quote"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <dialog class="modal" id="praise-dialog" aria-labelledby="praise-title">
+      <div class="modal-inner">
+        <div class="modal-head"><h2 id="praise-title" data-bind="contact.praise.title"></h2><button class="modal-close" type="button" data-close aria-label="Close"><span data-icon="close"></span></button></div>
+        <p data-bind="contact.praise.text"></p>
+        <form data-form="praise" name="praise-report" method="POST" data-netlify="true" netlify-honeypot="company" novalidate>
+          <input type="hidden" name="form-name" value="praise-report">
+          <div class="hp" aria-hidden="true"><label>Company <input name="company" tabindex="-1" autocomplete="off"></label></div>
+          <div class="form-grid">
+            <div class="field"><label for="t-name">Name</label><input id="t-name" name="name" autocomplete="name" required></div>
+            <div class="field"><label for="t-email">Email</label><input id="t-email" name="email" type="email" autocomplete="email" required></div>
+            <div class="field field--full"><label for="t-text">Your Testimony</label><textarea id="t-text" name="testimony" required></textarea></div>
+            <div class="field field--full"><label class="check"><input type="checkbox" name="may_share" value="yes"> <span data-bind="contact.praise.shareLabel"></span></label></div>
+            <div class="field field--full"><button class="btn btn--gold btn--block" type="submit" data-bind="contact.praise.button"></button></div>
+          </div>
+          <div class="form-status" role="status" aria-live="polite" tabindex="-1"></div>
+        </form>
+      </div>
+    </dialog>
+
+    <!-- Baptismal water: light from above, a stream flowing into a still pool -->
+    <section class="pool" aria-hidden="true">
+      <svg viewBox="0 0 1440 560" preserveAspectRatio="xMidYMax slice">
+        <defs>
+          <linearGradient id="poolDeep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a7fe6"/><stop offset=".18" stop-color="#2849b8"/><stop offset=".6" stop-color="#11286a"/><stop offset="1" stop-color="#0a1a48"/></linearGradient>
+          <linearGradient id="surface" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe0ff" stop-opacity=".95"/><stop offset="1" stop-color="#5a7fe6" stop-opacity="0"/></linearGradient>
+          <linearGradient id="streamBody" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bcd0f7" stop-opacity=".15"/><stop offset=".45" stop-color="#8eaaf0" stop-opacity=".75"/><stop offset="1" stop-color="#3d60d6" stop-opacity=".95"/></linearGradient>
+          <linearGradient id="ray" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6dc" stop-opacity=".9"/><stop offset="1" stop-color="#ead39c" stop-opacity="0"/></linearGradient>
+          <radialGradient id="reflect" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff3cf" stop-opacity=".75"/><stop offset="1" stop-color="#fff3cf" stop-opacity="0"/></radialGradient>
+          <linearGradient id="shine" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+          <filter id="softer" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+        </defs>
+
+        <!-- rays of light descending onto the water -->
+        <g class="rays" filter="url(#soft)">
+          <path d="M700 -20 L760 -20 L900 360 L620 360 Z" fill="url(#ray)" opacity=".55"/>
+          <path d="M650 -20 L680 -20 L700 360 L520 360 Z" fill="url(#ray)" opacity=".3"/>
+          <path d="M790 -20 L820 -20 L1010 360 L860 360 Z" fill="url(#ray)" opacity=".3"/>
+        </g>
+
+        <!-- the stream: flowing from the upper left, curving down into the pool -->
+        <path d="M-40 120 C 240 110 430 150 560 240 C 640 296 680 330 700 372" fill="none" stroke="url(#streamBody)" stroke-width="58" stroke-linecap="round"/>
+        <path d="M-40 120 C 240 110 430 150 560 240 C 640 296 680 330 700 372" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="20" stroke-linecap="round" filter="url(#softer)"/>
+        <path class="stream" d="M-40 108 C 240 98 430 138 556 228 C 636 284 676 322 694 366" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".9"/>
+        <path class="stream s2" d="M-40 122 C 240 112 430 152 562 242 C 642 298 682 334 702 372" fill="none" stroke="#eaf1ff" stroke-width="2" stroke-linecap="round" opacity=".85"/>
+        <path class="stream s3" d="M-40 136 C 240 126 430 166 568 256 C 648 312 688 344 708 376" fill="none" stroke="#cfdcf8" stroke-width="2.5" stroke-linecap="round" opacity=".75"/>
+
+        <!-- the pool -->
+        <g class="swell">
+          <path d="M-60 392 C 300 352 1140 352 1500 392 L1500 580 L-60 580 Z" fill="url(#poolDeep)"/>
+          <path d="M-60 392 C 300 352 1140 352 1500 392 L1500 430 C 1140 396 300 396 -60 430 Z" fill="url(#surface)" opacity=".55"/>
+          <ellipse cx="760" cy="404" rx="300" ry="26" fill="url(#reflect)"/>
+          <path class="shimmer" d="M160 414 Q 720 380 1280 414" fill="none" stroke="url(#shine)" stroke-width="3"/>
+          <path class="shimmer" d="M320 444 Q 720 418 1120 444" fill="none" stroke="url(#shine)" stroke-width="2" style="animation-delay:-4s"/>
+          <path class="shimmer" d="M480 478 Q 720 462 960 478" fill="none" stroke="url(#shine)" stroke-width="1.5" style="animation-delay:-2s"/>
+        </g>
+
+        <!-- ripples where the water enters, and slow ripples across the stillness -->
+        <ellipse class="ripple" cx="704" cy="386" rx="170" ry="20" fill="none" stroke="#fff" stroke-width="2"/>
+        <ellipse class="ripple r2" cx="704" cy="386" rx="170" ry="20" fill="none" stroke="#eaf1ff" stroke-width="2"/>
+        <ellipse class="ripple r3" cx="704" cy="386" rx="170" ry="20" fill="none" stroke="#ead39c" stroke-width="1.6"/>
+        <ellipse class="ripple far" cx="1080" cy="440" rx="120" ry="12" fill="none" stroke="#cfdcf8" stroke-width="1.4"/>
+        <ellipse class="ripple far r2" cx="330" cy="452" rx="110" ry="11" fill="none" stroke="#cfdcf8" stroke-width="1.4"/>
+      </svg>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="site-footer"></footer>
+  <noscript><p style="padding:1rem;text-align:center">Please enable JavaScript to view this website's content.</p></noscript>
+</body>
+</html>

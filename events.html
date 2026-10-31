@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Events | St. Paul Apostolic Church of Jesus Christ</title>
+  <meta name="description" content="Upcoming worship services, fellowship gatherings, and events at St. Paul Apostolic Church of Jesus Christ.">
+  <meta name="theme-color" content="#0a1a48">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Events | St. Paul Apostolic Church of Jesus Christ">
+  <meta property="og:description" content="A Christ-centered Apostolic church in Greensboro, North Carolina.">
+  <meta property="og:image" content="assets/img/brand/social-preview.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/brand/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preload" as="image" href="assets/img/photos/worship-ministry-1920.webp" imagesrcset="assets/img/photos/worship-ministry-960.webp 960w, assets/img/photos/worship-ministry-1920.webp 1920w" imagesizes="100vw">
+  <script src="js/site.js" defer></script>
+</head>
+<body data-page="events">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header id="site-header" class="site-header"></header>
+
+  <main id="main">
+    <section class="hero hero--page" aria-labelledby="hero-title">
+      <div class="hero-media" data-hero="events.hero"></div>
+      <div class="container hero-inner">
+        <div class="reveal">
+          <h1 id="hero-title" data-bind="events.hero.title"></h1>
+          <p class="hero-loc" data-bind="events.hero.subtitle"></p>
+        </div>
+        <div class="hero-cross reveal reveal-delay-2" data-cross></div>
+      </div>
+      <div class="hero-wave"></div>
+    </section>
+
+    <section class="section" style="padding-top:clamp(2rem,4vw,3rem)">
+      <div class="container">
+        <div class="section-head"><h2 data-bind="events.featuredTitle"></h2></div>
+        <div class="card featured-event reveal" id="featured"></div>
+      </div>
+    </section>
+
+    <section class="section section--mist">
+      <div class="container">
+        <div class="tabs" role="tablist" aria-label="Event views">
+          <button class="tab" role="tab" id="tab-upcoming" aria-controls="panel-upcoming" aria-selected="true" data-bind="events.tabs.upcoming"></button>
+          <button class="tab" role="tab" id="tab-month" aria-controls="panel-month" aria-selected="false" tabindex="-1" data-bind="events.tabs.month"></button>
+          <button class="tab" role="tab" id="tab-list" aria-controls="panel-list" aria-selected="false" tabindex="-1" data-bind="events.tabs.list"></button>
+        </div>
+        <div class="tab-panel" id="panel-upcoming" role="tabpanel" aria-labelledby="tab-upcoming" tabindex="0"></div>
+        <div class="tab-panel" id="panel-month" role="tabpanel" aria-labelledby="tab-month" tabindex="0" hidden></div>
+        <div class="tab-panel" id="panel-list" role="tabpanel" aria-labelledby="tab-list" tabindex="0" hidden></div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="container">
+        <div class="card glass this-week reveal">
+          <span class="big-icon"><span data-icon="calendar"></span></span>
+          <div><h2 data-bind="events.thisWeek.title"></h2><p data-bind="events.thisWeek.text"></p></div>
+          <p class="tag" data-bind="events.thisWeek.tagline"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="site-footer"></footer>
+  <noscript><p style="padding:1rem;text-align:center">Please enable JavaScript to view this website's content.</p></noscript>
+</body>
+</html>

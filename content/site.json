@@ -1,0 +1,336 @@
+{
+  "_readme": "ALL editable website text lives in this file. Change a value, save, refresh the page. Keep the quotes and commas intact. Anything in [square brackets] is a placeholder waiting for real content.",
+
+  "church": {
+    "name": "St. Paul Apostolic Church of Jesus Christ",
+    "nameLine1": "St. Paul Apostolic",
+    "nameLine2": "Church of Jesus Christ",
+    "location": "Greensboro, North Carolina",
+    "street": "4800 Holt Rd",
+    "city": "Greensboro",
+    "state": "North Carolina",
+    "zip": "[VERIFY ZIP CODE]",
+    "mapQuery": "4800 Holt Rd, Greensboro, NC",
+    "phone": "[PHONE NUMBER]",
+    "email": "[EMAIL ADDRESS]",
+    "officeHours": "[Office hours to be provided]",
+    "established": "1969",
+    "tagline": "Faith • Family • Fellowship • Service",
+    "copyright": "St. Paul Apostolic Church of Jesus Christ. All rights reserved."
+  },
+
+  "images": {
+    "logo": "assets/img/brand/seal-256.webp",
+    "logoAlt": "Official seal of St. Paul Apostolic Church of Jesus Christ",
+    "incorporationLogo": "assets/img/slots/incorporation-logo.webp",
+    "incorporationLogoLabel": "[Incorporation logo goes here]"
+  },
+
+  "social": [
+    { "name": "Facebook", "icon": "facebook", "url": "" },
+    { "name": "YouTube", "icon": "youtube", "url": "" },
+    { "name": "Instagram", "icon": "instagram", "url": "" }
+  ],
+
+  "navigation": [
+    { "label": "Home", "href": "index.html" },
+    { "label": "About Us", "href": "about.html" },
+    { "label": "Leadership & Ministry", "href": "leadership.html" },
+    { "label": "Events", "href": "events.html" },
+    { "label": "Contact & Prayer", "href": "contact.html" }
+  ],
+  "planVisit": { "label": "Plan Your Visit", "href": "contact.html#visit" },
+
+  "serviceTimes": {
+    "sunday": [
+      { "label": "Sunday School", "time": "[TIME]" },
+      { "label": "Morning Worship", "time": "[TIME]" }
+    ],
+    "weekday": [
+      { "label": "Bible Study", "time": "[DAY + TIME]" },
+      { "label": "Prayer", "time": "[DAY + TIME]" },
+      { "label": "Additional Worship", "time": "[DAY + TIME]" }
+    ]
+  },
+
+  "video": {
+    "_note": "Set enabled to true after placing the converted video files at these paths. See README section 'Videos'.",
+    "home": {
+      "enabled": false,
+      "mp4": "assets/video/home-hero.mp4",
+      "webm": "assets/video/home-hero.webm",
+      "poster": "assets/img/photos/worship-preaching-a-1920.webp"
+    }
+  },
+
+  "forms": {
+    "_note": "provider: \"none\" (preview only, nothing is sent), \"formspree\", \"netlify\", or \"php\". See README section 'Forms'.",
+    "provider": "none",
+    "endpoint": "",
+    "prayerSuccess": "Thank you. Your prayer request has been received, and we will be praying with you.",
+    "praiseSuccess": "Thank you for sharing what God has done! Your testimony has been received.",
+    "previewNote": "Preview mode: this form is not connected yet, so nothing was actually sent.",
+    "errorMessage": "Sorry, something went wrong sending your message. Please try again or contact the church directly."
+  },
+
+  "home": {
+    "hero": {
+      "eyebrow": "Welcome to",
+      "title": "St. Paul Apostolic Church of Jesus Christ",
+      "location": "Greensboro, North Carolina",
+      "text": "A Christ-centered Apostolic church committed to worship, biblical teaching, prayer, holiness, fellowship, service, and sharing the Gospel of Jesus Christ.",
+      "image": "assets/img/photos/worship-preaching-a-1920.webp",
+      "imageSmall": "assets/img/photos/worship-preaching-a-960.webp",
+      "imageAlt": "A minister preaching in the St. Paul sanctuary",
+      "buttons": [
+        { "label": "Plan Your Visit", "href": "contact.html#visit", "style": "gold" },
+        { "label": "Learn About St. Paul", "href": "about.html", "style": "ghost" },
+        { "label": "Submit a Prayer Request", "href": "contact.html#prayer", "style": "light" }
+      ]
+    },
+    "services": {
+      "eyebrow": "Worship With Us",
+      "title": "Service Times",
+      "sundayLabel": "Sunday",
+      "weekdayLabel": "Weekday Services",
+      "button": "All Are Welcome",
+      "buttonHref": "contact.html#visit"
+    },
+    "events": { "title": "Upcoming Events", "link": "View All Events" },
+    "leadership": { "title": "Meet Our Leadership", "button": "Meet Our Leadership" },
+    "identity": {
+      "title": "Our Apostolic Identity",
+      "subtitle": "Rooted in Christ. Committed to His Kingdom.",
+      "items": [
+        { "icon": "cross", "label": "Jesus Christ" },
+        { "icon": "book", "label": "The Word of God" },
+        { "icon": "pray", "label": "Prayer" },
+        { "icon": "flame", "label": "Holiness" },
+        { "icon": "worship", "label": "Worship" },
+        { "icon": "people", "label": "Fellowship" },
+        { "icon": "heartHand", "label": "Service" },
+        { "icon": "steps", "label": "Discipleship" },
+        { "icon": "megaphone", "label": "Evangelism" },
+        { "icon": "home", "label": "Community" },
+        { "icon": "pillar", "label": "Apostolic Heritage" },
+        { "icon": "sunrise", "label": "A Brighter Tomorrow" }
+      ],
+      "quote": { "text": "Thy word is a lamp unto my feet, and a light unto my path.", "ref": "Psalm 119:105 (KJV)" }
+    },
+    "banner": {
+      "title": "A place to belong. A people for His purpose.",
+      "text": "St. Paul Apostolic Church of Jesus Christ, Greensboro, North Carolina"
+    }
+  },
+
+  "about": {
+    "hero": {
+      "title": "About St. Paul",
+      "subtitle": "A rich heritage. A bold tomorrow.",
+      "text": "Rooted in faith, established in truth, and committed to serving God and our community since 1969.",
+      "image": "assets/img/photos/worship-congregation-1920.webp",
+      "imageSmall": "assets/img/photos/worship-congregation-960.webp",
+      "imageAlt": "The St. Paul congregation in worship",
+      "exteriorPhoto": "assets/img/slots/church-exterior.webp",
+      "exteriorLabel": "[Church exterior photo goes here]"
+    },
+    "sections": [
+      { "icon": "scroll", "title": "Our Story", "text": "[Church history to be provided]" },
+      { "icon": "target", "title": "Our Mission", "text": "[Mission statement to be provided]" },
+      { "icon": "eye", "title": "Our Vision", "text": "[Vision statement to be provided]" },
+      { "icon": "book", "title": "What We Believe", "text": "[Official Apostolic doctrinal statement to be provided]" },
+      { "icon": "pillar", "title": "Our Apostolic Heritage", "text": "[Content to be provided]" },
+      { "icon": "flame", "title": "Our Commitment to Holiness", "text": "[Content to be provided]" },
+      { "icon": "people", "title": "Serving Greensboro", "text": "[Community ministry information to be provided]" }
+    ],
+    "quote": { "text": "With God all things are possible.", "ref": "Matthew 19:26 (KJV)" },
+    "timeline": {
+      "eyebrow": "Our Journey",
+      "title": "A Timeline of Faith",
+      "items": [
+        { "year": "1969", "text": "[Founding information to be provided]" },
+        { "year": "[YEAR]", "text": "[Historical milestone to be added]" },
+        { "year": "[YEAR]", "text": "[Historical milestone to be added]" },
+        { "year": "[YEAR]", "text": "[Historical milestone to be added]" },
+        { "year": "[YEAR]", "text": "[Historical milestone to be added]" }
+      ]
+    },
+    "photos": {
+      "title": "Our History in Photos",
+      "items": [
+        { "label": "Founding Era", "image": "assets/img/history/founding-era.webp", "alt": "" },
+        { "label": "Historical Church", "image": "assets/img/history/historical-church.webp", "alt": "" },
+        { "label": "Congregation", "image": "assets/img/photos/worship-congregation-card.webp", "alt": "Members of the St. Paul congregation in worship" },
+        { "label": "Community Ministry", "image": "assets/img/history/community-ministry.webp", "alt": "" }
+      ],
+      "button": "View Our Full Story",
+      "buttonHref": "about.html#story"
+    }
+  },
+
+  "leadership": {
+    "hero": {
+      "title": "Our Leadership & Ministry",
+      "subtitle": "Served people. Stronger together. Advancing the Kingdom.",
+      "image": "assets/img/photos/worship-preaching-b-1920.webp",
+      "imageSmall": "assets/img/photos/worship-preaching-b-960.webp",
+      "imageAlt": "A minister leading worship at St. Paul"
+    },
+    "pastor": {
+      "role": "Pastor",
+      "name": "Kevin Brevard Womack",
+      "photo": "assets/img/people/kevin-womack.webp",
+      "photoLabel": "[Pastor portrait goes here]",
+      "bio": "[Biographical information to be provided]",
+      "feature": {
+        "image": "assets/img/people/kevin-womack-crest-900.webp",
+        "caption": "[Caption or message to accompany this graphic to be provided]",
+        "alt": "Honor crest reading Bishop Kevin Brevard Womack, with Philippians 1:6 (KJV): Being confident of this very thing, that he which hath begun a good work in you will perform it until the day of Jesus Christ."
+      }
+    },
+    "overseer": {
+      "role": "Overseer",
+      "name": "Leela Womack",
+      "photo": "assets/img/people/leela-womack.webp",
+      "photoLabel": "[Overseer portrait goes here]",
+      "bio": "[Biographical information to be provided]"
+    },
+    "gridTitle": "Church Leadership",
+    "gridSubtitle": "Serving With Purpose",
+    "emptyText": "[Leaders to be added]",
+    "categories": [
+      { "id": "ministers", "name": "Ministers", "icon": "book" },
+      { "id": "deacons", "name": "Deacons", "icon": "heartHand" },
+      { "id": "deaconesses", "name": "Deaconesses", "icon": "heartHand" },
+      { "id": "trustees", "name": "Trustees", "icon": "pillar" },
+      { "id": "mothers", "name": "Mothers", "icon": "home" },
+      { "id": "missionaries", "name": "Missionaries", "icon": "globe" },
+      { "id": "ushers", "name": "Ushers", "icon": "door" },
+      { "id": "music", "name": "Music Ministry", "icon": "worship" },
+      { "id": "youth", "name": "Youth Leadership", "icon": "sunrise" },
+      { "id": "christian-education", "name": "Christian Education", "icon": "scroll" },
+      { "id": "administration", "name": "Administrative Leadership", "icon": "target" },
+      { "id": "dignitaries", "name": "Other Church Dignitaries", "icon": "cross" }
+    ],
+    "people": [
+      {
+        "name": "Min. Tomika Williams Noble",
+        "role": "President, Bible Scholars Ministry",
+        "categories": ["ministers"],
+        "photo": "assets/img/people/tomika-williams-noble-300.webp"
+      },
+      {
+        "name": "Prophetess Denise M. Thomas",
+        "role": "President, Missionary Ministry; State Missionary",
+        "categories": ["missionaries"],
+        "photo": "assets/img/people/denise-m-thomas-300.webp"
+      },
+      {
+        "name": "Min. Pamela Doggett",
+        "role": "President, Youth Ministry",
+        "categories": ["youth", "ministers"],
+        "photo": "assets/img/people/pamela-doggett-300.webp"
+      },
+      {
+        "name": "Deaconess Pam [last name to be provided]",
+        "role": "Deaconess",
+        "categories": ["deaconesses"],
+        "photo": ""
+      }
+    ],
+    "quote": { "text": "For the perfecting of the saints, for the work of the ministry...", "ref": "Ephesians 4:12 (KJV)" }
+  },
+
+  "events": {
+    "hero": {
+      "title": "What's Happening at St. Paul",
+      "subtitle": "Worship • Fellowship • Growth • Community",
+      "image": "assets/img/photos/worship-ministry-1920.webp",
+      "imageSmall": "assets/img/photos/worship-ministry-960.webp",
+      "imageAlt": "Members ministering to one another during a St. Paul service"
+    },
+    "featuredTitle": "Featured Event",
+    "registerLabel": "Register Now",
+    "learnMoreLabel": "Learn More",
+    "tabs": { "upcoming": "Upcoming Events", "month": "Month View", "list": "List View" },
+    "emptyText": "[No events scheduled yet]",
+    "thisWeek": {
+      "title": "This Week at St. Paul",
+      "text": "[Weekly highlights or schedule to be provided]",
+      "tagline": "Stay connected. Don't miss what God is doing."
+    },
+    "_eventsNote": "Dates use YYYY-MM-DD. Set featured to true on ONE event to show it in the Featured card. registerUrl may be left empty. These are SAMPLE events.",
+    "items": [
+      {
+        "date": "2027-01-12",
+        "title": "[Event Title Goes Here]",
+        "time": "[Time]",
+        "speaker": "[Name]",
+        "location": "[Location]",
+        "description": "[Short description of the event goes here.]",
+        "image": "",
+        "registerUrl": "",
+        "featured": false
+      },
+      {
+        "date": "2027-02-25",
+        "title": "[Featured Event Title]",
+        "time": "[Time]",
+        "speaker": "[Name]",
+        "location": "[Location]",
+        "description": "[Short description of the event goes here.]",
+        "image": "",
+        "registerUrl": "",
+        "featured": true
+      },
+      {
+        "date": "2027-03-08",
+        "title": "[Event Title Goes Here]",
+        "time": "[Time]",
+        "speaker": "[Name]",
+        "location": "[Location]",
+        "description": "[Short description of the event goes here.]",
+        "image": "",
+        "registerUrl": "",
+        "featured": false
+      },
+      {
+        "date": "2027-04-22",
+        "title": "[Event Title Goes Here]",
+        "time": "[Time]",
+        "speaker": "[Name]",
+        "location": "[Location]",
+        "description": "[Short description of the event goes here.]",
+        "image": "",
+        "registerUrl": "",
+        "featured": false
+      }
+    ]
+  },
+
+  "contact": {
+    "hero": {
+      "title": "We Would Love to Hear From You",
+      "subtitle": "Prayer. People. Purpose."
+    },
+    "infoTitle": "Contact Information",
+    "labels": { "address": "Address", "phone": "Phone", "email": "Email", "hours": "Office Hours" },
+    "directionsLabel": "Get Directions",
+    "prayer": {
+      "title": "How Can We Pray For You?",
+      "text": "We believe in the power of prayer. Share your prayer request with us and allow the St. Paul family to stand with you in prayer.",
+      "privateLabel": "Keep my request private",
+      "button": "Submit Prayer Request"
+    },
+    "praise": {
+      "title": "Praise Report",
+      "text": "God is still doing great things! Share your testimony and encourage others.",
+      "button": "Share Your Testimony",
+      "shareLabel": "You may share my testimony with the congregation"
+    },
+    "quote": {
+      "text": "O give thanks unto the LORD; for he is good: because his mercy endureth for ever.",
+      "ref": "Psalm 118:1 (KJV)"
+    }
+  }
+}
