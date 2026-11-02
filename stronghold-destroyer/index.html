@@ -42,6 +42,19 @@
   #banner{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:88%;
     background:rgba(20,14,8,.86);border:2px solid #b08a4a;border-radius:8px;padding:12px 20px;
     font-size:19px;line-height:1.4;text-align:center;color:#fff0cf;pointer-events:none;transition:opacity 1s}
+  #pick{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,7,4,.72);z-index:6;overflow:auto;padding:16px;box-sizing:border-box}
+  #pick .wrap{max-width:1040px;text-align:center}
+  #pick h1{margin:0 0 4px;font-size:32px;letter-spacing:3px;color:#ffd27a}
+  #pick .sub{font-size:19px;margin:0 0 18px;color:#f3ead7}
+  #pick .cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+  .civ{background:#241a10;border:3px solid #8a6a3a;border-radius:10px;padding:16px 18px;width:300px;text-align:left;cursor:pointer;color:#f3ead7;font-family:inherit;transition:transform .12s,border-color .12s}
+  .civ:hover,.civ:focus{border-color:#ffd27a;transform:translateY(-3px);outline:none}
+  .civ .nm{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:bold;color:#fff3d6;margin-bottom:4px}
+  .civ .sw{width:22px;height:22px;border-radius:50%;border:2px solid #fff3d6;flex:0 0 auto}
+  .civ .tag{font-style:italic;font-size:16px;color:#e0cfa8;margin-bottom:10px}
+  .civ .hd{font-size:15px;font-weight:bold;letter-spacing:1px;margin-top:8px}
+  .civ .hd.good{color:#8fe39a}.civ .hd.bad{color:#ff9d86}
+  .civ ul{margin:4px 0 0 0;padding-left:20px;font-size:16px;line-height:1.4}
   #win{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:5}
   #win .box{background:#241a10;border:3px solid #d4a957;border-radius:10px;padding:26px 34px;text-align:center;max-width:90%}
   #win h1{margin:0 0 10px;font-size:34px;color:#ffd27a;letter-spacing:2px}
@@ -56,6 +69,24 @@
 <div id="view">
   <canvas id="game"></canvas>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
+  <div id="pick"><div class="wrap">
+    <h1>CHOOSE YOUR CIVILIZATION</h1>
+    <p class="sub">Your choice changes how your people work, fight, and defend.</p>
+    <div class="cards">
+      <button class="civ" data-civ="legion"><div class="nm"><span class="sw" style="background:#2f63b0"></span>Iron Legion</div>
+        <div class="tag">A warrior people, born to march.</div>
+        <div class="hd good">STRENGTHS</div><ul><li>Soldiers have 20% more health</li><li>Soldiers hit 20% harder</li><li>Soldiers train 30% faster</li></ul>
+        <div class="hd bad">WEAKNESSES</div><ul><li>Civilians gather 25% slower</li><li>People eat more food</li></ul></button>
+      <button class="civ" data-civ="harvest"><div class="nm"><span class="sw" style="background:#3f8a3a"></span>Harvest Folk</div>
+        <div class="tag">A people of plenty who grow strong in numbers.</div>
+        <div class="hd good">STRENGTHS</div><ul><li>Civilians gather 40% faster and carry 15</li><li>People eat less food</li><li>Start with 200 food</li><li>Room for 20 people</li><li>Berry bushes regrow faster</li></ul>
+        <div class="hd bad">WEAKNESSES</div><ul><li>Soldiers are 15% weaker</li></ul></button>
+      <button class="civ" data-civ="wardens"><div class="nm"><span class="sw" style="background:#6a4aa8"></span>Stone Wardens</div>
+        <div class="tag">Keepers of the fortress who never yield it.</div>
+        <div class="hd good">STRENGTHS</div><ul><li>Keep has much more health</li><li>Keep shoots faster, harder, and farther</li><li>Wounded people heal quickly near the keep</li><li>Start with 150 wood</li></ul>
+        <div class="hd bad">WEAKNESSES</div><ul><li>Soldiers march 15% slower</li></ul></button>
+    </div>
+  </div></div>
   <div id="win"><div class="box"><h1 id="endTitle">VICTORY</h1><p id="endText">The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
 </div>
 <div id="bottom">
@@ -218,6 +249,12 @@ const PAL = {
   player: { tunic: '#2f63b0', tunicDark: '#1d3f76', trim: '#e0b84e', helmet: '#c3cad1', helmetDark: '#6f7881', plume: null, shield: '#2f63b0', shieldRim: '#d9b04a', pants: '#5a4630', pantsDark: '#45351f', boot: '#3a2a1a', bootDark: '#2a1e12' },
   enemy: { tunic: '#ac3430', tunicDark: '#6d1d1a', trim: '#2c2622', helmet: '#7a726b', helmetDark: '#3b3632', plume: '#d23b2f', shield: '#7a2420', shieldRim: '#2b2724', pants: '#3e3428', pantsDark: '#2e261c', boot: '#22190f', bootDark: '#170f08' }
 };
+const CIVS = {
+  legion:  { name: 'Iron Legion',   color: '#2f63b0', dark: '#1d3f76', sHp: 1.2,  sDmg: 1.2,  sSpeed: 1,    train: 0.7, gather: 0.75, carry: 10, eatEvery: 12, popCap: 15, regrow: 5, heal: 1.5, keepHeal: 0, food: 100, wood: 80,  keepHp: 1500, keepRate: 2.2, keepDmg: 7,  keepRange: 240 },
+  harvest: { name: 'Harvest Folk',  color: '#3f8a3a', dark: '#25561f', sHp: 0.85, sDmg: 0.85, sSpeed: 1,    train: 1,   gather: 1.4,  carry: 15, eatEvery: 20, popCap: 20, regrow: 3, heal: 1.5, keepHeal: 0, food: 200, wood: 80,  keepHp: 1500, keepRate: 2.2, keepDmg: 7,  keepRange: 240 },
+  wardens: { name: 'Stone Wardens', color: '#6a4aa8', dark: '#432c73', sHp: 1,    sDmg: 1,    sSpeed: 0.85, train: 1,   gather: 1,    carry: 10, eatEvery: 15, popCap: 15, regrow: 5, heal: 1.5, keepHeal: 4, food: 100, wood: 150, keepHp: 2600, keepRate: 1.1, keepDmg: 10, keepRange: 300 }
+};
+let CIV = CIVS.legion, started = false;
 const HAIRS = ['#2a1a10', '#4a2e18', '#6b4423', '#1a1410', '#8a6a3a'];
 const SKINS = ['#efc59c', '#d9a57a', '#b97c52', '#8d5a3b', '#6a4329', '#f3d1ae'];
 let nextId = 1;
@@ -235,6 +272,7 @@ function makeUnit(team, kind, x, y) {
     carry: 0, carryType: null, task: null, sub: null, workT: 0, bad: new Set(), hair: HAIRS[Math.floor(Math.random() * HAIRS.length)]
   };
   if (kind === 'civ') u.pal = PAL.civ;
+  else if (team === 'player') { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }
   units.push(u);
   return u;
 }
@@ -286,6 +324,8 @@ function setupWorld() {
   placeBushes();
   paintTerrain();
   // player army: 3 swordsmen, 2 spearmen
+}
+function spawnPlayerPeople() {
   [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
     .forEach(([k, x, y]) => makeUnit('player', k, x, y));
   [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058]].forEach(([x, y]) => makeUnit('player', 'civ', x, y));
@@ -597,7 +637,6 @@ function enemyBrain(u, dt) {
   if (u.order === 'idle') u.moving = false;
 }
 // ---------- civilians ----------
-const CARRY = 10;
 const nodeCenter = n => n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : { x: n.x, y: n.y };
 const nodeReach = n => n.kind === 'tree' ? 33 : 24;
 const nodeOk = (n, type) => n && !n.gone && (type === 'wood' ? n.amount > 0 : n.amount >= 1);
@@ -624,7 +663,7 @@ function civBrain(u, dt) {
   }
   if (u.order !== 'gather') { if (u.order === 'idle') u.moving = false; return; }
   const task = u.task;
-  if (u.sub !== 'toKeep' && u.carry >= CARRY) { u.sub = 'toKeep'; u.path = []; }
+  if (u.sub !== 'toKeep' && u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
   if (u.sub === 'toNode' || u.sub === 'work') {
     if (!nodeOk(task.node, task.type) && !(task.type === 'food' && task.node && u.sub === 'work')) {
       const n = nearestNode(task.type, u.x, u.y, 500, u.bad);
@@ -651,11 +690,11 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) u.attackAnim = 0.001;
     u.workT += dt;
-    const rate = task.type === 'wood' ? 1.0 : 0.8;
+    const rate = (task.type === 'wood' ? 1.0 : 0.8) / CIV.gather;
     if (u.workT >= rate) {
       u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type;
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
-      if (u.carry >= CARRY) { u.sub = 'toKeep'; u.path = []; }
+      if (u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
     }
   } else if (u.sub === 'toKeep') {
     if (!k) { u.order = 'idle'; u.task = null; return; }
@@ -690,7 +729,9 @@ function updateUnit(u, dt) {
   else if (u.order === 'raid') followPath(u, dt);
 
   // wounds slowly mend after 8 seconds out of harm's way
-  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving) u.hp = Math.min(u.maxHp, u.hp + 1.5 * dt);
+  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving) u.hp = Math.min(u.maxHp, u.hp + CIV.heal * dt);
+  // Stone Wardens: the keep tends the wounded nearby, even mid-battle
+  if (CIV.keepHeal && u.team === 'player' && u.hp < u.maxHp && playerKeep() && edgeDist(u, keep) < 200) u.hp = Math.min(u.maxHp, u.hp + CIV.keepHeal * dt);
   u.lastX = u.x; u.lastY = u.y;
 }
 function separate() {
@@ -833,8 +874,8 @@ function drawLoad(g, u, P) {
 function drawCivHead(g, u, P) {
   g.fillStyle = P(u.hair); g.beginPath(); g.arc(0.2, -27.4, 5, Math.PI * 0.85, Math.PI * 2.02); g.fill();
   g.fillRect(-4.8, -28, 2.4, 4.2);
-  g.fillStyle = P('#2f63b0'); g.beginPath(); g.ellipse(0.2, -30.2, 5.2, 2.8, 0, Math.PI, 0); g.fill();
-  g.fillStyle = P('#1d3f76'); g.fillRect(-5, -30.4, 10.4, 1.3);
+  g.fillStyle = P(PAL.player.tunic); g.beginPath(); g.ellipse(0.2, -30.2, 5.2, 2.8, 0, Math.PI, 0); g.fill();
+  g.fillStyle = P(PAL.player.tunicDark); g.fillRect(-5, -30.4, 10.4, 1.3);
 }
 function drawCivArm(g, u, P, moving, ph) {
   const a = u.attackAnim, type = u.task ? u.task.type : (u.carry > 0 ? u.carryType : null), working = u.sub === 'work' && u.order === 'gather';
@@ -895,7 +936,7 @@ function drawKeep(g, s, t) {
   // archer on the walkway
   {
     const ax = cx + 8, ay = T - 4, dir = s.aim || 1;
-    g.fillStyle = P('#2f63b0'); g.fillRect(ax - 5, ay - 9, 10, 10);
+    g.fillStyle = P(PAL.player.tunic); g.fillRect(ax - 5, ay - 9, 10, 10);
     g.fillStyle = P('#d9a57a'); g.beginPath(); g.arc(ax, ay - 13, 4.4, 0, Math.PI * 2); g.fill();
     g.fillStyle = P('#c3cad1'); g.beginPath(); g.arc(ax, ay - 13.8, 5, Math.PI, 0); g.fill();
     const bx = ax + dir * 4, pull = s.drawT > 0 ? 3 : 0;
@@ -907,7 +948,7 @@ function drawKeep(g, s, t) {
   }
   // banner pole at the back corner
   g.strokeStyle = '#3a2a18'; g.lineWidth = 2; g.beginPath(); g.moveTo(Rt + 6, T - 8); g.lineTo(Rt + 6, T - 46); g.stroke();
-  g.fillStyle = P('#2f63b0'); g.beginPath(); g.moveTo(Rt + 6, T - 46);
+  g.fillStyle = P(PAL.player.tunic); g.beginPath(); g.moveTo(Rt + 6, T - 46);
   for (let k = 0; k <= 9; k++) g.lineTo(Rt + 6 + k * 2.8, T - 46 + Math.sin(t * 5 + k * 0.7) * 1.8);
   for (let k = 9; k >= 0; k--) g.lineTo(Rt + 6 + k * 2.8, T - 32 + Math.sin(t * 5 + k * 0.7) * 1.8);
   g.closePath(); g.fill();
@@ -1194,12 +1235,13 @@ function endGame(title, text) {
   setTimeout(() => { document.getElementById('endTitle').textContent = title; document.getElementById('endText').textContent = text; document.getElementById('win').style.display = 'flex'; }, 1500);
 }
 function updateHud() {
+  if (!started) { statusEl.innerHTML = '<b>Choose your civilization to begin</b>'; return; }
   const mine = units.filter(u => u.team === 'player' && !u.dead).length;
   const pop = mine + trainQueue.length;
   const foes = enemiesOf('player').length;
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
-  statusEl.innerHTML = `<span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${mine * 4}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${POP_CAP} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
+  statusEl.innerHTML = `<b style="color:${CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff'}">${CIV.name}</b> &nbsp;&middot;&nbsp; <span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${Math.round(mine * 60 / CIV.eatEvery)}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${CIV.popCap} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
   document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
   document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
   const sel = selectedList();
@@ -1270,12 +1312,11 @@ function updateWar(dt) {
 // ---------- economy: stores, upkeep, training ----------
 const res = { food: 100, wood: 80 };
 const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 } };
-const POP_CAP = 15;
 const trainQueue = [];
 let starving = false, hungerT = 0, starveMsgT = 0;
 function canTrain(kind) {
   const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead).length + trainQueue.length;
-  return !!playerKeep() && res.food >= c.food && res.wood >= c.wood && pop < POP_CAP && trainQueue.length < 5;
+  return !!playerKeep() && res.food >= c.food && res.wood >= c.wood && pop < CIV.popCap && trainQueue.length < 5;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
@@ -1285,14 +1326,14 @@ function trainUnit(kind) {
     return;
   }
   const c = COSTS[kind]; res.food -= c.food; res.wood -= c.wood;
-  trainQueue.push({ kind, t: 0, dur: c.time });
+  trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
 function updateEconomy(dt) {
   const k = playerKeep();
   // everyone eats: 1 food per person every 15 seconds
   const people = units.filter(u => u.team === 'player' && !u.dead);
-  hungerT += people.length * dt / 15;
+  hungerT += people.length * dt / CIV.eatEvery;
   while (hungerT >= 1) { hungerT -= 1; res.food -= 1; }
   starving = res.food <= 0;
   if (starving) {
@@ -1301,7 +1342,7 @@ function updateEconomy(dt) {
     starveMsgT -= dt; if (starveMsgT <= 0) { showBanner('Your people are starving! Send civilians to gather food.', 4); starveMsgT = 20; }
   }
   // berry bushes slowly grow back
-  for (const b of bushes) b.amount = Math.min(b.max, b.amount + dt / 5);
+  for (const b of bushes) b.amount = Math.min(b.max, b.amount + dt / CIV.regrow);
   // training at the keep
   if (k && trainQueue.length) {
     const q = trainQueue[0]; q.t += dt;
@@ -1328,7 +1369,7 @@ function frame(now) {
 
   for (const u of units) updateUnit(u, dt);
   separate();
-  if (!won) { updateWar(dt); updateEconomy(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   if (Math.random() < dt * 4) spawn('smoke', fires[0].x + RR(-3, 3), fires[0].y - 18);
   updateParticles(dt);
@@ -1432,12 +1473,25 @@ window.addEventListener('resize', resize);
 resize();
 cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
-bannerTimer = setTimeout(() => { document.getElementById('banner').style.opacity = 0; }, 7000);
+document.getElementById('banner').style.opacity = 0;
+function startGame(key) {
+  CIV = CIVS[key];
+  Object.assign(PAL.player, { tunic: CIV.color, tunicDark: CIV.dark, shield: CIV.color });
+  PAL.civ.trim = CIV.color;
+  res.food = CIV.food; res.wood = CIV.wood;
+  Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
+  spawnPlayerPeople();
+  started = true;
+  document.getElementById('pick').style.display = 'none';
+  showBanner(`You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.`, 9);
+  updateHud();
+}
+document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));
 updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
