@@ -35,6 +35,10 @@
   .tb{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 12px}
   .tb small{font-size:13px;font-weight:normal}
   .tb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+  #rule{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  #rule .tl{font-size:17px;color:#ffd98a;font-weight:bold}
+  .rb{padding:7px 11px;font-size:15px}
+  .rb.on{outline:3px solid #9fe8a8;background:linear-gradient(#fff0b8,#e2b860)}
   #build{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   #build .tl{font-size:17px;color:#ffd98a;font-weight:bold}
   .bb{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 12px}
@@ -43,6 +47,7 @@
   .bb.on{outline:3px solid #9fe8a8}
   #queue{font-size:15px;color:#eadfc4;min-width:150px}
   #status .food{color:#ffb38a}
+  #help.hide{display:none}
   #help{margin-left:auto;font-size:15px;line-height:1.45;color:#eadfc4;text-align:right}
   #help b{color:#ffd98a}
   #banner{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:88%;
@@ -97,12 +102,19 @@
 </div>
 <div id="bottom">
   <div id="selbox"><span id="selLabel">No soldiers selected</span><span id="cards" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
-  <div class="btns"><button id="btnAll">Select All</button><button id="btnSold">Soldiers</button><button id="btnCiv">Civilians</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button></div>
+  <div class="btns"><button id="btnAll">Select All</button><button id="btnSold">Soldiers</button><button id="btnCiv">Civilians</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button><button id="btnHelp">Help</button></div>
   <div id="train"><span class="tl">Keep:</span>
     <button class="tb" data-k="civ">Civilian<small>40 food</small></button>
     <button class="tb" data-k="sword">Swordsman<small>40 food &middot; 30 wood</small></button>
     <button class="tb" data-k="spear">Spearman<small>30 food &middot; 40 wood</small></button>
+    <button class="tb" data-k="archer">Archer<small>20 food &middot; 25 wood &middot; 30 gold</small></button>
     <span id="queue"></span>
+  </div>
+  <div id="rule"><span class="tl">Rations:</span>
+    <button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button>
+    <span class="tl" style="margin-left:8px">Taxes:</span>
+    <button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button>
+    <button class="bb" id="feast" style="margin-left:8px">Feast<small>50 gold</small></button>
   </div>
   <div id="build"><span class="tl">Build:</span>
     <button class="bb" data-b="farm">Farm<small>60 wood</small></button>
@@ -111,11 +123,12 @@
     <button class="bb" data-b="gate">Gate<small>15 wood</small></button>
     <button class="bb" data-b="gtower">Tower<small>120 wood</small></button>
   </div>
-  <div id="help">
+  <div id="help" class="hide">
     <b>Mouse:</b> left-click or drag a box to select &middot; right-click to move or attack &middot; double-click selects all on screen<br>
     <b>Keys:</b> arrows or screen edge to scroll &middot; wheel to zoom &middot; S stop &middot; Esc clear<br>
     <b>Touch:</b> tap or drag to select &middot; tap ground or enemy to command &middot; two fingers to pan and zoom<br>
     <b>Civilians:</b> right-click (or tap) a tree for wood or a berry bush for food &middot; they carry it to the keep<br>
+    <b>Rule:</b> rations and taxes change your people's mood &middot; happy people work faster and settlers arrive &middot; unhappy people leave<br>
     <b>Build:</b> pick a building, then click near your keep to place it (walls: click start, then end) &middot; right-click or Esc cancels
   </div>
 </div>
@@ -258,6 +271,7 @@ function paintTerrain() {
 const KINDS = {
   sword: { name: 'Swordsman', hp: 110, dmg: 13, range: 5, cd: 1.0, speed: 74, anim: 0.5, hitAt: 0.62 },
   spear: { name: 'Spearman', hp: 95, dmg: 15, range: 17, cd: 1.25, speed: 70, anim: 0.55, hitAt: 0.55 },
+  archer: { name: 'Archer', hp: 70, dmg: 9, range: 170, cd: 1.6, speed: 72, anim: 0.6, hitAt: 0.55 },
   civ: { name: 'Civilian', hp: 50, dmg: 0, range: 0, cd: 1, speed: 66, anim: 0.6, hitAt: 2 }
 };
 const PAL = {
@@ -438,6 +452,11 @@ function hitCenter(t) { return t.x0 !== undefined ? { x: t.x + RR(-22, 22), y: t
 function doHit(u) {
   const t = u.target;
   if (!alive(t) || edgeDist(u, t) > u.range + 8) return;
+  if (u.type === 'archer') { // loose an arrow; it lands a moment later
+    const c = hitCenter(t), x0 = u.x + u.facing * 8, y0 = u.y - 26;
+    arrows.push({ x0, y0, x1: c.x, y1: c.y, t: 0, dur: Math.hypot(c.x - x0, c.y - y0) / 460 + 0.08, h: 18, target: t, from: u, dmg: Math.round(u.dmg * RR(0.85, 1.15)) });
+    return;
+  }
   const dmg = Math.round(u.dmg * RR(0.85, 1.15));
   t.hp -= dmg; t.flash = 1;
   const c = hitCenter(t);
@@ -488,6 +507,7 @@ function underAttackAlert(u) {
 }
 function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
+  if (t.team === 'player' && t.kind === 'unit' && started) mood = Math.max(0, mood - 3);
   selection.delete(t);
   if (t.x0 !== undefined) {
     for (let i = 0; i < t.w; i++) for (let j = 0; j < t.h; j++) { setBlock(t.c + i, t.r + j, 0); if (t.kind === 'gate') gate[(t.r + j) * COLS + t.c + i] = 0; }
@@ -623,7 +643,7 @@ function playerBrain(u) {
   }
   if (u.order === 'idle') {
     u.moving = false;
-    const n = nearestEnemy(u, 110);
+    const n = nearestEnemy(u, Math.max(110, u.range + 20));
     if (n) { u.order = 'attack'; u.target = n; u.repath = 0; }
   }
 }
@@ -686,6 +706,10 @@ const floats = [];
 function floatText(x, y, text, col) { floats.push({ x, y, text, col, t: 0 }); }
 function civBrain(u, dt) {
   const k = playerKeep();
+  if (u.order === 'leave') {
+    if (!u.path.length) { u.dead = true; u.deathT = 99; selection.delete(u); } else followPath(u, dt);
+    return;
+  }
   if (u.order === 'flee') {
     if (!k || !u.path.length || edgeDist(u, k) < 14) { u.path = []; if (u.task) { u.order = 'gather'; u.sub = u.carry > 0 ? 'toKeep' : 'toNode'; } else u.order = 'idle'; }
     else followPath(u, dt);
@@ -697,7 +721,7 @@ function civBrain(u, dt) {
     if (edgeDist(u, b) <= 12) {
       u.sub = 'work'; u.path = []; u.moving = false; u.facing = b.x >= u.x ? 1 : -1;
       if (u.attackAnim === 0) u.attackAnim = 0.001;
-      const dp = dt / b.buildTime; b.progress = Math.min(1, b.progress + dp); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dp);
+      const dp = dt * workMul() / b.buildTime; b.progress = Math.min(1, b.progress + dp); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dp);
       if (b.progress >= 1) finishBuilding(b);
     } else {
       u.sub = 'go';
@@ -735,7 +759,7 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) u.attackAnim = 0.001;
     u.workT += dt;
-    const rate = (task.type === 'wood' ? 1.0 : 0.8) / CIV.gather;
+    const rate = (task.type === 'wood' ? 1.0 : 0.8) / (CIV.gather * workMul());
     if (u.workT >= rate) {
       u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type;
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
@@ -850,10 +874,12 @@ function drawPerson(g, u, time) {
   if (pal.plume) { g.fillStyle = P(pal.plume); g.beginPath(); g.ellipse(-1, -33.6, 1.9, 3.4, -0.5, 0, Math.PI * 2); g.fill(); }
 
   // shield (held in front)
+  if (u.type !== 'archer') {
   const sh = u.type === 'spear' ? 0.82 : 1;
   g.fillStyle = P(pal.shield); g.beginPath(); g.ellipse(4.6, -15.5, 3.3 * sh, 6.6 * sh, 0, 0, Math.PI * 2); g.fill();
   g.strokeStyle = P(pal.shieldRim); g.lineWidth = 1.1; g.stroke();
   g.fillStyle = P(pal.shieldRim); g.beginPath(); g.arc(5.2, -15.5, 1.3, 0, Math.PI * 2); g.fill();
+  }
 
   }
   // weapon arm
@@ -882,6 +908,7 @@ function drawPerson(g, u, time) {
     g.fillStyle = 'rgba(120,130,140,0.9)'; g.fillRect(-0.15, 2, 0.4, 12);
     g.restore();
   } else {
+    if (u.type === 'archer') { drawBowArm(g, u, P, moving, ph); g.restore(); return; }
     // spear: upright at rest, lowered when marching into battle or fighting
     let thrust = 0;
     if (a > 0) thrust = a < 0.35 ? lerp(0, -5, ease(a / 0.35)) : a < 0.58 ? lerp(-5, 10, ease((a - 0.35) / 0.23)) : lerp(10, 0, ease((a - 0.58) / 0.42));
@@ -908,6 +935,31 @@ function drawPerson(g, u, time) {
   g.restore();
 }
 
+function drawBowArm(g, u, P, moving, ph) {
+  const a = u.attackAnim, aiming = a > 0 || u.order === 'attack';
+  // quiver on the back
+  g.fillStyle = P('#6b4a28'); g.save(); g.translate(-5, -20); g.rotate(-0.35); g.fillRect(-1.8, -3, 3.6, 10);
+  g.fillStyle = P('#e8e2d2'); g.fillRect(-1.6, -5, 0.8, 2.5); g.fillRect(0.2, -5.5, 0.8, 3); g.restore();
+  if (u.dead) return;
+  const pull = a > 0 && a < 0.55 ? ease(a / 0.55) * 5 : 0;
+  if (aiming) {
+    const hx = 9, hy = -19;
+    g.strokeStyle = P(u.pal.tunic); g.lineWidth = 3.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-0.5, -20.5); g.lineTo(hx, hy); g.stroke();
+    g.strokeStyle = P('#5a3a1e'); g.lineWidth = 1.8; g.beginPath(); g.arc(hx - 3, hy, 9, -1.15, 1.15); g.stroke();
+    const ex = hx - 3 + 9 * Math.cos(1.15), ey = 9 * Math.sin(1.15);
+    g.strokeStyle = 'rgba(235,230,215,0.9)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(ex, hy - ey); g.lineTo(ex - 4 - pull, hy); g.lineTo(ex, hy + ey); g.stroke();
+    if (a > 0 && a < 0.55) { g.strokeStyle = '#4a321a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(ex - 4 - pull, hy); g.lineTo(hx + 9, hy); g.stroke(); }
+    g.fillStyle = P(u.skin); g.beginPath(); g.arc(hx, hy, 1.9, 0, Math.PI * 2); g.fill();
+  } else {
+    const ang = 0.35 + (moving ? Math.sin(ph) * 0.3 : 0);
+    g.save(); g.translate(-0.5, -20.5); g.rotate(-ang);
+    g.fillStyle = P(u.pal.tunic); rr(g, -1.7, -0.5, 3.4, 5, 1.2); g.fill();
+    g.fillStyle = P(u.skin); rr(g, -1.4, 4, 2.8, 4.6, 1.2); g.fill(); g.beginPath(); g.arc(0, 9.2, 1.9, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = P('#5a3a1e'); g.lineWidth = 1.8; g.beginPath(); g.arc(-2, 9.2, 10, -1.2, 1.2); g.stroke();
+    g.restore();
+  }
+}
 function drawLoad(g, u, P) {
   if (u.carryType === 'wood') {
     for (let k = 0; k < 3; k++) { g.fillStyle = P(k % 2 ? '#6b4a28' : '#7d5830'); rr(g, -10, -23 + k * 3.4, 8, 3.2, 1.4); g.fill(); g.fillStyle = P('#c9a26a'); g.beginPath(); g.arc(-10, -21.4 + k * 3.4, 1.4, 0, Math.PI * 2); g.fill(); }
@@ -1264,6 +1316,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
   if (e.key === 'Escape') { if (placing) cancelPlacing(); else selection.clear(); }
+  if (e.key === 'h' || e.key === 'H') toggleHelp();
   if (e.key === 's' || e.key === 'S') commandStop(selectedList());
   if (e.key.startsWith('Arrow')) e.preventDefault();
 });
@@ -1272,6 +1325,8 @@ document.getElementById('btnAll').onclick = () => selectOnly(units);
 document.getElementById('btnSold').onclick = () => selectOnly(units.filter(u => u.type !== 'civ'));
 document.getElementById('btnCiv').onclick = () => selectOnly(units.filter(u => u.type === 'civ'));
 document.querySelectorAll('.tb').forEach(b => b.onclick = () => trainUnit(b.dataset.k));
+function toggleHelp() { document.getElementById('help').classList.toggle('hide'); }
+document.getElementById('btnHelp').onclick = toggleHelp;
 document.getElementById('btnClear').onclick = () => selection.clear();
 document.getElementById('btnStop').onclick = () => commandStop(selectedList());
 document.getElementById('again').onclick = () => location.reload();
@@ -1294,9 +1349,11 @@ function updateHud() {
   const foes = enemiesOf('player').length;
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
-  statusEl.innerHTML = `<b style="color:${CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff'}">${CIV.name}</b> &nbsp;&middot;&nbsp; <span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${Math.round(mine * 60 / CIV.eatEvery)}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${popCap()} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
+  statusEl.innerHTML = `<b style="color:${CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff'}">${CIV.name}</b> &nbsp;&middot;&nbsp; <span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery)}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; Gold: <b>${Math.floor(res.gold)}</b> &nbsp;&middot;&nbsp; ${moodHtml()} &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${popCap()} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
   document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
-  document.querySelectorAll('.bb').forEach(b => { b.classList.toggle('off', res.wood < BUILD[b.dataset.b].wood); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
+  document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
+  document.getElementById('feast').classList.toggle('off', res.gold < 50);
+  document.querySelectorAll('.bb[data-b]').forEach(b => { b.classList.toggle('off', res.wood < BUILD[b.dataset.b].wood); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
   document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
   const sel = selectedList();
   selLabel.textContent = sel.length ? `Selected: ${sel.length}` : 'No soldiers selected';
@@ -1353,9 +1410,10 @@ function updateWar(dt) {
     if (a.t < a.dur) continue;
     arrows.splice(i, 1);
     const t = a.target;
-    if (alive(t) && Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18) {
+    if (alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18)) {
       t.hp -= a.dmg; t.flash = 1; t.lastHurt = time;
-      for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18);
+      if (t.x0 !== undefined) for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1);
+      else for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18);
       if (t.hp <= 0) kill(t);
       else reactToHit(t, a.from);
     } else stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0 });
@@ -1363,23 +1421,76 @@ function updateWar(dt) {
   for (let i = stuckArrows.length - 1; i >= 0; i--) { stuckArrows[i].t += dt; if (stuckArrows[i].t > 6) stuckArrows.splice(i, 1); }
 }
 
+// ---------- mood: rations, taxes, and how your people feel ----------
+const RATIONS = [ { name: 'Lean', eat: 0.5, mood: -8 }, { name: 'Normal', eat: 1, mood: 0 }, { name: 'Generous', eat: 1.5, mood: 8 } ];
+const TAXES = [ { name: 'None', gold: 0, mood: 3 }, { name: 'Low', gold: 1, mood: -4 }, { name: 'High', gold: 2.5, mood: -12 } ];
+let mood = 60, ration = 1, tax = 1, goldT = 0, settleT = 30, leaveT = 25, moodRate = 0;
+const moodName = () => mood >= 70 ? 'Happy' : mood >= 40 ? 'Steady' : mood >= 20 ? 'Unhappy' : 'Rebellious';
+const workMul = () => mood >= 70 ? 1.15 : mood >= 40 ? 1 : 0.8;
+function moodHtml() {
+  const col = mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a';
+  const r = Math.round(moodRate);
+  return `Mood: <b style="color:${col}">${Math.round(mood)} ${moodName()}</b> (${r > 0 ? '+' : ''}${r}/min)`;
+}
+function updateMood(dt, people) {
+  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood;
+  mood = clamp(mood + moodRate * dt / 60, 0, 100);
+  // taxes: gold per person every 20 seconds
+  goldT += people.length * TAXES[tax].gold * dt / 20;
+  while (goldT >= 1) { goldT -= 1; res.gold += 1; }
+  const k = playerKeep();
+  // happy towns draw new settlers along the road
+  if (mood >= 70 && k) {
+    settleT -= dt;
+    if (settleT <= 0) {
+      settleT = 40;
+      if (people.length + trainQueue.length < popCap()) {
+        const u = makeUnit('player', 'civ', 20, 1168);
+        commandMove([u], k.x1 + 40 + RR(-20, 20), k.y1 + 30 + RR(-15, 15));
+        showBanner('A settler has come to join your town.', 3);
+      }
+    }
+  } else settleT = Math.max(settleT, 15);
+  // rebellious towns lose people
+  if (mood < 20) {
+    leaveT -= dt;
+    if (leaveT <= 0) {
+      leaveT = 25;
+      const civs = people.filter(u => u.type === 'civ' && u.order !== 'leave');
+      if (civs.length) {
+        const u = civs[Math.floor(Math.random() * civs.length)];
+        u.order = 'leave'; u.task = null; u.carry = 0; u.path = findPath(u.x, u.y, 24, clamp(u.y, 200, 1250));
+        showBanner('An unhappy civilian has left your town!', 3.5);
+      }
+    }
+  } else leaveT = 25;
+}
+document.querySelectorAll('.rb').forEach(b => b.onclick = () => { if (b.dataset.r !== undefined) ration = +b.dataset.r; else tax = +b.dataset.t; updateHud(); });
+document.getElementById('feast').onclick = () => {
+  if (!started || won) return;
+  if (res.gold < 50) { showBanner('A feast costs 50 gold.', 2.5); return; }
+  res.gold -= 50; mood = Math.min(100, mood + 15);
+  const k = playerKeep(); if (k) floatText(k.x, k.y - 140, 'Feast! +15 mood', '#ffd27a');
+  showBanner('You hold a feast. Your people rejoice!', 3); updateHud();
+};
+
 // ---------- economy: stores, upkeep, training ----------
-const res = { food: 100, wood: 80 };
-const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 } };
+const res = { food: 100, wood: 80, gold: 0 };
+const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 }, archer: { food: 20, wood: 25, gold: 30, time: 14 } };
 const trainQueue = [];
 let starving = false, hungerT = 0, starveMsgT = 0;
 function canTrain(kind) {
   const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead).length + trainQueue.length;
-  return !!playerKeep() && res.food >= c.food && res.wood >= c.wood && pop < popCap() && trainQueue.length < 5;
+  return !!playerKeep() && res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && pop < popCap() && trainQueue.length < 5;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
     const c = COSTS[kind];
-    if (res.food < c.food || res.wood < c.wood) showBanner(`Not enough ${res.food < c.food ? 'food' : 'wood'} to train a ${KINDS[kind].name}.`, 2.5);
+    if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C'), 2.5);
     else showBanner('Your keep cannot train more right now.', 2.5);
     return;
   }
-  const c = COSTS[kind]; res.food -= c.food; res.wood -= c.wood;
+  const c = COSTS[kind]; res.food -= c.food; res.wood -= c.wood; res.gold -= (c.gold || 0);
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
@@ -1387,7 +1498,8 @@ function updateEconomy(dt) {
   const k = playerKeep();
   // everyone eats: 1 food per person every 15 seconds
   const people = units.filter(u => u.team === 'player' && !u.dead);
-  hungerT += people.length * dt / CIV.eatEvery;
+  hungerT += people.length * dt * RATIONS[ration].eat / CIV.eatEvery;
+  updateMood(dt, people);
   while (hungerT >= 1) { hungerT -= 1; res.food -= 1; }
   starving = res.food <= 0;
   if (starving) {
@@ -1637,7 +1749,7 @@ function drawGuardTower(g, b, P, t) {
   for (let k = 6; k >= 0; k--) g.lineTo(Rt + 4 + k * 2.6, T - 24 + Math.sin(t * 5 + k * 0.7) * 1.5);
   g.closePath(); g.fill();
 }
-document.querySelectorAll('.bb').forEach(b => b.onclick = () => startPlacing(b.dataset.b));
+document.querySelectorAll('.bb[data-b]').forEach(b => b.onclick = () => startPlacing(b.dataset.b));
 
 // ---------- main loop ----------
 let last = performance.now(), time = 0;
@@ -1758,6 +1870,7 @@ function render() {
 // ---------- start ----------
 setupWorld();
 window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.getElementById('view'));
 resize();
 cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
@@ -1771,7 +1884,7 @@ function startGame(key) {
   spawnPlayerPeople();
   started = true;
   document.getElementById('pick').style.display = 'none';
-  showBanner(`You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.`, 9);
+  showBanner(`You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br><b>Press Help (or H) to see the controls.</b>`, 10);
   updateHud();
 }
 document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));
@@ -1779,7 +1892,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
