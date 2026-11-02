@@ -48,8 +48,8 @@
 </div>
 <div id="view">
   <canvas id="game"></canvas>
-  <div id="banner">The war is already underway.<br>Lead your 5 soldiers to the enemy camp in the northeast and destroy it.</div>
-  <div id="win"><div class="box"><h1>VICTORY</h1><p>The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
+  <div id="banner">The war is already underway.<br>Enemy raiders will come for you. Destroy the watchtower in the northeast to stop them.</div>
+  <div id="win"><div class="box"><h1 id="endTitle">VICTORY</h1><p id="endText">The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
 </div>
 <div id="bottom">
   <div id="selbox"><span id="selLabel">No soldiers selected</span><span id="cards" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
@@ -213,7 +213,8 @@ function makeUnit(team, kind, x, y) {
     pal: PAL[team], skin: SKINS[Math.floor(Math.random() * SKINS.length)], seed: Math.random() * 10,
     facing: team === 'player' ? 1 : -1, walkPhase: Math.random() * 6, moving: false,
     path: [], order: 'idle', target: null, repath: 0, atkTimer: 0, attackAnim: 0, combatT: 0,
-    flash: 0, dead: false, deathT: 0, stuckT: 0, lastX: x, lastY: y
+    flash: 0, dead: false, deathT: 0, stuckT: 0, lastX: x, lastY: y,
+    post: { x, y }, raider: false, think: Math.random() * 0.3, lastHurt: -99
   };
   units.push(u);
   return u;
@@ -242,7 +243,7 @@ function setupWorld() {
     .forEach(([k, x, y]) => makeUnit('player', k, x, y));
   // enemy guards at their posts
   [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
-    .forEach(([k, x, y]) => makeUnit('enemy', k, x, y));
+    .forEach(([k, x, y]) => { const g = makeUnit('enemy', k, x, y); g.maxHp = g.hp = Math.round(g.hp * 0.85); });
 }
 
 // ---------- pathfinding (A* on the tile grid, then smoothed) ----------
@@ -342,9 +343,33 @@ function doHit(u) {
   } else {
     for (let i = 0; i < 5; i++) spawn('spark', c.x, c.y);
     for (let i = 0; i < 3; i++) spawn('blood', c.x, c.y + 4);
-    if (t.team === 'enemy') t.facing = u.x > t.x ? 1 : -1;
+    t.facing = u.x > t.x ? 1 : -1;
+    t.lastHurt = time;
   }
-  if (t.hp <= 0) kill(t);
+  if (t.hp <= 0) { kill(t); return; }
+  reactToHit(t, u);
+}
+// the struck side answers: soldiers fight back, guards call for help
+function reactToHit(t, attacker) {
+  if (t.kind === 'tower') { alertAllies(t, attacker, 320); return; }
+  if (t.team === 'player') {
+    if (t.order === 'idle') { t.order = 'attack'; t.target = attacker; t.repath = 0; }
+    underAttackAlert(t);
+  } else if (t.order !== 'attack') {
+    t.order = 'attack'; t.target = attacker; t.repath = 0;
+    alertAllies(t, attacker, 230);
+  }
+}
+function alertAllies(src, foe, radius) {
+  for (const o of units) {
+    if (o.dead || o.team !== src.team || o === src || o.team === 'player') continue;
+    if ((o.order === 'idle' || o.order === 'return') && Math.hypot(o.x - src.x, o.y - src.y) < radius) { o.order = 'attack'; o.target = foe; o.repath = 0; }
+  }
+}
+function underAttackAlert(u) {
+  if (alertCooldown > 0) return;
+  const onScreen = u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z;
+  if (!onScreen) { showBanner('Your soldiers are under attack!', 3); alertCooldown = 12; }
 }
 function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
@@ -441,17 +466,29 @@ function moveBy(u, mx, my) {
   if (!circleBlocked(u.x, u.y + my, r)) u.y += my;
   u.x = clamp(u.x, 10, MW - 10); u.y = clamp(u.y, 10, MH - 10);
 }
-function updateUnit(u, dt) {
-  if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
-  u.flash = Math.max(0, u.flash - dt * 5);
-  u.atkTimer -= dt; u.combatT -= dt; u.repath -= dt;
-  if (u.attackAnim > 0) {
-    const prev = u.attackAnim; u.attackAnim += dt / u.animDur;
-    if (prev < u.hitAt && u.attackAnim >= u.hitAt) doHit(u);
-    if (u.attackAnim >= 1) u.attackAnim = 0;
+function aggro(u, r) {
+  let best = null, bd = r;
+  for (const o of units) { if (o.dead || o.team === u.team) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
+function attackStep(u, dt) {
+  const t = u.target, ed = edgeDist(u, t);
+  if (ed <= u.range + 2) {
+    u.path = []; u.moving = false;
+    u.facing = t.x > u.x ? 1 : -1;
+    if (u.atkTimer <= 0 && u.attackAnim === 0) { u.attackAnim = 0.001; u.atkTimer = u.cd; }
+    u.combatT = 2.5;
+  } else {
+    if (u.repath <= 0 || !u.path.length) {
+      const ap = approachPoint(u, t);
+      u.path = findPath(u.x, u.y, ap.x, ap.y);
+      u.repath = 0.5;
+    }
+    followPath(u, dt);
   }
-  if (u.team !== 'player') { u.moving = false; return; } // Step 1: enemy guards hold their posts
-
+}
+function playerBrain(u) {
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
@@ -461,28 +498,53 @@ function updateUnit(u, dt) {
     const n = nearestEnemy(u, 110);
     if (n) { u.order = 'attack'; u.target = n; u.repath = 0; }
   }
-  if (u.order === 'move') {
+}
+function enemyBrain(u, dt) {
+  u.think -= dt;
+  if (u.order === 'attack' && !alive(u.target)) {
+    const n = aggro(u, 170);
+    if (n) { u.target = n; u.repath = 0; }
+    else if (u.raider) { u.order = 'raid'; u.target = null; u.path = []; u.repath = 0; }
+    else sendHome(u);
+  }
+  // guards will not chase forever: past their leash they go back to their post
+  if (!u.raider && u.order === 'attack' && Math.hypot(u.x - u.post.x, u.y - u.post.y) > 380) sendHome(u);
+  if ((u.order === 'idle' || u.order === 'raid') && u.think <= 0) {
+    u.think = 0.3;
+    const n = aggro(u, u.raider ? 190 : 150);
+    if (n) { u.order = 'attack'; u.target = n; u.repath = 0; alertAllies(u, n, 230); }
+  }
+  if (u.order === 'raid' && (u.repath <= 0 || !u.path.length)) {
+    // raiders hunt the nearest of your soldiers
+    let prey = null, bd = 1e9;
+    for (const o of units) if (!o.dead && o.team === 'player') { const d = Math.hypot(o.x - u.x, o.y - u.y); if (d < bd) { bd = d; prey = o; } }
+    if (prey) { u.path = findPath(u.x, u.y, prey.x, prey.y); u.repath = 2; }
+  }
+  if (u.order === 'idle') u.moving = false;
+}
+function updateUnit(u, dt) {
+  if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
+  u.flash = Math.max(0, u.flash - dt * 5);
+  u.atkTimer -= dt; u.combatT -= dt; u.repath -= dt;
+  if (u.attackAnim > 0) {
+    const prev = u.attackAnim; u.attackAnim += dt / u.animDur;
+    if (prev < u.hitAt && u.attackAnim >= u.hitAt) doHit(u);
+    if (u.attackAnim >= 1) u.attackAnim = 0;
+  }
+  if (u.dead) return;
+  if (u.team === 'player') playerBrain(u); else enemyBrain(u, dt);
+
+  if (u.order === 'move' || u.order === 'return') {
     followPath(u, dt);
     const d = Math.hypot(u.dest.x - u.x, u.dest.y - u.y);
     const movedSq = (u.x - u.lastX) ** 2 + (u.y - u.lastY) ** 2;
     u.stuckT = movedSq < 0.04 ? u.stuckT + dt : 0;
     if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5) { u.order = 'idle'; u.path = []; u.moving = false; }
-  } else if (u.order === 'attack') {
-    const t = u.target, ed = edgeDist(u, t);
-    if (ed <= u.range + 2) {
-      u.path = []; u.moving = false;
-      u.facing = (t.kind === 'tower' ? t.x : t.x) > u.x ? 1 : -1;
-      if (u.atkTimer <= 0 && u.attackAnim === 0) { u.attackAnim = 0.001; u.atkTimer = u.cd; }
-      u.combatT = 2.5;
-    } else {
-      if (u.repath <= 0 || !u.path.length) {
-        const ap = approachPoint(u, t);
-        u.path = findPath(u.x, u.y, ap.x, ap.y);
-        u.repath = 0.5;
-      }
-      followPath(u, dt);
-    }
-  }
+  } else if (u.order === 'attack') attackStep(u, dt);
+  else if (u.order === 'raid') followPath(u, dt);
+
+  // wounds slowly mend after 8 seconds out of harm's way
+  if (u.hp < u.maxHp && time - u.lastHurt > 8) u.hp = Math.min(u.maxHp, u.hp + 1.5 * dt);
   u.lastX = u.x; u.lastY = u.y;
 }
 function separate() {
@@ -494,7 +556,7 @@ function separate() {
     if (d >= min) continue;
     if (d < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d = Math.hypot(dx, dy); }
     const push = (min - d), nx = dx / d, ny = dy / d;
-    const aFixed = a.team !== 'player', bFixed = b.team !== 'player';
+    const aFixed = a.team !== 'player' && a.order === 'idle', bFixed = b.team !== 'player' && b.order === 'idle';
     if (aFixed && bFixed) continue;
     const wa = aFixed ? 0 : bFixed ? 1 : 0.5, wb = 1 - wa;
     moveBy(a, -nx * push * wa, -ny * push * wa);
@@ -684,6 +746,20 @@ function drawTower(g, s, t) {
   // platform
   g.fillStyle = woodD; g.fillRect(cx - 36, gy - 100, 72, 9);
   g.fillStyle = woodL; g.fillRect(cx - 36, gy - 102, 72, 3);
+  // archer on the lookout
+  {
+    const ax = cx + 6, ay = gy - 122, dir = s.aim || -1;
+    g.fillStyle = P('#ac3430'); g.fillRect(ax - 5, ay - 9, 10, 12);
+    g.fillStyle = P('#d9a57a'); g.beginPath(); g.arc(ax, ay - 13, 4.4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = P('#7a726b'); g.beginPath(); g.arc(ax, ay - 13.8, 5, Math.PI, 0); g.fill();
+    g.fillStyle = P('#d23b2f'); g.beginPath(); g.ellipse(ax - 1, ay - 19.5, 1.7, 3, -0.5, 0, Math.PI * 2); g.fill();
+    const bx = ax + dir * 4, pull = s.drawT > 0 ? 3 : 0;
+    g.strokeStyle = '#5a3a1e'; g.lineWidth = 1.7; g.beginPath();
+    if (dir > 0) g.arc(bx, ay - 8, 8, -1.15, 1.15); else g.arc(bx, ay - 8, 8, Math.PI - 1.15, Math.PI + 1.15);
+    g.stroke();
+    const ex = bx + dir * 8 * Math.cos(1.15), ey1 = ay - 8 - 8 * Math.sin(1.15), ey2 = ay - 8 + 8 * Math.sin(1.15);
+    g.strokeStyle = 'rgba(235,230,215,0.9)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(ex, ey1); g.lineTo(ex - dir * pull, ay - 8); g.lineTo(ex, ey2); g.stroke();
+  }
   // palisade wall with pointed logs
   for (let k = 0; k < 9; k++) {
     const lx = cx - 36 + k * 8;
@@ -691,16 +767,19 @@ function drawTower(g, s, t) {
     g.beginPath(); g.moveTo(lx, gy - 100); g.lineTo(lx, gy - 124); g.lineTo(lx + 4, gy - 129); g.lineTo(lx + 8, gy - 124); g.lineTo(lx + 8, gy - 100); g.closePath(); g.fill();
     g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(lx + 6, gy - 124, 2, 24);
   }
+  // roof posts
+  g.fillStyle = woodD; g.fillRect(cx - 35, gy - 150, 4, 28); g.fillRect(cx + 31, gy - 150, 4, 28);
   // roof
-  g.fillStyle = P('#8c6a33'); g.beginPath(); g.moveTo(cx - 42, gy - 124); g.lineTo(cx, gy - 160); g.lineTo(cx + 42, gy - 124); g.closePath(); g.fill();
-  g.fillStyle = P('#6b4f22'); g.beginPath(); g.moveTo(cx - 42, gy - 124); g.lineTo(cx, gy - 160); g.lineTo(cx - 6, gy - 124); g.closePath(); g.fill();
+  const RY = gy - 148;
+  g.fillStyle = P('#8c6a33'); g.beginPath(); g.moveTo(cx - 44, RY); g.lineTo(cx, RY - 34); g.lineTo(cx + 44, RY); g.closePath(); g.fill();
+  g.fillStyle = P('#6b4f22'); g.beginPath(); g.moveTo(cx - 44, RY); g.lineTo(cx, RY - 34); g.lineTo(cx - 6, RY); g.closePath(); g.fill();
   g.strokeStyle = 'rgba(60,40,15,0.55)'; g.lineWidth = 1;
-  for (let k = 1; k < 4; k++) { const yy = gy - 124 - k * 9; const hw = 42 * (1 - k * 9 / 36); g.beginPath(); g.moveTo(cx - hw, yy); g.lineTo(cx + hw, yy); g.stroke(); }
+  for (let k = 1; k < 4; k++) { const yy = RY - k * 8.5; const hw = 44 * (1 - k * 8.5 / 34); g.beginPath(); g.moveTo(cx - hw, yy); g.lineTo(cx + hw, yy); g.stroke(); }
   // banner
-  g.strokeStyle = '#3a2a18'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, gy - 158); g.lineTo(cx, gy - 184); g.stroke();
-  g.fillStyle = P('#b8302a'); g.beginPath(); g.moveTo(cx, gy - 184);
-  for (let k = 0; k <= 8; k++) g.lineTo(cx + k * 2.6, gy - 184 + Math.sin(t * 5 + k * 0.7) * 1.8);
-  for (let k = 8; k >= 0; k--) g.lineTo(cx + k * 2.6, gy - 172 + Math.sin(t * 5 + k * 0.7) * 1.8);
+  g.strokeStyle = '#3a2a18'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, RY - 32); g.lineTo(cx, RY - 58); g.stroke();
+  g.fillStyle = P('#b8302a'); g.beginPath(); g.moveTo(cx, RY - 58);
+  for (let k = 0; k <= 8; k++) g.lineTo(cx + k * 2.6, RY - 58 + Math.sin(t * 5 + k * 0.7) * 1.8);
+  for (let k = 8; k >= 0; k--) g.lineTo(cx + k * 2.6, RY - 46 + Math.sin(t * 5 + k * 0.7) * 1.8);
   g.closePath(); g.fill();
   // damage
   const hpF = s.hp / s.maxHp;
@@ -735,7 +814,7 @@ function pickAt(wx, wy, radius = 19) {
   let best = null, bd = radius;
   for (const u of units) { if (u.dead) continue; const d = Math.hypot(u.x - wx, (u.y - 21) - wy); if (d < bd + 4) { if (d < bd || !best) { bd = d; best = u; } } }
   if (best) return best;
-  for (const s of structures) if (!s.dead && wx > s.x - 40 && wx < s.x + 40 && wy > s.y - 165 && wy < s.y + 2) return s;
+  for (const s of structures) if (!s.dead && wx > s.x - 40 && wx < s.x + 40 && wy > s.y - 210 && wy < s.y + 2) return s;
   return null;
 }
 const selectedList = () => [...selection].filter(alive);
@@ -827,18 +906,83 @@ document.getElementById('again').onclick = () => location.reload();
 
 // ---------- HUD ----------
 const statusEl = document.getElementById('status'), cardsEl = document.getElementById('cards'), selLabel = document.getElementById('selLabel');
-let hudT = 0, won = false;
+let hudT = 0, won = false, alertCooldown = 0, bannerTimer = null;
+function showBanner(html, secs) {
+  const b = document.getElementById('banner'); b.innerHTML = html; b.style.opacity = 1;
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { b.style.opacity = 0; }, secs * 1000);
+}
+function endGame(title, text) {
+  won = true;
+  setTimeout(() => { document.getElementById('endTitle').textContent = title; document.getElementById('endText').textContent = text; document.getElementById('win').style.display = 'flex'; }, 1500);
+}
 function updateHud() {
   const mine = units.filter(u => u.team === 'player' && !u.dead).length;
   const foes = enemiesOf('player').length;
-  statusEl.innerHTML = `Your army: <b>${mine}</b> of 5 &nbsp;&middot;&nbsp; Enemy targets left: <b>${foes}</b>`;
+  const towerUp = structures.some(s => !s.dead);
+  const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
+  statusEl.innerHTML = `Your army: <b>${mine}</b> of 5 &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
   const sel = selectedList();
   selLabel.textContent = sel.length ? `Selected: ${sel.length}` : 'No soldiers selected';
   cardsEl.innerHTML = sel.map(u => {
     const f = u.hp / u.maxHp, col = f > 0.6 ? '#4fd65a' : f > 0.3 ? '#f2c230' : '#e8432f';
     return `<div class="card"><div class="n">${u.name}</div><div class="bar"><i style="width:${(f * 100).toFixed(0)}%;background:${col}"></i></div></div>`;
   }).join('');
-  if (!won && foes === 0) { won = true; setTimeout(() => { document.getElementById('win').style.display = 'flex'; }, 1500); }
+  if (!won && foes === 0) endGame('VICTORY', 'The enemy camp has been destroyed.');
+  else if (!won && mine === 0) endGame('DEFEAT', 'Your army has fallen.');
+}
+
+// ---------- war systems: raids and the tower archer ----------
+let raidTimer = 60, raidCount = 0;
+const arrows = [], stuckArrows = [];
+function spawnRaid() {
+  raidCount++;
+  const n = Math.min(4, 1 + raidCount);
+  for (let i = 0; i < n; i++) {
+    const f = nearestFree(Math.floor((1905 + RR(-20, 20)) / TILE), Math.floor((420 + i * 34) / TILE));
+    if (!f) continue;
+    const u = makeUnit('enemy', i % 2 ? 'spear' : 'sword', f.c * TILE + 16 + RR(-6, 6), f.r * TILE + 16);
+    u.raider = true; u.order = 'raid'; u.repath = 0;
+  }
+  showBanner(`Enemy raid! ${n} soldiers are marching toward your army.`, 4);
+}
+function drawArrow(g, x, y, ang, alpha) {
+  g.save(); g.globalAlpha = Math.max(0, alpha); g.translate(x, y); g.rotate(ang);
+  g.strokeStyle = '#4a321a'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(-9, 0); g.lineTo(6, 0); g.stroke();
+  g.fillStyle = '#cfd5da'; g.beginPath(); g.moveTo(9, 0); g.lineTo(5, -2); g.lineTo(5, 2); g.closePath(); g.fill();
+  g.fillStyle = '#e8e2d2'; g.fillRect(-10, -1.6, 3, 1.2); g.fillRect(-10, 0.4, 3, 1.2);
+  g.restore();
+}
+function updateWar(dt) {
+  alertCooldown -= dt;
+  for (const s of structures) {
+    if (s.dead) continue;
+    raidTimer -= dt;
+    if (raidTimer <= 0) { spawnRaid(); raidTimer = 70; }
+    s.drawT = (s.drawT || 0) - dt;
+    s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
+    if (s.archerT <= 0) {
+      let tgt = null, bd = 270;
+      for (const u of units) if (!u.dead && u.team === 'player') { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < bd) { bd = d; tgt = u; } }
+      if (tgt) {
+        s.aim = tgt.x > s.x + 6 ? 1 : -1; s.drawT = 0.3; s.archerT = 1.8;
+        const x0 = s.x + 6 + s.aim * 8, y0 = s.y - 134, x1 = tgt.x + RR(-7, 7), y1 = tgt.y - 16 + RR(-4, 4);
+        arrows.push({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s });
+      } else s.archerT = 0.4;
+    }
+  }
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const a = arrows[i]; a.t += dt;
+    if (a.t < a.dur) continue;
+    arrows.splice(i, 1);
+    const t = a.target;
+    if (alive(t) && Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18) {
+      t.hp -= 7; t.flash = 1; t.lastHurt = time;
+      for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18);
+      if (t.hp <= 0) kill(t);
+      else { if (t.order === 'idle' && alive(a.from)) { t.order = 'attack'; t.target = a.from; t.repath = 0; } underAttackAlert(t); }
+    } else stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0 });
+  }
+  for (let i = stuckArrows.length - 1; i >= 0; i--) { stuckArrows[i].t += dt; if (stuckArrows[i].t > 6) stuckArrows.splice(i, 1); }
 }
 
 // ---------- main loop ----------
@@ -854,6 +998,7 @@ function frame(now) {
 
   for (const u of units) updateUnit(u, dt);
   separate();
+  if (!won) updateWar(dt);
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   if (Math.random() < dt * 4) spawn('smoke', fires[0].x + RR(-3, 3), fires[0].y - 18);
   updateParticles(dt);
@@ -919,13 +1064,19 @@ function render() {
     else drawPerson(g, o, time);
   }
   drawParticles(g);
+  for (const a of arrows) {
+    const k = a.t / a.dur, x = lerp(a.x0, a.x1, k), y = lerp(a.y0, a.y1, k) - a.h * 4 * k * (1 - k);
+    const dx = (a.x1 - a.x0) / a.dur, dy = (a.y1 - a.y0) / a.dur - a.h * 4 * (1 - 2 * k) / a.dur, ang = Math.atan2(dy, dx);
+    drawArrow(g, x, y, ang, 1);
+  }
+  for (const a of stuckArrows) drawArrow(g, a.x, a.y, a.ang, Math.min(1, (6 - a.t) / 1.5));
 
   // health bars
   for (const u of units) {
     if (u.dead || !visible(u)) continue;
     if (selection.has(u) || u.hp < u.maxHp || hover === u) drawHealthBar(g, u.x, u.y - 58, 28, u.hp / u.maxHp);
   }
-  for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - 196, 64, s.hp / s.maxHp);
+  for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - 222, 64, s.hp / s.maxHp);
 
   // selection box (screen space)
   if (drag && drag.box) {
@@ -942,12 +1093,12 @@ window.addEventListener('resize', resize);
 resize();
 cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
-setTimeout(() => { document.getElementById('banner').style.opacity = 0; }, 7000);
+bannerTimer = setTimeout(() => { document.getElementById('banner').style.opacity = 0; }, 7000);
 updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { units, structures, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
