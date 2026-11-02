@@ -30,6 +30,13 @@
   button{font-family:inherit;font-size:16px;font-weight:bold;color:#1c140b;background:linear-gradient(#f1d38f,#c99a4a);
     border:2px solid #6e5128;border-radius:6px;padding:7px 14px;cursor:pointer}
   button:active{transform:translateY(1px)}
+  #train{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  #train .tl{font-size:17px;color:#ffd98a;font-weight:bold}
+  .tb{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 12px}
+  .tb small{font-size:13px;font-weight:normal}
+  .tb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+  #queue{font-size:15px;color:#eadfc4;min-width:150px}
+  #status .food{color:#ffb38a}
   #help{margin-left:auto;font-size:15px;line-height:1.45;color:#eadfc4;text-align:right}
   #help b{color:#ffd98a}
   #banner{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:88%;
@@ -48,16 +55,23 @@
 </div>
 <div id="view">
   <canvas id="game"></canvas>
-  <div id="banner">The war is already underway.<br>Enemy raiders will come for you. Destroy the watchtower in the northeast to stop them.</div>
+  <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="win"><div class="box"><h1 id="endTitle">VICTORY</h1><p id="endText">The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
 </div>
 <div id="bottom">
   <div id="selbox"><span id="selLabel">No soldiers selected</span><span id="cards" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
-  <div class="btns"><button id="btnAll">Select All</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button></div>
+  <div class="btns"><button id="btnAll">Select All</button><button id="btnSold">Soldiers</button><button id="btnCiv">Civilians</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button></div>
+  <div id="train"><span class="tl">Keep:</span>
+    <button class="tb" data-k="civ">Civilian<small>40 food</small></button>
+    <button class="tb" data-k="sword">Swordsman<small>40 food &middot; 30 wood</small></button>
+    <button class="tb" data-k="spear">Spearman<small>30 food &middot; 40 wood</small></button>
+    <span id="queue"></span>
+  </div>
   <div id="help">
     <b>Mouse:</b> left-click or drag a box to select &middot; right-click to move or attack &middot; double-click selects all on screen<br>
     <b>Keys:</b> arrows or screen edge to scroll &middot; wheel to zoom &middot; S stop &middot; Esc clear<br>
-    <b>Touch:</b> tap or drag to select &middot; tap ground or enemy to command &middot; two fingers to pan and zoom
+    <b>Touch:</b> tap or drag to select &middot; tap ground or enemy to command &middot; two fingers to pan and zoom<br>
+    <b>Civilians:</b> right-click (or tap) a tree for wood or a berry bush for food &middot; they carry it to the keep
   </div>
 </div>
 
@@ -196,12 +210,15 @@ function paintTerrain() {
 // ---------- unit definitions ----------
 const KINDS = {
   sword: { name: 'Swordsman', hp: 110, dmg: 13, range: 5, cd: 1.0, speed: 74, anim: 0.5, hitAt: 0.62 },
-  spear: { name: 'Spearman', hp: 95, dmg: 15, range: 17, cd: 1.25, speed: 70, anim: 0.55, hitAt: 0.55 }
+  spear: { name: 'Spearman', hp: 95, dmg: 15, range: 17, cd: 1.25, speed: 70, anim: 0.55, hitAt: 0.55 },
+  civ: { name: 'Civilian', hp: 50, dmg: 0, range: 0, cd: 1, speed: 66, anim: 0.6, hitAt: 2 }
 };
 const PAL = {
+  civ: { tunic: '#8a7550', tunicDark: '#5f5038', trim: '#2f63b0', pants: '#5a4630', pantsDark: '#45351f', boot: '#3a2a1a', bootDark: '#2a1e12' },
   player: { tunic: '#2f63b0', tunicDark: '#1d3f76', trim: '#e0b84e', helmet: '#c3cad1', helmetDark: '#6f7881', plume: null, shield: '#2f63b0', shieldRim: '#d9b04a', pants: '#5a4630', pantsDark: '#45351f', boot: '#3a2a1a', bootDark: '#2a1e12' },
   enemy: { tunic: '#ac3430', tunicDark: '#6d1d1a', trim: '#2c2622', helmet: '#7a726b', helmetDark: '#3b3632', plume: '#d23b2f', shield: '#7a2420', shieldRim: '#2b2724', pants: '#3e3428', pantsDark: '#2e261c', boot: '#22190f', bootDark: '#170f08' }
 };
+const HAIRS = ['#2a1a10', '#4a2e18', '#6b4423', '#1a1410', '#8a6a3a'];
 const SKINS = ['#efc59c', '#d9a57a', '#b97c52', '#8d5a3b', '#6a4329', '#f3d1ae'];
 let nextId = 1;
 
@@ -214,17 +231,44 @@ function makeUnit(team, kind, x, y) {
     facing: team === 'player' ? 1 : -1, walkPhase: Math.random() * 6, moving: false,
     path: [], order: 'idle', target: null, repath: 0, atkTimer: 0, attackAnim: 0, combatT: 0,
     flash: 0, dead: false, deathT: 0, stuckT: 0, lastX: x, lastY: y,
-    post: { x, y }, raider: false, think: Math.random() * 0.3, lastHurt: -99
+    post: { x, y }, raider: false, think: Math.random() * 0.3, lastHurt: -99,
+    carry: 0, carryType: null, task: null, sub: null, workT: 0, bad: new Set(), hair: HAIRS[Math.floor(Math.random() * HAIRS.length)]
   };
+  if (kind === 'civ') u.pal = PAL.civ;
   units.push(u);
   return u;
 }
 
+function makeKeep(c, r) {
+  const s = {
+    id: nextId++, kind: 'keep', team: 'player', name: 'Your Keep', c, r, w: 3, h: 3,
+    x0: c * TILE, y0: r * TILE, x1: (c + 3) * TILE, y1: (r + 3) * TILE,
+    x: (c + 1.5) * TILE, y: (r + 3) * TILE, hp: 1500, maxHp: 1500, flash: 0, dead: false, deathT: 0, radius: 48, wobble: 0,
+    range: 240, fireRate: 2.2, arrowDmg: 7, archerY: 128
+  };
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) setBlock(c + i, r + j, 1);
+  structures.push(s);
+  return s;
+}
+const bushes = [], stumps = [];
+function placeBushes() {
+  const spots = [[300, 860], [330, 875], [285, 895], [318, 905], [470, 960], [500, 975], [455, 990],
+                 [140, 1150], [175, 1160], [820, 940], [850, 955], [830, 985], [865, 920], [800, 970]];
+  for (const [bx, by] of spots) {
+    let x = bx, y = by, tries = 0;
+    while ((circleBlocked(x, y, 12) || roadDist(x, y) < 36) && tries++ < 40) { x = bx + RR(-60, 60); y = by + RR(-60, 60); }
+    if (tries >= 40) continue;
+    bushes.push({ kind: 'bush', x, y, amount: 150, max: 150, seed: Math.random() * 100 });
+  }
+}
+let keep = null;
+const playerKeep = () => (keep && !keep.dead ? keep : null);
 function makeTower(c, r) {
   const s = {
     id: nextId++, kind: 'tower', team: 'enemy', name: 'Enemy Watchtower', c, r,
     x0: c * TILE, y0: r * TILE, x1: (c + 2) * TILE, y1: (r + 2) * TILE,
-    x: (c + 1) * TILE, y: (r + 2) * TILE, hp: 520, maxHp: 520, flash: 0, dead: false, deathT: 0, radius: 32, wobble: 0
+    x: (c + 1) * TILE, y: (r + 2) * TILE, hp: 520, maxHp: 520, flash: 0, dead: false, deathT: 0, radius: 32, wobble: 0,
+    w: 2, h: 2, range: 270, fireRate: 1.8, arrowDmg: 7, archerY: 134
   };
   for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) setBlock(c + i, r + j, 1);
   structures.push(s);
@@ -234,13 +278,17 @@ function makeTower(c, r) {
 function setupWorld() {
   // tower + campfire are placed before obstacles so their tiles are reserved
   makeTower(51, 12);
+  keep = makeKeep(3, 29);
   fires.push({ kind: 'fire', x: 1584, y: 442 });
   setBlock(49, 13, 1);
   placeObstacles();
+  for (const t of trees) { t.c = Math.floor(t.x / TILE); t.r = Math.floor((t.y - 6) / TILE); t.amount = 80; }
+  placeBushes();
   paintTerrain();
   // player army: 3 swordsmen, 2 spearmen
-  [['sword', 230, 1040], ['sword', 262, 1062], ['sword', 294, 1084], ['spear', 228, 1092], ['spear', 262, 1112]]
+  [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
     .forEach(([k, x, y]) => makeUnit('player', k, x, y));
+  [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058]].forEach(([x, y]) => makeUnit('player', 'civ', x, y));
   // enemy guards at their posts
   [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
     .forEach(([k, x, y]) => { const g = makeUnit('enemy', k, x, y); g.maxHp = g.hp = Math.round(g.hp * 0.85); });
@@ -308,14 +356,14 @@ function findPath(sx, sy, gx, gy) {
 // ---------- combat helpers ----------
 const alive = t => t && !t.dead;
 function edgeDist(u, t) {
-  if (t.kind === 'tower') {
+  if (t.x0 !== undefined) {
     const dx = Math.max(t.x0 - u.x, 0, u.x - t.x1), dy = Math.max(t.y0 - u.y, 0, u.y - t.y1);
     return Math.hypot(dx, dy) - u.radius;
   }
   return Math.hypot(t.x - u.x, t.y - u.y) - u.radius - t.radius;
 }
 function approachPoint(u, t) {
-  if (t.kind === 'tower') return { x: clamp(u.x, t.x0 - 13, t.x1 + 13), y: clamp(u.y, t.y0 - 13, t.y1 + 13) };
+  if (t.x0 !== undefined) return { x: clamp(u.x, t.x0 - 13, t.x1 + 13), y: clamp(u.y, t.y0 - 13, t.y1 + 13) };
   const a = Math.atan2(u.y - t.y, u.x - t.x), d = t.radius + u.radius + u.range * 0.5;
   return { x: t.x + Math.cos(a) * d, y: t.y + Math.sin(a) * d };
 }
@@ -329,7 +377,7 @@ function nearestEnemy(u, maxD) {
   for (const e of enemiesOf(u.team)) { const d = edgeDist(u, e); if (d < bd) { bd = d; best = e; } }
   return best;
 }
-function hitCenter(t) { return t.kind === 'tower' ? { x: t.x + RR(-22, 22), y: t.y - RR(20, 90) } : { x: t.x, y: t.y - 21 }; }
+function hitCenter(t) { return t.x0 !== undefined ? { x: t.x + RR(-22, 22), y: t.y - RR(20, 90) } : { x: t.x, y: t.y - 21 }; }
 
 function doHit(u) {
   const t = u.target;
@@ -337,7 +385,7 @@ function doHit(u) {
   const dmg = Math.round(u.dmg * RR(0.85, 1.15));
   t.hp -= dmg; t.flash = 1;
   const c = hitCenter(t);
-  if (t.kind === 'tower') {
+  if (t.x0 !== undefined) {
     t.wobble = 1;
     for (let i = 0; i < 6; i++) spawn('chip', c.x, c.y);
   } else {
@@ -351,14 +399,25 @@ function doHit(u) {
 }
 // the struck side answers: soldiers fight back, guards call for help
 function reactToHit(t, attacker) {
-  if (t.kind === 'tower') { alertAllies(t, attacker, 320); return; }
+  if (!alive(attacker)) return;
+  if (t.x0 !== undefined) { if (t.team === 'enemy') alertAllies(t, attacker, 320); else protect(t, attacker); return; }
   if (t.team === 'player') {
-    if (t.order === 'idle') { t.order = 'attack'; t.target = attacker; t.repath = 0; }
+    if (t.type === 'civ') { flee(t); protect(t, attacker); }
+    else if (t.order === 'idle') { t.order = 'attack'; t.target = attacker; t.repath = 0; }
     underAttackAlert(t);
   } else if (t.order !== 'attack') {
     t.order = 'attack'; t.target = attacker; t.repath = 0;
     alertAllies(t, attacker, 230);
   }
+}
+// idle soldiers near a civilian or the keep come to its defence
+function protect(src, foe) {
+  if (foe.kind !== 'unit') return;
+  for (const o of units) if (!o.dead && o.team === 'player' && o.type !== 'civ' && o.order === 'idle' && Math.hypot(o.x - src.x, o.y - src.y) < 260) { o.order = 'attack'; o.target = foe; o.repath = 0; }
+}
+function flee(u) {
+  const k = playerKeep(); if (!k || u.order === 'flee') return;
+  u.order = 'flee'; const ap = approachPoint(u, k); u.path = findPath(u.x, u.y, ap.x, ap.y);
 }
 function alertAllies(src, foe, radius) {
   for (const o of units) {
@@ -374,8 +433,8 @@ function underAttackAlert(u) {
 function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
   selection.delete(t);
-  if (t.kind === 'tower') {
-    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) setBlock(t.c + i, t.r + j, 0);
+  if (t.x0 !== undefined) {
+    for (let i = 0; i < t.w; i++) for (let j = 0; j < t.h; j++) setBlock(t.c + i, t.r + j, 0);
     for (let i = 0; i < 40; i++) spawn('smoke', t.x + RR(-30, 30), t.y - RR(0, 70));
     for (let i = 0; i < 30; i++) spawn('chip', t.x + RR(-25, 25), t.y - RR(10, 90));
   }
@@ -433,10 +492,18 @@ function commandMove(list, x, y) {
     let bi = 0, bd = 1e12;
     free.forEach((u, i) => { const d = (u.x - s.x) ** 2 + (u.y - s.y) ** 2; if (d < bd) { bd = d; bi = i; } });
     const u = free.splice(bi, 1)[0];
-    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0;
+    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; if (u.type === 'civ') u.task = null;
     u.path = findPath(u.x, u.y, s.x, s.y);
   }
   markers.push({ x, y, t: 0, col: '120,255,140' });
+}
+function commandGather(list, node) {
+  const type = node.kind === 'tree' ? 'wood' : 'food';
+  for (const u of list) { u.order = 'gather'; u.task = { type, node }; u.sub = (u.carry > 0 && u.carryType !== type) ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0; u.bad.clear(); }
+  markers.push({ x: node.x, y: node.y, t: 0, col: '255,220,90' });
+}
+function commandDeposit(list) {
+  for (const u of list) { if (u.carry <= 0) continue; if (!u.task) u.task = { type: u.carryType, node: null }; u.order = 'gather'; u.sub = 'toKeep'; u.path = []; u.repath = 0; }
 }
 function commandAttack(list, t) {
   for (const u of list) { u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; }
@@ -515,12 +582,91 @@ function enemyBrain(u, dt) {
     if (n) { u.order = 'attack'; u.target = n; u.repath = 0; alertAllies(u, n, 230); }
   }
   if (u.order === 'raid' && (u.repath <= 0 || !u.path.length)) {
-    // raiders hunt the nearest of your soldiers
+    // raiders hunt the nearest of your people, or your keep
     let prey = null, bd = 1e9;
     for (const o of units) if (!o.dead && o.team === 'player') { const d = Math.hypot(o.x - u.x, o.y - u.y); if (d < bd) { bd = d; prey = o; } }
-    if (prey) { u.path = findPath(u.x, u.y, prey.x, prey.y); u.repath = 2; }
+    const k = playerKeep();
+    if (k && edgeDist(u, k) < bd) { prey = k; bd = edgeDist(u, k); }
+    if (prey && prey.kind === 'keep' && bd < 30) { u.order = 'attack'; u.target = k; u.repath = 0; }
+    else if (prey) { const ap = prey.kind === 'keep' ? approachPoint(u, prey) : prey; u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 2; }
+  }
+  // a raider battering the keep turns on soldiers who come at it
+  if (u.order === 'attack' && u.target && u.target.x0 !== undefined && u.think <= 0) {
+    u.think = 0.3; const n = aggro(u, 90); if (n) { u.target = n; u.repath = 0; }
   }
   if (u.order === 'idle') u.moving = false;
+}
+// ---------- civilians ----------
+const CARRY = 10;
+const nodeCenter = n => n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : { x: n.x, y: n.y };
+const nodeReach = n => n.kind === 'tree' ? 33 : 24;
+const nodeOk = (n, type) => n && !n.gone && (type === 'wood' ? n.amount > 0 : n.amount >= 1);
+function nearestNode(type, x, y, maxD, bad) {
+  const list = type === 'wood' ? trees : bushes;
+  let best = null, bd = maxD;
+  for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
+  return best;
+}
+function fellTree(t) {
+  t.gone = true; setBlock(t.c, t.r, 0);
+  const i = trees.indexOf(t); if (i >= 0) trees.splice(i, 1);
+  stumps.push({ x: t.x, y: t.y - 4, s: t.s });
+  for (let k = 0; k < 14; k++) spawn('chip', t.x + RR(-10, 10), t.y - RR(5, 30));
+}
+const floats = [];
+function floatText(x, y, text, col) { floats.push({ x, y, text, col, t: 0 }); }
+function civBrain(u, dt) {
+  const k = playerKeep();
+  if (u.order === 'flee') {
+    if (!k || !u.path.length || edgeDist(u, k) < 14) { u.path = []; if (u.task) { u.order = 'gather'; u.sub = u.carry > 0 ? 'toKeep' : 'toNode'; } else u.order = 'idle'; }
+    else followPath(u, dt);
+    return;
+  }
+  if (u.order !== 'gather') { if (u.order === 'idle') u.moving = false; return; }
+  const task = u.task;
+  if (u.sub !== 'toKeep' && u.carry >= CARRY) { u.sub = 'toKeep'; u.path = []; }
+  if (u.sub === 'toNode' || u.sub === 'work') {
+    if (!nodeOk(task.node, task.type) && !(task.type === 'food' && task.node && u.sub === 'work')) {
+      const n = nearestNode(task.type, u.x, u.y, 500, u.bad);
+      if (!n) { if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; } else { u.order = 'idle'; u.task = null; u.moving = false; return; } }
+      else { task.node = n; u.sub = 'toNode'; u.path = []; }
+    }
+  }
+  if (u.sub === 'toNode') {
+    const c = nodeCenter(task.node), d = Math.hypot(c.x - u.x, c.y - u.y), reach = nodeReach(task.node);
+    if (d <= reach) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
+    if (!u.path.length || u.repath <= 0) {
+      const a = Math.atan2(u.y - c.y, u.x - c.x), r = reach - 7;
+      u.path = findPath(u.x, u.y, c.x + Math.cos(a) * r, c.y + Math.sin(a) * r); u.repath = 3;
+      const end = u.path.length ? u.path[u.path.length - 1] : u;
+      if (Math.hypot(end.x - c.x, end.y - c.y) > reach + 2) { u.bad.add(task.node); task.node = null; u.path = []; return; } // cannot reach it
+    }
+    followPath(u, dt);
+  } else if (u.sub === 'work') {
+    const c = nodeCenter(task.node); u.facing = c.x >= u.x ? 1 : -1; u.moving = false;
+    if (task.node.amount < 1) { // bush picked bare: try another, else take home what we have
+      const n = nearestNode('food', u.x, u.y, 500, u.bad);
+      if (n) { task.node = n; u.sub = 'toNode'; } else if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; }
+      return;
+    }
+    if (u.attackAnim === 0) u.attackAnim = 0.001;
+    u.workT += dt;
+    const rate = task.type === 'wood' ? 1.0 : 0.8;
+    if (u.workT >= rate) {
+      u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type;
+      if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
+      if (u.carry >= CARRY) { u.sub = 'toKeep'; u.path = []; }
+    }
+  } else if (u.sub === 'toKeep') {
+    if (!k) { u.order = 'idle'; u.task = null; return; }
+    if (edgeDist(u, k) <= 10) {
+      if (u.carry > 0) { res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
+      u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
+      return;
+    }
+    if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, k); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
+    followPath(u, dt);
+  }
 }
 function updateUnit(u, dt) {
   if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
@@ -532,7 +678,7 @@ function updateUnit(u, dt) {
     if (u.attackAnim >= 1) u.attackAnim = 0;
   }
   if (u.dead) return;
-  if (u.team === 'player') playerBrain(u); else enemyBrain(u, dt);
+  if (u.team === 'player') { if (u.type === 'civ') civBrain(u, dt); else playerBrain(u); } else enemyBrain(u, dt);
 
   if (u.order === 'move' || u.order === 'return') {
     followPath(u, dt);
@@ -544,7 +690,7 @@ function updateUnit(u, dt) {
   else if (u.order === 'raid') followPath(u, dt);
 
   // wounds slowly mend after 8 seconds out of harm's way
-  if (u.hp < u.maxHp && time - u.lastHurt > 8) u.hp = Math.min(u.maxHp, u.hp + 1.5 * dt);
+  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving) u.hp = Math.min(u.maxHp, u.hp + 1.5 * dt);
   u.lastX = u.x; u.lastY = u.y;
 }
 function separate() {
@@ -594,6 +740,7 @@ function drawPerson(g, u, time) {
   drawLeg(g, 1.6, -10 + bob, sw, P(pal.pants), P(pal.boot));
 
   g.translate(0, bob);
+  if (u.type === 'civ' && u.carry > 0) drawLoad(g, u, P);
   // tunic body
   g.fillStyle = P(pal.tunic);
   g.beginPath(); g.moveTo(-4.8, -22); g.lineTo(4.8, -22); g.lineTo(6.6, -9); g.lineTo(-6.6, -9); g.closePath(); g.fill();
@@ -607,6 +754,7 @@ function drawPerson(g, u, time) {
   g.fillStyle = P(u.skin); g.beginPath(); g.arc(0.6, -26.6, 4.7, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#1b130d'; g.fillRect(2.7, -27.4, 1.3, 1.5);              // eye
   g.fillStyle = P(mixHex(u.skin, '#000000', 0.2)); g.fillRect(4.6, -26, 0.9, 1.6); // nose
+  if (u.type === 'civ') drawCivHead(g, u, P); else {
   // helmet
   g.fillStyle = P(pal.helmet);
   g.beginPath(); g.arc(0.5, -27.4, 5.4, Math.PI, 0); g.lineTo(5.9, -26.5); g.lineTo(-4.9, -26.5); g.closePath(); g.fill();
@@ -620,9 +768,11 @@ function drawPerson(g, u, time) {
   g.strokeStyle = P(pal.shieldRim); g.lineWidth = 1.1; g.stroke();
   g.fillStyle = P(pal.shieldRim); g.beginPath(); g.arc(5.2, -15.5, 1.3, 0, Math.PI * 2); g.fill();
 
+  }
   // weapon arm
   const a = u.attackAnim;
-  if (u.type === 'sword') {
+  if (u.type === 'civ') drawCivArm(g, u, P, moving, ph);
+  else if (u.type === 'sword') {
     let ang;
     if (a > 0) {
       if (a < 0.42) ang = lerp(0.45, -2.35, ease(a / 0.42));
@@ -669,6 +819,120 @@ function drawPerson(g, u, time) {
     }
   }
   g.restore();
+}
+
+function drawLoad(g, u, P) {
+  if (u.carryType === 'wood') {
+    for (let k = 0; k < 3; k++) { g.fillStyle = P(k % 2 ? '#6b4a28' : '#7d5830'); rr(g, -10, -23 + k * 3.4, 8, 3.2, 1.4); g.fill(); g.fillStyle = P('#c9a26a'); g.beginPath(); g.arc(-10, -21.4 + k * 3.4, 1.4, 0, Math.PI * 2); g.fill(); }
+  } else {
+    g.fillStyle = P('#8a6a3a'); rr(g, -11, -21, 7, 8, 2); g.fill();
+    g.strokeStyle = P('#5e4626'); g.lineWidth = 0.8; g.beginPath(); g.moveTo(-11, -17); g.lineTo(-4, -17); g.stroke();
+    g.fillStyle = P('#c0263a'); for (const [bx, by] of [[-9.5, -21.5], [-7.2, -22.4], [-5.2, -21.4]]) { g.beginPath(); g.arc(bx, by, 1.5, 0, Math.PI * 2); g.fill(); }
+  }
+}
+function drawCivHead(g, u, P) {
+  g.fillStyle = P(u.hair); g.beginPath(); g.arc(0.2, -27.4, 5, Math.PI * 0.85, Math.PI * 2.02); g.fill();
+  g.fillRect(-4.8, -28, 2.4, 4.2);
+  g.fillStyle = P('#2f63b0'); g.beginPath(); g.ellipse(0.2, -30.2, 5.2, 2.8, 0, Math.PI, 0); g.fill();
+  g.fillStyle = P('#1d3f76'); g.fillRect(-5, -30.4, 10.4, 1.3);
+}
+function drawCivArm(g, u, P, moving, ph) {
+  const a = u.attackAnim, type = u.task ? u.task.type : (u.carry > 0 ? u.carryType : null), working = u.sub === 'work' && u.order === 'gather';
+  let ang;
+  if (type === 'wood' && working && a > 0) ang = a < 0.5 ? lerp(0.5, -2.1, ease(a / 0.5)) : lerp(-2.1, 1.5, ease(Math.min(1, (a - 0.5) / 0.25)));
+  else if (type === 'food' && working && a > 0) ang = 1.0 + Math.sin(a * Math.PI * 2) * 0.45;
+  else ang = 0.35 + (moving ? Math.sin(ph) * 0.35 : 0);
+  g.save(); g.translate(-0.5, -20.5); g.rotate(-ang);
+  g.fillStyle = P(u.pal.tunic); rr(g, -1.7, -0.5, 3.4, 5, 1.2); g.fill();
+  g.fillStyle = P(u.skin); rr(g, -1.4, 4, 2.8, 4.6, 1.2); g.fill();
+  g.beginPath(); g.arc(0, 9.2, 1.9, 0, Math.PI * 2); g.fill();
+  if (type === 'wood') {
+    g.strokeStyle = P('#6b4a28'); g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, 7); g.lineTo(0, 19.5); g.stroke();
+    g.fillStyle = P('#b9c0c6'); g.beginPath(); g.moveTo(0.6, 15); g.lineTo(6, 13.4); g.lineTo(6.6, 19.6); g.lineTo(0.6, 18.6); g.closePath(); g.fill();
+  } else if (type === 'food') {
+    g.fillStyle = P('#8a6a3a'); rr(g, -3.2, 9.5, 6.4, 5, 1.6); g.fill();
+    g.fillStyle = P('#c0263a'); g.beginPath(); g.arc(-1, 9.6, 1.2, 0, Math.PI * 2); g.arc(1.4, 9.4, 1.2, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+}
+function drawBush(g, b) {
+  const x = b.x, y = b.y;
+  g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(x + 3, y + 1, 15, 5, 0, 0, Math.PI * 2); g.fill();
+  const blobs = [[-6, -7, 7], [6, -7, 7], [0, -12, 8], [-3, -4, 6], [4, -3, 6]];
+  g.fillStyle = '#2e5a22'; for (const [bx, by, br] of blobs) { g.beginPath(); g.arc(x + bx + 1, y + by + 1, br, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = '#457d32'; for (const [bx, by, br] of blobs) { g.beginPath(); g.arc(x + bx, y + by, br * 0.85, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = '#5e9a40'; g.beginPath(); g.arc(x - 2, y - 14, 3.5, 0, Math.PI * 2); g.fill();
+  const n = Math.ceil(b.amount / 12);
+  for (let i = 0; i < n; i++) {
+    const a = b.seed + i * 2.39996, r = 3 + (i * 7 % 9);
+    const bx = x + Math.cos(a) * r * 1.2, by = y - 8 + Math.sin(a) * r * 0.7;
+    g.fillStyle = '#b3162e'; g.beginPath(); g.arc(bx, by, 1.6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(bx - 0.6, by - 0.9, 0.7, 0.7);
+  }
+}
+function drawStump(g, t) {
+  const s = t.s;
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(t.x + 2, t.y + 2, 7 * s, 3 * s, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#4e341b'; g.fillRect(t.x - 4 * s, t.y - 4 * s, 8 * s, 5 * s);
+  g.fillStyle = '#b08a58'; g.beginPath(); g.ellipse(t.x, t.y - 4 * s, 4 * s, 1.8 * s, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#7d5f38'; g.lineWidth = 0.6; g.beginPath(); g.ellipse(t.x, t.y - 4 * s, 2 * s, 0.9 * s, 0, 0, Math.PI * 2); g.stroke();
+}
+function drawKeep(g, s, t) {
+  const cx = s.x, gy = s.y - 4, w = 90, H = 104, D = 14;
+  g.fillStyle = 'rgba(0,0,0,0.30)'; g.beginPath(); g.ellipse(cx + 24, gy, 70, 20, 0, 0, Math.PI * 2); g.fill();
+  if (s.dead) {
+    g.fillStyle = 'rgba(60,56,50,0.75)'; g.beginPath(); g.ellipse(cx, gy - 14, 58, 24, 0, 0, Math.PI * 2); g.fill();
+    for (let i = 0; i < 18; i++) { const a = i * 2.4, r = 10 + (i * 13 % 40); g.fillStyle = i % 2 ? '#8f897e' : '#6e695f'; g.fillRect(cx + Math.cos(a) * r - 5, gy - 14 + Math.sin(a) * r * 0.4 - 4, 10, 7); }
+    if (Math.random() < 0.15) spawn('smoke', cx + RR(-30, 30), gy - RR(5, 30));
+    return;
+  }
+  const fk = s.flash > 0 ? s.flash * 0.5 : 0, P = c => fk ? mixHex(c, '#ffffff', fk) : c;
+  const L = cx - w / 2, Rt = cx + w / 2, T = gy - H;
+  // right side face (depth)
+  g.fillStyle = P('#6f6a60'); g.beginPath(); g.moveTo(Rt, gy); g.lineTo(Rt + D, gy - 10); g.lineTo(Rt + D, T - 10); g.lineTo(Rt, T); g.closePath(); g.fill();
+  // roof walkway
+  g.fillStyle = P('#7f7a6f'); g.beginPath(); g.moveTo(L, T); g.lineTo(Rt, T); g.lineTo(Rt + D, T - 10); g.lineTo(L + D, T - 10); g.closePath(); g.fill();
+  // archer on the walkway
+  {
+    const ax = cx + 8, ay = T - 4, dir = s.aim || 1;
+    g.fillStyle = P('#2f63b0'); g.fillRect(ax - 5, ay - 9, 10, 10);
+    g.fillStyle = P('#d9a57a'); g.beginPath(); g.arc(ax, ay - 13, 4.4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = P('#c3cad1'); g.beginPath(); g.arc(ax, ay - 13.8, 5, Math.PI, 0); g.fill();
+    const bx = ax + dir * 4, pull = s.drawT > 0 ? 3 : 0;
+    g.strokeStyle = '#5a3a1e'; g.lineWidth = 1.7; g.beginPath();
+    if (dir > 0) g.arc(bx, ay - 8, 8, -1.15, 1.15); else g.arc(bx, ay - 8, 8, Math.PI - 1.15, Math.PI + 1.15);
+    g.stroke();
+    const ex = bx + dir * 8 * Math.cos(1.15);
+    g.strokeStyle = 'rgba(235,230,215,0.9)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(ex, ay - 8 - 7.3); g.lineTo(ex - dir * pull, ay - 8); g.lineTo(ex, ay - 8 + 7.3); g.stroke();
+  }
+  // banner pole at the back corner
+  g.strokeStyle = '#3a2a18'; g.lineWidth = 2; g.beginPath(); g.moveTo(Rt + 6, T - 8); g.lineTo(Rt + 6, T - 46); g.stroke();
+  g.fillStyle = P('#2f63b0'); g.beginPath(); g.moveTo(Rt + 6, T - 46);
+  for (let k = 0; k <= 9; k++) g.lineTo(Rt + 6 + k * 2.8, T - 46 + Math.sin(t * 5 + k * 0.7) * 1.8);
+  for (let k = 9; k >= 0; k--) g.lineTo(Rt + 6 + k * 2.8, T - 32 + Math.sin(t * 5 + k * 0.7) * 1.8);
+  g.closePath(); g.fill();
+  g.fillStyle = P('#e0b84e'); g.fillRect(Rt + 12, T - 44 + Math.sin(t * 5 + 2) * 1.8, 3, 10);
+  // front face with stone courses
+  g.fillStyle = P('#9b958a'); g.fillRect(L, T, w, H);
+  g.strokeStyle = 'rgba(60,55,48,0.35)'; g.lineWidth = 1;
+  for (let row = 0; row * 10 < H; row++) {
+    const yy = T + row * 10; g.beginPath(); g.moveTo(L, yy); g.lineTo(Rt, yy); g.stroke();
+    for (let xx = L + (row % 2 ? 9 : 0); xx < Rt; xx += 18) { g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx, yy + 10); g.stroke(); }
+  }
+  g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(L, T, 10, H);
+  // battlements
+  for (let k = 0; k < 7; k++) { const mx = L + k * 14; g.fillStyle = P('#a9a397'); g.fillRect(mx, T - 9, 8, 9); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(mx + 6, T - 9, 2, 9); }
+  // arrow slits
+  g.fillStyle = '#231c15'; g.fillRect(L + 20, T + 30, 3, 14); g.fillRect(Rt - 23, T + 30, 3, 14);
+  // gate
+  g.fillStyle = P('#4e341b'); g.beginPath(); g.moveTo(cx - 13, gy); g.lineTo(cx - 13, gy - 24); g.arc(cx, gy - 24, 13, Math.PI, 0); g.lineTo(cx + 13, gy); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1; for (let k = -8; k <= 8; k += 5) { g.beginPath(); g.moveTo(cx + k, gy); g.lineTo(cx + k, gy - 30); g.stroke(); }
+  g.strokeStyle = P('#6e695f'); g.lineWidth = 2.5; g.beginPath(); g.arc(cx, gy - 24, 14.5, Math.PI, 0); g.stroke();
+  // damage
+  const hpF = s.hp / s.maxHp;
+  if (hpF < 0.6) { g.strokeStyle = 'rgba(30,25,20,0.8)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(L + 12, T + 8); g.lineTo(L + 22, T + 26); g.lineTo(L + 16, T + 40); g.moveTo(Rt - 15, T + 50); g.lineTo(Rt - 8, T + 66); g.stroke(); }
+  if (hpF < 0.35 && Math.random() < 0.4) spawn('fire', cx + RR(-40, 40), T + RR(0, 20));
+  if (hpF < 0.35 && Math.random() < 0.2) spawn('smoke', cx + RR(-35, 35), T - RR(0, 20));
 }
 
 // ---------- drawing: scenery ----------
@@ -814,17 +1078,28 @@ function pickAt(wx, wy, radius = 19) {
   let best = null, bd = radius;
   for (const u of units) { if (u.dead) continue; const d = Math.hypot(u.x - wx, (u.y - 21) - wy); if (d < bd + 4) { if (d < bd || !best) { bd = d; best = u; } } }
   if (best) return best;
-  for (const s of structures) if (!s.dead && wx > s.x - 40 && wx < s.x + 40 && wy > s.y - 210 && wy < s.y + 2) return s;
+  for (const s of structures) { if (s.dead) continue; const hw = s.kind === 'keep' ? 56 : 40, top = s.kind === 'keep' ? 125 : 210; if (wx > s.x - hw && wx < s.x + hw && wy > s.y - top && wy < s.y + 2) return s; }
   return null;
 }
 const selectedList = () => [...selection].filter(alive);
-function selectOnly(list) { selection = new Set(list.filter(u => u.team === 'player' && !u.dead)); }
+function selectOnly(list) { selection = new Set(list.filter(u => u.kind === 'unit' && u.team === 'player' && !u.dead)); }
+const isMine = h => h && h.kind === 'unit' && h.team === 'player';
+function pickResource(wx, wy) {
+  for (const b of bushes) if (Math.hypot(wx - b.x, wy - (b.y - 7)) < 17) return b;
+  for (const t of trees) if (Math.abs(wx - t.x) < 15 * t.s && wy < t.y + 6 && wy > t.y - 50 * t.s) return t;
+  return null;
+}
 function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
 
 function issueAt(sx, sy) {
   const sel = selectedList(); if (!sel.length) return false;
   const w = toWorld(sx, sy), hit = pickAt(w.x, w.y);
-  if (hit && hit.team === 'enemy') commandAttack(sel, hit); else commandMove(sel, w.x, w.y);
+  const civs = sel.filter(u => u.type === 'civ'), sold = sel.filter(u => u.type !== 'civ');
+  if (hit && hit.team === 'enemy') { if (sold.length) commandAttack(sold, hit); else commandMove(civs, w.x, w.y); return true; }
+  if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
+  const node = hit ? null : pickResource(w.x, w.y);
+  if (node && civs.length) { commandGather(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
+  commandMove(sel, w.x, w.y);
   return true;
 }
 
@@ -868,12 +1143,12 @@ function endPointer(e) {
     } else {
       const w = toWorld(p.x, p.y), hit = pickAt(w.x, w.y);
       if (drag.touch) {
-        if (hit && hit.team === 'player') { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); }
+        if (isMine(hit)) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); }
         else issueAt(p.x, p.y);
       } else {
         const now = performance.now();
-        if (hit && hit.team === 'player' && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
-        else if (hit && hit.team === 'player') { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else selectOnly([hit]); }
+        if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
+        else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else selectOnly([hit]); }
         else if (!drag.shift) selection.clear();
         lastClick = { t: now, x: p.x, y: p.y };
       }
@@ -900,6 +1175,9 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 document.getElementById('btnAll').onclick = () => selectOnly(units);
+document.getElementById('btnSold').onclick = () => selectOnly(units.filter(u => u.type !== 'civ'));
+document.getElementById('btnCiv').onclick = () => selectOnly(units.filter(u => u.type === 'civ'));
+document.querySelectorAll('.tb').forEach(b => b.onclick = () => trainUnit(b.dataset.k));
 document.getElementById('btnClear').onclick = () => selection.clear();
 document.getElementById('btnStop').onclick = () => commandStop(selectedList());
 document.getElementById('again').onclick = () => location.reload();
@@ -917,18 +1195,23 @@ function endGame(title, text) {
 }
 function updateHud() {
   const mine = units.filter(u => u.team === 'player' && !u.dead).length;
+  const pop = mine + trainQueue.length;
   const foes = enemiesOf('player').length;
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
-  statusEl.innerHTML = `Your army: <b>${mine}</b> of 5 &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
+  statusEl.innerHTML = `<span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${mine * 4}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${POP_CAP} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
+  document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
+  document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
   const sel = selectedList();
   selLabel.textContent = sel.length ? `Selected: ${sel.length}` : 'No soldiers selected';
   cardsEl.innerHTML = sel.map(u => {
     const f = u.hp / u.maxHp, col = f > 0.6 ? '#4fd65a' : f > 0.3 ? '#f2c230' : '#e8432f';
-    return `<div class="card"><div class="n">${u.name}</div><div class="bar"><i style="width:${(f * 100).toFixed(0)}%;background:${col}"></i></div></div>`;
+    const extra = u.type === 'civ' ? (u.carry > 0 ? ` &middot; ${u.carry} ${u.carryType}` : u.order === 'gather' ? ` &middot; ${u.task.type}` : ' &middot; idle') : '';
+    return `<div class="card"><div class="n">${u.name}<span style="font-weight:normal;font-size:13px">${extra}</span></div><div class="bar"><i style="width:${(f * 100).toFixed(0)}%;background:${col}"></i></div></div>`;
   }).join('');
   if (!won && foes === 0) endGame('VICTORY', 'The enemy camp has been destroyed.');
-  else if (!won && mine === 0) endGame('DEFEAT', 'Your army has fallen.');
+  else if (!won && !playerKeep()) endGame('DEFEAT', 'Your keep has fallen.');
+  else if (!won && mine === 0 && !trainQueue.length && res.food < 40) endGame('DEFEAT', 'Your people are gone.');
 }
 
 // ---------- war systems: raids and the tower archer ----------
@@ -956,17 +1239,16 @@ function updateWar(dt) {
   alertCooldown -= dt;
   for (const s of structures) {
     if (s.dead) continue;
-    raidTimer -= dt;
-    if (raidTimer <= 0) { spawnRaid(); raidTimer = 70; }
+    if (s.kind === 'tower') { raidTimer -= dt; if (raidTimer <= 0) { spawnRaid(); raidTimer = 70; } }
     s.drawT = (s.drawT || 0) - dt;
     s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
     if (s.archerT <= 0) {
-      let tgt = null, bd = 270;
-      for (const u of units) if (!u.dead && u.team === 'player') { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < bd) { bd = d; tgt = u; } }
+      let tgt = null, bd = s.range;
+      for (const u of units) if (!u.dead && u.team !== s.team) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < bd) { bd = d; tgt = u; } }
       if (tgt) {
-        s.aim = tgt.x > s.x + 6 ? 1 : -1; s.drawT = 0.3; s.archerT = 1.8;
-        const x0 = s.x + 6 + s.aim * 8, y0 = s.y - 134, x1 = tgt.x + RR(-7, 7), y1 = tgt.y - 16 + RR(-4, 4);
-        arrows.push({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s });
+        s.aim = tgt.x > s.x + 6 ? 1 : -1; s.drawT = 0.3; s.archerT = s.fireRate;
+        const x0 = s.x + 6 + s.aim * 8, y0 = s.y - s.archerY, x1 = tgt.x + RR(-7, 7), y1 = tgt.y - 16 + RR(-4, 4);
+        arrows.push({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s, dmg: s.arrowDmg });
       } else s.archerT = 0.4;
     }
   }
@@ -976,13 +1258,61 @@ function updateWar(dt) {
     arrows.splice(i, 1);
     const t = a.target;
     if (alive(t) && Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18) {
-      t.hp -= 7; t.flash = 1; t.lastHurt = time;
+      t.hp -= a.dmg; t.flash = 1; t.lastHurt = time;
       for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18);
       if (t.hp <= 0) kill(t);
-      else { if (t.order === 'idle' && alive(a.from)) { t.order = 'attack'; t.target = a.from; t.repath = 0; } underAttackAlert(t); }
+      else reactToHit(t, a.from);
     } else stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0 });
   }
   for (let i = stuckArrows.length - 1; i >= 0; i--) { stuckArrows[i].t += dt; if (stuckArrows[i].t > 6) stuckArrows.splice(i, 1); }
+}
+
+// ---------- economy: stores, upkeep, training ----------
+const res = { food: 100, wood: 80 };
+const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 } };
+const POP_CAP = 15;
+const trainQueue = [];
+let starving = false, hungerT = 0, starveMsgT = 0;
+function canTrain(kind) {
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead).length + trainQueue.length;
+  return !!playerKeep() && res.food >= c.food && res.wood >= c.wood && pop < POP_CAP && trainQueue.length < 5;
+}
+function trainUnit(kind) {
+  if (!canTrain(kind)) {
+    const c = COSTS[kind];
+    if (res.food < c.food || res.wood < c.wood) showBanner(`Not enough ${res.food < c.food ? 'food' : 'wood'} to train a ${KINDS[kind].name}.`, 2.5);
+    else showBanner('Your keep cannot train more right now.', 2.5);
+    return;
+  }
+  const c = COSTS[kind]; res.food -= c.food; res.wood -= c.wood;
+  trainQueue.push({ kind, t: 0, dur: c.time });
+  updateHud();
+}
+function updateEconomy(dt) {
+  const k = playerKeep();
+  // everyone eats: 1 food per person every 15 seconds
+  const people = units.filter(u => u.team === 'player' && !u.dead);
+  hungerT += people.length * dt / 15;
+  while (hungerT >= 1) { hungerT -= 1; res.food -= 1; }
+  starving = res.food <= 0;
+  if (starving) {
+    res.food = 0;
+    for (const u of people) { u.hp -= 0.5 * dt; if (u.hp <= 0) kill(u); }
+    starveMsgT -= dt; if (starveMsgT <= 0) { showBanner('Your people are starving! Send civilians to gather food.', 4); starveMsgT = 20; }
+  }
+  // berry bushes slowly grow back
+  for (const b of bushes) b.amount = Math.min(b.max, b.amount + dt / 5);
+  // training at the keep
+  if (k && trainQueue.length) {
+    const q = trainQueue[0]; q.t += dt;
+    if (q.t >= q.dur) {
+      trainQueue.shift();
+      const u = makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20);
+      commandMove([u], k.x1 + 70 + RR(-25, 25), k.y1 - 10 + RR(-25, 25));
+      floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8');
+    }
+  }
+  for (let i = floats.length - 1; i >= 0; i--) { floats[i].t += dt; if (floats[i].t > 1.6) floats.splice(i, 1); }
 }
 
 // ---------- main loop ----------
@@ -998,7 +1328,7 @@ function frame(now) {
 
   for (const u of units) updateUnit(u, dt);
   separate();
-  if (!won) updateWar(dt);
+  if (!won) { updateWar(dt); updateEconomy(dt); }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   if (Math.random() < dt * 4) spawn('smoke', fires[0].x + RR(-3, 3), fires[0].y - 18);
   updateParticles(dt);
@@ -1006,7 +1336,9 @@ function frame(now) {
   for (let i = units.length - 1; i >= 0; i--) if (units[i].dead && units[i].deathT > 10) units.splice(i, 1);
 
   hover = mouse.inside ? (() => { const w = toWorld(mouse.x, mouse.y); return pickAt(w.x, w.y); })() : null;
-  canvas.style.cursor = hover && hover.team === 'enemy' && selection.size ? 'crosshair' : hover && hover.team === 'player' ? 'pointer' : 'default';
+  const civSel = [...selection].some(u => u.type === 'civ');
+  const overRes = civSel && !hover && mouse.inside ? (() => { const w = toWorld(mouse.x, mouse.y); return pickResource(w.x, w.y); })() : null;
+  canvas.style.cursor = hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
 
   render();
   hudT -= dt; if (hudT <= 0) { hudT = 0.2; updateHud(); }
@@ -1042,6 +1374,7 @@ function render() {
     g.strokeStyle = hover.team === 'enemy' ? 'rgba(255,90,70,0.9)' : 'rgba(220,255,220,0.7)'; g.lineWidth = 1.6;
     g.beginPath(); g.ellipse(hover.x, hover.y + 0.5, 17, 7, 0, 0, Math.PI * 2); g.stroke();
   }
+  for (const st of stumps) if (visible(st)) drawStump(g, st);
   // fallen soldiers lie on the ground layer
   for (const u of units) if (u.dead && visible(u)) drawPerson(g, u, time);
 
@@ -1049,6 +1382,7 @@ function render() {
   const list = [];
   for (const t of trees) if (visible(t)) list.push(t);
   for (const r of rocks) if (visible(r)) list.push(r);
+  for (const b of bushes) if (visible(b)) list.push(b);
   for (const s of structures) list.push(s);
   for (const f of fires) list.push(f);
   for (const u of units) if (!u.dead && visible(u)) list.push(u);
@@ -1060,6 +1394,8 @@ function render() {
       drawTree(g, o, behind ? 0.5 : 1);
     } else if (o.kind === 'rock') drawRock(g, o);
     else if (o.kind === 'tower') drawTower(g, o, time);
+    else if (o.kind === 'keep') drawKeep(g, o, time);
+    else if (o.kind === 'bush') drawBush(g, o);
     else if (o.kind === 'fire') drawFire(g, o, time);
     else drawPerson(g, o, time);
   }
@@ -1076,7 +1412,10 @@ function render() {
     if (u.dead || !visible(u)) continue;
     if (selection.has(u) || u.hp < u.maxHp || hover === u) drawHealthBar(g, u.x, u.y - 58, 28, u.hp / u.maxHp);
   }
-  for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - 222, 64, s.hp / s.maxHp);
+  for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - (s.kind === 'keep' ? 150 : 222), s.kind === 'keep' ? 84 : 64, s.hp / s.maxHp);
+  g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
+  for (const fl of floats) { const a = 1 - fl.t / 1.6; g.globalAlpha = a; g.strokeText(fl.text, fl.x, fl.y - fl.t * 22); g.fillStyle = fl.col; g.fillText(fl.text, fl.x, fl.y - fl.t * 22); }
+  g.globalAlpha = 1;
 
   // selection box (screen space)
   if (drag && drag.box) {
@@ -1098,7 +1437,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
