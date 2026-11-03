@@ -157,6 +157,7 @@
     <p><b>Command:</b> right-click (or tap) the ground to move, an enemy to attack, a tree for wood, a berry bush or farm for food.</p>
     <p><b>View:</b> arrow keys or the screen edge to scroll, mouse wheel or pinch to zoom, or click the map in the corner.</p>
     <p><b>Panel tabs:</b> Town, Castle, Army, Rule (keys 1 to 4). <b>Hide</b> (or the Tab key) shrinks the panel.</p>
+    <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
@@ -184,8 +185,11 @@
     </div>
     <div id="panes">
       <div class="pane active" data-pane="town">
-        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood</small></button>
+        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small></button>
         <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small></button>
+        <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; 1 worker</small></button>
+        <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small></button>
+        <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small></button>
         <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small></button>
       </div>
       <div class="pane" data-pane="castle">
@@ -459,6 +463,7 @@ function placeBushes() {
   }
 }
 let keep = null;
+let playerFire = null;
 let pond = null;
 function placePond() {
   const Rp = mulberry32(2718), rx = 3.6, ry = 2.4;
@@ -499,6 +504,7 @@ function setupWorld() {
   makeTower(51, 12);
   keep = makeKeep(3, 29);
   fires.push({ kind: 'fire', x: 1584, y: 442 });
+  playerFire = { kind: 'fire', x: 236, y: 1104, player: true }; fires.push(playerFire); setBlock(Math.floor(236 / TILE), Math.floor(1104 / TILE), 1);
   setBlock(49, 13, 1);
   placeObstacles();
   placePond();
@@ -782,7 +788,7 @@ function commandAttack(list, t) {
   for (const u of list) { if (u.onWall && edgeDist(u, t) > rangeOf(u) + 2) dismount(u); u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; }
   markers.push({ x: t.x, y: t.y, t: 0, col: '255,90,70', target: t });
 }
-function commandStop(list) { for (const u of list) { u.order = 'idle'; u.target = null; u.path = []; u.moving = false; } }
+function commandStop(list) { for (const u of list) { if (u.type === 'civ') { u.job = null; u.manualT = time; } u.order = 'idle'; u.target = null; u.path = []; u.moving = false; } }
 
 // ---------- unit update ----------
 function followPath(u, dt) {
@@ -960,9 +966,9 @@ function civBrain(u, dt) {
   if (u.sub !== 'toKeep' && u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
   if (u.sub === 'toNode' || u.sub === 'work') {
     if (!nodeOk(task.node, task.type) && !(task.type === 'food' && task.node && u.sub === 'work')) {
-      const n = nearestNode(task.type, u.x, u.y, 500, u.bad);
+      const n = u.job && u.job.kind === 'farm' && !u.job.dead ? u.job : nearestNode(task.type, u.job ? u.job.x : u.x, u.job ? u.job.y : u.y, u.job ? 460 : 500, u.bad);
       if (!n) { if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; } else { u.order = 'idle'; u.task = null; u.moving = false; return; } }
-      else { task.node = n; u.sub = 'toNode'; u.path = []; }
+      else if (n !== task.node) { task.node = n; u.sub = 'toNode'; u.path = []; }
     }
   }
   if (u.sub === 'toNode') {
@@ -977,6 +983,7 @@ function civBrain(u, dt) {
     followPath(u, dt);
   } else if (u.sub === 'work') {
     const c = nodeCenter(task.node); u.facing = c.x >= u.x ? 1 : -1; u.moving = false;
+    if (task.node.amount < 1 && u.job && task.node === u.job) return;   // a farmer waits for the crop to grow back
     if (task.node.amount < 1) { // bush picked bare: try another, else take home what we have
       const n = nearestNode('food', u.x, u.y, 500, u.bad);
       if (n) { task.node = n; u.sub = 'toNode'; } else if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; }
@@ -991,13 +998,14 @@ function civBrain(u, dt) {
       if (u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
     }
   } else if (u.sub === 'toKeep') {
-    if (!k) { u.order = 'idle'; u.task = null; return; }
-    if (edgeDist(u, k) <= 10) {
+    const drop = nearestDrop(u, u.carryType || task.type);
+    if (!drop) { u.order = 'idle'; u.task = null; return; }
+    if (edgeDist(u, drop) <= 10) {
       if (u.carry > 0) { res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
       u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
       return;
     }
-    if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, k); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
+    if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, drop); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
     followPath(u, dt);
   }
 }
@@ -1770,6 +1778,7 @@ function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.
 function issueAt(sx, sy) {
   const sel = selectedList(); if (!sel.length) return false;
   AudioSys.ui('ack');
+  for (const u of sel) if (u.type === 'civ') { u.job = null; u.manualT = time; }
   const w = toWorld(sx, sy), hit = pickScreen(sx, sy);
   const civs = sel.filter(u => u.type === 'civ'), sold = sel.filter(u => u.type !== 'civ');
   if (hit && hit.team === 'enemy') {
@@ -1901,7 +1910,7 @@ function updateHud() {
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
   UI.setStatus({ civ: CIV.name, civColor: CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff',
     food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), gold: Math.floor(res.gold),
-    pop, cap: popCap(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
+    pop, cap: popCap(), idle: idleCount(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
     moodRate: Math.round(moodRate), foes, raid: towerUp ? `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
   document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
@@ -2068,7 +2077,47 @@ function trainUnit(kind) {
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
+// ---------- self-running workers ----------
+const JOBS = { woodhut: 1, farm: 1 }, DROPS = { keep: ['wood', 'food'], stockpile: ['wood'], granary: ['food'] };
+function nearestDrop(u, type) {
+  let best = null, bd = 1e9;
+  for (const b of structures) { if (b.dead || b.team !== 'player' || b.done === false || !DROPS[b.kind] || !DROPS[b.kind].includes(type)) continue; const d = edgeDist(u, b); if (d < bd) { bd = d; best = b; } }
+  return best;
+}
+const isManual = u => time - (u.manualT === undefined ? -99 : u.manualT) < 20;
+function startJob(u) {
+  const site = u.job;
+  if (site.kind === 'farm') { u.order = 'gather'; u.task = { type: 'food', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
+  const t = nearestNode('wood', site.x, site.y, 460, u.bad);
+  if (!t) { u.job = null; floatText(u.x, u.y - 50, 'No trees near the hut', '#ffb38a'); return; }
+  u.order = 'gather'; u.task = { type: 'wood', node: t }; u.sub = u.carry > 0 ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0;
+}
+let jobT = 0;
+function updateJobs(dt) {
+  jobT -= dt; if (jobT > 0) return; jobT = 1;
+  const civs = units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.order !== 'leave');
+  for (const u of civs) if (u.job && (u.job.dead || (u.job.x0 !== undefined && !farms.includes(u.job) && !structures.includes(u.job)))) u.job = null;
+  const sites = structures.concat(farms).filter(b => JOBS[b.kind] && b.team === 'player' && !b.dead && b.done);
+  for (const site of sites) {
+    let staff = civs.filter(u => u.job === site).length;
+    while (staff < JOBS[site.kind]) {
+      const free = civs.filter(u => !u.job && u.order === 'idle' && !isManual(u));
+      if (!free.length) break;
+      free.sort((a, b) => Math.hypot(a.x - site.x, a.y - site.y) - Math.hypot(b.x - site.x, b.y - site.y));
+      free[0].job = site; staff++;
+      floatText(free[0].x, free[0].y - 50, site.kind === 'farm' ? 'Farmer' : 'Woodcutter', '#ffe9a8');
+    }
+  }
+  for (const u of civs) if (u.job && u.order === 'idle') startJob(u);
+  // people with no job wait by the campfire
+  if (playerFire) for (const u of civs) if (!u.job && u.order === 'idle' && !isManual(u) && Math.hypot(u.x - playerFire.x, u.y - playerFire.y) > 75) {
+    const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26, d = { x: playerFire.x + Math.cos(a) * r, y: playerFire.y + Math.sin(a) * r * 0.7 };
+    u.order = 'move'; u.dest = d; u.stuckT = 0; u.path = findPath(u.x, u.y, d.x, d.y);
+  }
+}
+const idleCount = () => units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && !u.job && (u.order === 'idle' || (u.order === 'move' && !isManual(u)))).length;
 function updateEconomy(dt) {
+  updateJobs(dt);
   const k = playerKeep();
   // everyone eats: 1 food per person every 15 seconds
   const people = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram');
@@ -2103,7 +2152,10 @@ const BUILD = {
   house:  { name: 'House', w: 2, h: 2, wood: 50,  time: 12, hp: 400, topH: 80 },
   wall:   { name: 'Wall',  w: 1, h: 1, wood: 8,   time: 3,  hp: 300, topH: 40 },
   gate:   { name: 'Gate',  w: 1, h: 1, wood: 15,  time: 5,  hp: 400, topH: 44 },
-  gtower: { name: 'Tower', w: 2, h: 2, wood: 120, time: 20, hp: 700, topH: 122 }
+  gtower: { name: 'Tower', w: 2, h: 2, wood: 120, time: 20, hp: 700, topH: 122 },
+  woodhut: { name: "Woodcutter's Hut", w: 2, h: 2, wood: 30, time: 8, hp: 250, topH: 56 },
+  stockpile: { name: 'Stockpile', w: 2, h: 2, wood: 20, time: 6, hp: 200, topH: 22 },
+  granary: { name: 'Granary', w: 2, h: 2, wood: 40, time: 10, hp: 350, topH: 72 }
 };
 const TERRITORY = 560;
 const farms = [];
@@ -2233,6 +2285,9 @@ function drawBuilding(g, b, t) {
   else if (b.kind === 'wall') drawWall(g, b, P);
   else if (b.kind === 'gate') drawGate(g, b, P);
   else if (b.kind === 'gtower') drawGuardTower(g, b, P, t);
+  else if (b.kind === 'woodhut') drawWoodHut(g, b, P);
+  else if (b.kind === 'stockpile') drawStockpile(g, b, P);
+  else if (b.kind === 'granary') drawGranary(g, b, P);
   if (unfinished) {
     g.restore();
     // scaffolding and stakes
@@ -2243,6 +2298,37 @@ function drawBuilding(g, b, t) {
     g.fillStyle = 'rgba(0,0,0,0.7)'; g.fillRect(b.x - 20, b.y - h - 12, 40, 6);
     g.fillStyle = '#ffd27a'; g.fillRect(b.x - 19, b.y - h - 11, 38 * b.progress, 4);
   }
+}
+// flat-view drawings for the work buildings
+function drawWoodHut(g, b, P) {
+  const M = mats(), cx = b.x - 6, gy = b.y - 6;
+  softShadow(g, cx + 18, gy + 3, 40, 11, 0.4);
+  g.fillStyle = M.woodV; g.fillRect(cx - 22, gy - 28, 40, 28); lightFace(g, cx - 22, gy - 28, 40, 28);
+  g.fillStyle = 'rgba(30,18,8,0.7)'; g.fillRect(cx - 4, gy - 18, 9, 18);
+  const roof = () => { g.beginPath(); g.moveTo(cx - 28, gy - 26); g.lineTo(cx - 2, gy - 50); g.lineTo(cx + 24, gy - 26); g.closePath(); };
+  fillPath(g, roof, M.thatch); fillPath(g, roof, 'rgba(0,0,0,0.12)'); roof(); g.strokeStyle = 'rgba(40,26,10,0.7)'; g.lineWidth = 0.9; g.stroke();
+  for (let k = 0; k < 6; k++) { const x = cx + 26 + (k % 3) * 5, y = gy - 4 - Math.floor(k / 3) * 5; g.fillStyle = '#6b4a28'; g.beginPath(); g.arc(x, y, 2.6, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9a26a'; g.beginPath(); g.arc(x, y, 1.6, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = '#7a5a34'; g.fillRect(cx + 22, gy + 2, 10, 5); g.strokeStyle = '#9aa2a8'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx + 27, gy + 2); g.lineTo(cx + 31, gy - 6); g.stroke();
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 28, gy - 50, 64, 56);
+}
+function drawStockpile(g, b, P) {
+  const M = mats(), x0 = b.x0 + 4, y0 = b.y0 + 10, w = b.x1 - b.x0 - 8, h = b.y1 - b.y0 - 14;
+  softShadow(g, b.x + 6, b.y - 4, 38, 11, 0.35);
+  g.fillStyle = M.woodH; g.fillRect(x0, y0, w, h); lightFace(g, x0, y0, w, h);
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 4 - r; k++) { const x = x0 + 6 + k * 7 + r * 3.5, y = y0 + h - 6 - r * 5; g.fillStyle = '#6b4a28'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9a26a'; g.beginPath(); g.arc(x, y, 1.9, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = M.stone; g.fillRect(x0 + w - 22, y0 + h - 14, 16, 10); lightFace(g, x0 + w - 22, y0 + h - 14, 16, 10);
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, x0, y0, w, h);
+}
+function drawGranary(g, b, P) {
+  const M = mats(), cx = b.x, gy = b.y - 6;
+  softShadow(g, cx + 18, gy + 3, 46, 12, 0.42);
+  g.fillStyle = M.stone; g.fillRect(cx - 26, gy - 6, 52, 6);
+  g.fillStyle = M.woodV; g.fillRect(cx - 24, gy - 40, 48, 34); lightFace(g, cx - 24, gy - 40, 48, 34);
+  g.fillStyle = '#3a2614'; g.fillRect(cx - 8, gy - 26, 16, 20);
+  const roof = () => { g.beginPath(); g.moveTo(cx - 32, gy - 38); g.lineTo(cx, gy - 70); g.lineTo(cx + 32, gy - 38); g.closePath(); };
+  fillPath(g, roof, M.thatch); roof(); g.strokeStyle = 'rgba(40,26,10,0.7)'; g.lineWidth = 0.9; g.stroke();
+  for (const [x, y] of [[cx + 14, gy - 2], [cx + 22, gy - 3], [cx + 18, gy - 9]]) { g.fillStyle = '#d8c69a'; g.beginPath(); g.ellipse(x, y, 4.5, 3.6, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(80,60,30,0.6)'; g.lineWidth = 0.6; g.stroke(); }
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 32, gy - 70, 64, 70);
 }
 function drawFarm(g, b, P) {
   const M = mats(), x0 = b.x0 + 2, y0 = b.y0 + 2, w = b.x1 - b.x0 - 4, h = b.y1 - b.y0 - 4;
@@ -2601,7 +2687,7 @@ const UI = (() => {
   }
   function iconBuilding(g, name, w, h) {
     const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (name === 'farm') b.amount = b.max;
-    const vis = { farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136] }[name];
+    const vis = { farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -2663,7 +2749,7 @@ const UI = (() => {
       <span class="chip" title="Food"><canvas data-icon="r:food"></canvas><b id="vFood"></b><small id="vEat"></small></span>
       <span class="chip" title="Wood"><canvas data-icon="r:wood"></canvas><b id="vWood"></b></span>
       <span class="chip" title="Gold"><canvas data-icon="r:gold"></canvas><b id="vGold"></b></span>
-      <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b></span>
+      <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b><small id="vIdle"></small></span>
       <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
       <span class="chip" title="Enemies left"><canvas data-icon="r:foes"></canvas><b id="vFoes"></b></span>
       <span class="chip" title="Next enemy raid"><canvas data-icon="r:raid"></canvas><b id="vRaid"></b></span>`;
@@ -2674,7 +2760,7 @@ const UI = (() => {
     if (!built) buildStatus();
     const civB = $('cCiv').firstElementChild; civB.textContent = d.civ; civB.style.color = d.civColor;
     $('vFood').textContent = d.food; $('vEat').textContent = `eating ${d.eat}/min`; $('vWood').textContent = d.wood; $('vGold').textContent = d.gold;
-    $('vPeople').textContent = `${d.pop} of ${d.cap}`;
+    $('vPeople').textContent = `${d.pop} of ${d.cap}`; $('vIdle').textContent = d.idle ? `${d.idle} idle` : '';
     const mv = $('vMood'); mv.textContent = `${d.mood} ${d.moodName}`; mv.style.color = d.moodColor;
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid;
@@ -2710,7 +2796,7 @@ const UI = (() => {
     const counts = {}; for (const u of sel) counts[u.name] = (counts[u.name] || 0) + 1;
     const plural = n => n.endsWith('man') ? n.slice(0, -3) + 'men' : n + 's';
     let txt = Object.entries(counts).map(([n, c]) => `${c} ${c > 1 ? plural(n) : n}`).join(', ');
-    if (sel.length === 1 && sel[0].type === 'civ') { const u = sel[0]; txt += u.carry > 0 ? ` (carrying ${u.carry} ${u.carryType})` : u.order === 'gather' && u.task ? ` (gathering ${u.task.type})` : u.order === 'build' ? ' (building)' : ' (idle)'; }
+    if (sel.length === 1 && sel[0].type === 'civ') { const u = sel[0]; txt += u.job ? (u.job.kind === 'farm' ? ' (farmer)' : ' (woodcutter)') + (u.carry > 0 ? `, carrying ${u.carry} ${u.carryType}` : '') : u.carry > 0 ? ` (carrying ${u.carry} ${u.carryType})` : u.order === 'gather' && u.task ? ` (gathering ${u.task.type})` : u.order === 'build' ? ' (building)' : ' (idle)'; }
     $('selSum').textContent = txt || 'Click a person or drag a box to select.';
     const f = sel.length ? sel.reduce((a, u) => a + u.hp / u.maxHp, 0) / sel.length : 0;
     const bar = $('selBar').firstElementChild; bar.style.width = (f * 100).toFixed(0) + '%'; bar.style.background = f > 0.6 ? '#4fd65a' : f > 0.3 ? '#f2c230' : '#e8432f';
@@ -2853,7 +2939,7 @@ const R3D = (() => {
     const tex = new T.CanvasTexture(terrain); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
     groundMesh = mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.97 }), 0, 0, 0, false);
     scene.add(groundMesh);
-    const outer = mesh(new T.PlaneGeometry(24000, 24000), std('#3f6a2c', { roughness: 1 }), MW / 2, -4, MH / 2, false); outer.rotation.x = -Math.PI / 2; scene.add(outer);
+    const outer = mesh(new T.PlaneGeometry(24000, 24000), std('#3f6a2c', { roughness: 1 }), MW / 2, -40, MH / 2, false); outer.rotation.x = -Math.PI / 2; scene.add(outer);
     // cloud shadows drifting over the land
     const ct = genTex('clouds', 256, (g, n, R) => { g.fillStyle = '#000'; g.fillRect(0, 0, n, n); const cn = makeNoise(9); const img = g.getImageData(0, 0, n, n), d = img.data;
       for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const v = cn(x / 40, y / 40) * 0.6 + cn(x / 16 + 7, y / 16) * 0.4, a = clamp((v - 0.5) * 3.2, 0, 1) * 255, i = (y * n + x) * 4; d[i] = d[i + 1] = d[i + 2] = a; d[i + 3] = 255; }
@@ -2867,7 +2953,7 @@ const R3D = (() => {
   function buildWater() {
     if (!pond) return;
     const geo = new T.CircleGeometry(1, 56); geo.rotateX(-Math.PI / 2);
-    const mat = new T.MeshPhongMaterial({ color: C('#2c5a68'), specular: C('#7f99a6'), shininess: 60, transparent: true, opacity: 0.88, normalMap: waterNormal(), normalScale: new T.Vector2(0.55, 0.55) });
+    const mat = new T.MeshPhongMaterial({ color: C('#1f4c6e'), specular: C('#9db8c8'), shininess: 85, emissive: C('#0d2638'), transparent: true, opacity: 0.92, normalMap: waterNormal(), normalScale: new T.Vector2(0.55, 0.55) });
     water = new T.Mesh(geo, mat); water.scale.set(pond.rx * 1.02, 1, pond.ry * 1.02); water.position.set(pond.x, heightAt(pond.x + pond.rx * 0.9, pond.y) - 2.2, pond.y); water.receiveShadow = true;
     scene.add(water);
   }
@@ -2935,9 +3021,9 @@ const R3D = (() => {
     }
     const oaks = trees.filter(t => !t.pine), pines = trees.filter(t => t.pine);
     {
-      const lowOak = merge([[0, 44, 0, 16], [-10, 40, 5, 12], [10, 41, -4, 12], [0, 56, 0, 12], [3, 40, 11, 10]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#7aa64a') })));
+      const lowOak = merge([[0, 44, 0, 16], [-10, 40, 5, 12], [10, 41, -4, 12], [0, 56, 0, 12], [3, 40, 11, 10]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#7aa64a') })).map(p => (p.geo = new T.IcosahedronGeometry(p.geo.parameters.radius, 1), p)));
       const lowPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(16 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#13301a', '#447e42') })));
-      const bm = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true });
+      const bm = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, map: leafTex(), bumpMap: leafTex(), bumpScale: 1.2 });
       const bo = border.filter(t => !t.pine), bp = border.filter(t => t.pine);
       const mo = new T.InstancedMesh(lowOak, bm, bo.length), mp = new T.InstancedMesh(lowPine, bm, bp.length);
       bo.forEach((t, i) => { const z = t.r * TILE + 16; mo.setMatrixAt(i, M4(t.x, heightAt(t.x, z), z, t.s, t.s, t.s, t.seed)); });
@@ -3084,6 +3170,31 @@ const R3D = (() => {
       add(box(3, 13, 1, std('#16110c'), 0, 60, 24.6));
       info.flags.push(pole(inner, 22, 95, -22, 30, PAL.player.tunic));
       info.archer = towerArcher('player', 0.85); info.archer.root.position.set(4, 95, 12); add(info.archer.root);
+    } else if (b.kind === 'woodhut') {
+      add(box(40, 26, 32, woodVM(40, 26), -6, 13, -4));
+      door(inner, -6, 0, 12, 9, 17);
+      const shape = new T.Shape(); shape.moveTo(-22, 0); shape.lineTo(22, 0); shape.lineTo(0, 20); shape.closePath();
+      const rg = new T.ExtrudeGeometry(shape, { depth: 46, bevelEnabled: false }); rg.translate(0, 0, -23); rg.rotateY(Math.PI / 2);
+      add(mesh(rg, thatchM(46, 24), -6, 26, -4));
+      const logM = woodHM(14, 4);
+      for (let r = 0; r < 3; r++) for (let k = 0; k < 4 - r; k++) { const l = cyl(2.6, 2.6, 16, logM, 22, 2.8 + r * 4.6, -6 + k * 5.4 + r * 2.7, 8); l.rotation.x = Math.PI / 2; add(l); }
+      add(cyl(4.5, 5, 6, woodVM(8, 6), 20, 3, 16, 10));
+      const axe = new T.Group(); axe.add(cyl(0.6, 0.6, 12, std('#7b5a34'), 0, 6, 0, 5)); axe.add(box(0.8, 4, 4.5, std('#c3cad1', { metalness: 0.8, roughness: 0.3 }), 0, 0.8, 2)); axe.position.set(20, 6, 16); axe.rotation.z = 0.5; add(axe);
+    } else if (b.kind === 'stockpile') {
+      add(box(56, 3, 52, woodHM(56, 4), 0, 1.5, 0));
+      for (const [x, z] of [[-27, -25], [27, -25], [-27, 25], [27, 25]]) add(cyl(1.4, 1.4, 12, woodVM(3, 12), x, 6, z, 6));
+      const logM = woodHM(20, 4);
+      for (let r = 0; r < 4; r++) for (let k = 0; k < 5 - r; k++) { const l = cyl(2.7, 2.7, 24, logM, -12, 5.6 + r * 4.7, -12 + k * 5.6 + r * 2.8, 8); l.rotation.z = Math.PI / 2; add(l); }
+      for (let i = 0; i < 6; i++) add(box(8, 6, 8, stoneM(8, 6), 14 + (i % 2) * 9, 6 + Math.floor(i / 2) * 6.2, -10 + (i % 3) * 9));
+    } else if (b.kind === 'granary') {
+      add(box(54, 4, 46, stoneM(54, 4), 0, 2, 0));
+      add(box(48, 34, 40, woodVM(48, 34), 0, 21, 0));
+      add(box(16, 22, 1.6, std('#3a2614'), 0, 15, 20.6));
+      const gs = new T.Shape(); gs.moveTo(-26, 0); gs.lineTo(26, 0); gs.lineTo(0, 28); gs.closePath();
+      const rg = new T.ExtrudeGeometry(gs, { depth: 58, bevelEnabled: false }); rg.translate(0, 0, -29); rg.rotateY(Math.PI / 2);
+      add(mesh(rg, thatchM(58, 30), 0, 38, 0));
+      const sack = std('#d8c69a', { roughness: 1 });
+      for (const [x, y, z] of [[16, 4, 26], [22, 4, 25], [19, 9, 26]]) { const sk = sph(4, sack, x, y, z, 10); sk.scale.set(1, 0.85, 0.9); add(sk); }
     } else if (b.kind === 'farm') {
       const soil = mesh(new T.PlaneGeometry(60, 60), texMat('soil', 2, 4), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
       const n = 7 * 7 * 3, wheat = new T.InstancedMesh(new T.CylinderGeometry(0.35, 0.7, 11, 4), std('#d8b450', { roughness: 0.8 }), n);
@@ -3534,7 +3645,7 @@ function frame(now) {
   if (!won && started) { updateWar(dt); updateEconomy(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
-  if (Math.random() < dt * 4) spawn('smoke', fires[0].x + RR(-3, 3), fires[0].y - 18, fires[0].y);
+  for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);
   updateParticles(dt);
   for (let i = markers.length - 1; i >= 0; i--) { markers[i].t += dt; if (markers[i].t > 0.7) markers.splice(i, 1); }
   for (let i = units.length - 1; i >= 0; i--) if (units[i].dead && units[i].deathT > 10) units.splice(i, 1);
