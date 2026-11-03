@@ -160,6 +160,7 @@
     <p><b>Panel tabs:</b> Town, Castle, Army, Rule (keys 1 to 4). <b>Hide</b> (or the Tab key) shrinks the panel.</p>
     <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; a soldier trained with a weapon costs that weapon and 10 gold.</p>
+    <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, chapels and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
@@ -190,6 +191,7 @@
       <div class="pane active" data-pane="town">
         <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small></button>
         <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small></button>
+        <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>Chapel<small>80 wood &middot; 40 gold</small></button>
         <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; 1 worker</small></button>
         <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small></button>
         <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small></button>
@@ -209,6 +211,9 @@
         <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;align-self:center;padding:0 6px"></span>
       </div>
       <div class="pane" data-pane="industry">
+        <button class="bb ib" data-b="wheatfarm"><canvas data-icon="b:wheatfarm"></canvas>Wheat Field<small>40 wood &middot; grows wheat</small></button>
+        <button class="bb ib" data-b="mill"><canvas data-icon="b:mill"></canvas>Mill<small>60 wood &middot; wheat to flour</small></button>
+        <button class="bb ib" data-b="bakery"><canvas data-icon="b:bakery"></canvas>Bakery<small>50 wood &middot; flour to bread</small></button>
         <button class="bb ib" data-b="hopfarm"><canvas data-icon="b:hopfarm"></canvas>Hop Farm<small>40 wood &middot; grows hops</small></button>
         <button class="bb ib" data-b="brewery"><canvas data-icon="b:brewery"></canvas>Brewery<small>50 wood &middot; hops to ale</small></button>
         <button class="bb ib" data-b="tavern"><canvas data-icon="b:tavern"></canvas>Tavern<small>60 wood &middot; serves ale</small></button>
@@ -221,6 +226,8 @@
       <div class="pane" data-pane="rule" id="rule">
         <div class="grp"><span class="tl">Rations</span><div class="row"><button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button></div></div>
         <div class="grp"><span class="tl">Taxes</span><div class="row"><button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button></div></div>
+        <button class="bb ib" data-b="garden"><canvas data-icon="b:garden"></canvas>Garden<small>20 wood &middot; 10 gold &middot; happier, slower</small></button>
+        <button class="bb ib" data-b="stocks"><canvas data-icon="b:stocks"></canvas>Stocks<small>15 wood &middot; harder work, unhappier</small></button>
         <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +15 mood</small></button>
       </div>
     </div>
@@ -772,7 +779,7 @@ function commandMove(list, x, y) {
   markers.push({ x, y, t: 0, col: '120,255,140' });
 }
 function commandGather(list, node) {
-  const type = node.kind === 'tree' ? 'wood' : node.kind === 'hopfarm' ? 'hops' : 'food';
+  const type = node.kind === 'tree' ? 'wood' : node.kind === 'hopfarm' ? 'hops' : node.kind === 'wheatfarm' ? 'wheat' : 'food';
   for (const u of list) { u.order = 'gather'; u.task = { type, node }; u.sub = (u.carry > 0 && u.carryType !== type) ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0; u.bad.clear(); }
   markers.push({ x: node.x, y: node.y, t: 0, col: '255,220,90' });
 }
@@ -949,11 +956,12 @@ function enemyBrain(u, dt) {
   if (u.order === 'idle') u.moving = false;
 }
 // ---------- civilians ----------
-const nodeCenter = n => (n.kind === 'farm' || n.kind === 'hopfarm') ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y1) / 2 } : n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : { x: n.x, y: n.y };
-const nodeReach = n => (n.kind === 'farm' || n.kind === 'hopfarm') ? 30 : n.kind === 'tree' ? 33 : 24;
+function isField(k) { return k === 'farm' || k === 'hopfarm' || k === 'wheatfarm'; }
+const nodeCenter = n => isField(n.kind) ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y1) / 2 } : n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : { x: n.x, y: n.y };
+const nodeReach = n => isField(n.kind) ? 30 : n.kind === 'tree' ? 33 : 24;
 const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood' ? n.amount > 0 : n.amount >= 1);
 function nearestNode(type, x, y, maxD, bad) {
-  const list = type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm') : bushes.concat(farms.filter(f => f.kind === 'farm'));
+  const list = type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm') : bushes.concat(farms.filter(f => f.kind === 'farm'));
   let best = null, bd = maxD;
   for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
   return best;
@@ -998,7 +1006,7 @@ function civBrain(u, dt) {
   if (u.sub !== 'toKeep' && u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
   if (u.sub === 'toNode' || u.sub === 'work') {
     if (!nodeOk(task.node, task.type) && !(task.type === 'food' && task.node && u.sub === 'work')) {
-      const n = u.job && (u.job.kind === 'farm' || u.job.kind === 'hopfarm') && !u.job.dead ? u.job : nearestNode(task.type, u.job ? u.job.x : u.x, u.job ? u.job.y : u.y, u.job ? 460 : 500, u.bad);
+      const n = u.job && isField(u.job.kind) && !u.job.dead ? u.job : nearestNode(task.type, u.job ? u.job.x : u.x, u.job ? u.job.y : u.y, u.job ? 460 : 500, u.bad);
       if (!n) { if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; } else { u.order = 'idle'; u.task = null; u.moving = false; return; } }
       else if (n !== task.node) { task.node = n; u.sub = 'toNode'; u.path = []; }
     }
@@ -1023,9 +1031,9 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); }
     u.workT += dt;
-    const rate = (task.type === 'wood' ? 1.0 : task.type === 'hops' ? 1.1 : 0.8) / (CIV.gather * workMul());
+    const rate = (task.type === 'wood' ? 1.0 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
     if (u.workT >= rate) {
-      u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type;
+      u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = task.node.kind === 'bush' ? 'berries' : 'crops';
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
       if (u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
     }
@@ -1033,7 +1041,7 @@ function civBrain(u, dt) {
     const drop = nearestDrop(u, u.carryType || task.type);
     if (!drop) { u.order = 'idle'; u.task = null; return; }
     if (edgeDist(u, drop) <= 10) {
-      if (u.carry > 0) { res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
+      if (u.carry > 0) { if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
       u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
       return;
     }
@@ -1834,7 +1842,7 @@ function issueAt(sx, sy) {
   if (canMount(hit) && sold.some(u => u.type === 'archer')) { const arch = sold.filter(u => u.type === 'archer'); commandMount(arch, hit); const rest = sold.filter(u => u.type !== 'archer'); if (rest.length) commandMove(rest, w.x, w.y + 40); return true; }
   if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResourceScreen(sx, sy);
-  if (node && (node.kind === 'farm' || node.kind === 'hopfarm') && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
+  if (node && isField(node.kind) && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   if (node && civs.length) { commandGather(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   commandMove(sel, w.x, w.y);
   return true;
@@ -1958,7 +1966,7 @@ function updateHud() {
   const ar = document.getElementById('armoryInfo'); if (ar) ar.textContent = `Armory: ${res.sword} swords, ${res.spear} spears, ${res.bow} bows`;
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
   document.getElementById('feast').classList.toggle('off', res.gold < 50);
-  document.querySelectorAll('.bb[data-b]').forEach(b => { b.classList.toggle('off', res.wood < BUILD[b.dataset.b].wood); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
+  document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b; b.classList.toggle('off', res.wood < BUILD[kb].wood || res.gold < (BUILD[kb].gold || 0) || ((kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3)); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
   document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
   const sel = selectedList();
   UI.setSelection(sel);
@@ -2050,10 +2058,11 @@ function updateWar(dt) {
 // ---------- mood: rations, taxes, and how your people feel ----------
 const RATIONS = [ { name: 'Lean', eat: 0.5, mood: -8 }, { name: 'Normal', eat: 1, mood: 0 }, { name: 'Generous', eat: 1.5, mood: 8 } ];
 const TAXES = [ { name: 'None', gold: 0, mood: 3 }, { name: 'Low', gold: 1, mood: -4 }, { name: 'High', gold: 2.5, mood: -12 } ];
-let aleBonus = 0, aleCover = 0, aleT = 0;
+let aleBonus = 0, aleCover = 0, aleT = 0, varietyBonus = 0, relCover = 0, relBonus = 0, crowdPen = 0, fearGood = 0, fearHard = 0;
 let mood = 60, ration = 1, tax = 1, goldT = 0, settleT = 30, leaveT = 25, moodRate = 0;
 const moodName = () => mood >= 70 ? 'Happy' : mood >= 40 ? 'Steady' : mood >= 20 ? 'Unhappy' : 'Rebellious';
-const workMul = () => mood >= 70 ? 1.15 : mood >= 40 ? 1 : 0.8;
+const countOf = k => structures.filter(b => b.kind === k && b.done && !b.dead && b.team === 'player').length;
+const workMul = () => (mood >= 70 ? 1.15 : mood >= 40 ? 1 : 0.8) * (1 + 0.08 * countOf('stocks') - 0.05 * countOf('garden'));
 function moodHtml() {
   const col = mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a';
   const r = Math.round(moodRate);
@@ -2066,7 +2075,11 @@ function updateMood(dt, people) {
     aleCover = Math.min(1, taverns * 15 / people.length); aleBonus = Math.round(8 * aleCover);
     aleT += people.length * aleCover * dt / 240;   // about one ale for every 15 people every minute while (aleT >= 1) { aleT -= 1; res.ale = Math.max(0, res.ale - 1); }
   }
-  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus;
+  const variety = foodVariety(); varietyBonus = variety >= 3 ? 6 : variety === 2 ? 3 : 0;
+  relCover = people.length ? Math.min(1, countOf('chapel') * 20 / people.length) : 0; relBonus = Math.round(5 * relCover);
+  crowdPen = people.length >= popCap() * 0.9 ? -4 : 0;
+  fearGood = 2 * countOf('garden'); fearHard = -2 * countOf('stocks');
+  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard;
   mood = clamp(mood + moodRate * dt / 60, 0, 100);
   // taxes: gold per person every 20 seconds
   goldT += people.length * TAXES[tax].gold * dt / 20;
@@ -2108,7 +2121,19 @@ document.getElementById('feast').onclick = () => {
 };
 
 // ---------- economy: stores, upkeep, training ----------
-const res = { food: 100, wood: 80, gold: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0 };
+const res = { food: 100, wood: 80, gold: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0 };
+const foodKinds = { berries: 0, crops: 100, bread: 0 };
+const FOOD_NAME = { berries: 'berries', crops: 'crops', bread: 'bread' };
+function addFood(kind, n) { foodKinds[kind] = (foodKinds[kind] || 0) + n; res.food += n; }
+function spendFood(n) {
+  res.food -= n;
+  for (let i = 0; i < n; i++) { let best = null; for (const k in foodKinds) if (foodKinds[k] >= 1 && (!best || foodKinds[k] > foodKinds[best])) best = k; if (!best) break; foodKinds[best] -= 1; }
+  // keep the kinds in step with the store if the store was changed elsewhere
+  const sum = Object.values(foodKinds).reduce((a, b) => a + b, 0);
+  if (res.food <= 0) for (const k in foodKinds) foodKinds[k] = 0;
+  else if (sum < res.food - 1) foodKinds.crops += res.food - sum;
+}
+const foodVariety = () => res.food > 0 ? Object.values(foodKinds).filter(v => v >= 1).length : 0;
 const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 }, archer: { food: 20, wood: 25, gold: 30, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 } };
 const trainQueue = [];
 let starving = false, hungerT = 0, starveMsgT = 0;
@@ -2127,29 +2152,31 @@ function trainUnit(kind) {
   }
   const c = COSTS[kind];
   if (weaponRoute(kind)) { res[WEAPON[kind]] -= 1; res.gold -= 10; }   // a weapon from the armory makes a soldier cheap
-  else { res.food -= c.food; res.wood -= c.wood; res.gold -= (c.gold || 0); }
+  else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); }
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
 // ---------- self-running workers ----------
-const JOBS = { woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
-const DROPS = { keep: ['wood', 'food', 'hops', 'iron', 'ale', 'bow', 'spear', 'sword'], stockpile: ['wood', 'hops', 'iron'], granary: ['food', 'ale'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
+const JOBS = { wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
+const DROPS = { keep: ['wood', 'food', 'hops', 'iron', 'ale', 'bow', 'spear', 'sword', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'hops', 'iron', 'wheat', 'flour'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
 const CRAFT = {
   brewery: { inp: { hops: 2 }, out: 'ale', time: 7, batch: 2 },
+  mill: { inp: { wheat: 2 }, out: 'flour', time: 6, batch: 3 },
+  bakery: { inp: { flour: 1 }, out: 'bread', time: 6, batch: 9, n: 3 },
   ironmine: { inp: {}, out: 'iron', time: 3, batch: 4 },
   bowyer: { inp: { wood: 3 }, out: 'bow', time: 9, batch: 1 },
   poleturner: { inp: { wood: 3 }, out: 'spear', time: 8, batch: 1 },
   smithy: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }
 };
-const WORKSHOP = { brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1 };
-const JOB_NAME = { woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
+const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1 };
+const JOB_NAME = { wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
   const rc = CRAFT[site.kind];
   if (u.sub === 'toDrop') {
     const drop = nearestDrop(u, u.carryType);
     if (!drop) { u.order = 'idle'; return; }
-    if (edgeDist(u, drop) <= 10) { res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, '#e0c088'); u.carry = 0; u.sub = 'toSite'; u.path = []; return; }
+    if (edgeDist(u, drop) <= 10) { if (u.carryType === 'bread') addFood('bread', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, '#e0c088'); u.carry = 0; u.sub = 'toSite'; u.path = []; return; }
     if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, drop); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
     followPath(u, dt); return;
   }
@@ -2166,7 +2193,7 @@ function craftBrain(u, dt) {
   }
   if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play(site.kind === 'ironmine' ? 'chop' : 'hammer', u.x, u.y); }
   u.crafting += dt * workMul();
-  if (u.crafting >= rc.time) { u.crafting = null; u.carry += 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
+  if (u.crafting >= rc.time) { u.crafting = null; u.carry += rc.n || 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
 }
 function nearestDrop(u, type) {
   let best = null, bd = 1e9;
@@ -2177,7 +2204,7 @@ const isManual = u => time - (u.manualT === undefined ? -99 : u.manualT) < 20;
 function startJob(u) {
   const site = u.job;
   if (CRAFT[site.kind]) { u.order = 'craft'; u.sub = 'toSite'; u.path = []; u.repath = 0; u.crafting = null; u.task = null; return; }
-  if (site.kind === 'hopfarm') { u.order = 'gather'; u.task = { type: 'hops', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
+  if (site.kind === 'hopfarm' || site.kind === 'wheatfarm') { u.order = 'gather'; u.task = { type: site.kind === 'hopfarm' ? 'hops' : 'wheat', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
   if (site.kind === 'farm') { u.order = 'gather'; u.task = { type: 'food', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
   const t = nearestNode('wood', site.x, site.y, 460, u.bad);
   if (!t) { u.job = null; floatText(u.x, u.y - 50, 'No trees near the hut', '#ffb38a'); return; }
@@ -2214,7 +2241,7 @@ function updateEconomy(dt) {
   const people = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram');
   hungerT += people.length * dt * RATIONS[ration].eat / CIV.eatEvery;
   updateMood(dt, people);
-  while (hungerT >= 1) { hungerT -= 1; res.food -= 1; }
+  while (hungerT >= 1) { hungerT -= 1; spendFood(1); }
   starving = res.food <= 0;
   if (starving) {
     res.food = 0;
@@ -2249,6 +2276,12 @@ const BUILD = {
   granary: { name: 'Granary', w: 2, h: 2, wood: 40, time: 10, hp: 350, topH: 72 },
   hopfarm: { name: 'Hop Farm', w: 2, h: 2, wood: 40, time: 10, hp: 200, topH: 30 },
   brewery: { name: 'Brewery', w: 2, h: 2, wood: 50, time: 12, hp: 350, topH: 66 },
+  wheatfarm: { name: 'Wheat Field', w: 2, h: 2, wood: 40, time: 10, hp: 200, topH: 14 },
+  mill: { name: 'Mill', w: 2, h: 2, wood: 60, time: 14, hp: 350, topH: 110 },
+  bakery: { name: 'Bakery', w: 2, h: 2, wood: 50, time: 12, hp: 350, topH: 64 },
+  chapel: { name: 'Chapel', w: 2, h: 2, wood: 80, gold: 40, time: 18, hp: 600, topH: 104 },
+  garden: { name: 'Garden', w: 2, h: 2, wood: 20, gold: 10, time: 6, hp: 150, topH: 16 },
+  stocks: { name: 'Stocks', w: 1, h: 1, wood: 15, time: 4, hp: 150, topH: 30 },
   tavern: { name: 'Tavern', w: 2, h: 2, wood: 60, time: 14, hp: 400, topH: 74 },
   ironmine: { name: 'Iron Mine', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 58 },
   bowyer: { name: 'Bowyer', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 60 },
@@ -2281,12 +2314,12 @@ function makeBuildingObj(kind, c, r) {
     x0: c * TILE, y0: r * TILE, x1: (c + d.w) * TILE, y1: (r + d.h) * TILE, x: (c + d.w / 2) * TILE, y: (r + d.h) * TILE,
     maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
   if (kind === 'gtower') Object.assign(b, { range: 230, fireRate: 2.0, arrowDmg: 7, archerY: 112 });
-  if (kind === 'farm' || kind === 'hopfarm') Object.assign(b, { amount: 0, max: 40 });
+  if (isField(kind)) Object.assign(b, { amount: 0, max: 40 });
   return b;
 }
 function createBuilding(kind, c, r) {
   const b = makeBuildingObj(kind, c, r);
-  if (kind === 'farm' || kind === 'hopfarm') { farms.push(b); return b; }
+  if (isField(kind)) { farms.push(b); return b; }
   for (let i = 0; i < b.w; i++) for (let j = 0; j < b.h; j++) { if (kind === 'gate') gate[(r + j) * COLS + c + i] = 1; else setBlock(c + i, r + j, 1); }
   if (kind !== 'gate') for (const u of units) {   // step anyone standing on the new foundation aside
     if (u.dead || u.x < b.x0 - 6 || u.x > b.x1 + 6 || u.y < b.y0 - 6 || u.y > b.y1 + 6) continue;
@@ -2297,7 +2330,7 @@ function createBuilding(kind, c, r) {
 }
 function finishBuilding(b) {
   b.done = true; b.progress = 1;
-  if (b.kind === 'farm' || b.kind === 'hopfarm') b.amount = 10;
+  if (isField(b.kind)) b.amount = 10;
   floatText(b.x, b.y - b.topH - 10, `${b.name} built`, '#9fe8a8');
   if (b.team === 'player') AudioSys.play('built', b.x, b.y);
 }
@@ -2317,7 +2350,8 @@ function assignBuilders(b) {
 }
 function startPlacing(kind) {
   if (!started || won) return;
-  if (res.wood < BUILD[kind].wood) { showBanner(`Not enough wood for a ${BUILD[kind].name}.`, 2.5); return; }
+  if (res.wood < BUILD[kind].wood || res.gold < (BUILD[kind].gold || 0)) { showBanner(`Not enough ${res.wood < BUILD[kind].wood ? 'wood' : 'gold'} for a ${BUILD[kind].name}.`, 2.5); return; }
+  if ((kind === 'garden' || kind === 'stocks') && structures.filter(b => b.kind === kind && !b.dead).length >= 3) { showBanner(`You can have at most 3 ${kind === 'garden' ? 'gardens' : 'sets of stocks'}.`, 2.5); return; }
   placing = { kind, start: null };
   showBanner(kind === 'wall' ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Click near your keep to place the ${BUILD[kind].name}. Right-click or Esc cancels.`, 4);
   updateHud();
@@ -2343,8 +2377,8 @@ function placeAt(sx, sy, keepGoing) {
     placing = keepGoing ? { kind: 'wall', start: null } : null; updateHud(); return;
   }
   if (!canPlace(kind, c, r)) { showBanner('You cannot build there. Build on open ground near your keep.', 2.5); return; }
-  if (res.wood < d.wood) { showBanner('Not enough wood.', 2); placing = null; updateHud(); return; }
-  res.wood -= d.wood;
+  if (res.wood < d.wood || res.gold < (d.gold || 0)) { showBanner('Not enough wood or gold.', 2); placing = null; updateHud(); return; }
+  res.wood -= d.wood; res.gold -= (d.gold || 0);
   assignBuilders(createBuilding(kind, c, r)); AudioSys.ui('place');
   if (!keepGoing) placing = null;
   updateHud();
@@ -2380,7 +2414,11 @@ function drawBuilding(g, b, t) {
     const H = b.topH + 14, top = b.y - H * Math.max(0.08, b.progress);
     g.save(); g.beginPath(); g.rect(b.x0 - 40, top, b.x1 - b.x0 + 80, b.y - top + 30); g.clip();
   }
-  if (b.kind === 'farm') drawFarm(g, b, P);
+  if (b.kind === 'farm' || b.kind === 'wheatfarm') drawFarm(g, b, P);
+  else if (b.kind === 'mill') drawMill(g, b, P, t);
+  else if (b.kind === 'chapel') drawChapel(g, b, P);
+  else if (b.kind === 'garden') drawGarden(g, b, P);
+  else if (b.kind === 'stocks') drawStocks(g, b, P);
   else if (b.kind === 'hopfarm') drawHopFarm(g, b, P);
   else if (WORKSHOP[b.kind]) drawWorkshop(g, b, P);
   else if (b.kind === 'house') drawHouse(g, b, P, t);
@@ -2432,6 +2470,48 @@ function drawGranary(g, b, P) {
   for (const [x, y] of [[cx + 14, gy - 2], [cx + 22, gy - 3], [cx + 18, gy - 9]]) { g.fillStyle = '#d8c69a'; g.beginPath(); g.ellipse(x, y, 4.5, 3.6, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(80,60,30,0.6)'; g.lineWidth = 0.6; g.stroke(); }
   flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 32, gy - 70, 64, 70);
 }
+function drawMill(g, b, P, t) {
+  const M = mats(), cx = b.x, gy = b.y - 6;
+  softShadow(g, cx + 20, gy + 3, 40, 12, 0.42);
+  g.fillStyle = M.stone; g.beginPath(); g.moveTo(cx - 20, gy); g.lineTo(cx - 13, gy - 72); g.lineTo(cx + 13, gy - 72); g.lineTo(cx + 20, gy); g.closePath(); g.fill();
+  const lg = g.createLinearGradient(cx - 20, 0, cx + 20, 0); lg.addColorStop(0, 'rgba(255,236,196,0.18)'); lg.addColorStop(1, 'rgba(0,0,0,0.3)'); g.fillStyle = lg; g.fill();
+  g.fillStyle = '#2e2014'; rr(g, cx - 5, gy - 18, 10, 18, 4); g.fill(); g.fillRect(cx - 3, gy - 50, 6, 8);
+  g.fillStyle = M.thatch; g.beginPath(); g.moveTo(cx - 17, gy - 70); g.lineTo(cx, gy - 92); g.lineTo(cx + 17, gy - 70); g.closePath(); g.fill();
+  const a = b.done ? t * 0.9 : 0;
+  g.save(); g.translate(cx, gy - 74); g.rotate(a);
+  for (let k = 0; k < 4; k++) { g.rotate(Math.PI / 2); g.fillStyle = '#6b4a28'; g.fillRect(-1, 0, 2, 40); g.fillStyle = 'rgba(232,220,190,0.92)'; g.fillRect(1, 8, 8, 30); g.strokeStyle = '#6b4a28'; g.lineWidth = 0.6; for (let y = 12; y < 38; y += 6) { g.beginPath(); g.moveTo(1, y); g.lineTo(9, y); g.stroke(); } }
+  g.restore(); g.fillStyle = '#3a2614'; g.beginPath(); g.arc(cx, gy - 74, 3, 0, Math.PI * 2); g.fill();
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 20, gy - 92, 40, 92);
+}
+function drawChapel(g, b, P) {
+  const M = mats(), cx = b.x, gy = b.y - 6;
+  softShadow(g, cx + 20, gy + 3, 46, 13, 0.42);
+  g.fillStyle = M.stone; g.fillRect(cx - 24, gy - 40, 34, 40); lightFace(g, cx - 24, gy - 40, 34, 40);
+  g.fillStyle = M.stoneDark; g.beginPath(); g.moveTo(cx - 28, gy - 38); g.lineTo(cx - 7, gy - 58); g.lineTo(cx + 14, gy - 38); g.closePath(); g.fill();
+  g.fillStyle = M.stone; g.fillRect(cx + 8, gy - 70, 16, 70); lightFace(g, cx + 8, gy - 70, 16, 70);
+  g.fillStyle = M.stoneDark; g.beginPath(); g.moveTo(cx + 6, gy - 70); g.lineTo(cx + 16, gy - 86); g.lineTo(cx + 26, gy - 70); g.closePath(); g.fill();
+  g.fillStyle = '#2e2014'; g.beginPath(); g.moveTo(cx + 12, gy - 54); g.lineTo(cx + 12, gy - 62); g.arc(cx + 16, gy - 62, 4, Math.PI, 0); g.lineTo(cx + 20, gy - 54); g.closePath(); g.fill();
+  g.fillStyle = '#c9a24a'; g.fillRect(cx + 15, gy - 98, 2.2, 13); g.fillRect(cx + 11.5, gy - 94, 9, 2.2);
+  g.fillStyle = '#2e2014'; g.beginPath(); g.moveTo(cx - 13, gy); g.lineTo(cx - 13, gy - 14); g.arc(cx - 8, gy - 14, 5, Math.PI, 0); g.lineTo(cx - 3, gy); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(120,170,230,0.75)'; for (const x of [cx - 20, cx + 2]) { g.beginPath(); g.moveTo(x, gy - 22); g.lineTo(x, gy - 30); g.arc(x + 2, gy - 30, 2, Math.PI, 0); g.lineTo(x + 4, gy - 22); g.closePath(); g.fill(); }
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 28, gy - 98, 56, 98);
+}
+function drawGarden(g, b, P) {
+  const x0 = b.x0 + 3, y0 = b.y0 + 3, w = b.x1 - b.x0 - 6, h = b.y1 - b.y0 - 6;
+  g.fillStyle = '#5e8a3e'; g.fillRect(x0, y0, w, h);
+  g.fillStyle = '#c9b38a'; g.fillRect(x0 + w / 2 - 4, y0, 8, h); g.fillRect(x0, y0 + h / 2 - 4, w, 8);
+  g.fillStyle = '#2f5a24'; for (const [x, y] of [[x0, y0], [x0 + w - 6, y0], [x0, y0 + h - 6], [x0 + w - 6, y0 + h - 6]]) g.fillRect(x, y, 6, 6);
+  const cols = ['#e86a8a', '#f2d24b', '#b78bd8', '#ffffff', '#e8865a'];
+  for (let i = 0; i < 46; i++) { const qx = x0 + 4 + ((i * 37) % (w - 8)), qy = y0 + 4 + ((i * 53) % (h - 8)); if (Math.abs(qx - (x0 + w / 2)) < 6 || Math.abs(qy - (y0 + h / 2)) < 6) continue; g.fillStyle = cols[i % 5]; g.beginPath(); g.arc(qx, qy, 1.6, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = '#9b958a'; g.beginPath(); g.arc(x0 + w / 2, y0 + h / 2, 7, 0, Math.PI * 2); g.fill(); g.fillStyle = '#4f86a8'; g.beginPath(); g.arc(x0 + w / 2, y0 + h / 2, 5, 0, Math.PI * 2); g.fill();
+}
+function drawStocks(g, b, P) {
+  const cx = b.x, gy = b.y - 4;
+  softShadow(g, cx + 6, gy + 2, 16, 5, 0.35);
+  g.fillStyle = '#5a3c20'; g.fillRect(cx - 11, gy - 22, 3, 22); g.fillRect(cx + 8, gy - 22, 3, 22);
+  g.fillStyle = '#7a5430'; g.fillRect(cx - 13, gy - 20, 26, 7); g.strokeStyle = '#2e1e10'; g.lineWidth = 0.8; g.strokeRect(cx - 13, gy - 20, 26, 7);
+  g.fillStyle = '#1e140a'; for (const x of [-7, 0, 7]) { g.beginPath(); g.arc(cx + x, gy - 16.5, 1.6, 0, Math.PI * 2); g.fill(); }
+}
 function drawHopFarm(g, b, P) {
   const M = mats(), x0 = b.x0 + 2, y0 = b.y0 + 2, w = b.x1 - b.x0 - 4, h = b.y1 - b.y0 - 4;
   g.fillStyle = M.soil; g.fillRect(x0, y0, w, h);
@@ -2455,7 +2535,8 @@ function drawWorkshop(g, b, P) {
   // a sign that shows the trade
   g.fillStyle = '#6b4a28'; g.fillRect(cx + 20, gy - 40, 2, 14); g.fillStyle = '#e8d8b0'; g.fillRect(cx + 22, gy - 40, 13, 10); g.strokeStyle = '#3a2614'; g.lineWidth = 0.8; g.strokeRect(cx + 22, gy - 40, 13, 10);
   g.strokeStyle = '#3a2614'; g.fillStyle = '#3a2614'; g.lineWidth = 1.3; const sx = cx + 28.5, sy = gy - 35;
-  if (k === 'brewery' || k === 'tavern') { g.beginPath(); g.rect(sx - 3, sy - 3, 5, 6); g.stroke(); g.beginPath(); g.arc(sx + 3, sy, 1.8, -1.4, 1.4); g.stroke(); }
+  if (k === 'bakery') { g.beginPath(); g.ellipse(sx, sy, 5, 3, 0, 0, Math.PI * 2); g.fill(); }
+  else if (k === 'brewery' || k === 'tavern') { g.beginPath(); g.rect(sx - 3, sy - 3, 5, 6); g.stroke(); g.beginPath(); g.arc(sx + 3, sy, 1.8, -1.4, 1.4); g.stroke(); }
   else if (k === 'bowyer') { g.beginPath(); g.arc(sx - 2, sy, 4.5, -1.2, 1.2); g.stroke(); g.beginPath(); g.moveTo(sx - 0.2, sy - 4.2); g.lineTo(sx - 0.2, sy + 4.2); g.stroke(); }
   else if (k === 'poleturner') { g.beginPath(); g.moveTo(sx - 5, sy + 3); g.lineTo(sx + 4, sy - 3); g.stroke(); g.beginPath(); g.moveTo(sx + 4, sy - 3); g.lineTo(sx + 1.5, sy - 3.4); g.lineTo(sx + 3.4, sy - 0.8); g.fill(); }
   else if (k === 'smithy') { g.fillRect(sx - 4, sy - 1, 8, 2.5); g.fillRect(sx - 1.5, sy + 1.5, 3, 2.5); }
@@ -2821,8 +2902,8 @@ const UI = (() => {
       task: type === 'civ' ? { type: 'wood', node: null } : null, sub: null, look: { beard: true, longHair: false, w: 1, h: 1 }, radius: 11 };
   }
   function iconBuilding(g, name, w, h) {
-    const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (name === 'farm' || name === 'hopfarm') b.amount = b.max;
-    const vis = { hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
+    const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (isField(name)) b.amount = b.max;
+    const vis = { wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -2911,9 +2992,15 @@ const UI = (() => {
   function moodReport() {
     const r = RATIONS[ration], t = TAXES[tax];
     const ln = (label, v) => `<div class="ln"><span>${label}</span><b class="${v > 0 ? 'plus' : v < 0 ? 'minus' : ''}">${v > 0 ? '+' : ''}${v}/min</b></div>`;
-    const total = (starving ? -20 : r.mood) + t.mood + aleBonus;
+    const total = Math.round(moodRate);
     return `<h3>MOOD ${Math.round(mood)} &middot; ${moodName().toUpperCase()}</h3>` +
-      (starving ? ln('No food: starving', -20) : ln(`Rations: ${r.name}`, r.mood)) + ln(`Taxes: ${t.name}`, t.mood) + ln(aleBonus ? `Ale: taverns serve ${Math.round(aleCover * 100)}% of your people` : 'Ale: none served (build a tavern and brewery)', aleBonus) +
+      (starving ? ln('No food: starving', -20) : ln(`Rations: ${r.name}`, r.mood)) +
+      ln(`Food variety: ${foodVariety()} kind${foodVariety() === 1 ? '' : 's'} (${Object.keys(foodKinds).filter(k => foodKinds[k] >= 1).map(k => FOOD_NAME[k]).join(', ') || 'none'})`, starving ? 0 : varietyBonus) +
+      ln(`Taxes: ${t.name}`, t.mood) +
+      ln(relBonus ? `Religion: chapels serve ${Math.round(relCover * 100)}% of your people` : 'Religion: no chapel', relBonus) +
+      ln(crowdPen ? 'Crowding: houses are nearly full' : 'Crowding: room to spare', crowdPen) +
+      ln(`Gardens: ${countOf('garden')} (people work ${countOf('garden') * 5}% slower)`, fearGood) +
+      ln(`Stocks: ${countOf('stocks')} (people work ${countOf('stocks') * 8}% harder)`, fearHard) + ln(aleBonus ? `Ale: taverns serve ${Math.round(aleCover * 100)}% of your people` : 'Ale: none served (build a tavern and brewery)', aleBonus) +
       `<div class="ln" style="border-top:1px solid #6e5128;margin-top:4px;padding-top:4px"><span>Total</span><b class="${total > 0 ? 'plus' : total < 0 ? 'minus' : ''}">${total > 0 ? '+' : ''}${total}/min</b></div>` +
       `<p style="margin:8px 0 0;font-size:15px">Each of your people who dies costs 3 mood. A feast adds 15.</p>` +
       `<p style="margin:6px 0 0;font-size:15px"><b>Happy</b> (70 and up): work 15% faster, settlers arrive.<br><b>Unhappy</b> (below 40): work 20% slower.<br><b>Rebellious</b> (below 20): people leave.</p>` +
@@ -2922,7 +3009,7 @@ const UI = (() => {
   function toggle(id) { const p = $(id); p.hidden = !p.hidden; if (id === 'moodPop' && !p.hidden) p.innerHTML = moodReport(); if (id === 'menuPop') $('btnMenu').setAttribute('aria-expanded', String(!p.hidden)); }
   function goodsReport() {
     const ln = (a, b) => `<div class="ln"><span>${a}</span><b>${b}</b></div>`;
-    return '<h3>GOODS</h3>' + ln('Hops', Math.floor(res.hops)) + ln('Ale', Math.floor(res.ale)) + ln('Iron', Math.floor(res.iron)) + ln('Bows', res.bow) + ln('Spears', res.spear) + ln('Swords', res.sword) + '<p style="margin:8px 0 0;font-size:14px;color:#d9c9a3">Build workshops in the Industry tab (key 5). Weapons in the armory make soldiers cheap.</p>';
+    return '<h3>GOODS</h3>' + ln('Food: berries, crops, bread', `${Math.floor(foodKinds.berries)}, ${Math.floor(foodKinds.crops)}, ${Math.floor(foodKinds.bread)}`) + ln('Wheat', Math.floor(res.wheat)) + ln('Flour', Math.floor(res.flour)) + ln('Hops', Math.floor(res.hops)) + ln('Ale', Math.floor(res.ale)) + ln('Iron', Math.floor(res.iron)) + ln('Bows', res.bow) + ln('Spears', res.spear) + ln('Swords', res.sword) + '<p style="margin:8px 0 0;font-size:14px;color:#d9c9a3">Build workshops in the Industry tab (key 5). Weapons in the armory make soldiers cheap.</p>';
   }
   function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
   // --- tabs and hiding the panel ---
@@ -3354,12 +3441,44 @@ const R3D = (() => {
       // a hanging sign and the tools of the trade
       add(cyl(0.8, 0.8, 16, std('#3a2a18'), 26, 30, 21, 5)); const sign = box(10, 8, 1, std('#e8d8b0'), 26, 30, 25); add(sign);
       const barrel = (x, z) => { add(cyl(4.5, 4.5, 9, woodVM(8, 9), x, 4.5, z, 12)); add(cyl(4.7, 4.7, 0.8, std('#2b2824', { metalness: 0.5 }), x, 2, z, 12)); add(cyl(4.7, 4.7, 0.8, std('#2b2824', { metalness: 0.5 }), x, 7, z, 12)); };
+      if (k === 'bakery') { const ov = mesh(new T.SphereGeometry(8, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), stoneM(16, 8), -30, 0, 14); add(ov); add(box(5, 4, 1, std('#1a120c'), -30, 2.5, 22)); add(box(5, 22, 5, stoneM(5, 22), 16, 46, -8)); }
       if (k === 'brewery' || k === 'tavern') { barrel(-30, 18); barrel(-30, 8); barrel(-22, 26); }
       if (k === 'tavern') { add(box(14, 1.4, 6, woodHM(14, 2), 14, 7, 30)); add(cyl(1, 1, 7, woodVM(2, 7), 8, 3.5, 30, 5)); add(cyl(1, 1, 7, woodVM(2, 7), 20, 3.5, 30, 5)); }
       if (k === 'smithy') { add(box(8, 5, 5, std('#3d3f42', { metalness: 0.7, roughness: 0.4 }), 20, 6, 28)); add(box(4, 3, 4, std('#3d3f42', { metalness: 0.7 }), 20, 3, 28)); add(mesh(new T.SphereGeometry(4, 10, 6), new T.MeshStandardMaterial({ color: C('#ff7a2a'), emissive: C('#ff5a10'), emissiveIntensity: 1.5 }), -16, 6, 24)); }
       if (k === 'bowyer') for (let i = 0; i < 3; i++) { const bw = mesh(new T.TorusGeometry(7, 0.5, 5, 14, Math.PI), std('#6b4422'), -30, 12 + i * 2, 4 + i * 6); bw.rotation.y = Math.PI / 2; add(bw); }
       if (k === 'poleturner') for (let i = 0; i < 4; i++) { const sp = cyl(0.6, 0.6, 30, std('#7b5a34'), -30 + i * 2, 15, 12, 5); sp.rotation.z = 0.15; add(sp); }
       if (k === 'armory') { add(box(20, 14, 2, woodHM(20, 14), 18, 7, 25)); for (let i = 0; i < 4; i++) { const sw = box(0.8, 12, 0.4, std('#e3e8ec', { metalness: 0.85, roughness: 0.25 }), 11 + i * 4.5, 8, 26.5); add(sw); } }
+    } else if (b.kind === 'mill') {
+      add(cyl(15, 21, 74, stoneM(110, 74), 0, 37, 0, 18));
+      add(mesh(new T.ConeGeometry(19, 24, 18), thatchM(60, 24), 0, 86, 0));
+      door(inner, 0, 0, 19, 10, 18);
+      const hub = new T.Group(); hub.position.set(0, 74, 22); inner.add(hub); info.sails = hub;
+      hub.add(cyl(2.5, 2.5, 6, woodHM(6, 6), 0, 0, -2, 10)).rotation.x = Math.PI / 2;
+      for (let k = 0; k < 4; k++) { const arm = new T.Group(); arm.rotation.z = k * Math.PI / 2; hub.add(arm); arm.add(box(2, 44, 1.6, woodVM(2, 44), 0, 23, 0)); const sail = box(10, 34, 0.5, std('#e8dcc0', { roughness: 1, side: T.DoubleSide }), 6, 26, 0.6); arm.add(sail); }
+    } else if (b.kind === 'chapel') {
+      add(box(54, 4, 46, stoneM(54, 4), 0, 2, 0));
+      add(box(34, 36, 40, stoneM(34, 36), -8, 22, 0));
+      const gs = new T.Shape(); gs.moveTo(-19, 0); gs.lineTo(19, 0); gs.lineTo(0, 18); gs.closePath();
+      const rg = new T.ExtrudeGeometry(gs, { depth: 44, bevelEnabled: false }); rg.translate(0, 0, -22); add(mesh(rg, texMat('stoneDark', 2, 1), -8, 40, 0));
+      add(box(16, 68, 16, stoneM(16, 68), 16, 34, 10));
+      add(mesh(new T.ConeGeometry(12, 20, 4), texMat('stoneDark', 1, 1), 16, 78, 10)).rotation.y = Math.PI / 4;
+      add(box(6, 9, 1, std('#2e2014'), 16, 58, 18.3));
+      const gold = std('#d8b04a', { metalness: 0.8, roughness: 0.3 }); add(box(1.8, 14, 1.8, gold, 16, 95, 10)); add(box(9, 1.8, 1.8, gold, 16, 98, 10));
+      door(inner, -8, 0, 20, 11, 18);
+      const glass = new T.MeshStandardMaterial({ color: C('#6f9ee0'), emissive: C('#3a6ab0'), emissiveIntensity: 0.6 });
+      for (const z of [-10, 10]) add(box(1, 10, 4, glass, -25.5, 24, z));
+    } else if (b.kind === 'garden') {
+      add(box(60, 2.4, 60, std('#6a9a44', { roughness: 0.9 }), 0, 1.2, 0));
+      for (const [w, d] of [[9, 60], [60, 9]]) add(box(w, 2.8, d, std('#cdb88e', { roughness: 0.95 }), 0, 1.4, 0));
+      const hedge = std('#2f5a24', { roughness: 0.95 });
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(box(24, 6, 4, hedge, sx * 17, 4, sz * 28)); add(box(4, 6, 24, hedge, sx * 28, 4, sz * 17)); add(box(6, 9, 6, hedge, sx * 14, 5, sz * 14)); }
+      add(cyl(8, 9, 4, stoneM(16, 4), 0, 2, 0, 16)); add(cyl(6.5, 6.5, 0.6, std('#4f86a8', { roughness: 0.2 }), 0, 4.1, 0, 16)); add(cyl(1.2, 1.6, 8, stoneM(3, 8), 0, 6, 0, 8));
+      const flowers = ['#e86a8a', '#f2d24b', '#b78bd8', '#ffffff'];
+      for (let i = 0; i < 40; i++) { const qx = -26 + ((i * 37) % 52), qz = -26 + ((i * 53) % 52); if (Math.abs(qx) < 7 || Math.abs(qz) < 7) continue; add(mesh(new T.SphereGeometry(1.6, 6, 4), std(flowers[i % 4]), qx, 3.4, qz)); }
+    } else if (b.kind === 'stocks') {
+      const wd = woodVM(3, 20);
+      for (const x of [-10, 10]) add(box(3, 20, 3, wd, x, 10, 0));
+      add(box(26, 6, 4, woodHM(26, 6), 0, 15, 0));
     } else if (b.kind === 'ironmine') {
       // timber headframe over the shaft, a cart of ore
       for (const [x, z] of [[-18, -14], [18, -14], [-18, 14], [18, 14]]) { const p = cyl(2.4, 2.8, 46, woodVM(5, 46), x * 0.8, 23, z * 0.8, 8); p.rotation.set(-z * 0.006, 0, x * 0.006); add(p); }
@@ -3373,7 +3492,7 @@ const R3D = (() => {
       for (let r = 0; r < 4; r++) add(box(46, 0.6, 0.6, std('#6b5030'), 0, 25, -22 + r * 14.6));
       const n = 7 * 7 * 3, vines = new T.InstancedMesh(new T.ConeGeometry(2.4, 14, 6), std('#4f8a3a', { roughness: 0.85 }), n);
       vines.castShadow = true; info.wheat = vines; info.wheatN = n; add(vines);
-    } else if (b.kind === 'farm') {
+    } else if (b.kind === 'farm' || b.kind === 'wheatfarm') {
       const soil = mesh(new T.PlaneGeometry(60, 60), texMat('soil', 2, 4), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
       const n = 7 * 7 * 3, wheat = new T.InstancedMesh(new T.CylinderGeometry(0.35, 0.7, 11, 4), std('#d8b450', { roughness: 0.8 }), n);
       wheat.castShadow = true; info.wheat = wheat; info.wheatN = n; add(wheat);
@@ -3587,7 +3706,7 @@ const R3D = (() => {
       if (!md) {
         md = buildingModel(b); bModels.set(b.id, md);
         if ((b.kind === 'wall' || b.kind === 'gate') && !joined.has(b.id) && joined.add(b.id)) for (const o of structures) if (o !== b && o.kind === 'wall' && Math.abs(o.c - b.c) + Math.abs(o.r - b.r) === 1) { const om = bModels.get(o.id); if (om && !om.rubble) { scene.remove(om.g); bModels.delete(o.id); } }
-        if (b.kind === 'farm' || b.kind === 'hopfarm' || b.kind === 'house') hideGrass(b.x0, b.y0, b.x1, b.y1);
+        if (isField(b.kind) || b.kind === 'house') hideGrass(b.x0, b.y0, b.x1, b.y1);
       }
       if (b.dead) { if (!md.rubble) { md.g.visible = false; md.rubble = b.kind === 'farm' ? null : rubble(b); } if (Math.random() < 0.05) spawn('smoke', b.x + RR(-25, 25), b.y - RR(5, 25), b.y); continue; }
       const prog = b.done === false ? Math.max(0.06, b.progress) : 1;
@@ -3596,6 +3715,7 @@ const R3D = (() => {
       const fk = b.flash > 0 ? b.flash * 0.45 : 0;
       for (const mt of md.mats) mt.emissive.setRGB(fk, fk, fk);
       md.inner.rotation.z = Math.sin(time * 40) * (b.wobble || 0) * 0.01;
+      if (md.sails && b.done) md.sails.rotation.z = time * 0.9;
       for (const f of md.flags) { const p = f.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i); p.setZ(i, Math.sin(time * 5 + x * 0.25) * Math.min(3, x * 0.15)); } p.needsUpdate = true; }
       if (md.archer) {
         const a = md.archer; animatePerson({ type: 'archer', moving: false, walkPhase: 0, attackAnim: b.drawT > 0 ? 0.3 : 0, order: 'attack', seed: 1 }, a, dt);
@@ -3949,7 +4069,7 @@ function startGame(key) {
   CIV = CIVS[key];
   Object.assign(PAL.player, { tunic: CIV.color, tunicDark: CIV.dark, shield: CIV.color });
   PAL.civ.trim = CIV.color;
-  res.food = CIV.food; res.wood = CIV.wood;
+  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople();
   planEnemyWalls(); buildEnemyWalls(16, true);
@@ -3975,7 +4095,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
