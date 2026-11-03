@@ -48,6 +48,9 @@
   #queue{font-size:15px;color:#eadfc4;min-width:150px}
   #status .food{color:#ffb38a}
   #help.hide{display:none}
+  .vol{display:flex;flex-direction:column;align-items:center;font-size:15px;font-weight:bold;color:#ffd98a;gap:2px}
+  .vol input{width:110px;height:24px;accent-color:#e0b84e;cursor:pointer}
+  .btns{align-items:center;flex-wrap:wrap}
   #help{margin-left:auto;font-size:15px;line-height:1.45;color:#eadfc4;text-align:right}
   #help b{color:#ffd98a}
   #banner{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:88%;
@@ -102,7 +105,7 @@
 </div>
 <div id="bottom">
   <div id="selbox"><span id="selLabel">No soldiers selected</span><span id="cards" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
-  <div class="btns"><button id="btnAll">Select All</button><button id="btnSold">Soldiers</button><button id="btnCiv">Civilians</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button><button id="btnHelp">Help</button><button id="btnMusic">Music: On</button><button id="btnSound">Sound: On</button></div>
+  <div class="btns"><button id="btnAll">Select All</button><button id="btnSold">Soldiers</button><button id="btnCiv">Civilians</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button><button id="btnHelp">Help</button><button id="btnMusic">Music: On</button><label class="vol" title="Music volume">Music<input type="range" id="volMusic" min="0" max="100"></label><button id="btnSound">Sound: On</button><label class="vol" title="Sound volume">Sound<input type="range" id="volSound" min="0" max="100"></label></div>
   <div id="train"><span class="tl">Keep:</span>
     <button class="tb" data-k="civ">Civilian<small>40 food</small></button>
     <button class="tb" data-k="sword">Swordsman<small>40 food &middot; 30 wood</small></button>
@@ -129,7 +132,7 @@
     <b>Keys:</b> arrows or screen edge to scroll &middot; wheel to zoom &middot; S stop &middot; Esc clear<br>
     <b>Touch:</b> tap or drag to select &middot; tap ground or enemy to command &middot; two fingers to pan and zoom<br>
     <b>Civilians:</b> right-click (or tap) a tree for wood or a berry bush for food &middot; they carry it to the keep<br>
-    <b>Sound:</b> Music and Sound buttons turn each on or off &middot; M turns all sound on or off<br>
+    <b>Sound:</b> Music and Sound buttons turn each on or off, and the sliders set their volume &middot; M turns all sound on or off<br>
     <b>Siege:</b> stone walls resist swords and arrows &middot; train a Battering Ram to smash walls and buildings (rams cannot hurt soldiers)<br>
     <b>Rule:</b> rations and taxes change your people's mood &middot; happy people work faster and settlers arrive &middot; unhappy people leave<br>
     <b>Build:</b> pick a building, then click near your keep to place it (walls: click start, then end) &middot; right-click or Esc cancels
@@ -2194,8 +2197,8 @@ document.querySelectorAll('.bb[data-b]').forEach(b => b.onclick = () => startPla
 // ---------- sound and music: everything is synthesised live, no files ----------
 const AudioSys = (() => {
   let ac = null, master, sfxBus, musicBus, ambBus, noiseBuf, lastCombat = -1e9, musicTimer = null;
-  let on = { sfx: true, music: true };
-  try { const s = JSON.parse(localStorage.getItem('sd-audio') || 'null'); if (s && typeof s.sfx === 'boolean') on = s; } catch (e) {}
+  let on = { sfx: true, music: true, musicVol: 0.8, sfxVol: 0.8 };
+  try { const s = JSON.parse(localStorage.getItem('sd-audio') || 'null'); if (s && typeof s.sfx === 'boolean') on = Object.assign(on, s); } catch (e) {}
   const save = () => { try { localStorage.setItem('sd-audio', JSON.stringify(on)); } catch (e) {} };
   const last = {};
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -2254,9 +2257,13 @@ const AudioSys = (() => {
       for (let i = 0; i < 6; i++) { tone('sine', 85, t + 0.2 + i * 0.32, 0.25, 0.5, d, { to: 45 }); noise(t + 0.2 + i * 0.32, 0.1, 0.2, d, 'lowpass', 400, 1); }
     },
     victory(t, d) { [62, 66, 69, 74].forEach((m, i) => tone('triangle', mtof(m), t + i * 0.16, 0.6, 0.22, d)); for (const m of [62, 66, 69, 74]) tone('sawtooth', mtof(m), t + 0.7, 1.8, 0.07, d, { a: 0.1, lp: 1400 }); },
+    crackle(t, d) { noise(t, R(0.008, 0.025), R(0.08, 0.2), d, 'highpass', R(2000, 4500), 1); if (Math.random() < 0.15) noise(t, 0.05, 0.12, d, 'bandpass', 600, 2); },
+    step(t, d) { noise(t, 0.07, 0.14, d, 'lowpass', R(180, 280), 1); tone('sine', R(60, 80), t, 0.05, 0.08, d); },
+    murmur(t, d) { for (let i = 0; i < 5; i++) noise(t + R(0, 0.8), R(0.15, 0.35), R(0.025, 0.05), d, 'bandpass', R(320, 900), 4, { a: 0.05 }); },
+    triumph(t, d) { [69, 74, 78, 81].forEach((m, i) => tone('triangle', mtof(m), t + i * 0.11, 0.45, 0.18, d)); tone('sawtooth', mtof(62), t + 0.44, 1.0, 0.07, d, { a: 0.08, lp: 1300 }); tone('sawtooth', mtof(69), t + 0.44, 1.0, 0.05, d, { a: 0.08, lp: 1300 }); },
     defeat(t, d) { for (const m of [50, 53, 57]) tone('sawtooth', mtof(m), t, 2.8, 0.09, d, { a: 0.3, lp: 600, lpTo: 200 }); tone('sine', 55, t, 2.5, 0.3, d); }
   };
-  const MIN_GAP = { clash: 0.05, stab: 0.05, woodHit: 0.08, stoneHit: 0.08, bow: 0.06, thunk: 0.06, fall: 0.1, chop: 0.12, hammer: 0.15, select: 0.08, ack: 0.1, cheer: 1, warhorn: 3, built: 0.3, ready: 0.4, bell: 0.5, warn: 2, boom: 0.15, collapse: 0.4, place: 0.1 };
+  const MIN_GAP = { clash: 0.05, stab: 0.05, woodHit: 0.08, stoneHit: 0.08, bow: 0.06, thunk: 0.06, fall: 0.1, chop: 0.12, hammer: 0.15, select: 0.08, ack: 0.1, cheer: 1, warhorn: 3, built: 0.3, ready: 0.4, bell: 0.5, warn: 2, boom: 0.15, collapse: 0.4, place: 0.1, crackle: 0.03, step: 0.08, murmur: 1, triumph: 2 };
   function play(name, x, y, vol = 1) {
     if (!ac || !on.sfx || !FX[name]) return;
     const now = ac.currentTime; if (last[name] && now - last[name] < (MIN_GAP[name] || 0.05)) return; last[name] = now;
@@ -2287,77 +2294,132 @@ const AudioSys = (() => {
     };
     setTimeout(bird, 3000);
   }
-  // ----- music: D Dorian; calm in 3/4, battle in 4/4 with drums -----
-  const SCALE = [0, 2, 3, 5, 7, 9, 10];           // Dorian intervals above D
-  const deg = (d, oct) => 62 + 12 * (oct + Math.floor(d / 7)) + SCALE[((d % 7) + 7) % 7];
-  const CHORDS = [[0, 2, 4], [6, 1, 3], [0, 2, 4], [3, 5, 0], [4, 6, 1], [6, 1, 3], [3, 5, 0], [0, 2, 4]];  // i  VII  i  IV  v  VII  IV  i
+  // ----- music: a theme for each civilization, real plucked strings, hurdy-gurdy drone, stone-hall echo -----
+  const THEMES = {
+    title:   { scale: [0, 2, 3, 5, 7, 9, 10], chords: [[0, 2, 4], [6, 1, 3], [3, 5, 0], [0, 2, 4]], calm: { steps: 6, bpm: 70 }, battle: { steps: 8, bpm: 112 } },
+    legion:  { scale: [0, 2, 3, 5, 7, 8, 10], chords: [[0, 2, 4], [5, 0, 2], [6, 1, 3], [0, 2, 4], [3, 5, 0], [5, 0, 2], [4, 6, 1], [0, 2, 4]], calm: { steps: 8, bpm: 84, march: true }, battle: { steps: 8, bpm: 128 } },
+    harvest: { scale: [0, 2, 4, 5, 7, 9, 10], chords: [[0, 2, 4], [6, 1, 3], [3, 5, 0], [0, 2, 4], [4, 6, 1], [3, 5, 0], [6, 1, 3], [0, 2, 4]], calm: { steps: 6, bpm: 104, jig: true }, battle: { steps: 8, bpm: 120 } },
+    wardens: { scale: [0, 2, 3, 5, 7, 9, 10], chords: [[0, 2, 4], [3, 5, 0], [6, 1, 3], [0, 2, 4], [4, 6, 1], [3, 5, 0], [2, 4, 6], [0, 2, 4]], calm: { steps: 6, bpm: 62, slow: true }, battle: { steps: 8, bpm: 100 }, bells: true }
+  };
+  let theme = THEMES.title, themeName = 'title';
+  const deg = (d, oct) => 62 + 12 * (oct + Math.floor(d / 7)) + theme.scale[((d % 7) + 7) % 7];
   let step = 0, bar = 0, nextT = 0, mode = 'calm', motif = null, drone = null, melDeg = 2;
   const battle = () => performance.now() - lastCombat < 7000;
-  function lute(m, t, vol, len = 0.7) {
-    const f = mtof(m); tone('triangle', f, t, len, vol, musicBus, { lp: 3200, lpTo: 700 }); tone('sawtooth', f, t, len * 0.5, vol * 0.25, musicBus, { lp: 2200, lpTo: 500, detune: 6 });
+  // plucked string, modelled the way a real string vibrates (Karplus-Strong); cached per note
+  const ksCache = {};
+  function ksBuf(m, bright) {
+    const key = m + ':' + bright; if (ksCache[key]) return ksCache[key];
+    const sr = ac.sampleRate, N = Math.max(2, Math.round(sr / mtof(m) - 0.5)), len = Math.floor(sr * 2.4), b = ac.createBuffer(1, len, sr), d = b.getChannelData(0);
+    const ring = new Float32Array(N); for (let i = 0; i < N; i++) ring[i] = Math.random() * 2 - 1;
+    for (let p = 0; p < (bright ? 1 : 3); p++) for (let i = 0; i < N; i++) ring[i] = 0.5 * (ring[i] + ring[(i + 1) % N]);
+    const decay = 0.9968 - Math.max(0, m - 60) * 0.00035;
+    for (let i = 0, idx = 0; i < len; i++) { const nx = (idx + 1) % N, v = ring[idx]; d[i] = v; ring[idx] = decay * 0.5 * (v + ring[nx]); idx = nx; }
+    return ksCache[key] = b;
+  }
+  function pluck(m, t, vol, len = 1.6, bright = 0) {
+    const src = ac.createBufferSource(), g = ac.createGain(), fl = ac.createBiquadFilter();
+    src.buffer = ksBuf(m, bright); fl.type = 'lowpass'; fl.frequency.value = bright ? 5200 : 3200;
+    src.connect(fl); fl.connect(g); g.connect(musicBus);
+    g.gain.setValueAtTime(vol, t); g.gain.setValueAtTime(vol, t + len * 0.75); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    src.start(t); src.stop(t + len + 0.05);
   }
   function flute(m, t, len, vol) {
-    const o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
-    o.type = 'sine'; o.frequency.value = mtof(m); lfo.frequency.value = 5.2; lg.gain.value = mtof(m) * 0.006; lfo.connect(lg); lg.connect(o.frequency);
-    o.connect(g); g.connect(musicBus);
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.12); g.gain.setValueAtTime(vol, t + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
-    o.start(t); lfo.start(t); o.stop(t + len + 0.05); lfo.stop(t + len + 0.05);
-    noise(t, 0.08, vol * 0.25, musicBus, 'bandpass', mtof(m) * 2, 3);
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = mtof(m); o2.frequency.value = mtof(m) * 2;
+    lfo.frequency.value = 5.2; lg.gain.value = mtof(m) * 0.006; lfo.connect(lg); lg.connect(o.frequency);
+    const g2 = ac.createGain(); g2.gain.value = 0.12; o2.connect(g2); g2.connect(g); o.connect(g); g.connect(musicBus);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.15); g.gain.setValueAtTime(vol, t + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    for (const x of [o, o2, lfo]) { x.start(t); x.stop(t + len + 0.05); }
+    noise(t, 0.1, vol * 0.3, musicBus, 'bandpass', mtof(m) * 2, 3);
   }
-  function drum(t, v, low = true) { tone('sine', low ? 95 : 160, t, 0.22, v, musicBus, { to: low ? 48 : 90 }); noise(t, 0.06, v * 0.35, musicBus, 'lowpass', low ? 500 : 1400, 1); }
+  function bell(m, t) { for (const [r, v, dcy] of [[1, 0.09, 3.2], [2.76, 0.035, 2.2], [5.4, 0.018, 1.3], [0.5, 0.05, 3.5]]) tone('sine', mtof(m) * r, t, dcy, v, musicBus); }
+  function drum(t, v, low = true) { tone('sine', low ? 92 : 165, t, 0.26, v, musicBus, { to: low ? 46 : 92 }); noise(t, 0.07, v * 0.35, musicBus, 'lowpass', low ? 520 : 1400, 1); }
+  function snare(t, v) { noise(t, 0.13, v, musicBus, 'bandpass', 1900, 0.8); tone('triangle', 215, t, 0.05, v * 0.6, musicBus, { to: 150 }); }
   function makeMotif(len) {
     const notes = []; let d = melDeg;
     for (let i = 0; i < len; i++) { d = clamp(d + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(Math.random() * 8)], -1, 9); notes.push(d); }
     return notes;
   }
-  function startDrone() {
-    const mk = (m, type, v) => { const o = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain(); o.type = type; o.frequency.value = mtof(m); fl.type = 'lowpass'; fl.frequency.value = 380; o.connect(fl); fl.connect(g); g.connect(musicBus); g.gain.value = 0; g.gain.linearRampToValueAtTime(v, ac.currentTime + 4); o.start(); return g; };
-    drone = [mk(38, 'triangle', 0.13), mk(45, 'triangle', 0.08), mk(38, 'sawtooth', 0.0)];
+  function startDrone() { // hurdy-gurdy: buzzing bowed strings on the root and fifth
+    const mk = (m, v, formant) => {
+      const o = ac.createOscillator(), o2 = ac.createOscillator(), pk = ac.createBiquadFilter(), lp = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = 'sawtooth'; o2.type = 'sawtooth'; o.frequency.value = mtof(m); o2.frequency.value = mtof(m) * 1.003;
+      pk.type = 'peaking'; pk.frequency.value = formant; pk.gain.value = 9; pk.Q.value = 2.2; lp.type = 'lowpass'; lp.frequency.value = 1150;
+      o.connect(pk); o2.connect(pk); pk.connect(lp); lp.connect(g); g.connect(musicBus);
+      g.gain.value = 0; g.gain.linearRampToValueAtTime(v, ac.currentTime + 5); o.start(); o2.start(); return g;
+    };
+    drone = [mk(38, 0.034, 700), mk(45, 0.02, 950), mk(50, 0.0, 1400)];
   }
   function scheduleStep(t) {
-    const steps = mode === 'battle' ? 8 : 6, beatLen = mode === 'battle' ? 60 / 116 / 2 : 60 / 78 / 2;
-    const chord = CHORDS[bar % CHORDS.length], s = step;
+    const md = mode === 'battle' ? theme.battle : theme.calm, steps = md.steps, beatLen = 60 / md.bpm / 2;
+    const chord = theme.chords[bar % theme.chords.length], s = step;
     if (s === 0) {
-      lute(deg(chord[0], -2), t, 0.22, 1.4);                                   // bass
-      if (mode === 'calm' && bar % 4 === 0) { const top = deg(chord[2], 1); flute(top, t + beatLen * 2, beatLen * 3.5, 0.07); }
+      pluck(deg(chord[0], -2), t, 0.22, md.slow ? 3 : 2);                                     // bass string
+      if (mode === 'calm' && bar % 4 === 0 && !md.jig) flute(deg(chord[2], 1), t + beatLen * 2, beatLen * (steps - 1.5), md.slow ? 0.075 : 0.06);
+      if (theme.bells && mode === 'calm' && bar % 4 === 0) bell(deg(chord[0], 0), t);
       if (bar % 4 === 0) motif = makeMotif(steps);
     }
-    // melody: play the motif, varied in the third bar of each phrase
-    const rhythm = mode === 'battle' ? [1, 0, 1, 1, 1, 0, 1, 1] : [1, 0, 1, 1, 1, 0];
-    if (motif && rhythm[s] && Math.random() < (mode === 'battle' ? 0.9 : 0.78)) {
+    if ((md.march || mode === 'battle') && s === 4) pluck(deg(chord[2], -2), t, 0.15, 1.2);
+    const rhythm = mode === 'battle' ? [1, 0, 1, 1, 1, 0, 1, 1] : md.jig ? [1, 0, 1, 1, 0, 1] : md.march ? [1, 0, 1, 1, 1, 0, 1, 0] : md.slow ? [1, 0, 0, 1, 0, 1] : [1, 0, 1, 1, 1, 0];
+    if (motif && rhythm[s] && Math.random() < (mode === 'battle' ? 0.9 : 0.82)) {
       let d = motif[s % motif.length] + (bar % 4 === 2 ? 1 : 0);
-      if (s === 0 || (mode === 'calm' && s === 4)) { const tones = chord; d = tones.reduce((best, c) => { const cand = c + 7 * Math.round((d - c) / 7); return Math.abs(cand - d) < Math.abs(best - d) ? cand : best; }, chord[0]); }
-      melDeg = d; lute(deg(d, 0), t, mode === 'battle' ? 0.2 : 0.16, mode === 'battle' ? 0.35 : 0.8);
+      if (s === 0 || (!md.march && s === steps - 2)) d = chord.reduce((best, c) => { const cand = c + 7 * Math.round((d - c) / 7); return Math.abs(cand - d) < Math.abs(best - d) ? cand : best; }, chord[0]);
+      melDeg = d;
+      pluck(deg(d, 0), t, mode === 'battle' ? 0.17 : 0.15, mode === 'battle' ? 0.6 : md.jig ? 0.7 : md.slow ? 2.4 : 1.6, md.jig ? 1 : 0);
+      if (mode === 'calm' && s === 0 && Math.random() < 0.5) pluck(deg(d - 2, 0), t + 0.025, 0.08, 1.5);   // a third below
     }
     if (mode === 'battle') {
-      if (s === 0 || s === 4) drum(t, 0.5); if (s === 2 || s === 6) drum(t, 0.22, false); if (s === 7) drum(t, 0.15, false);
+      if (s === 0 || s === 4) drum(t, 0.5); if (s === 2 || s === 6) snare(t, 0.12); if (s === 7) drum(t, 0.16, false);
       if (s % 2 === 1) noise(t, 0.03, 0.05, musicBus, 'highpass', 6000, 1);
-    } else if (s === 0) drum(t, 0.16);
+    } else if (md.march) { if (s === 0 || s === 4) drum(t, 0.2); if (s === 2 || s === 6) snare(t, 0.07); if (s === 7 && bar % 2) snare(t, 0.04); }
+    else if (md.jig) { if (s === 0) drum(t, 0.18); if (s === 3) drum(t, 0.1, false); }
+    else if (s === 0) drum(t, md.slow ? 0.12 : 0.15);
     step++;
-    if (step >= steps) { step = 0; bar++; const want = battle() ? 'battle' : 'calm'; if (want !== mode) { mode = want; if (drone) drone[2].gain.linearRampToValueAtTime(mode === 'battle' ? 0.05 : 0, t + 1); } }
+    if (step >= steps) {
+      step = 0; bar++;
+      const want = battle() ? 'battle' : 'calm';
+      if (want !== mode) { mode = want; if (drone) drone[2].gain.linearRampToValueAtTime(mode === 'battle' ? 0.03 : 0, t + 1); }
+    }
     return beatLen;
   }
+  function setTheme(name) { if (!THEMES[name]) return; theme = THEMES[name]; themeName = name; bar = 0; step = 0; motif = null; }
   function startMusic() {
     startDrone(); nextT = ac.currentTime + 0.3;
     musicTimer = setInterval(() => { if (!ac) return; while (nextT < ac.currentTime + 0.25) nextT += scheduleStep(nextT); }, 60);
   }
   function stopMusic(fade = 2) { if (!ac) return; clearInterval(musicTimer); musicTimer = null; musicBus.gain.linearRampToValueAtTime(0, ac.currentTime + fade); }
+  const MUSIC_BASE = 0.85, SFX_BASE = 0.9, AMB_BASE = 0.3;
+  const musicLevel = () => on.music && (musicTimer || !ac) ? MUSIC_BASE * on.musicVol : 0;
+  const sfxLevel = () => on.sfx ? SFX_BASE * on.sfxVol : 0, ambLevel = () => on.sfx ? AMB_BASE * on.sfxVol : 0;
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     try { ac = new AC(); } catch (e) { ac = null; return; }
     const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(ac.destination);
     master = gainNode(0.9, comp);
-    sfxBus = gainNode(on.sfx ? 0.85 : 0, master); musicBus = gainNode(on.music ? 0.3 : 0, master); ambBus = gainNode(on.sfx ? 0.28 : 0, master);
+    sfxBus = gainNode(sfxLevel(), master); musicBus = gainNode(on.music ? MUSIC_BASE * on.musicVol : 0, master); ambBus = gainNode(ambLevel(), master);
     noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    // stone-hall echo: a generated reverb tail shared by music and sound
+    const len = Math.floor(ac.sampleRate * 2.6), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); let lp = 0; for (let i = 0; i < len; i++) { lp = lp * 0.55 + (Math.random() * 2 - 1) * 0.45; d[i] = lp * Math.pow(1 - i / len, 3.4); } }
+    const verb = ac.createConvolver(); verb.buffer = ir; verb.connect(gainNode(0.8, master));
+    const ms = ac.createGain(); ms.gain.value = 0.34; musicBus.connect(ms); ms.connect(verb);
+    const ss = ac.createGain(); ss.gain.value = 0.12; sfxBus.connect(ss); ss.connect(verb);
     startAmbience(); startMusic();
   }
-  function setOn(kind, v) {
-    on[kind] = v; save();
-    if (!ac) return;
-    const t = ac.currentTime;
-    if (kind === 'music') musicBus.gain.linearRampToValueAtTime(v && musicTimer ? 0.3 : 0, t + 0.3);
-    else { sfxBus.gain.linearRampToValueAtTime(v ? 0.85 : 0, t + 0.1); ambBus.gain.linearRampToValueAtTime(v ? 0.28 : 0, t + 0.3); }
+  function applyLevels(fade = 0.25) {
+    if (!ac) return; const t = ac.currentTime;
+    musicBus.gain.linearRampToValueAtTime(musicLevel(), t + fade); sfxBus.gain.linearRampToValueAtTime(sfxLevel(), t + fade); ambBus.gain.linearRampToValueAtTime(ambLevel(), t + fade);
+  }
+  function setOn(kind, v) { on[kind] = v; save(); applyLevels(); }
+  function setVol(kind, v) { on[kind === 'music' ? 'musicVol' : 'sfxVol'] = clamp(v, 0, 1); save(); applyLevels(0.1); }
+  // the living world around the camera: campfire, marching feet, the murmur of town
+  let crackleT = 0, stepT = 0, murmurT = 2;
+  function ambientTick(dt, info) {
+    if (!ac || !on.sfx) return;
+    for (const f of info.fires) { crackleT -= dt; if (crackleT <= 0) { crackleT = R(0.04, 0.22); play('crackle', f.x, f.y); } }
+    if (info.marching > 0) { stepT -= dt; if (stepT <= 0) { stepT = 1 / Math.min(9, 1.6 + info.marching * 1.2); play('step', info.mx, info.my); } }
+    if (info.town) { murmurT -= dt; if (murmurT <= 0) { murmurT = R(1.5, 4); play('murmur', info.town.x, info.town.y); } }
   }
   let an = null;
   function debugLevel() { // test hook: measures the live output level
@@ -2367,7 +2429,7 @@ const AudioSys = (() => {
     let pk = 0, sq = 0; for (const v of d) { pk = Math.max(pk, Math.abs(v)); sq += v * v; }
     return { peak: pk, rms: Math.sqrt(sq / d.length), state: ac.state, music: !!musicTimer, mode };
   }
-  return { debugLevel, init, play, setOn, isOn: k => on[k], combat(x, y) { const sx = (x - cam.x) * cam.z, sy = (y - cam.y) * cam.z; if (sx > -200 && sx < vw + 200 && sy > -200 && sy < vh + 200) lastCombat = performance.now(); }, stopMusic, ui: n => play(n) };
+  return { setTheme, theme: () => themeName, setVol, vol: k => on[k === 'music' ? 'musicVol' : 'sfxVol'], ambientTick, debugLevel, init, play, setOn, isOn: k => on[k], combat(x, y) { const sx = (x - cam.x) * cam.z, sy = (y - cam.y) * cam.z; if (sx > -200 && sx < vw + 200 && sy > -200 && sy < vh + 200) lastCombat = performance.now(); }, stopMusic, ui: n => play(n) };
 })();
 function refreshSoundButtons() {
   document.getElementById('btnMusic').textContent = 'Music: ' + (AudioSys.isOn('music') ? 'On' : 'Off');
@@ -2375,7 +2437,7 @@ function refreshSoundButtons() {
 }
 
 // ---------- main loop ----------
-let last = performance.now(), time = 0, lastSel = 0;
+let last = performance.now(), time = 0, lastSel = 0, lastRaiders = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
   // camera scrolling
@@ -2404,6 +2466,16 @@ function frame(now) {
 
   render();
   hudT -= dt; if (hudT <= 0) { hudT = 0.2; updateHud(); }
+  {
+    const fire = fires.filter(f => f.x > cam.x - 100 && f.x < cam.x + vw / cam.z + 100 && f.y > cam.y - 100 && f.y < cam.y + vh / cam.z + 100);
+    let marching = 0, mx = 0, my = 0;
+    for (const u of units) if (!u.dead && u.moving && u.type !== 'ram' && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z) { marching++; mx += u.x; my += u.y; }
+    const k = playerKeep(), civCount = units.filter(u => !u.dead && u.type === 'civ').length;
+    AudioSys.ambientTick(dt, { fires: fire, marching, mx: marching ? mx / marching : 0, my: marching ? my / marching : 0, town: k && civCount >= 3 ? { x: k.x, y: k.y } : null });
+    const raiders = units.filter(u => u.raider && !u.dead).length;
+    if (lastRaiders > 0 && raiders === 0 && started && !won) { AudioSys.ui('triumph'); showBanner('The raid has been beaten back!', 3); }
+    lastRaiders = raiders;
+  }
   if (selection.size !== lastSel) { if (selection.size > lastSel) AudioSys.ui('select'); lastSel = selection.size; }
   requestAnimationFrame(frame);
 }
@@ -2503,7 +2575,7 @@ cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
 document.getElementById('banner').style.opacity = 0;
 function startGame(key) {
-  AudioSys.init();
+  AudioSys.init(); AudioSys.setTheme(key);
   CIV = CIVS[key];
   Object.assign(PAL.player, { tunic: CIV.color, tunicDark: CIV.dark, shield: CIV.color });
   PAL.civ.trim = CIV.color;
@@ -2520,6 +2592,10 @@ document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dat
 document.addEventListener('pointerdown', () => AudioSys.init());
 document.getElementById('btnMusic').onclick = () => { AudioSys.init(); AudioSys.setOn('music', !AudioSys.isOn('music')); refreshSoundButtons(); };
 document.getElementById('btnSound').onclick = () => { AudioSys.init(); AudioSys.setOn('sfx', !AudioSys.isOn('sfx')); refreshSoundButtons(); };
+document.getElementById('volMusic').oninput = e => { AudioSys.init(); AudioSys.setVol('music', e.target.value / 100); };
+document.getElementById('volSound').oninput = e => { AudioSys.init(); AudioSys.setVol('sfx', e.target.value / 100); AudioSys.ui('select'); };
+document.getElementById('volMusic').value = Math.round(AudioSys.vol('music') * 100);
+document.getElementById('volSound').value = Math.round(AudioSys.vol('sfx') * 100);
 refreshSoundButtons();
 updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
