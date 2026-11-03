@@ -9,50 +9,90 @@
     font-family:Georgia,"Times New Roman",serif;color:#f3ead7;
     -webkit-user-select:none;user-select:none;touch-action:none}
   body{display:flex;flex-direction:column}
-  #top{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:6px 22px;
-    padding:8px 16px;background:linear-gradient(#33271a,#1c150d);
-    border-bottom:3px solid #8a6a3a;box-shadow:0 2px 8px rgba(0,0,0,.6);z-index:2}
-  #title{font-size:22px;letter-spacing:3px;font-weight:bold;color:#efc979;text-shadow:0 2px 0 #000}
-  #status{font-size:17px;color:#f3ead7}
+  #top{flex:0 0 auto;display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap;
+    padding:5px 12px;background:linear-gradient(#3a2c1c,#1e160e);
+    border-bottom:2px solid #8a6a3a;box-shadow:0 2px 8px rgba(0,0,0,.6);z-index:3}
+  #title{font-size:17px;letter-spacing:2.5px;font-weight:bold;color:#efc979;text-shadow:0 2px 0 #000;white-space:nowrap}
+  #status{display:flex;flex-wrap:wrap;align-items:center;gap:3px 14px;font-size:16px;color:#f3ead7;flex:1 1 auto;min-width:0}
   #status b{color:#ffd98a}
+  .chip{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border:0;background:none;padding:0;font:inherit;color:inherit;box-shadow:none;cursor:default}
+  .chip canvas{width:22px;height:22px;flex:0 0 auto}
+  .chip small{font-size:13px;color:#d9c9a3}
+  button.chip{cursor:pointer;border-bottom:2px dotted #b08a4a;border-radius:0}
+  #btnMenu{margin-left:auto;padding:5px 12px;font-size:15px}
   #view{flex:1 1 auto;position:relative;min-height:0}
   #game{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default}
-  #bottom{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;
-    padding:8px 14px;background:linear-gradient(#2a2016,#17110b);
-    border-top:3px solid #8a6a3a;z-index:2}
-  #selbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:46px}
-  #selLabel{font-size:17px;color:#e9dcbc;margin-right:4px}
-  .card{background:#3a2c1c;border:2px solid #9c7a45;border-radius:6px;padding:4px 8px;min-width:112px}
-  .card .n{font-size:15px;font-weight:bold;color:#fff3d6}
-  .card .bar{height:7px;background:#1b1209;border-radius:4px;margin-top:4px;overflow:hidden}
-  .card .bar i{display:block;height:100%}
-  .btns{display:flex;gap:8px}
+  #mini{position:absolute;right:8px;bottom:8px;width:176px;height:116px;border:2px solid #b08a4a;border-radius:4px;
+    box-shadow:0 3px 10px rgba(0,0,0,.6);cursor:pointer;z-index:2;background:#1a2a12;touch-action:none}
+  #bottom{flex:0 0 auto;display:grid;grid-template-columns:minmax(170px,230px) minmax(0,1fr);gap:8px 12px;
+    padding:6px 10px 8px;background:linear-gradient(#2c2117,#160f09);border-top:2px solid #8a6a3a;z-index:3}
+  #selbox{display:flex;flex-direction:column;gap:5px;min-width:0}
+  #selLabel{font-size:16px;font-weight:bold;color:#fff3d6}
+  #selSum{font-size:14px;color:#e9dcbc;line-height:1.3}
+  #selBar{height:8px;background:#1b1209;border-radius:4px;overflow:hidden}
+  #selBar i{display:block;height:100%;width:0}
+  .btns{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
   button{font-family:inherit;font-size:16px;font-weight:bold;color:#1c140b;background:linear-gradient(#f1d38f,#c99a4a);
     border:2px solid #6e5128;border-radius:6px;padding:7px 14px;cursor:pointer}
   button:active{transform:translateY(1px)}
-  #train{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  #train .tl{font-size:17px;color:#ffd98a;font-weight:bold}
-  .tb{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 12px}
-  .tb small{font-size:13px;font-weight:normal}
-  .tb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
-  #rule{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  #rule .tl{font-size:17px;color:#ffd98a;font-weight:bold}
-  .rb{padding:7px 11px;font-size:15px}
-  .rb.on{outline:3px solid #9fe8a8;background:linear-gradient(#fff0b8,#e2b860)}
-  #build{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  #build .tl{font-size:17px;color:#ffd98a;font-weight:bold}
-  .bb{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 12px}
-  .bb small{font-size:13px;font-weight:normal}
-  .bb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+  button:focus-visible{outline:3px solid #9fe8a8;outline-offset:1px}
+  button.sm{font-size:14px;padding:4px 9px}
+  #cmd{display:flex;flex-direction:column;min-width:0}
+  #tabs{display:flex;gap:3px;align-items:flex-end;overflow-x:auto}
+  .tab{font-size:16px;padding:5px 15px;border-radius:7px 7px 0 0;background:linear-gradient(#4a3826,#33261a);color:#f3ead7;border:2px solid #6e5128;border-bottom:none}
+  .tab.active{background:linear-gradient(#f1d38f,#c99a4a);color:#1c140b}
+  #btnHide{margin-left:auto;font-size:14px;padding:4px 10px;border-radius:7px 7px 0 0}
+  #panes{background:#231910;border:2px solid #6e5128;border-radius:0 7px 7px 7px;padding:6px;min-height:84px;display:flex;align-items:stretch}
+  .pane{display:none;gap:6px;overflow-x:auto;align-items:stretch;min-width:0;flex:1}
+  .pane.active{display:flex}
+  .ib{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;padding:3px 8px 4px;min-width:86px;line-height:1.1;font-size:15px;flex:0 0 auto}
+  .ib canvas{width:60px;height:46px}
+  .ib small{font-size:12.5px;font-weight:normal;white-space:nowrap}
+  .tb.off,.bb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
   .bb.on{outline:3px solid #9fe8a8}
-  #queue{font-size:15px;color:#eadfc4;min-width:150px}
-  #status .food{color:#ffb38a}
+  #queue{font-size:15px;color:#eadfc4;align-self:center;padding:0 6px;min-width:120px}
+  .grp{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 6px}
+  .grp .tl{font-size:15px;color:#ffd98a;font-weight:bold}
+  .grp .row{display:flex;gap:4px}
+  .rb{padding:6px 11px;font-size:15px}
+  .rb.on{outline:3px solid #9fe8a8;background:linear-gradient(#fff0b8,#e2b860)}
+  #bottom.collapsed #panes,#bottom.collapsed #selSum,#bottom.collapsed #selBar,#bottom.collapsed .btns{display:none}
+  #bottom.collapsed{grid-template-columns:auto minmax(0,1fr)}
+  .pop{position:absolute;z-index:7;background:rgba(28,20,12,.97);border:2px solid #b08a4a;border-radius:8px;padding:12px 14px;
+    box-shadow:0 6px 18px rgba(0,0,0,.6);font-size:16px;line-height:1.45;color:#f3ead7;max-width:min(420px,calc(100% - 24px))}
+  .pop h3{margin:0 0 6px;font-size:17px;color:#ffd98a;letter-spacing:1px}
+  .pop .ln{display:flex;justify-content:space-between;gap:16px}
+  .pop .ln b{font-variant-numeric:tabular-nums}
+  .pop .plus{color:#9fe39a}.pop .minus{color:#ff9d86}
+  #moodPop{left:10px;top:8px}
+  #menuPop{right:10px;top:8px;display:flex;flex-direction:column;gap:10px}
+  #menuPop[hidden],#moodPop[hidden]{display:none}
+  #menuPop .row{display:flex;align-items:center;gap:10px}
+  .vol{display:flex;flex-direction:column;font-size:14px;font-weight:bold;color:#ffd98a;gap:2px}
+  .vol input{width:130px;height:24px;accent-color:#e0b84e;cursor:pointer}
+  #help{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:12px;box-sizing:border-box}
   #help.hide{display:none}
-  .vol{display:flex;flex-direction:column;align-items:center;font-size:15px;font-weight:bold;color:#ffd98a;gap:2px}
-  .vol input{width:110px;height:24px;accent-color:#e0b84e;cursor:pointer}
-  .btns{align-items:center;flex-wrap:wrap}
-  #help{margin-left:auto;font-size:15px;line-height:1.45;color:#eadfc4;text-align:right}
+  #help .box{background:#241a10;border:3px solid #b08a4a;border-radius:10px;padding:16px 20px;max-width:640px;max-height:100%;overflow:auto;font-size:16px;line-height:1.5}
+  #help h3{margin:0 0 8px;color:#ffd27a;font-size:20px;letter-spacing:1px}
   #help b{color:#ffd98a}
+  #help p{margin:0 0 7px}
+  @media (max-width: 760px){
+    #title{display:none}
+    #top{flex-wrap:nowrap;align-items:flex-start;padding:4px 8px}
+    #btnMenu{padding:3px 9px;font-size:18px}
+    #btnMenu .lbl{display:none}
+    #status{font-size:15px;gap:2px 11px}
+    .chip small{display:none}
+    #bottom{grid-template-columns:minmax(0,1fr);gap:5px;padding:5px 8px 6px}
+    #selbox{flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 8px}
+    #selSum{display:none}
+    #selBar{width:70px}
+    #mini{width:124px;height:82px}
+    .ib{min-width:76px;padding:3px 5px 4px}
+    .ib canvas{width:50px;height:38px}
+    #panes{min-height:72px}
+    .tab{padding:5px 11px;font-size:15px}
+  }
   #banner{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:88%;
     background:rgba(20,14,8,.86);border:2px solid #b08a4a;border-radius:8px;padding:12px 20px;
     font-size:19px;line-height:1.4;text-align:center;color:#fff0cf;pointer-events:none;transition:opacity 1s}
@@ -78,7 +118,8 @@
 <body>
 <div id="top">
   <div id="title">STRONGHOLD DESTROYER</div>
-  <div id="status"></div>
+  <div id="status"><b>Choose your civilization to begin</b></div>
+  <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9881;<span class="lbl"> Menu</span></button>
 </div>
 <div id="view">
   <canvas id="game"></canvas>
@@ -101,41 +142,67 @@
         <div class="hd bad">WEAKNESSES</div><ul><li>Soldiers march 15% slower</li></ul></button>
     </div>
   </div></div>
+  <canvas id="mini" title="Map: click or drag to move the view"></canvas>
+  <div id="moodPop" class="pop" hidden></div>
+  <div id="menuPop" class="pop" hidden>
+    <h3>MENU</h3>
+    <button id="btnHelp">Help and controls (H)</button>
+    <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
+    <div class="row"><button id="btnSound">Sound: On</button><label class="vol">Sound volume<input type="range" id="volSound" min="0" max="100"></label></div>
+  </div>
+  <div id="help" class="hide"><div class="box">
+    <h3>HOW TO PLAY</h3>
+    <p><b>Select:</b> left-click a person, or drag a box around several. Double-click selects everyone on screen. On touch, tap or drag.</p>
+    <p><b>Command:</b> right-click (or tap) the ground to move, an enemy to attack, a tree for wood, a berry bush or farm for food.</p>
+    <p><b>View:</b> arrow keys or the screen edge to scroll, mouse wheel or pinch to zoom, or click the map in the corner.</p>
+    <p><b>Panel tabs:</b> Town, Castle, Army, Rule (keys 1 to 4). <b>Hide</b> (or the Tab key) shrinks the panel.</p>
+    <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
+    <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
+    <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers.</p>
+    <p><b>Keys:</b> S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
+    <button id="btnHelpClose">Close</button>
+  </div></div>
   <div id="win"><div class="box"><h1 id="endTitle">VICTORY</h1><p id="endText">The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
 </div>
 <div id="bottom">
-  <div id="selbox"><span id="selLabel">No soldiers selected</span><span id="cards" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
-  <div class="btns"><button id="btnAll">Select All</button><button id="btnSold">Soldiers</button><button id="btnCiv">Civilians</button><button id="btnClear">Clear</button><button id="btnStop">Stop</button><button id="btnHelp">Help</button><button id="btnMusic">Music: On</button><label class="vol" title="Music volume">Music<input type="range" id="volMusic" min="0" max="100"></label><button id="btnSound">Sound: On</button><label class="vol" title="Sound volume">Sound<input type="range" id="volSound" min="0" max="100"></label></div>
-  <div id="train"><span class="tl">Keep:</span>
-    <button class="tb" data-k="civ">Civilian<small>40 food</small></button>
-    <button class="tb" data-k="sword">Swordsman<small>40 food &middot; 30 wood</small></button>
-    <button class="tb" data-k="spear">Spearman<small>30 food &middot; 40 wood</small></button>
-    <button class="tb" data-k="archer">Archer<small>20 food &middot; 25 wood &middot; 30 gold</small></button>
-    <button class="tb" data-k="ram">Battering Ram<small>80 wood &middot; 20 gold</small></button>
-    <span id="queue"></span>
+  <div id="selbox">
+    <span id="selLabel">No soldiers selected</span>
+    <div id="selSum"></div>
+    <div id="selBar"><i></i></div>
+    <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button></div>
   </div>
-  <div id="rule"><span class="tl">Rations:</span>
-    <button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button>
-    <span class="tl" style="margin-left:8px">Taxes:</span>
-    <button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button>
-    <button class="bb" id="feast" style="margin-left:8px">Feast<small>50 gold</small></button>
-  </div>
-  <div id="build"><span class="tl">Build:</span>
-    <button class="bb" data-b="farm">Farm<small>60 wood</small></button>
-    <button class="bb" data-b="house">House<small>50 wood</small></button>
-    <button class="bb" data-b="wall">Wall<small>8 wood each</small></button>
-    <button class="bb" data-b="gate">Gate<small>15 wood</small></button>
-    <button class="bb" data-b="gtower">Tower<small>120 wood</small></button>
-  </div>
-  <div id="help" class="hide">
-    <b>Mouse:</b> left-click or drag a box to select &middot; right-click to move or attack &middot; double-click selects all on screen<br>
-    <b>Keys:</b> arrows or screen edge to scroll &middot; wheel to zoom &middot; S stop &middot; Esc clear<br>
-    <b>Touch:</b> tap or drag to select &middot; tap ground or enemy to command &middot; two fingers to pan and zoom<br>
-    <b>Civilians:</b> right-click (or tap) a tree for wood or a berry bush for food &middot; they carry it to the keep<br>
-    <b>Sound:</b> Music and Sound buttons turn each on or off, and the sliders set their volume &middot; M turns all sound on or off<br>
-    <b>Siege:</b> stone walls resist swords and arrows &middot; train a Battering Ram to smash walls and buildings (rams cannot hurt soldiers)<br>
-    <b>Rule:</b> rations and taxes change your people's mood &middot; happy people work faster and settlers arrive &middot; unhappy people leave<br>
-    <b>Build:</b> pick a building, then click near your keep to place it (walls: click start, then end) &middot; right-click or Esc cancels
+  <div id="cmd">
+    <div id="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="town" title="Town (1)">Town</button>
+      <button class="tab" role="tab" data-tab="castle" title="Castle (2)">Castle</button>
+      <button class="tab" role="tab" data-tab="army" title="Army (3)">Army</button>
+      <button class="tab" role="tab" data-tab="rule" title="Rule (4)">Rule</button>
+      <button id="btnHide" title="Hide or show the panel (Tab)">&#9662; Hide</button>
+    </div>
+    <div id="panes">
+      <div class="pane active" data-pane="town">
+        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood</small></button>
+        <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small></button>
+        <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small></button>
+      </div>
+      <div class="pane" data-pane="castle">
+        <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small></button>
+        <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small></button>
+        <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small></button>
+      </div>
+      <div class="pane" data-pane="army">
+        <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>40 food &middot; 30 wood</small></button>
+        <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>30 food &middot; 40 wood</small></button>
+        <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>20 food &middot; 25 wood &middot; 30 gold</small></button>
+        <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small></button>
+        <span id="queue"></span>
+      </div>
+      <div class="pane" data-pane="rule" id="rule">
+        <div class="grp"><span class="tl">Rations</span><div class="row"><button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button></div></div>
+        <div class="grp"><span class="tl">Taxes</span><div class="row"><button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button></div></div>
+        <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +15 mood</small></button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1708,7 +1775,9 @@ canvas.addEventListener('wheel', e => {
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
-  if (e.key === 'Escape') { if (placing) cancelPlacing(); else selection.clear(); }
+  if (e.key === 'Escape') { if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); else if (UI.closePops()) {} else if (placing) cancelPlacing(); else selection.clear(); }
+  if (['1', '2', '3', '4'].includes(e.key)) UI.showTab(['town', 'castle', 'army', 'rule'][+e.key - 1]);
+  if (e.key === 'Tab') { e.preventDefault(); UI.toggleHide(); }
   if (e.key === 'h' || e.key === 'H') toggleHelp();
   if (e.key === 'm' || e.key === 'M') { const anyOn = AudioSys.isOn('music') || AudioSys.isOn('sfx'); AudioSys.setOn('music', !anyOn); AudioSys.setOn('sfx', !anyOn); refreshSoundButtons(); }
   if (e.key === 's' || e.key === 'S') commandStop(selectedList());
@@ -1726,7 +1795,7 @@ document.getElementById('btnStop').onclick = () => commandStop(selectedList());
 document.getElementById('again').onclick = () => location.reload();
 
 // ---------- HUD ----------
-const statusEl = document.getElementById('status'), cardsEl = document.getElementById('cards'), selLabel = document.getElementById('selLabel');
+
 let hudT = 0, won = false, alertCooldown = 0, bannerTimer = null;
 function showBanner(html, secs) {
   const b = document.getElementById('banner'); b.innerHTML = html; b.style.opacity = 1;
@@ -1738,25 +1807,23 @@ function endGame(title, text) {
   setTimeout(() => { document.getElementById('endTitle').textContent = title; document.getElementById('endText').textContent = text; document.getElementById('win').style.display = 'flex'; }, 1500);
 }
 function updateHud() {
-  if (!started) { statusEl.innerHTML = '<b>Choose your civilization to begin</b>'; return; }
+  if (!started) return;
   const mine = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length;
   const pop = mine + trainQueue.filter(q => q.kind !== 'ram').length;
   const foes = enemiesOf('player').filter(e => !isWall(e)).length;
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
-  statusEl.innerHTML = `<b style="color:${CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff'}">${CIV.name}</b> &nbsp;&middot;&nbsp; <span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery)}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; Gold: <b>${Math.floor(res.gold)}</b> &nbsp;&middot;&nbsp; ${moodHtml()} &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${popCap()} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
+  UI.setStatus({ civ: CIV.name, civColor: CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff',
+    food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), gold: Math.floor(res.gold),
+    pop, cap: popCap(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
+    moodRate: Math.round(moodRate), foes, raid: towerUp ? `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
   document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
   document.getElementById('feast').classList.toggle('off', res.gold < 50);
   document.querySelectorAll('.bb[data-b]').forEach(b => { b.classList.toggle('off', res.wood < BUILD[b.dataset.b].wood); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
   document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
   const sel = selectedList();
-  selLabel.textContent = sel.length ? `Selected: ${sel.length}` : 'No soldiers selected';
-  cardsEl.innerHTML = sel.map(u => {
-    const f = u.hp / u.maxHp, col = f > 0.6 ? '#4fd65a' : f > 0.3 ? '#f2c230' : '#e8432f';
-    const extra = u.type === 'civ' ? (u.carry > 0 ? ` &middot; ${u.carry} ${u.carryType}` : u.order === 'gather' ? ` &middot; ${u.task.type}` : ' &middot; idle') : '';
-    return `<div class="card"><div class="n">${u.name}<span style="font-weight:normal;font-size:13px">${extra}</span></div><div class="bar"><i style="width:${(f * 100).toFixed(0)}%;background:${col}"></i></div></div>`;
-  }).join('');
+  UI.setSelection(sel);
   if (!won && foes === 0) endGame('VICTORY', 'The enemy camp has been destroyed.');
   else if (!won && !playerKeep()) endGame('DEFEAT', 'Your keep has fallen.');
   else if (!won && mine === 0 && !trainQueue.length && res.food < 40) endGame('DEFEAT', 'Your people are gone.');
@@ -2436,6 +2503,175 @@ function refreshSoundButtons() {
   document.getElementById('btnSound').textContent = 'Sound: ' + (AudioSys.isOn('sfx') ? 'On' : 'Off');
 }
 
+// ---------- interface: status chips, tabs, pictures, minimap, mood report, menu ----------
+const UI = (() => {
+  const statusEl = document.getElementById('status'), $ = id => document.getElementById(id);
+  let built = false, miniBase = null, miniBaseT = 0;
+  // --- small pictures drawn with the game's own artwork ---
+  function fakeUnit(type) {
+    return { kind: 'unit', type, team: 'player', x: 0, y: 0, pal: type === 'civ' ? PAL.civ : PAL.player, skin: '#d9a57a', hair: '#4a2e18', seed: 1,
+      facing: 1, walkPhase: 0, moving: false, attackAnim: 0, combatT: 0, order: 'idle', dead: false, deathT: 0, flash: 0, carry: 0, carryType: null,
+      task: type === 'civ' ? { type: 'wood', node: null } : null, sub: null, look: { beard: true, longHair: false, w: 1, h: 1 }, radius: 11 };
+  }
+  function iconBuilding(g, name, w, h) {
+    const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (name === 'farm') b.amount = b.max;
+    const vis = { farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136] }[name];
+    const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
+    g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
+  }
+  function iconUnit(g, type, w, h) {
+    const u = fakeUnit(type);
+    g.save(); g.translate(w / 2, h - 3);
+    if (type === 'ram') { const sc = Math.min((w - 4) / 56, (h - 4) / 58); g.scale(sc, sc); drawRam(g, u, 0); }
+    else { const sc = (h - 4) / 46; g.scale(sc, sc); drawPerson(g, u, 0); }
+    g.restore();
+  }
+  function iconRes(g, name, w, h) {
+    const s = Math.min(w, h) / 22; g.save(); g.scale(s, s); g.lineCap = 'round'; g.lineJoin = 'round';
+    const ol = 'rgba(20,12,6,0.85)';
+    if (name === 'food') {
+      const gr = g.createLinearGradient(0, 6, 0, 18); gr.addColorStop(0, '#e3a75a'); gr.addColorStop(1, '#9a5f24');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(11, 13, 9, 5.5, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 1; g.stroke();
+      g.strokeStyle = '#f6d9a0'; g.lineWidth = 1.2; for (const x of [7, 11, 15]) { g.beginPath(); g.moveTo(x - 1.5, 11); g.lineTo(x + 1.5, 15); g.stroke(); }
+    } else if (name === 'wood') {
+      for (const [y, x] of [[14, 3], [8, 6]]) { g.fillStyle = '#7d5830'; g.fillRect(x, y - 3, 13, 6); g.strokeStyle = ol; g.lineWidth = 1; g.strokeRect(x, y - 3, 13, 6);
+        g.fillStyle = '#d6b27a'; g.beginPath(); g.ellipse(x + 13, y, 2, 3, 0, 0, Math.PI * 2); g.fill(); g.stroke(); g.strokeStyle = '#8a6a3a'; g.beginPath(); g.ellipse(x + 13, y, 0.8, 1.4, 0, 0, Math.PI * 2); g.stroke(); }
+    } else if (name === 'gold') {
+      const gr = g.createRadialGradient(8, 8, 1, 11, 11, 9); gr.addColorStop(0, '#fff2b0'); gr.addColorStop(0.5, '#e8b83a'); gr.addColorStop(1, '#9a6c12');
+      g.fillStyle = gr; g.beginPath(); g.arc(11, 11, 8.5, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 1; g.stroke();
+      g.strokeStyle = 'rgba(120,80,10,0.8)'; g.beginPath(); g.arc(11, 11, 5.5, 0, Math.PI * 2); g.stroke();
+    } else if (name === 'people') {
+      for (const [x, c] of [[7.5, '#c9b38a'], [14.5, '#efe0bd']]) { g.fillStyle = c; g.beginPath(); g.arc(x, 7, 3.3, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 0.9; g.stroke();
+        g.beginPath(); g.moveTo(x - 5, 19); g.quadraticCurveTo(x - 5, 11, x, 11); g.quadraticCurveTo(x + 5, 11, x + 5, 19); g.closePath(); g.fill(); g.stroke(); }
+    } else if (name === 'mood') {
+      const gr = g.createRadialGradient(8, 8, 1, 11, 11, 9); gr.addColorStop(0, '#fff3c0'); gr.addColorStop(1, '#d9a63a');
+      g.fillStyle = gr; g.beginPath(); g.arc(11, 11, 8.5, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 1; g.stroke();
+      g.fillStyle = ol; g.beginPath(); g.arc(8, 9, 1.2, 0, Math.PI * 2); g.arc(14, 9, 1.2, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 1.3; g.beginPath(); g.arc(11, 11.5, 4.2, 0.25, Math.PI - 0.25); g.stroke();
+    } else if (name === 'foes') {
+      for (const d of [1, -1]) { g.strokeStyle = '#d8dde2'; g.lineWidth = 2; g.beginPath(); g.moveTo(11 - d * 7, 4); g.lineTo(11 + d * 5, 16); g.stroke();
+        g.strokeStyle = '#a8322f'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(11 + d * 3.5, 17.5); g.lineTo(11 + d * 7.5, 13.5); g.stroke(); }
+    } else if (name === 'raid') {
+      const gr = g.createLinearGradient(3, 0, 19, 0); gr.addColorStop(0, '#f2e6c8'); gr.addColorStop(1, '#a8834a');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(3, 15); g.quadraticCurveTo(9, 5, 19, 4); g.lineTo(19, 10); g.quadraticCurveTo(11, 11, 6, 18); g.closePath(); g.fill(); g.strokeStyle = ol; g.lineWidth = 1; g.stroke();
+      g.fillStyle = '#c9a24a'; g.fillRect(9, 7.5, 2, 6);
+    } else if (name === 'feast') {
+      g.fillStyle = '#8a6a3a'; g.beginPath(); g.ellipse(10, 16, 9, 3, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 0.8; g.stroke();
+      g.fillStyle = '#a5582a'; g.beginPath(); g.ellipse(9, 12.5, 5.5, 3.6, -0.3, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = '#efe6d0'; g.fillRect(13.5, 9.5, 3.5, 1.6);
+      g.fillStyle = '#e0b84e'; g.beginPath(); g.moveTo(16, 4); g.lineTo(21, 4); g.lineTo(19.5, 9); g.lineTo(17.5, 9); g.closePath(); g.fill(); g.stroke(); g.fillRect(18, 9, 1, 4); g.fillRect(16.8, 13, 3.4, 1);
+    }
+    g.restore();
+  }
+  function paintIcon(c) {
+    const id = c.dataset.icon, chip = !!c.closest('.chip');
+    const w = chip ? 22 : 60, h = chip ? 22 : 46;
+    c.width = w * 2; c.height = h * 2; const g = c.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, w, h);
+    const [kind, name] = id.split(':');
+    try { if (kind === 'b') iconBuilding(g, name, w, h); else if (kind === 'u') iconUnit(g, name, w, h); else iconRes(g, name, w, h); } catch (e) {}
+  }
+  const paintIcons = (root = document) => root.querySelectorAll('canvas[data-icon]').forEach(paintIcon);
+  // --- status bar ---
+  function buildStatus() {
+    statusEl.innerHTML = `<span class="chip" id="cCiv"><b></b></span>
+      <span class="chip" title="Food"><canvas data-icon="r:food"></canvas><b id="vFood"></b><small id="vEat"></small></span>
+      <span class="chip" title="Wood"><canvas data-icon="r:wood"></canvas><b id="vWood"></b></span>
+      <span class="chip" title="Gold"><canvas data-icon="r:gold"></canvas><b id="vGold"></b></span>
+      <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b></span>
+      <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
+      <span class="chip" title="Enemies left"><canvas data-icon="r:foes"></canvas><b id="vFoes"></b></span>
+      <span class="chip" title="Next enemy raid"><canvas data-icon="r:raid"></canvas><b id="vRaid"></b></span>`;
+    paintIcons(statusEl); built = true;
+    $('cMood').onclick = () => toggle('moodPop');
+  }
+  function setStatus(d) {
+    if (!built) buildStatus();
+    const civB = $('cCiv').firstElementChild; civB.textContent = d.civ; civB.style.color = d.civColor;
+    $('vFood').textContent = d.food; $('vEat').textContent = `eating ${d.eat}/min`; $('vWood').textContent = d.wood; $('vGold').textContent = d.gold;
+    $('vPeople').textContent = `${d.pop} of ${d.cap}`;
+    const mv = $('vMood'); mv.textContent = `${d.mood} ${d.moodName}`; mv.style.color = d.moodColor;
+    $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
+    $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid;
+    if (!$('moodPop').hidden) $('moodPop').innerHTML = moodReport();
+  }
+  function moodReport() {
+    const r = RATIONS[ration], t = TAXES[tax];
+    const ln = (label, v) => `<div class="ln"><span>${label}</span><b class="${v > 0 ? 'plus' : v < 0 ? 'minus' : ''}">${v > 0 ? '+' : ''}${v}/min</b></div>`;
+    const total = (starving ? -20 : r.mood) + t.mood;
+    return `<h3>MOOD ${Math.round(mood)} &middot; ${moodName().toUpperCase()}</h3>` +
+      (starving ? ln('No food: starving', -20) : ln(`Rations: ${r.name}`, r.mood)) + ln(`Taxes: ${t.name}`, t.mood) +
+      `<div class="ln" style="border-top:1px solid #6e5128;margin-top:4px;padding-top:4px"><span>Total</span><b class="${total > 0 ? 'plus' : total < 0 ? 'minus' : ''}">${total > 0 ? '+' : ''}${total}/min</b></div>` +
+      `<p style="margin:8px 0 0;font-size:15px">Each of your people who dies costs 3 mood. A feast adds 15.</p>` +
+      `<p style="margin:6px 0 0;font-size:15px"><b>Happy</b> (70 and up): work 15% faster, settlers arrive.<br><b>Unhappy</b> (below 40): work 20% slower.<br><b>Rebellious</b> (below 20): people leave.</p>` +
+      `<p style="margin:6px 0 0;font-size:14px;color:#d9c9a3">Change rations and taxes in the Rule tab.</p>`;
+  }
+  function toggle(id) { const p = $(id); p.hidden = !p.hidden; if (id === 'moodPop' && !p.hidden) p.innerHTML = moodReport(); if (id === 'menuPop') $('btnMenu').setAttribute('aria-expanded', String(!p.hidden)); }
+  function closePops() { let any = false; for (const id of ['moodPop', 'menuPop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
+  // --- tabs and hiding the panel ---
+  function showTab(name) {
+    document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
+    $('bottom').classList.remove('collapsed'); $('btnHide').innerHTML = '&#9662; Hide';
+  }
+  function toggleHide() { const c = $('bottom').classList.toggle('collapsed'); $('btnHide').innerHTML = c ? '&#9652; Show' : '&#9662; Hide'; }
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => showTab(t.dataset.tab));
+  $('btnHide').onclick = toggleHide;
+  $('btnMenu').onclick = () => toggle('menuPop');
+  $('btnHelpClose').onclick = () => toggleHelp();
+  // --- selection summary ---
+  function setSelection(sel) {
+    $('selLabel').textContent = sel.length ? `${sel.length} selected` : 'Nothing selected';
+    const counts = {}; for (const u of sel) counts[u.name] = (counts[u.name] || 0) + 1;
+    const plural = n => n.endsWith('man') ? n.slice(0, -3) + 'men' : n + 's';
+    let txt = Object.entries(counts).map(([n, c]) => `${c} ${c > 1 ? plural(n) : n}`).join(', ');
+    if (sel.length === 1 && sel[0].type === 'civ') { const u = sel[0]; txt += u.carry > 0 ? ` (carrying ${u.carry} ${u.carryType})` : u.order === 'gather' && u.task ? ` (gathering ${u.task.type})` : u.order === 'build' ? ' (building)' : ' (idle)'; }
+    $('selSum').textContent = txt || 'Click a person or drag a box to select.';
+    const f = sel.length ? sel.reduce((a, u) => a + u.hp / u.maxHp, 0) / sel.length : 0;
+    const bar = $('selBar').firstElementChild; bar.style.width = (f * 100).toFixed(0) + '%'; bar.style.background = f > 0.6 ? '#4fd65a' : f > 0.3 ? '#f2c230' : '#e8432f';
+  }
+  // --- minimap ---
+  const mini = $('mini');
+  function buildMiniBase() {
+    miniBase = document.createElement('canvas'); miniBase.width = 352; miniBase.height = 232;
+    const g = miniBase.getContext('2d'), sx = 352 / MW, sy = 232 / MH;
+    g.drawImage(terrain, 0, 0, 352, 232);
+    g.fillStyle = 'rgba(16,40,14,0.9)'; for (const t of trees) { g.beginPath(); g.arc(t.x * sx, (t.y - 10) * sy, 2.2, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = '#8f8b82'; for (const r of rocks) g.fillRect(r.x * sx - 1, r.y * sy - 1, 2.5, 2.5);
+    miniBaseT = trees.length;
+  }
+  function drawMini() {
+    const r = mini.getBoundingClientRect(); if (!r.width) return;
+    const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+    if (mini.width !== W || mini.height !== H) { mini.width = W; mini.height = H; }
+    if (!miniBase || miniBaseT !== trees.length) buildMiniBase();
+    const g = mini.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = true;
+    g.drawImage(miniBase, 0, 0, W, H);
+    const sx = W / MW, sy = H / MH;
+    g.fillStyle = 'rgba(226,194,90,0.9)'; for (const f of farms) if (!f.dead) g.fillRect(f.x0 * sx, f.y0 * sy, (f.x1 - f.x0) * sx, (f.y1 - f.y0) * sy);
+    for (const s of structures) {
+      if (s.dead) continue;
+      g.fillStyle = s.team === 'player' ? PAL.player.tunic : '#c8342c';
+      g.fillRect(s.x0 * sx, s.y0 * sy, Math.max(2, (s.x1 - s.x0) * sx), Math.max(2, (s.y1 - s.y0) * sy));
+      if (s.kind === 'keep' || s.kind === 'tower') { g.strokeStyle = '#fff3d6'; g.lineWidth = dpr; g.strokeRect(s.x0 * sx, s.y0 * sy, (s.x1 - s.x0) * sx, (s.y1 - s.y0) * sy); }
+    }
+    const d = Math.max(2, 2 * dpr);
+    for (const u of units) {
+      if (u.dead) continue;
+      g.fillStyle = u.team !== 'player' ? '#ff5a4a' : u.type === 'civ' ? '#f2e2b8' : shade(PAL.player.tunic, 0.35);
+      g.fillRect(u.x * sx - d / 2, u.y * sy - d / 2, d, d);
+    }
+    g.strokeStyle = '#ffffff'; g.lineWidth = 1.5 * dpr;
+    g.strokeRect(cam.x * sx, cam.y * sy, vw / cam.z * sx, vh / cam.z * sy);
+  }
+  let miniDrag = false;
+  const miniMove = e => { const r = mini.getBoundingClientRect(); centerOn(clamp((e.clientX - r.left) / r.width, 0, 1) * MW, clamp((e.clientY - r.top) / r.height, 0, 1) * MH); };
+  mini.addEventListener('pointerdown', e => { miniDrag = true; mini.setPointerCapture(e.pointerId); miniMove(e); e.preventDefault(); });
+  mini.addEventListener('pointermove', e => { if (miniDrag) miniMove(e); });
+  mini.addEventListener('pointerup', () => { miniDrag = false; });
+  mini.addEventListener('pointercancel', () => { miniDrag = false; });
+  return { setStatus, setSelection, paintIcons, showTab, toggleHide, closePops, drawMini, moodReport };
+})();
+
 // ---------- main loop ----------
 let last = performance.now(), time = 0, lastSel = 0, lastRaiders = 0;
 function frame(now) {
@@ -2465,7 +2701,7 @@ function frame(now) {
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
 
   render();
-  hudT -= dt; if (hudT <= 0) { hudT = 0.2; updateHud(); }
+  hudT -= dt; if (hudT <= 0) { hudT = 0.2; updateHud(); UI.drawMini(); }
   {
     const fire = fires.filter(f => f.x > cam.x - 100 && f.x < cam.x + vw / cam.z + 100 && f.y > cam.y - 100 && f.y < cam.y + vh / cam.z + 100);
     let marching = 0, mx = 0, my = 0;
@@ -2585,6 +2821,7 @@ function startGame(key) {
   planEnemyWalls(); buildEnemyWalls(16, true);
   started = true;
   document.getElementById('pick').style.display = 'none';
+  UI.paintIcons();
   showBanner(`You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);
   updateHud();
 }
@@ -2597,6 +2834,7 @@ document.getElementById('volSound').oninput = e => { AudioSys.init(); AudioSys.s
 document.getElementById('volMusic').value = Math.round(AudioSys.vol('music') * 100);
 document.getElementById('volSound').value = Math.round(AudioSys.vol('sfx') * 100);
 refreshSoundButtons();
+UI.paintIcons(); UI.drawMini();
 updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
