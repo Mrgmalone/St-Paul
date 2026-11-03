@@ -108,6 +108,7 @@
     <button class="tb" data-k="sword">Swordsman<small>40 food &middot; 30 wood</small></button>
     <button class="tb" data-k="spear">Spearman<small>30 food &middot; 40 wood</small></button>
     <button class="tb" data-k="archer">Archer<small>20 food &middot; 25 wood &middot; 30 gold</small></button>
+    <button class="tb" data-k="ram">Battering Ram<small>80 wood &middot; 20 gold</small></button>
     <span id="queue"></span>
   </div>
   <div id="rule"><span class="tl">Rations:</span>
@@ -128,6 +129,7 @@
     <b>Keys:</b> arrows or screen edge to scroll &middot; wheel to zoom &middot; S stop &middot; Esc clear<br>
     <b>Touch:</b> tap or drag to select &middot; tap ground or enemy to command &middot; two fingers to pan and zoom<br>
     <b>Civilians:</b> right-click (or tap) a tree for wood or a berry bush for food &middot; they carry it to the keep<br>
+    <b>Siege:</b> stone walls resist swords and arrows &middot; train a Battering Ram to smash walls and buildings (rams cannot hurt soldiers)<br>
     <b>Rule:</b> rations and taxes change your people's mood &middot; happy people work faster and settlers arrive &middot; unhappy people leave<br>
     <b>Build:</b> pick a building, then click near your keep to place it (walls: click start, then end) &middot; right-click or Esc cancels
   </div>
@@ -271,6 +273,7 @@ function paintTerrain() {
 const KINDS = {
   sword: { name: 'Swordsman', hp: 110, dmg: 13, range: 5, cd: 1.0, speed: 74, anim: 0.5, hitAt: 0.62 },
   spear: { name: 'Spearman', hp: 95, dmg: 15, range: 17, cd: 1.25, speed: 70, anim: 0.55, hitAt: 0.55 },
+  ram: { name: 'Battering Ram', hp: 420, dmg: 70, range: 4, cd: 2.4, speed: 34, anim: 0.8, hitAt: 0.55 },
   archer: { name: 'Archer', hp: 70, dmg: 9, range: 170, cd: 1.6, speed: 72, anim: 0.6, hitAt: 0.55 },
   civ: { name: 'Civilian', hp: 50, dmg: 0, range: 0, cd: 1, speed: 66, anim: 0.6, hitAt: 2 }
 };
@@ -301,6 +304,7 @@ function makeUnit(team, kind, x, y) {
     post: { x, y }, raider: false, think: Math.random() * 0.3, lastHurt: -99,
     carry: 0, carryType: null, task: null, sub: null, workT: 0, bad: new Set(), hair: HAIRS[Math.floor(Math.random() * HAIRS.length)]
   };
+  if (kind === 'ram') u.radius = 16;
   if (kind === 'civ') u.pal = PAL.civ;
   else if (team === 'player') { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }
   units.push(u);
@@ -449,6 +453,8 @@ function nearestEnemy(u, maxD) {
 }
 function hitCenter(t) { return t.x0 !== undefined ? { x: t.x + RR(-22, 22), y: t.y - RR(20, 90) } : { x: t.x, y: t.y - 21 }; }
 
+const WALL_RESIST = 0.35;
+const isWall = t => t.kind === 'wall' || t.kind === 'gate';
 function doHit(u) {
   const t = u.target;
   if (!alive(t) || edgeDist(u, t) > u.range + 8) return;
@@ -457,7 +463,9 @@ function doHit(u) {
     arrows.push({ x0, y0, x1: c.x, y1: c.y, t: 0, dur: Math.hypot(c.x - x0, c.y - y0) / 460 + 0.08, h: 18, target: t, from: u, dmg: Math.round(u.dmg * RR(0.85, 1.15)) });
     return;
   }
-  const dmg = Math.round(u.dmg * RR(0.85, 1.15));
+  if (u.type === 'ram' && t.x0 === undefined) return;
+  let dmg = Math.round(u.dmg * RR(0.85, 1.15));
+  if (isWall(t) && u.type !== 'ram') dmg = Math.max(1, Math.round(dmg * WALL_RESIST));
   t.hp -= dmg; t.flash = 1;
   const c = hitCenter(t);
   if (t.x0 !== undefined) {
@@ -507,7 +515,7 @@ function underAttackAlert(u) {
 }
 function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
-  if (t.team === 'player' && t.kind === 'unit' && started) mood = Math.max(0, mood - 3);
+  if (t.team === 'player' && t.kind === 'unit' && t.type !== 'ram' && started) mood = Math.max(0, mood - 3);
   selection.delete(t);
   if (t.x0 !== undefined) {
     for (let i = 0; i < t.w; i++) for (let j = 0; j < t.h; j++) { setBlock(t.c + i, t.r + j, 0); if (t.kind === 'gate') gate[(t.r + j) * COLS + t.c + i] = 0; }
@@ -621,6 +629,15 @@ function aggro(u, r) {
 }
 function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
 function attackStep(u, dt) {
+  // breaking through a wall: every second, check whether a way to the real target has opened
+  if (u.goal && isWall(u.target) && alive(u.goal)) {
+    u.goalCheck = (u.goalCheck || 0) - dt;
+    if (u.goalCheck <= 0) {
+      u.goalCheck = 1;
+      const ap = approachPoint(u, u.goal), pth = findPath(u.x, u.y, ap.x, ap.y), end = pth.length ? pth[pth.length - 1] : u;
+      if (Math.hypot(end.x - ap.x, end.y - ap.y) <= 40) { u.target = u.goal; u.goal = null; u.path = pth; u.repath = 0.5; }
+    }
+  }
   const t = u.target, ed = edgeDist(u, t);
   if (ed <= u.range + 2) {
     u.path = []; u.moving = false;
@@ -632,11 +649,32 @@ function attackStep(u, dt) {
       const ap = approachPoint(u, t);
       u.path = findPath(u.x, u.y, ap.x, ap.y);
       u.repath = 0.5;
+      if (!isWall(t)) { // walled off from the target: hammer the nearest wall of the other side instead
+        const end = u.path.length ? u.path[u.path.length - 1] : u;
+        if (Math.hypot(end.x - ap.x, end.y - ap.y) > 40) {
+          let wb = null, wd = 200;
+          for (const b of structures) if (!b.dead && b.team !== u.team && isWall(b)) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }
+          if (wb) { if (!u.goal) u.goal = t; u.target = wb; u.path = []; u.repath = 0; return; }
+        }
+      }
     }
     followPath(u, dt);
   }
 }
+const nearestFoeBuilding = (u, maxD) => { let best = null, bd = maxD; for (const b of structures) if (!b.dead && b.team !== u.team && b.done !== false) { const d = edgeDist(u, b); if (d < bd) { bd = d; best = b; } } return best; };
+function ramBrain(u) {
+  if (u.order === 'attack' && (!alive(u.target) || u.target.x0 === undefined)) {
+    const n = nearestFoeBuilding(u, u.team === 'player' ? 220 : 1e9);
+    if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
+  }
+  if (u.order === 'idle' || u.order === 'raid') {
+    u.moving = false;
+    const n = nearestFoeBuilding(u, u.team === 'player' ? 150 : 1e9);
+    if (n) { u.order = 'attack'; u.target = n; u.repath = 0; }
+  }
+}
 function playerBrain(u) {
+  if (u.type === 'ram') { ramBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
@@ -649,6 +687,7 @@ function playerBrain(u) {
 }
 function enemyBrain(u, dt) {
   u.think -= dt;
+  if (u.type === 'ram') { ramBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = aggro(u, 170);
     if (n) { u.target = n; u.repath = 0; }
@@ -787,6 +826,9 @@ function updateUnit(u, dt) {
     if (u.attackAnim >= 1) u.attackAnim = 0;
   }
   if (u.dead) return;
+  // once the wall in the way falls, go back to what they were sent to destroy
+  if (u.order === 'attack' && !alive(u.target) && alive(u.goal)) { u.target = u.goal; u.goal = null; u.repath = 0; u.path = []; }
+  if (u.order !== 'attack') u.goal = null;
   if (u.team === 'player') { if (u.type === 'civ') civBrain(u, dt); else playerBrain(u); } else enemyBrain(u, dt);
 
   if (u.order === 'move' || u.order === 'return') {
@@ -799,9 +841,9 @@ function updateUnit(u, dt) {
   else if (u.order === 'raid') followPath(u, dt);
 
   // wounds slowly mend after 8 seconds out of harm's way
-  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving) u.hp = Math.min(u.maxHp, u.hp + CIV.heal * dt);
+  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving && u.type !== 'ram') u.hp = Math.min(u.maxHp, u.hp + CIV.heal * dt);
   // Stone Wardens: the keep tends the wounded nearby, even mid-battle
-  if (CIV.keepHeal && u.team === 'player' && u.hp < u.maxHp && playerKeep() && edgeDist(u, keep) < 200) u.hp = Math.min(u.maxHp, u.hp + CIV.keepHeal * dt);
+  if (CIV.keepHeal && u.team === 'player' && u.type !== 'ram' && u.hp < u.maxHp && playerKeep() && edgeDist(u, keep) < 200) u.hp = Math.min(u.maxHp, u.hp + CIV.keepHeal * dt);
   u.lastX = u.x; u.lastY = u.y;
 }
 function separate() {
@@ -935,6 +977,46 @@ function drawPerson(g, u, time) {
   g.restore();
 }
 
+function drawRam(g, u, time) {
+  let alpha = 1;
+  if (u.dead && u.deathT > 7) alpha = Math.max(0, 1 - (u.deathT - 7) / 3);
+  if (alpha <= 0) return;
+  const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.7 : 0, P = c => fk ? mixHex(c, '#ffffff', fk) : c;
+  g.save(); g.globalAlpha = alpha; g.translate(u.x, u.y);
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(0, 2, 26, 7, 0, 0, Math.PI * 2); g.fill();
+  g.scale(u.facing, 1);
+  if (u.dead) { // wrecked: scattered beams and a wheel
+    for (const [x, y, a] of [[-14, -3, 0.3], [6, -1, -0.4], [-2, -7, 1.3], [16, -5, 0.1]]) { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#5a3c20'; g.fillRect(-11, -2, 22, 4); g.restore(); }
+    g.strokeStyle = '#3d2a17'; g.lineWidth = 2; g.beginPath(); g.ellipse(-4, 0, 6, 3, 0, 0, Math.PI * 2); g.stroke();
+    g.restore(); return;
+  }
+  const a = u.attackAnim;
+  const swing = a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0;
+  const team = u.team === 'player' ? PAL.player.tunic : '#ac3430';
+  // swinging log with an iron head
+  g.fillStyle = P('#5a3a1e'); g.fillRect(-14 + swing, -19, 36, 6);
+  g.fillStyle = P('#6a4a2a'); g.fillRect(-14 + swing, -19, 36, 2);
+  g.fillStyle = P('#5d636a'); g.fillRect(21 + swing, -21, 7, 10); g.fillStyle = P('#80878e'); g.fillRect(21 + swing, -21, 7, 3);
+  // timber frame
+  g.fillStyle = P('#6b4a28');
+  g.fillRect(-19, -30, 4, 26); g.fillRect(14, -30, 4, 26); g.fillRect(-19, -10, 37, 4);
+  g.strokeStyle = P('#4a3018'); g.lineWidth = 2; g.beginPath(); g.moveTo(-17, -8); g.lineTo(16, -28); g.moveTo(16, -8); g.lineTo(-17, -28); g.stroke();
+  // hide-covered roof
+  g.fillStyle = P('#8a6a48'); g.beginPath(); g.moveTo(-23, -27); g.lineTo(-2, -42); g.lineTo(22, -27); g.closePath(); g.fill();
+  g.fillStyle = P('#6e5236'); g.beginPath(); g.moveTo(-23, -27); g.lineTo(-2, -42); g.lineTo(-6, -27); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(40,25,12,0.5)'; g.lineWidth = 1; for (let k = -16; k < 20; k += 7) { g.beginPath(); g.moveTo(k, -27); g.lineTo(k * 0.4 - 1.2, -38); g.stroke(); }
+  // team pennant
+  g.strokeStyle = '#3a2a18'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-2, -42); g.lineTo(-2, -56); g.stroke();
+  g.fillStyle = P(team); g.beginPath(); g.moveTo(-2, -56); g.lineTo(10, -53 + Math.sin(time * 6) * 1.2); g.lineTo(-2, -49); g.closePath(); g.fill();
+  // wheels turn as it rolls
+  for (const wx of [-12, 11]) {
+    g.fillStyle = P('#4a3018'); g.beginPath(); g.arc(wx, -4, 5.5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = P('#8a6a48'); g.lineWidth = 1.2; g.beginPath();
+    for (let k = 0; k < 3; k++) { const an = u.walkPhase * 0.6 + k * Math.PI / 3; g.moveTo(wx + Math.cos(an) * 5, -4 + Math.sin(an) * 5); g.lineTo(wx - Math.cos(an) * 5, -4 - Math.sin(an) * 5); }
+    g.stroke();
+  }
+  g.restore();
+}
 function drawBowArm(g, u, P, moving, ph) {
   const a = u.attackAnim, aiming = a > 0 || u.order === 'attack';
   // quiver on the back
@@ -1238,7 +1320,13 @@ function issueAt(sx, sy) {
   const sel = selectedList(); if (!sel.length) return false;
   const w = toWorld(sx, sy), hit = pickAt(w.x, w.y);
   const civs = sel.filter(u => u.type === 'civ'), sold = sel.filter(u => u.type !== 'civ');
-  if (hit && hit.team === 'enemy') { if (sold.length) commandAttack(sold, hit); else commandMove(civs, w.x, w.y); return true; }
+  if (hit && hit.team === 'enemy') {
+    const rams = sold.filter(u => u.type === 'ram'), fighters = sold.filter(u => u.type !== 'ram');
+    if (hit.x0 !== undefined) { if (sold.length) commandAttack(sold, hit); }
+    else { if (fighters.length) commandAttack(fighters, hit); if (rams.length) commandMove(rams, w.x, w.y); }
+    if (civs.length) commandMove(civs, w.x, w.y);
+    return true;
+  }
   if (hit && hit.team === 'player' && hit.done === false && civs.length) { commandBuild(civs, hit); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResource(w.x, w.y);
@@ -1344,9 +1432,9 @@ function endGame(title, text) {
 }
 function updateHud() {
   if (!started) { statusEl.innerHTML = '<b>Choose your civilization to begin</b>'; return; }
-  const mine = units.filter(u => u.team === 'player' && !u.dead).length;
-  const pop = mine + trainQueue.length;
-  const foes = enemiesOf('player').length;
+  const mine = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length;
+  const pop = mine + trainQueue.filter(q => q.kind !== 'ram').length;
+  const foes = enemiesOf('player').filter(e => !isWall(e)).length;
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
   statusEl.innerHTML = `<b style="color:${CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff'}">${CIV.name}</b> &nbsp;&middot;&nbsp; <span class="food">Food: <b>${Math.floor(res.food)}</b> (eating ${Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery)}/min)</span> &nbsp;&middot;&nbsp; Wood: <b>${Math.floor(res.wood)}</b> &nbsp;&middot;&nbsp; Gold: <b>${Math.floor(res.gold)}</b> &nbsp;&middot;&nbsp; ${moodHtml()} &nbsp;&middot;&nbsp; People: <b>${pop}</b> of ${popCap()} &nbsp;&middot;&nbsp; Enemies left: <b>${foes}</b> &nbsp;&middot;&nbsp; ${raid}`;
@@ -1370,6 +1458,27 @@ function updateHud() {
 // ---------- war systems: raids and the tower archer ----------
 let raidTimer = 60, raidCount = 0;
 const arrows = [], stuckArrows = [];
+let enemyWallPlan = [], enemyWallT = 20;
+function planEnemyWalls() {
+  const tiles = [];
+  for (let c = 45; c <= 57; c++) tiles.push([c, 7], [c, 19]);
+  for (let r = 8; r <= 18; r++) tiles.push([45, r], [57, r]);
+  const cc = 51.5, cr = 13.5, angOff = ([c, r]) => { const a = Math.atan2(r - cr, c - cc); return Math.abs(Math.atan2(Math.sin(a - Math.PI * 0.85), Math.cos(a - Math.PI * 0.85))); };
+  tiles.sort((p, q) => angOff(p) - angOff(q));   // the side facing you goes up first
+  enemyWallPlan = tiles;
+}
+function buildEnemyWalls(n, instant) {
+  let made = 0;
+  while (made < n && enemyWallPlan.length) {
+    const [c, r] = enemyWallPlan.shift();
+    if (tileBlocked(c, r)) continue;
+    const b = makeBuildingObj('wall', c, r);
+    Object.assign(b, { team: 'enemy', name: 'Enemy Wall', maxHp: 400, hp: instant ? 400 : 40, done: !!instant, progress: instant ? 1 : 0, selfBuild: true, buildTime: 5 });
+    setBlock(c, r, 1);
+    for (const u of units) if (!u.dead && u.x > b.x0 - 6 && u.x < b.x1 + 6 && u.y > b.y0 - 6 && u.y < b.y1 + 6) { const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }
+    structures.push(b); made++;
+  }
+}
 function spawnRaid() {
   raidCount++;
   const n = Math.min(4, 1 + raidCount);
@@ -1379,7 +1488,9 @@ function spawnRaid() {
     const u = makeUnit('enemy', i % 2 ? 'spear' : 'sword', f.c * TILE + 16 + RR(-6, 6), f.r * TILE + 16);
     u.raider = true; u.order = 'raid'; u.repath = 0;
   }
-  showBanner(`Enemy raid! ${n} soldiers are marching toward your army.`, 4);
+  const withRam = raidCount >= 3 && raidCount % 2 === 1;
+  if (withRam) { const f = nearestFree(Math.floor(1915 / TILE), Math.floor(560 / TILE)); if (f) { const r = makeUnit('enemy', 'ram', f.c * TILE + 16, f.r * TILE + 16); r.raider = true; r.order = 'raid'; } }
+  showBanner(withRam ? `Enemy raid with a battering ram! ${n} soldiers and a ram are coming for your walls.` : `Enemy raid! ${n} soldiers are marching toward your army.`, 4);
 }
 function drawArrow(g, x, y, ang, alpha) {
   g.save(); g.globalAlpha = Math.max(0, alpha); g.translate(x, y); g.rotate(ang);
@@ -1392,7 +1503,7 @@ function updateWar(dt) {
   alertCooldown -= dt;
   for (const s of structures) {
     if (s.dead || s.done === false || !s.range) continue;
-    if (s.kind === 'tower') { raidTimer -= dt; if (raidTimer <= 0) { spawnRaid(); raidTimer = 70; } }
+    if (s.kind === 'tower') { raidTimer -= dt; if (raidTimer <= 0) { spawnRaid(); raidTimer = 70; } enemyWallT -= dt; if (enemyWallT <= 0) { enemyWallT = 20; buildEnemyWalls(2, false); } }
     s.drawT = (s.drawT || 0) - dt;
     s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
     if (s.archerT <= 0) {
@@ -1411,7 +1522,7 @@ function updateWar(dt) {
     arrows.splice(i, 1);
     const t = a.target;
     if (alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18)) {
-      t.hp -= a.dmg; t.flash = 1; t.lastHurt = time;
+      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : a.dmg; t.flash = 1; t.lastHurt = time;
       if (t.x0 !== undefined) for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1);
       else for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18);
       if (t.hp <= 0) kill(t);
@@ -1476,17 +1587,17 @@ document.getElementById('feast').onclick = () => {
 
 // ---------- economy: stores, upkeep, training ----------
 const res = { food: 100, wood: 80, gold: 0 };
-const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 }, archer: { food: 20, wood: 25, gold: 30, time: 14 } };
+const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 }, archer: { food: 20, wood: 25, gold: 30, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 } };
 const trainQueue = [];
 let starving = false, hungerT = 0, starveMsgT = 0;
 function canTrain(kind) {
-  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead).length + trainQueue.length;
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length + trainQueue.filter(q => q.kind !== 'ram').length;
   return !!playerKeep() && res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && pop < popCap() && trainQueue.length < 5;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
     const c = COSTS[kind];
-    if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C'), 2.5);
+    if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C').replace('an B', 'a B'), 2.5);
     else showBanner('Your keep cannot train more right now.', 2.5);
     return;
   }
@@ -1497,7 +1608,7 @@ function trainUnit(kind) {
 function updateEconomy(dt) {
   const k = playerKeep();
   // everyone eats: 1 food per person every 15 seconds
-  const people = units.filter(u => u.team === 'player' && !u.dead);
+  const people = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram');
   hungerT += people.length * dt * RATIONS[ration].eat / CIV.eatEvery;
   updateMood(dt, people);
   while (hungerT >= 1) { hungerT -= 1; res.food -= 1; }
@@ -1709,6 +1820,7 @@ function drawWall(g, b, P) {
   for (let row = 0; row < 3; row++) { const yy = gy - 26 + row * 9; g.beginPath(); g.moveTo(x, yy); g.lineTo(x + w, yy); g.stroke(); for (let xx = x + (row % 2 ? 8 : 0); xx < x + w; xx += 16) { g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx, yy + 9); g.stroke(); } }
   g.fillStyle = P('#a9a397'); g.fillRect(x + 2, gy - 40, 10, 7); g.fillRect(x + 18, gy - 40, 10, 7);
   g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(x + 10, gy - 40, 2, 7); g.fillRect(x + 26, gy - 40, 2, 7);
+  if (b.team === 'enemy') { g.fillStyle = P('#8a2622'); g.fillRect(x + 12, gy - 22, 8, 12); g.fillStyle = P('#2c2622'); g.fillRect(x + 15, gy - 19, 2, 6); }
 }
 function drawGate(g, b, P) {
   const x = b.x0, gy = b.y - 4, w = 32;
@@ -1767,6 +1879,7 @@ function frame(now) {
   separate();
   curTeam = 'player';
   if (!won && started) { updateWar(dt); updateEconomy(dt); }
+  for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   if (Math.random() < dt * 4) spawn('smoke', fires[0].x + RR(-3, 3), fires[0].y - 18);
   updateParticles(dt);
@@ -1815,7 +1928,7 @@ function render() {
   for (const st of stumps) if (visible(st)) drawStump(g, st);
   for (const fm of farms) drawBuilding(g, fm, time);
   // fallen soldiers lie on the ground layer
-  for (const u of units) if (u.dead && visible(u)) drawPerson(g, u, time);
+  for (const u of units) if (u.dead && visible(u)) (u.type === 'ram' ? drawRam : drawPerson)(g, u, time);
 
   // depth-sorted scene
   const list = [];
@@ -1837,6 +1950,7 @@ function render() {
     else if (BUILD[o.kind]) drawBuilding(g, o, time);
     else if (o.kind === 'bush') drawBush(g, o);
     else if (o.kind === 'fire') drawFire(g, o, time);
+    else if (o.type === 'ram') drawRam(g, o, time);
     else drawPerson(g, o, time);
   }
   if (placing && mouse.inside) drawPlacement(g);
@@ -1882,9 +1996,10 @@ function startGame(key) {
   res.food = CIV.food; res.wood = CIV.wood;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople();
+  planEnemyWalls(); buildEnemyWalls(16, true);
   started = true;
   document.getElementById('pick').style.display = 'none';
-  showBanner(`You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br><b>Press Help (or H) to see the controls.</b>`, 10);
+  showBanner(`You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);
   updateHud();
 }
 document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));
@@ -1892,7 +2007,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
