@@ -159,6 +159,7 @@
     <p><b>Panel tabs:</b> Town, Castle, Army, Rule (keys 1 to 4). <b>Hide</b> (or the Tab key) shrinks the panel.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
+    <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
     <p><b>Keys:</b> S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
@@ -604,7 +605,7 @@ const WALL_RESIST = 0.35;
 const isWall = t => t.kind === 'wall' || t.kind === 'gate';
 function doHit(u) {
   const t = u.target;
-  if (!alive(t) || edgeDist(u, t) > u.range + 8) return;
+  if (!alive(t) || edgeDist(u, t) > rangeOf(u) + 8) return;
   if (u.type === 'archer') { // loose an arrow; it lands a moment later
     const c = hitCenter(t), x0 = u.x + u.facing * 8, y0 = u.y - 26;
     arrows.push({ x0, y0, x1: c.x, y1: c.y, t: 0, dur: Math.hypot(c.x - x0, c.y - y0) / 460 + 0.08, h: 18, target: t, from: u, dmg: Math.round(u.dmg * RR(0.85, 1.15)) });
@@ -668,6 +669,7 @@ function kill(t) {
   if (t.team === 'player' && t.kind === 'unit' && t.type !== 'ram' && started) mood = Math.max(0, mood - 3);
   selection.delete(t);
   if (t.x0 !== undefined) {
+    for (const o of units) if (!o.dead && o.onWall === t) { dismount(o); o.hp -= 15; o.flash = 1; if (o.hp <= 0) kill(o); }
     for (let i = 0; i < t.w; i++) for (let j = 0; j < t.h; j++) { setBlock(t.c + i, t.r + j, 0); if (t.kind === 'gate') gate[(t.r + j) * COLS + t.c + i] = 0; }
     for (let i = 0; i < 40; i++) spawn('smoke', t.x + RR(-30, 30), t.y - RR(0, 70), t.y);
     for (let i = 0; i < 30; i++) spawn('chip', t.x + RR(-25, 25), t.y - RR(10, 90), t.y);
@@ -726,6 +728,7 @@ function commandMove(list, x, y) {
     let bi = 0, bd = 1e12;
     free.forEach((u, i) => { const d = (u.x - s.x) ** 2 + (u.y - s.y) ** 2; if (d < bd) { bd = d; bi = i; } });
     const u = free.splice(bi, 1)[0];
+    if (u.onWall) dismount(u);
     u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; if (u.type === 'civ') u.task = null;
     u.path = findPath(u.x, u.y, s.x, s.y);
   }
@@ -743,8 +746,40 @@ function commandBuild(list, b) {
 function commandDeposit(list) {
   for (const u of list) { if (u.carry <= 0) continue; if (!u.task) u.task = { type: u.carryType, node: null }; u.order = 'gather'; u.sub = 'toKeep'; u.path = []; u.repath = 0; }
 }
+// archers can climb onto your walls and towers: farther shots, half damage from arrows, out of reach of blades
+const WALL_POSTS = { wall: 2, gtower: 4 };
+const elev2D = u => u.onWall ? (u.onWall.kind === 'gtower' ? 92 : 30) : 0;
+const elev3D = u => u.onWall ? (u.onWall.kind === 'gtower' ? 96 : 31.5) : 0;
+const rangeOf = u => u.onWall ? u.range * 1.35 : u.range;
+const canMount = b => b && !b.dead && b.team === 'player' && b.done !== false && WALL_POSTS[b.kind];
+function postsFree(b) { return WALL_POSTS[b.kind] - units.filter(o => !o.dead && o.onWall === b).length; }
+function commandMount(list, b) {
+  for (const u of list) { if (u.onWall) dismount(u); u.order = 'mount'; u.mountTarget = b; u.target = null; u.path = []; u.repath = 0; }
+  markers.push({ x: b.x, y: b.y, t: 0, col: '120,200,255' });
+}
+function mountOn(u, b) {
+  let post = canMount(b) && postsFree(b) > 0 ? b : null;
+  if (!post) { let bd = 220; for (const o of structures) if (canMount(o) && postsFree(o) > 0) { const d = edgeDist(u, o); if (d < bd) { bd = d; post = o; } } }
+  if (!post) { u.order = 'idle'; return; }
+  const k = WALL_POSTS[post.kind] - postsFree(post), cx = (post.x0 + post.x1) / 2, cy = (post.y0 + post.y1) / 2;
+  const off = post.kind === 'gtower' ? [[-9, -6], [9, -6], [-9, 8], [9, 8]][k] : [[-7, 2], [7, 2]][k];
+  u.onWall = post; u.x = cx + off[0]; u.y = cy + off[1]; u.order = 'idle'; u.path = []; u.moving = false;
+  floatText(u.x, u.y - 60, 'On the wall', '#9fd8ff');
+}
+function dismount(u) {
+  if (!u.onWall) return;
+  const f = nearestFree(Math.floor(u.x / TILE), Math.floor((u.y + 20) / TILE));
+  u.onWall = null; if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; }
+}
+function mountStep(u, dt) {
+  const b = u.mountTarget;
+  if (!canMount(b)) { u.order = 'idle'; return; }
+  if (edgeDist(u, b) <= 10) { mountOn(u, b); return; }
+  if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, b); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 1.5; }
+  followPath(u, dt);
+}
 function commandAttack(list, t) {
-  for (const u of list) { u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; }
+  for (const u of list) { if (u.onWall && edgeDist(u, t) > rangeOf(u) + 2) dismount(u); u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; }
   markers.push({ x: t.x, y: t.y, t: 0, col: '255,90,70', target: t });
 }
 function commandStop(list) { for (const u of list) { u.order = 'idle'; u.target = null; u.path = []; u.moving = false; } }
@@ -774,7 +809,7 @@ function moveBy(u, mx, my) {
 }
 function aggro(u, r) {
   let best = null, bd = r;
-  for (const o of units) { if (o.dead || o.team === u.team) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
+  for (const o of units) { if (o.dead || o.team === u.team || (o.onWall && u.type !== 'archer')) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
   return best;
 }
 function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
@@ -789,7 +824,8 @@ function attackStep(u, dt) {
     }
   }
   const t = u.target, ed = edgeDist(u, t);
-  if (ed <= u.range + 2) {
+  if (u.onWall && ed > rangeOf(u) + 2) { u.order = 'idle'; u.target = null; u.path = []; return; }   // archers on a wall hold their post
+  if (ed <= rangeOf(u) + 2) {
     u.path = []; u.moving = false;
     u.facing = t.x > u.x ? 1 : -1;
     if (u.atkTimer <= 0 && u.attackAnim === 0) { u.attackAnim = 0.001; u.atkTimer = u.cd; }
@@ -831,7 +867,7 @@ function playerBrain(u) {
   }
   if (u.order === 'idle') {
     u.moving = false;
-    const n = nearestEnemy(u, Math.max(110, u.range + 20));
+    const n = nearestEnemy(u, Math.max(u.onWall ? 0 : 110, rangeOf(u) + 20));
     if (n) { u.order = 'attack'; u.target = n; u.repath = 0; }
   }
 }
@@ -854,7 +890,7 @@ function enemyBrain(u, dt) {
   if (u.order === 'raid' && (u.repath <= 0 || !u.path.length)) {
     // raiders hunt the nearest of your people, or your keep
     let prey = null, bd = 1e9;
-    for (const o of units) if (!o.dead && o.team === 'player') { const d = Math.hypot(o.x - u.x, o.y - u.y); if (d < bd) { bd = d; prey = o; } }
+    for (const o of units) if (!o.dead && o.team === 'player' && !o.onWall) { const d = Math.hypot(o.x - u.x, o.y - u.y); if (d < bd) { bd = d; prey = o; } }
     const k = playerKeep();
     if (k && edgeDist(u, k) < bd) { prey = k; bd = edgeDist(u, k); }
     if (prey && prey.kind === 'keep' && bd < 30) { u.order = 'attack'; u.target = k; u.repath = 0; }
@@ -979,6 +1015,8 @@ function updateUnit(u, dt) {
   // once the wall in the way falls, go back to what they were sent to destroy
   if (u.order === 'attack' && !alive(u.target) && alive(u.goal)) { u.target = u.goal; u.goal = null; u.repath = 0; u.path = []; }
   if (u.order !== 'attack') u.goal = null;
+  if (u.onWall && !canMount(u.onWall)) { dismount(u); }
+  if (u.team !== 'player' && u.order === 'attack' && u.target && u.target.onWall && u.type !== 'archer') u.target = null;
   if (u.team === 'player') { if (u.type === 'civ') civBrain(u, dt); else playerBrain(u); } else enemyBrain(u, dt);
 
   if (u.order === 'move' || u.order === 'return') {
@@ -988,6 +1026,7 @@ function updateUnit(u, dt) {
     u.stuckT = movedSq < 0.04 ? u.stuckT + dt : 0;
     if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5) { u.order = 'idle'; u.path = []; u.moving = false; }
   } else if (u.order === 'attack') attackStep(u, dt);
+  else if (u.order === 'mount') mountStep(u, dt);
   else if (u.order === 'raid') followPath(u, dt);
 
   // wounds slowly mend after 8 seconds out of harm's way
@@ -997,7 +1036,7 @@ function updateUnit(u, dt) {
   u.lastX = u.x; u.lastY = u.y;
 }
 function separate() {
-  const live = units.filter(u => !u.dead);
+  const live = units.filter(u => !u.dead && !u.onWall);
   for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
     const a = live[i], b = live[j];
     let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
@@ -1164,7 +1203,7 @@ function drawPerson(g, u, time) {
   let alpha = 1;
   if (u.dead && u.deathT > 7) alpha = Math.max(0, 1 - (u.deathT - 7) / 3);
   if (alpha <= 0) return;
-  g.save(); g.globalAlpha = alpha; g.translate(u.x, u.y);
+  g.save(); g.globalAlpha = alpha; g.translate(u.x, u.y - elev2D(u));
   // soft shadow
   g.save(); g.translate(u.dead ? -u.facing * 14 : 0, 1); g.scale(1, 0.36);
   const sr = u.dead ? 23 : 14, sg = g.createRadialGradient(0, 0, 0, 0, 0, sr);
@@ -1712,7 +1751,7 @@ function centerOn(x, y) { cam.x = x - vw / cam.z / 2; cam.y = y - vh / cam.z / 2
 
 function pickAt(wx, wy, radius = 19) {
   let best = null, bd = radius;
-  for (const u of units) { if (u.dead) continue; const d = Math.hypot(u.x - wx, (u.y - 21) - wy); if (d < bd + 4) { if (d < bd || !best) { bd = d; best = u; } } }
+  for (const u of units) { if (u.dead) continue; const d = Math.hypot(u.x - wx, (u.y - 21 - elev2D(u)) - wy); if (d < bd + 4) { if (d < bd || !best) { bd = d; best = u; } } }
   if (best) return best;
   for (const s of structures) { if (s.dead) continue; const hw = (s.x1 - s.x0) / 2 + 6, top = s.topH; if (wx > s.x - hw && wx < s.x + hw && wy > s.y - top && wy < s.y + 2) return s; }
   return null;
@@ -1741,6 +1780,7 @@ function issueAt(sx, sy) {
     return true;
   }
   if (hit && hit.team === 'player' && hit.done === false && civs.length) { commandBuild(civs, hit); if (sold.length) commandMove(sold, w.x, w.y); return true; }
+  if (canMount(hit) && sold.some(u => u.type === 'archer')) { const arch = sold.filter(u => u.type === 'archer'); commandMount(arch, hit); const rest = sold.filter(u => u.type !== 'archer'); if (rest.length) commandMove(rest, w.x, w.y + 40); return true; }
   if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResourceScreen(sx, sy);
   if (node && node.kind === 'farm' && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
@@ -1786,7 +1826,7 @@ function endPointer(e) {
   if (drag && pointers.has(e.pointerId)) {
     if (drag.box) {
       const bx0 = Math.min(drag.sx, p.x) - 8, bx1 = Math.max(drag.sx, p.x) + 8, by0 = Math.min(drag.sy, p.y) - 10, by1 = Math.max(drag.sy, p.y) + 10;
-      const inBox = units.filter(u => { if (u.team !== 'player' || u.dead) return false; const q = screenOf(u.x, u.y, 20); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
+      const inBox = units.filter(u => { if (u.team !== 'player' || u.dead) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
       if (drag.shift && !drag.touch) inBox.forEach(u => selection.add(u)); else selectOnly(inBox);
     } else {
       const hit = pickScreen(p.x, p.y);
@@ -1944,7 +1984,7 @@ function updateWar(dt) {
     arrows.splice(i, 1);
     const t = a.target;
     if (alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18)) {
-      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : a.dmg; t.flash = 1; t.lastHurt = time;
+      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : t.onWall ? Math.round(a.dmg * 0.5) : a.dmg; t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
       if (t.x0 !== undefined) for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
       else for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18, t.y);
@@ -2724,7 +2764,7 @@ const UI = (() => {
 const R3D = (() => {
   const T = window.THREE;
   const available = !!T && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
-  let active = false, ready = false, renderer, scene, camera, sun, glCanvas, groundMesh;
+  let active = false, ready = false, renderer, scene, camera, sun, fill, sky, clouds3, glCanvas, groundMesh;
   let yaw = 0, yawTarget = 0;
   const PITCH = 0.8;
   const hN = available ? makeNoise(77) : null;
@@ -2796,6 +2836,12 @@ const R3D = (() => {
     sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 3400 });
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6;
     scene.add(sun); scene.add(sun.target);
+    fill = new T.DirectionalLight(C('#a9bfe0'), 0.38); scene.add(fill); scene.add(fill.target);
+    sky = new T.Mesh(new T.SphereGeometry(6000, 32, 16), new T.ShaderMaterial({ side: T.BackSide, depthWrite: false, fog: false,
+      uniforms: { top: { value: new T.Color('#4f86c9') }, mid: { value: new T.Color('#bcd3e3') }, bot: { value: new T.Color('#b7c6cc') } },
+      vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h, 0.0, 1.0), 0.55)) : bot; gl_FragColor = vec4(c, 1.0); }' }));
+    sky.renderOrder = -1; scene.add(sky);
     buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass();
     ready = true;
   }
@@ -2804,16 +2850,24 @@ const R3D = (() => {
     const p = geo.attributes.position, uv = geo.attributes.uv;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, heightAt(x, z)); uv.setXY(i, x / MW, 1 - z / MH); }
     geo.computeVertexNormals();
-    const tex = new T.CanvasTexture(terrain); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.MirroredRepeatWrapping;
+    const tex = new T.CanvasTexture(terrain); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
     groundMesh = mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.97 }), 0, 0, 0, false);
     scene.add(groundMesh);
+    const outer = mesh(new T.PlaneGeometry(24000, 24000), std('#3f6a2c', { roughness: 1 }), MW / 2, -4, MH / 2, false); outer.rotation.x = -Math.PI / 2; scene.add(outer);
+    // cloud shadows drifting over the land
+    const ct = genTex('clouds', 256, (g, n, R) => { g.fillStyle = '#000'; g.fillRect(0, 0, n, n); const cn = makeNoise(9); const img = g.getImageData(0, 0, n, n), d = img.data;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const v = cn(x / 40, y / 40) * 0.6 + cn(x / 16 + 7, y / 16) * 0.4, a = clamp((v - 0.5) * 3.2, 0, 1) * 255, i = (y * n + x) * 4; d[i] = d[i + 1] = d[i + 2] = a; d[i + 3] = 255; }
+      g.putImageData(img, 0, 0); }, 2);
+    ct.encoding = T.LinearEncoding;
+    clouds3 = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x0b1824, transparent: true, opacity: 0.3, alphaMap: ct, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    clouds3.renderOrder = 1; scene.add(clouds3);
   }
   // ---------- water and grass ----------
   let water = null, grass = null, grassPos = [], windU = { value: 0 };
   function buildWater() {
     if (!pond) return;
     const geo = new T.CircleGeometry(1, 56); geo.rotateX(-Math.PI / 2);
-    const mat = new T.MeshPhongMaterial({ color: C('#2c5a68'), specular: C('#e8f4ff'), shininess: 110, transparent: true, opacity: 0.88, normalMap: waterNormal(), normalScale: new T.Vector2(0.55, 0.55) });
+    const mat = new T.MeshPhongMaterial({ color: C('#2c5a68'), specular: C('#7f99a6'), shininess: 60, transparent: true, opacity: 0.88, normalMap: waterNormal(), normalScale: new T.Vector2(0.55, 0.55) });
     water = new T.Mesh(geo, mat); water.scale.set(pond.rx * 1.02, 1, pond.ry * 1.02); water.position.set(pond.x, heightAt(pond.x + pond.rx * 0.9, pond.y) - 2.2, pond.y); water.receiveShadow = true;
     scene.add(water);
   }
@@ -2851,6 +2905,7 @@ const R3D = (() => {
   }
   function syncWater(dt) {
     windU.value = time;
+    if (clouds3) { const t = clouds3.material.alphaMap; t.offset.x = time * 0.0022; t.offset.y = time * 0.0012; }
     if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; }
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
@@ -2860,7 +2915,7 @@ const R3D = (() => {
     const lightCol = (base, top) => (x, y, z) => { const t = clamp(0.35 + y / 70 - x / 120 - z / 160, 0, 1); return new T.Color().copy(C(base)).lerp(C(top), t); };
     const oakParts = [], R = mulberry32(99);
     const blobs = [[0, 46, 0, 15], [-11, 40, 4, 11], [11, 41, -3, 11.5], [3, 40, 11, 10.5], [-2, 42, -11, 11], [0, 57, 0, 11], [-8, 53, 6, 8.5], [8, 54, -5, 8.5], [5, 50, 8, 8], [-12, 47, -6, 8], [12, 48, 6, 8], [-5, 36, 10, 7.5], [6, 36, -10, 7.5], [0, 63, 2, 7]];
-    for (const [x, y, z, r] of blobs) { const geo = new T.IcosahedronGeometry(r, 2); const pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (R() - 0.5) * 0.18; pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); } oakParts.push({ geo, m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') }); }
+    for (const [x, y, z, r] of blobs) { const geo = new T.IcosahedronGeometry(r, 1); const pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (R() - 0.5) * 0.18; pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); } oakParts.push({ geo, m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') }); }
     const oakGeo = merge(oakParts);
     const pineParts = [];
     for (let k = 0; k < 6; k++) {
@@ -2872,7 +2927,23 @@ const R3D = (() => {
     const pineGeo = merge(pineParts);
     const leafMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false, side: T.DoubleSide, map: leafTex(), bumpMap: leafTex(), bumpScale: 1.6 });
     const barkMat = woodVM(8, 36);
+    const border = [], Rb = mulberry32(4711);
+    for (let x = -420; x < MW + 420; x += 58) for (let z = -420; z < MH + 420; z += 58) {
+      const out = x < -8 || x > MW + 8 || z < -8 || z > MH + 8; if (!out || Rb() < 0.2) continue;
+      const px = x + (Rb() - 0.5) * 26, pz = z + (Rb() - 0.5) * 26;
+      border.push({ x: px, c: (px - 16) / TILE, r: (pz - 16) / TILE, s: 0.9 + Rb() * 0.5, pine: Rb() < 0.4, seed: Rb() * 10, tone: Rb() });
+    }
     const oaks = trees.filter(t => !t.pine), pines = trees.filter(t => t.pine);
+    {
+      const lowOak = merge([[0, 44, 0, 16], [-10, 40, 5, 12], [10, 41, -4, 12], [0, 56, 0, 12], [3, 40, 11, 10]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#7aa64a') })));
+      const lowPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(16 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#13301a', '#447e42') })));
+      const bm = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true });
+      const bo = border.filter(t => !t.pine), bp = border.filter(t => t.pine);
+      const mo = new T.InstancedMesh(lowOak, bm, bo.length), mp = new T.InstancedMesh(lowPine, bm, bp.length);
+      bo.forEach((t, i) => { const z = t.r * TILE + 16; mo.setMatrixAt(i, M4(t.x, heightAt(t.x, z), z, t.s, t.s, t.s, t.seed)); });
+      bp.forEach((t, i) => { const z = t.r * TILE + 16; mp.setMatrixAt(i, M4(t.x, heightAt(t.x, z), z, t.s, t.s, t.s, t.seed)); });
+      for (const m of [mo, mp]) { m.castShadow = false; m.receiveShadow = true; scene.add(m); }
+    }
     oakMesh = new T.InstancedMesh(oakGeo, leafMat, oaks.length); oakTrunks = new T.InstancedMesh(new T.CylinderGeometry(2.4, 3.8, 36, 8), barkMat, oaks.length);
     pineMesh = new T.InstancedMesh(pineGeo, leafMat, pines.length); pineTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.8, 2.6, 22, 7), barkMat, pines.length);
     const place = (list, crown, trunk, trunkY) => list.forEach((t, i) => {
@@ -3069,15 +3140,20 @@ const R3D = (() => {
     if (u.type === 'archer') for (let y = 21; y < 32; y += 2.4) body.add(cyl(5.25, 5.25, 0.5, m.dark, 0, y, 0, 12));
     body.add(cyl(4.9, 4.9, 1.6, m.belt, 0, 19.8, 0, 12)); body.add(box(1.6, 1.8, 1, m.gold, 1, 19.8, 4.9));
     for (const side of [-1, 1]) body.add(sph(2.7, sleeve, side * 5.2, 31, 0, 8));
+    if (soldier) for (const side of [-1, 1]) { const pd = mesh(new T.SphereGeometry(3.4, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), m.helm, side * 5.4, 31.4, 0); pd.scale.set(1, 0.8, 1.05); body.add(pd); }
     body.add(cyl(1.7, 1.9, 3, m.skin, 0, 33.4, 0, 8));
     const head = new T.Group(); head.position.set(0, 37.6, 0); body.add(head);
     const skull = sph(4, m.skin, 0, 0, 0, 14); skull.scale.set(1, 1.1, 1); head.add(skull);
     head.add(box(1.2, 1.8, 1.6, m.skin, 0, -0.4, 4));
     for (const side of [-1, 1]) head.add(sph(0.5, std('#1a120c'), side * 1.5, 0.6, 3.6, 6));
+    for (const side of [-1, 1]) { const ear = sph(1.1, m.skin, side * 3.9, 0, 0.2, 6); ear.scale.set(0.5, 1, 0.8); head.add(ear); }
+    for (const side of [-1, 1]) { const brow = box(1.6, 0.45, 0.5, m.hair, side * 1.5, 1.7, 3.55); brow.rotation.z = -side * 0.12; head.add(brow); }
+    head.add(box(1.8, 0.35, 0.4, std('#7a3a2e'), 0, -2, 3.75));
     if (lk.beard) { const bd = sph(3.6, m.hair, 0, -2.4, 1.6, 10); bd.scale.set(1, 0.75, 0.9); head.add(bd); }
     if (soldier) {
       const helm = mesh(new T.SphereGeometry(4.55, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), m.helm, 0, 0.6, 0); head.add(helm);
       head.add(cyl(4.7, 4.7, 1.1, m.helm, 0, 0.6, 0, 14)); head.add(box(0.8, 3.4, 0.7, m.helm, 0, -0.6, 4.5));
+      for (const side of [-1, 1]) { const cg = box(0.7, 4, 3, m.helm, side * 4.2, -1.4, 1.2); cg.rotation.y = side * 0.25; head.add(cg); }
       if (P.plume) { const pl = box(1.2, 3.2, 7, std(P.plume), 0, 5.6, -0.8); head.add(pl); }
       const cloak = mesh(new T.PlaneGeometry(9, 19, 1, 4), new T.MeshStandardMaterial({ color: C(P.tunicDark), side: T.DoubleSide, roughness: 0.9 }), 0, 22, -5.2); body.add(cloak); m.cloak = cloak;
     } else if (u.type === 'archer') {
@@ -3094,7 +3170,7 @@ const R3D = (() => {
       const sh = new T.Group(); sh.position.set(side * 5.7, 31, 0); body.add(sh);
       sh.add(cyl(1.7, 1.5, 7, sleeve, 0, -3.5, 0, 7));
       const el = new T.Group(); el.position.set(0, -7, 0); sh.add(el);
-      el.add(cyl(1.5, 1.3, 6, soldier ? m.mail : m.skin, 0, -3, 0, 7)); el.add(sph(1.6, m.skin, 0, -6.4, 0, 7));
+      el.add(cyl(1.5, 1.3, 6, soldier ? m.mail : m.skin, 0, -3, 0, 7)); el.add(sph(1.6, soldier || u.type === 'archer' ? std('#5a3e24', { roughness: 0.6 }) : m.skin, 0, -6.4, 0, 7));
       const hand = new T.Group(); hand.position.set(0, -6.4, 0); el.add(hand);
       arms.push({ sh, el, hand, side });
     }
@@ -3187,7 +3263,7 @@ const R3D = (() => {
       if (!md) { md = u.type === 'ram' ? ramModel(u) : personModel(u); unitModels.set(u.id, md); scene.add(md.root); }
       seen.add(u.id);
       const y = heightAt(u.x, u.y);
-      md.root.position.set(u.x, y, u.y);
+      md.root.position.set(u.x, y + elev3D(u), u.y);
       // face the way they move, or their target when fighting
       let want = null;
       if (u.target && alive(u.target) && (u.attackAnim > 0 || u.order === 'attack') && !u.moving) want = Math.atan2(u.target.x - u.x, u.target.y - u.y);
@@ -3324,6 +3400,8 @@ const R3D = (() => {
     camera.lookAt(c.x, ty, c.z);
     camera.aspect = vw / vh; camera.fov = vw < 600 ? 46 : 38; camera.updateProjectionMatrix();
     sun.position.set(c.x - 520, ty + 900, c.z - 380); sun.target.position.set(c.x, ty, c.z); sun.target.updateMatrixWorld();
+    fill.position.set(c.x + 600, ty + 420, c.z + 500); fill.target.position.set(c.x, ty, c.z); fill.target.updateMatrixWorld();
+    sky.position.copy(camera.position);
     const s = Math.max(500, D * 0.95); Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s }); sun.shadow.camera.updateProjectionMatrix();
     scene.fog.near = D * 1.1; scene.fog.far = D * 3.2;
   }
@@ -3338,7 +3416,7 @@ const R3D = (() => {
   // what is under a screen point: people first (by their projected body), then buildings
   function pick(sx, sy) {
     let best = null, bd = 26;
-    for (const u of units) { if (u.dead) continue; const p = project(u.x, u.type === 'ram' ? 18 : 22, u.y); if (!p.ok) continue; const d = Math.hypot(p.x - sx, p.y - sy) * Math.min(1.6, Math.max(0.7, 1 / cam.z)); if (d < bd) { bd = d; best = u; } }
+    for (const u of units) { if (u.dead) continue; const p = project(u.x, (u.type === 'ram' ? 18 : 22) + elev3D(u), u.y); if (!p.ok) continue; const d = Math.hypot(p.x - sx, p.y - sy) * Math.min(1.6, Math.max(0.7, 1 / cam.z)); if (d < bd) { bd = d; best = u; } }
     if (best) return best;
     for (const s of structures) { if (s.dead) continue; if (inBox(sx, sy, s.x0, s.x1, s.y0, s.y1, s.topH || 40)) return s; }
     return null;
@@ -3366,7 +3444,7 @@ const R3D = (() => {
     g.setLineDash([5, 4]); g.strokeStyle = 'rgba(255,80,60,0.85)'; g.lineWidth = 2;
     for (const t of targeted) { ringPath(g, t.x, t.x0 !== undefined ? (t.y0 + t.y1) / 2 : t.y, t.x0 !== undefined ? (t.x1 - t.x0) * 0.75 : 14); g.stroke(); }
     g.setLineDash([]);
-    for (const u of selection) { if (u.dead) continue; ringPath(g, u.x, u.y, u.type === 'ram' ? 24 : 13); g.fillStyle = 'rgba(120,255,140,0.16)'; g.fill(); g.strokeStyle = 'rgba(130,255,150,0.95)'; g.lineWidth = 2; g.stroke(); }
+    for (const u of selection) { if (u.dead) continue; ringPath(g, u.x, u.y, u.type === 'ram' ? 24 : 13, 1 + elev3D(u)); g.fillStyle = 'rgba(120,255,140,0.16)'; g.fill(); g.strokeStyle = 'rgba(130,255,150,0.95)'; g.lineWidth = 2; g.stroke(); }
     if (hover && !hover.dead && hover.kind === 'unit' && !selection.has(hover)) { ringPath(g, hover.x, hover.y, 13); g.strokeStyle = hover.team === 'enemy' ? 'rgba(255,90,70,0.9)' : 'rgba(220,255,220,0.7)'; g.lineWidth = 1.6; g.stroke(); }
     if (placing && mouse.inside) {
       const k = playerKeep(), w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y);
@@ -3386,7 +3464,7 @@ const R3D = (() => {
       }
       if (kind === 'wall') { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} wood` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
-    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u) { const p = project(u.x, u.type === 'ram' ? 62 : 52, u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) drawHealthBar(g, p.x, p.y, 28, u.hp / u.maxHp); } }
+    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u) { const p = project(u.x, (u.type === 'ram' ? 62 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) drawHealthBar(g, p.x, p.y, 28, u.hp / u.maxHp); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
     for (const fl of floats) { const gz = fl.y + 50, p = project(fl.x, 50 + fl.t * 22, gz); g.globalAlpha = 1 - fl.t / 1.6; g.strokeText(fl.text, p.x, p.y); g.fillStyle = fl.col; g.fillText(fl.text, p.x, p.y); }
@@ -3525,7 +3603,7 @@ function render() {
   for (const s of structures) list.push(s);
   for (const f of fires) list.push(f);
   for (const u of units) if (!u.dead && visible(u)) list.push(u);
-  list.sort((a, b) => a.y - b.y);
+  list.sort((a, b) => (a.y + (a.onWall ? 44 : 0)) - (b.y + (b.onWall ? 44 : 0)));
   const mine = units.filter(u => u.team === 'player' && !u.dead);
   for (const o of list) {
     if (o.kind === 'tree') {
@@ -3553,7 +3631,7 @@ function render() {
   // health bars
   for (const u of units) {
     if (u.dead || !visible(u)) continue;
-    if (selection.has(u) || u.hp < u.maxHp || hover === u) drawHealthBar(g, u.x, u.y - 58, 28, u.hp / u.maxHp);
+    if (selection.has(u) || u.hp < u.maxHp || hover === u) drawHealthBar(g, u.x, u.y - 58 - elev2D(u), 28, u.hp / u.maxHp);
   }
   for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - s.topH - 24, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp);
   g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
