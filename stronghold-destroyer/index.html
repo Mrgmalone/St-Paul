@@ -21,7 +21,14 @@
   .chip canvas{width:22px;height:22px;flex:0 0 auto}
   .chip small{font-size:13px;color:#d9c9a3}
   button.chip{cursor:pointer;border-bottom:2px dotted #b08a4a;border-radius:0}
-  #btnMenu{margin-left:auto;padding:5px 12px;font-size:15px}
+  #btnMenu{margin-left:6px;padding:5px 12px;font-size:15px}
+  #btnPause{margin-left:auto;padding:5px 12px;font-size:15px;white-space:nowrap}
+  #btnPause.on{background:linear-gradient(#bff5c4,#6fc27a);outline:3px solid #9fe8a8}
+  #pauseNote{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+    background:rgba(16,11,7,.86);border:1px solid rgba(214,170,90,.8);border-radius:14px;padding:16px 26px;font-size:17px;color:#f3ead7;pointer-events:auto;max-width:80%}
+  #pauseNote[hidden]{display:none}
+  #pauseNote b{font-family:Cinzel,Georgia,serif;font-size:26px;letter-spacing:4px;color:#ffd98a}
+  @media (max-width: 760px){ #btnPause .lbl{display:none} #btnPause{padding:3px 9px;font-size:18px} }
   #main{flex:1 1 auto;display:flex;min-height:0;position:relative}
   #view{flex:1 1 auto;position:relative;min-height:0;min-width:0}
   #side{flex:0 0 312px;display:flex;flex-direction:column;min-height:0;background:linear-gradient(90deg,#2c2117,#1b130c);border-left:2px solid #8a6a3a;box-shadow:-3px 0 10px rgba(0,0,0,.5);z-index:4;position:relative}
@@ -160,8 +167,9 @@
   #top{flex-wrap:nowrap}
   #status{flex-wrap:nowrap;overflow:hidden}
   @media (max-width: 1500px){ #title{display:none} }
-  @media (max-width: 1180px){ .chip small{display:none} }
-  @media (max-width: 1000px){ #status{flex-wrap:wrap;overflow:visible} }
+  @media (max-width: 1440px){ .chip small{display:none} }
+  @media (max-width: 1100px){ #btnPause .lbl,#btnMenu .lbl{display:none} }
+  @media (max-width: 1100px){ #status{flex-wrap:wrap;overflow:visible} }
   button.chip{border-bottom:1px solid rgba(255,225,160,.16);border-radius:999px;cursor:pointer}
   button.chip:hover{background:rgba(255,240,210,.14)}
   button{border-radius:10px;border:1px solid #7a5a2c;background:linear-gradient(#f6dfa4,#d4a65a);box-shadow:0 2px 0 #5a3f1c,0 4px 10px rgba(0,0,0,.32);transition:filter .12s,transform .12s,box-shadow .12s}
@@ -185,11 +193,13 @@
 <div id="top">
   <div id="title">STRONGHOLD DESTROYER</div>
   <div id="status"><b>Choose your civilization to begin</b></div>
+  <button id="btnPause" title="Pause the game to plan and place your castle (P)">&#10074;&#10074;<span class="lbl"> Pause</span></button>
   <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9881;<span class="lbl"> Menu</span></button>
 </div>
 <div id="main">
 <div id="view">
   <canvas id="game"></canvas>
+  <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="pick"><div class="wrap">
     <h1>CHOOSE YOUR CIVILIZATION</h1>
@@ -252,7 +262,8 @@
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers. <b>Catapults</b> lob heavy stones from far away: best against walls and towers, and the stone hurts everyone where it lands, but it misses soldiers on the move. <b>Ballistas</b> fire great bolts that cut down soldiers at long range but only chip stone. Neither can fight up close: guard them. The enemy brings them too, in later raids.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
-    <p><b>Keys:</b> S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
+    <p><b>Peace and pause:</b> the war begins after about five minutes of peace; the top bar counts it down. Press Pause (or P) to stop time and place buildings and walls at your leisure; workers start when you resume. You cannot pause while enemies are close by.</p>
+    <p><b>Keys:</b> P pause &middot; S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
     <button id="btnHelpClose">Close</button>
   </div></div>
   <div id="win"><div class="box"><h1 id="endTitle">VICTORY</h1><p id="endText">The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
@@ -2186,6 +2197,7 @@ window.addEventListener('keydown', e => {
   if (['1', '2', '3', '4', '5'].includes(e.key)) UI.showTab(['town', 'castle', 'army', 'rule', 'industry'][+e.key - 1]);
   if (e.key === 'Tab') { e.preventDefault(); UI.toggleHide(); }
   if (e.key === 'h' || e.key === 'H') toggleHelp();
+  if (e.key === 'p' || e.key === 'P') setPaused(!paused);
   if (e.key === 'q' || e.key === 'Q') R3D.rotate(-1);
   if (e.key === 'e' || e.key === 'E') R3D.rotate(1);
   if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
@@ -2239,7 +2251,7 @@ function updateHud() {
   UI.setStatus({ civ: CIV.name, civColor: CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff',
     food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), stone: Math.floor(res.stone), gold: Math.floor(res.gold),
     pop, cap: popCap(), idle: idleCount(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
-    moodRate: Math.round(moodRate), foes, raid: towerUp ? `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
+    moodRate: Math.round(moodRate), foes, raid: towerUp ? (raidCount === 0 ? 'Peace ' : '') + `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
   document.querySelectorAll('.tb').forEach(b => { const w = whyNotTrain(b.dataset.k); b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
   document.querySelectorAll('.wb').forEach(b => { const w = !hasArmory() ? 'build an armory' : res.gold < BUY[b.dataset.w] ? `need ${BUY[b.dataset.w] - Math.floor(res.gold)} more gold` : ''; b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
   const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}` + (hasArmory() ? '' : ' · build an Armory to buy more');
@@ -2291,7 +2303,7 @@ function raidRoutes() {
 let raidRouteI = 0, n2 = null;
 // ---------- the enemy camp: its people gather, carry supplies home, and build up the camp ----------
 const DIFFS = {
-  easy:   { key: 'easy',   name: 'Easy',   pace: 0.65, raidEvery: 95, size: 0.75, first: 120 },
+  easy:   { key: 'easy',   name: 'Easy',   pace: 0.65, raidEvery: 95, size: 0.75, first: 150 },
   medium: { key: 'medium', name: 'Medium', pace: 1.0,  raidEvery: 75, size: 1.0,  first: 90 },
   hard:   { key: 'hard',   name: 'Hard',   pace: 1.3,  raidEvery: 58, size: 1.35, first: 70 }
 };
@@ -2459,7 +2471,7 @@ function updateWar(dt) {
   alertCooldown -= dt;
   for (const s of structures) {
     if (s.dead || s.done === false || !s.range) continue;
-    if (s.kind === 'tower') { raidTimer -= dt; if (raidTimer <= 0) { spawnRaid(); raidTimer = DIFF.raidEvery; } enemyWallT -= dt; if (enemyWallT <= 0) { enemyWallT = 20 / ePace(); buildEnemyWalls(2, false); } updateEnemyBase(dt); }
+    if (s.kind === 'tower') { const was = raidTimer; raidTimer -= dt; if (raidCount === 0 && was > 60 && raidTimer <= 60) showBanner('One minute of peace left: the war is about to begin. Ready your defenses!', 4); if (raidTimer <= 0) { if (raidCount === 0) showBanner('The peace is over. The war has begun!', 4); spawnRaid(); raidTimer = DIFF.raidEvery; } enemyWallT -= dt; if (enemyWallT <= 0) { enemyWallT = 20 / ePace(); buildEnemyWalls(2, false); } updateEnemyBase(dt); }
     s.drawT = (s.drawT || 0) - dt;
     s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
     if (s.archerT <= 0) {
@@ -4962,6 +4974,21 @@ const R3D = (() => {
   return { quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
+let paused = false;
+function enemiesClose() {
+  const k = playerKeep(), mine = units.filter(u => u.team === 'player' && !u.dead);
+  return units.some(e => !e.dead && e.team === 'enemy' && e.type !== 'civ' && ((k && Math.hypot(e.x - k.x, e.y - k.y) < 760) || mine.some(m => Math.hypot(e.x - m.x, e.y - m.y) < 380) || structures.some(b => b.team === 'player' && !b.dead && Math.hypot(e.x - b.x, e.y - b.y) < 420)));
+}
+function setPaused(want) {
+  if (!started || won) return;
+  if (want && enemiesClose()) { showBanner('Enemies are close by: you must fight! You can pause once they are gone.', 3); return; }
+  paused = want; document.body.classList.toggle('paused', paused);
+  document.getElementById('pauseNote').hidden = !paused; document.getElementById('btnPause').classList.toggle('on', paused);
+  document.getElementById('btnPause').innerHTML = paused ? '&#9654;<span class="lbl"> Resume</span>' : '&#10074;&#10074;<span class="lbl"> Pause</span>';
+  AudioSys.ui('select');
+}
+document.getElementById('btnPause').onclick = () => setPaused(!paused);
+document.getElementById('btnResume').onclick = () => setPaused(false);
 let camSpin = 0, zoomAnim = null; const camVel = { x: 0, y: 0 };
 // ---------- rally points: where new soldiers, and new civilians and rams, gather ----------
 const rally = { army: null, town: null }; let settingRally = null;
@@ -5094,7 +5121,7 @@ function drawHiddenOutlines(g, visible) {
 // ---------- main loop ----------
 let last = performance.now(), time = 0, lastSel = 0, lastRaiders = 0, frameDt = 0.016;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; frameDt = dt;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!paused) time += dt; frameDt = paused ? 0 : dt;
   // camera scrolling
   const sp = 620 / cam.z * dt;
   let mx = 0, my = 0;
@@ -5118,6 +5145,7 @@ function frame(now) {
     if (done) zoomAnim = null;
   }
 
+  if (!paused) {
   for (const u of units) updateUnit(u, dt);
   curTeam = 'player';
   separate();
@@ -5129,9 +5157,10 @@ function frame(now) {
   updateParticles(dt);
   for (let i = markers.length - 1; i >= 0; i--) { markers[i].t += dt; if (markers[i].t > 0.7) markers.splice(i, 1); }
   for (let i = units.length - 1; i >= 0; i--) if (units[i].dead && units[i].deathT > 10) units.splice(i, 1);
+  }
 
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
-  updateTrainButtons(); updateWeather(dt); AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
+  updateTrainButtons(); if (!paused) updateWeather(dt); AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
   const civSel = [...selection].some(u => u.type === 'civ');
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
@@ -5279,14 +5308,14 @@ function startGame(key) {
   spawnPlayerPeople();
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
-  planEnemyBase(); raidTimer = DIFF.first;
+  planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
   LORD.unit = null; LORD.said = {}; LORD.broken = false; spawnLord();
   setTimeout(() => lordSay('hello', 'So, a new lord in the west. Enjoy your little keep while it stands.'), 22000);
   { const camp = enemyCamp(); for (let i = 0; i < 4; i++) { const f = nearestFree(Math.floor((camp.x - 70 + i * 22) / TILE), Math.floor((camp.y + 40) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); } }
   started = true;
   document.getElementById('pick').style.display = 'none';
   UI.paintIcons();
-  showBanner(`${DIFF.name} difficulty. You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);
+  showBanner(`${DIFF.name} difficulty. <b>${Math.round(raidTimer / 60)} minutes of peace</b> to build before the war begins. Press Pause (P) any time to plan your castle.<br>You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);
   updateHud();
 }
 document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));
