@@ -237,7 +237,7 @@
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
-    <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, chapels and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
+    <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, houses of prayer and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
     <p><b>Stone castles:</b> a Quarry beside a grey rock cuts stone. High Walls stand as tall as your keep; archers climb them by Stairs placed beside the wall (or from a tower joined to it). Stone Towers and the Great Tower are far tougher than the wooden Tower, shoot farther, and hold more archers.</p>
@@ -267,7 +267,7 @@
       <div class="pane active" data-pane="town">
         <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small><span class="why"></span></button>
         <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small><span class="why"></span></button>
-        <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>Chapel<small>80 wood &middot; 40 gold</small><span class="why"></span></button>
+        <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>House of Prayer<small>80 wood &middot; 40 gold</small><span class="why"></span></button>
         <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; 1 worker</small><span class="why"></span></button>
         <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small><span class="why"></span></button>
@@ -2607,7 +2607,7 @@ const BUILD = {
   wheatfarm: { name: 'Wheat Field', w: 2, h: 2, wood: 40, time: 10, hp: 200, topH: 14 },
   mill: { name: 'Mill', w: 2, h: 2, wood: 60, time: 14, hp: 350, topH: 110 },
   bakery: { name: 'Bakery', w: 2, h: 2, wood: 50, time: 12, hp: 350, topH: 64 },
-  chapel: { name: 'Chapel', w: 2, h: 2, wood: 80, gold: 40, time: 18, hp: 600, topH: 104 },
+  chapel: { name: 'House of Prayer', w: 2, h: 2, wood: 80, gold: 40, time: 18, hp: 600, topH: 104 },
   garden: { name: 'Garden', w: 2, h: 2, wood: 20, gold: 10, time: 6, hp: 150, topH: 16 },
   stocks: { name: 'Stocks', w: 1, h: 1, wood: 15, time: 4, hp: 150, topH: 30 },
   tavern: { name: 'Tavern', w: 2, h: 2, wood: 60, time: 14, hp: 400, topH: 74 },
@@ -3451,7 +3451,7 @@ const UI = (() => {
       (starving ? ln('No food: starving', -20) : ln(`Rations: ${r.name}`, r.mood)) +
       ln(`Food variety: ${foodVariety()} kind${foodVariety() === 1 ? '' : 's'} (${Object.keys(foodKinds).filter(k => foodKinds[k] >= 1).map(k => FOOD_NAME[k]).join(', ') || 'none'})`, starving ? 0 : varietyBonus) +
       ln(`Taxes: ${t.name}`, t.mood) +
-      ln(relBonus ? `Religion: chapels serve ${Math.round(relCover * 100)}% of your people` : 'Religion: no chapel', relBonus) +
+      ln(relBonus ? `Faith: houses of prayer serve ${Math.round(relCover * 100)}% of your people` : 'Faith: no house of prayer (build one in the Town list)', relBonus) +
       ln(crowdPen ? 'Crowding: houses are nearly full' : 'Crowding: room to spare', crowdPen) +
       ln(`Gardens: ${countOf('garden')} (people work ${countOf('garden') * 5}% slower)`, fearGood) +
       ln(`Stocks: ${countOf('stocks')} (people work ${countOf('stocks') * 8}% harder)`, fearHard) + ln(aleBonus ? `Ale: taverns serve ${Math.round(aleCover * 100)}% of your people` : 'Ale: none served (build a tavern and brewery)', aleBonus) +
@@ -3567,7 +3567,8 @@ const R3D = (() => {
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const h = (u, v) => wn(u / 9, v / 9) + 0.5 * wn(u / 4 + 20, v / 4); const dx = h(x + 1, y) - h(x - 1, y), dy = h(x, y + 1) - h(x, y - 1), i = (y * n + x) * 4;
       d[i] = 128 + dx * 160; d[i + 1] = 128 + dy * 160; d[i + 2] = 255; d[i + 3] = 255; }
     g.putImageData(img, 0, 0); }, 6);
-  function std(hex, o = {}) { return new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); }
+  let envCube = null;
+  function std(hex, o = {}) { const m = new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); if (envCube && (o.metalness || 0) >= 0.45) { m.envMap = envCube; m.envMapIntensity = 0.85; } return m; }
   function texMat(name, rx, ry, tint, o = {}) {
     const key = name + rx.toFixed(2) + ry.toFixed(2) + (tint || '');
     if (matCache[key]) return matCache[key];
@@ -3610,6 +3611,13 @@ const R3D = (() => {
     scene = new T.Scene(); scene.background = C('#b7c6cc'); scene.fog = new T.Fog(C('#b7c6cc'), 1100, 3200);
     camera = new T.PerspectiveCamera(38, 1, 10, 7000);
     scene.add(new T.HemisphereLight(C('#d6e6ff'), C('#4d5a2c'), 0.62));
+    try {   // a small painted sky for metal to reflect: helmets, mail, blades and iron catch the light
+      const face = (top, bottom, mid) => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+        gr.addColorStop(0, top); if (mid) gr.addColorStop(0.5, mid); gr.addColorStop(1, bottom); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c; };
+      const side = () => face('#6f97cf', '#5a6a38', '#e4e6dc');
+      envCube = new T.CubeTexture([side(), side(), face('#5f8fd0', '#7fa6da'), face('#55633a', '#4a5732'), side(), side()]);
+      envCube.encoding = T.sRGBEncoding; envCube.needsUpdate = true;
+    } catch (e) { envCube = null; }
     sun = new T.DirectionalLight(C('#fff0d2'), 1.75); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 3400 });
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6;
@@ -3629,7 +3637,21 @@ const R3D = (() => {
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, heightAt(x, z)); uv.setXY(i, x / MW, 1 - z / MH); }
     geo.computeVertexNormals();
     const tex = new T.CanvasTexture(terrain); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
-    groundMesh = mesh(geo, new T.MeshStandardMaterial({ map: tex, roughness: 0.97 }), 0, 0, 0, false);
+    // a fine repeating layer of grass and soil grain keeps the ground crisp when you zoom in or tilt low
+    const det = document.createElement('canvas'); det.width = det.height = 256;
+    { const g = det.getContext('2d'), R = mulberry32(4242); g.fillStyle = '#808080'; g.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 2600; i++) { const x = R() * 256, y = R() * 256, l = 2 + R() * 5, a = -1.9 + R() * 0.8, v = R() < 0.5 ? 40 + R() * 40 : 150 + R() * 70;
+        g.strokeStyle = `rgba(${v},${v},${v},0.55)`; g.lineWidth = 0.7 + R() * 0.6;
+        for (const ox of [-256, 0, 256]) for (const oy of [-256, 0, 256]) { g.beginPath(); g.moveTo(x + ox, y + oy); g.lineTo(x + ox + Math.cos(a) * l, y + oy + Math.sin(a) * l); g.stroke(); } }
+      for (let i = 0; i < 900; i++) { const x = R() * 256, y = R() * 256, v = R() < 0.5 ? 60 : 175; g.fillStyle = `rgba(${v},${v},${v},0.35)`; g.fillRect(x, y, 1.4, 1.4); } }
+    const detTex = new T.CanvasTexture(det); detTex.wrapS = detTex.wrapT = T.RepeatWrapping; detTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const gmat = new T.MeshStandardMaterial({ map: tex, roughness: 0.97 });
+    gmat.onBeforeCompile = sh => {
+      sh.uniforms.detailMap = { value: detTex }; sh.uniforms.detailRep = { value: new T.Vector2(MW / 26, MH / 26) };
+      sh.fragmentShader = 'uniform sampler2D detailMap; uniform vec2 detailRep;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n  { float d1 = texture2D(detailMap, vUv * detailRep).r, d2 = texture2D(detailMap, vUv * detailRep * 0.27 + 0.31).r; diffuseColor.rgb *= mix(0.84, 1.16, d1 * 0.65 + d2 * 0.35); }');
+    };
+    groundMesh = mesh(geo, gmat, 0, 0, 0, false);
     scene.add(groundMesh);
     const outer = mesh(new T.PlaneGeometry(24000, 24000), std('#3f6a2c', { roughness: 1 }), MW / 2, -40, MH / 2, false); outer.rotation.x = -Math.PI / 2; scene.add(outer);
     // cloud shadows drifting over the land
