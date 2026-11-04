@@ -76,6 +76,14 @@
   #help h3{margin:0 0 8px;color:#ffd27a;font-size:20px;letter-spacing:1px}
   #help b{color:#ffd98a}
   #help p{margin:0 0 7px}
+  @media (max-width: 1400px){
+    #top{flex-wrap:nowrap}
+    #title{font-size:15px;letter-spacing:1.2px}
+    #status{gap:3px 10px}
+  }
+  @media (max-width: 1100px){
+    #title{display:none}
+  }
   @media (max-width: 760px){
     #title{display:none}
     #top{flex-wrap:nowrap;align-items:flex-start;padding:4px 8px}
@@ -163,6 +171,7 @@
     <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, chapels and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
+    <p><b>Stone castles:</b> a Quarry beside a grey rock cuts stone. High Walls stand as tall as your keep; archers climb them by Stairs placed beside the wall (or from a tower joined to it). Stone Towers and the Great Tower are far tougher than the wooden Tower, shoot farther, and hold more archers.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
@@ -201,6 +210,10 @@
         <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small></button>
         <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small></button>
         <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small></button>
+        <button class="bb ib" data-b="highwall"><canvas data-icon="b:highwall"></canvas>High Wall<small>6 stone each</small></button>
+        <button class="bb ib" data-b="stairs"><canvas data-icon="b:stairs"></canvas>Stairs<small>4 stone &middot; climb high walls</small></button>
+        <button class="bb ib" data-b="stower"><canvas data-icon="b:stower"></canvas>Stone Tower<small>60 stone &middot; 20 wood</small></button>
+        <button class="bb ib" data-b="greattower"><canvas data-icon="b:greattower"></canvas>Great Tower<small>120 stone &middot; 40 wood &middot; 30 gold</small></button>
       </div>
       <div class="pane" data-pane="army">
         <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>1 sword &middot; 10 gold</small></button>
@@ -220,6 +233,7 @@
         <button class="bb ib" data-b="hopfarm"><canvas data-icon="b:hopfarm"></canvas>Hop Farm<small>40 wood &middot; grows hops</small></button>
         <button class="bb ib" data-b="brewery"><canvas data-icon="b:brewery"></canvas>Brewery<small>50 wood &middot; hops to ale</small></button>
         <button class="bb ib" data-b="tavern"><canvas data-icon="b:tavern"></canvas>Tavern<small>60 wood &middot; serves ale</small></button>
+        <button class="bb ib" data-b="quarry"><canvas data-icon="b:quarry"></canvas>Quarry<small>40 wood &middot; by grey rock</small></button>
         <button class="bb ib" data-b="ironmine"><canvas data-icon="b:ironmine"></canvas>Iron Mine<small>40 wood &middot; by iron rock</small></button>
         <button class="bb ib" data-b="bowyer"><canvas data-icon="b:bowyer"></canvas>Bowyer<small>40 wood &middot; wood to bows</small></button>
         <button class="bb ib" data-b="poleturner"><canvas data-icon="b:poleturner"></canvas>Spear-maker<small>40 wood &middot; wood to spears</small></button>
@@ -649,7 +663,7 @@ function nearestEnemy(u, maxD) {
 function hitCenter(t) { return t.x0 !== undefined ? { x: t.x + RR(-22, 22), y: t.y - RR(20, 90) } : { x: t.x, y: t.y - 21 }; }
 
 const WALL_RESIST = 0.35;
-const isWall = t => t.kind === 'wall' || t.kind === 'gate';
+const isWall = t => t.kind === 'wall' || t.kind === 'gate' || t.kind === 'highwall' || t.kind === 'stairs';
 function doHit(u) {
   const t = u.target;
   if (!alive(t) || edgeDist(u, t) > rangeOf(u) + 8) return;
@@ -794,22 +808,42 @@ function commandDeposit(list) {
   for (const u of list) { if (u.carry <= 0) continue; if (!u.task) u.task = { type: u.carryType, node: null }; u.order = 'gather'; u.sub = 'toKeep'; u.path = []; u.repath = 0; }
 }
 // archers can climb onto your walls and towers: farther shots, half damage from arrows, out of reach of blades
-const WALL_POSTS = { wall: 2, gtower: 4 };
-const elev2D = u => u.onWall ? (u.onWall.kind === 'gtower' ? 92 : 30) : 0;
-const elev3D = u => u.onWall ? (u.onWall.kind === 'gtower' ? 96 : 31.5) : 0;
-const rangeOf = u => u.onWall ? u.range * 1.35 : u.range;
+const WALL_INFO = { wall: { posts: 2, e2: 30, e3: 31.5, rng: 1.35 }, gtower: { posts: 4, e2: 92, e3: 96, rng: 1.35 }, highwall: { posts: 2, e2: 88, e3: 97, rng: 1.5 },
+  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 } };
+const WALL_POSTS = Object.fromEntries(Object.entries(WALL_INFO).map(([k, v]) => [k, v.posts]));
+const elev2D = u => u.onWall ? WALL_INFO[u.onWall.kind].e2 : 0;
+const elev3D = u => u.onWall ? WALL_INFO[u.onWall.kind].e3 : 0;
+const rangeOf = u => u.onWall ? u.range * WALL_INFO[u.onWall.kind].rng : u.range;
+// a high wall can only be climbed from stairs beside it, or from a tower joined to the same stretch of wall
+function structAt(c, r) { for (const o of structures) if (!o.dead && o.team === 'player' && c >= o.c && c < o.c + o.w && r >= o.r && r < o.r + o.h) return o; return null; }
+function wallAccess(b) {
+  if (!b || b.kind !== 'highwall') return b;
+  const seen = new Set([b.id]), q = [b];
+  while (q.length) {
+    const w = q.shift();
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const o = structAt(w.c + dc, w.r + dr); if (!o || seen.has(o.id)) continue; seen.add(o.id);
+      if (o.done === false) continue;
+      if (o.kind === 'stairs' || o.kind === 'stower' || o.kind === 'greattower' || o.kind === 'gtower') return o;
+      if (o.kind === 'highwall' && q.length < 400) q.push(o);
+    }
+  }
+  return null;
+}
 const canMount = b => b && !b.dead && b.team === 'player' && b.done !== false && WALL_POSTS[b.kind];
 function postsFree(b) { return WALL_POSTS[b.kind] - units.filter(o => !o.dead && o.onWall === b).length; }
 function commandMount(list, b) {
+  if (b.kind === 'highwall' && !wallAccess(b)) { showBanner('Build Stairs beside this High Wall (Castle tab) so archers can climb it.', 3.5); return; }
   for (const u of list) { if (u.onWall) dismount(u); u.order = 'mount'; u.mountTarget = b; u.target = null; u.path = []; u.repath = 0; }
   markers.push({ x: b.x, y: b.y, t: 0, col: '120,200,255' });
 }
 function mountOn(u, b) {
   let post = canMount(b) && postsFree(b) > 0 ? b : null;
-  if (!post) { let bd = 220; for (const o of structures) if (canMount(o) && postsFree(o) > 0) { const d = edgeDist(u, o); if (d < bd) { bd = d; post = o; } } }
+  if (!post) { let bd = 220; for (const o of structures) if (canMount(o) && postsFree(o) > 0 && wallAccess(o)) { const d = edgeDist(u, o); if (d < bd) { bd = d; post = o; } } }
   if (!post) { u.order = 'idle'; return; }
   const k = WALL_POSTS[post.kind] - postsFree(post), cx = (post.x0 + post.x1) / 2, cy = (post.y0 + post.y1) / 2;
-  const off = post.kind === 'gtower' ? [[-9, -6], [9, -6], [-9, 8], [9, 8]][k] : [[-7, 2], [7, 2]][k];
+  const off = post.kind === 'gtower' ? [[-9, -6], [9, -6], [-9, 8], [9, 8]][k] : post.kind === 'stower' ? [Math.cos(k * 1.256 + 0.6) * 15, Math.sin(k * 1.256 + 0.6) * 9 + 2]
+    : post.kind === 'greattower' ? [[-28, -22], [0, -22], [28, -22], [-28, 0], [28, 0], [-28, 22], [0, 22], [28, 22]][k] : [[-7, 2], [7, 2]][k];
   u.onWall = post; u.x = cx + off[0]; u.y = cy + off[1]; u.order = 'idle'; u.path = []; u.moving = false;
   floatText(u.x, u.y - 60, 'On the wall', '#9fd8ff');
 }
@@ -821,8 +855,9 @@ function dismount(u) {
 function mountStep(u, dt) {
   const b = u.mountTarget;
   if (!canMount(b)) { u.order = 'idle'; return; }
-  if (edgeDist(u, b) <= 10) { mountOn(u, b); return; }
-  if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, b); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 1.5; }
+  const via = wallAccess(b); if (!via) { u.order = 'idle'; return; }
+  if (edgeDist(u, via) <= 10) { mountOn(u, b); return; }
+  if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, via); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 1.5; }
   followPath(u, dt);
 }
 function commandAttack(list, t) {
@@ -1963,7 +1998,7 @@ function updateHud() {
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
   UI.setStatus({ civ: CIV.name, civColor: CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff',
-    food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), gold: Math.floor(res.gold),
+    food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), stone: Math.floor(res.stone), gold: Math.floor(res.gold),
     pop, cap: popCap(), idle: idleCount(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
     moodRate: Math.round(moodRate), foes, raid: towerUp ? `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
   document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
@@ -1971,7 +2006,7 @@ function updateHud() {
   const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}` + (hasArmory() ? '' : ' · build an Armory to buy more');
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
   document.getElementById('feast').classList.toggle('off', res.gold < 50);
-  document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b; b.classList.toggle('off', res.wood < BUILD[kb].wood || res.gold < (BUILD[kb].gold || 0) || ((kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3)); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
+  document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b; b.classList.toggle('off', !afford(BUILD[kb]) || ((kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3)); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
   document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
   const sel = selectedList();
   UI.setSelection(sel);
@@ -2039,6 +2074,11 @@ function updateWar(dt) {
         s.aim = tgt.x > s.x + 6 ? 1 : -1; s.tx = tgt.x; s.ty = tgt.y; s.drawT = 0.3; s.archerT = s.fireRate;
         const x0 = s.x + 6 + s.aim * 8, y0 = s.y - s.archerY, x1 = tgt.x + RR(-7, 7), y1 = tgt.y - 16 + RR(-4, 4);
         arrows.push({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s, dmg: s.arrowDmg });
+        if (s.shots > 1) {   // a second archer on the great tower picks another foe
+          let t2 = tgt, b2 = s.range; for (const u of units) if (!u.dead && u.team !== s.team && u !== tgt) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < b2) { b2 = d; t2 = u; } }
+          const xa = s.x - 6 - s.aim * 8, xb = t2.x + RR(-7, 7), yb = t2.y - 16 + RR(-4, 4);
+          arrows.push({ x0: xa, y0, x1: xb, y1: yb, t: -0.15, dur: Math.hypot(xb - xa, yb - y0) / 430 + 0.12, h: 26, target: t2, from: s, dmg: s.arrowDmg });
+        }
         AudioSys.play('bow', s.x, s.y - 100);
       } else s.archerT = 0.4;
     }
@@ -2126,7 +2166,7 @@ document.getElementById('feast').onclick = () => {
 };
 
 // ---------- economy: stores, upkeep, training ----------
-const res = { food: 100, wood: 80, gold: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0 };
+const res = { food: 100, wood: 80, gold: 0, stone: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0 };
 const foodKinds = { berries: 0, crops: 100, bread: 0 };
 const FOOD_NAME = { berries: 'berries', crops: 'crops', bread: 'bread' };
 function addFood(kind, n) { foodKinds[kind] = (foodKinds[kind] || 0) + n; res.food += n; }
@@ -2172,19 +2212,20 @@ function trainUnit(kind) {
   updateHud();
 }
 // ---------- self-running workers ----------
-const JOBS = { wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
-const DROPS = { keep: ['wood', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'hops', 'iron', 'wheat', 'flour'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
+const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
+const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
 const CRAFT = {
   brewery: { inp: { hops: 2 }, out: 'ale', time: 7, batch: 2 },
   mill: { inp: { wheat: 2 }, out: 'flour', time: 6, batch: 3 },
   bakery: { inp: { flour: 1 }, out: 'bread', time: 6, batch: 9, n: 3 },
   ironmine: { inp: {}, out: 'iron', time: 3, batch: 4 },
+  quarry: { inp: {}, out: 'stone', time: 2, batch: 8 },
   bowyer: { inp: { wood: 3 }, out: 'bow', time: 9, batch: 1 },
   poleturner: { inp: { wood: 3 }, out: 'spear', time: 8, batch: 1 },
   smithy: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }
 };
 const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1 };
-const JOB_NAME = { wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
+const JOB_NAME = { quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
   const rc = CRAFT[site.kind];
@@ -2206,7 +2247,7 @@ function craftBrain(u, dt) {
     for (const [k, v] of Object.entries(rc.inp)) res[k] -= v;
     u.crafting = 0;
   }
-  if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play(site.kind === 'ironmine' ? 'chop' : 'hammer', u.x, u.y); }
+  if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play(site.kind === 'ironmine' || site.kind === 'quarry' ? 'chop' : 'hammer', u.x, u.y); }
   u.crafting += dt * workMul();
   if (u.crafting >= rc.time) { u.crafting = null; u.carry += rc.n || 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
 }
@@ -2286,6 +2327,11 @@ const BUILD = {
   wall:   { name: 'Wall',  w: 1, h: 1, wood: 8,   time: 3,  hp: 300, topH: 40 },
   gate:   { name: 'Gate',  w: 1, h: 1, wood: 15,  time: 5,  hp: 400, topH: 44 },
   gtower: { name: 'Tower', w: 2, h: 2, wood: 120, time: 20, hp: 700, topH: 122 },
+  highwall: { name: 'High Wall', w: 1, h: 1, wood: 0, stone: 6, time: 6, hp: 900, topH: 104 },
+  stairs: { name: 'Stairs', w: 1, h: 1, wood: 0, stone: 4, time: 4, hp: 500, topH: 96 },
+  stower: { name: 'Stone Tower', w: 2, h: 2, wood: 20, stone: 60, time: 28, hp: 1600, topH: 158 },
+  greattower: { name: 'Great Tower', w: 3, h: 3, wood: 40, stone: 120, gold: 30, time: 42, hp: 2800, topH: 186 },
+  quarry: { name: 'Quarry', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 50 },
   woodhut: { name: "Woodcutter's Hut", w: 2, h: 2, wood: 30, time: 8, hp: 250, topH: 56 },
   stockpile: { name: 'Stockpile', w: 2, h: 2, wood: 20, time: 6, hp: 200, topH: 22 },
   granary: { name: 'Granary', w: 2, h: 2, wood: 40, time: 10, hp: 350, topH: 72 },
@@ -2312,8 +2358,10 @@ function tileFor(kind, wx, wy) { const d = BUILD[kind]; return { c: Math.round(w
 function canPlace(kind, c, r) {
   const k = playerKeep(), d = BUILD[kind]; if (!k) return false;
   const cx = (c + d.w / 2) * TILE, cy = (r + d.h / 2) * TILE;
-  if (kind !== 'ironmine' && Math.hypot(cx - k.x, cy - (k.y0 + k.y1) / 2) > TERRITORY) return false;
+  if (kind !== 'ironmine' && kind !== 'quarry' && Math.hypot(cx - k.x, cy - (k.y0 + k.y1) / 2) > TERRITORY) return false;
   if (kind === 'ironmine' && !rocks.some(rk => rk.iron && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
+  if (kind === 'quarry' && !rocks.some(rk => !rk.iron && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
+  if (kind === 'stairs' && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => { const o = structAt(c + dc, r + dr); return o && o.kind === 'highwall'; })) return false;
   for (let i = 0; i < d.w; i++) for (let j = 0; j < d.h; j++) {
     const cc = c + i, rr2 = r + j;
     if (cc < 1 || rr2 < 1 || cc >= COLS - 1 || rr2 >= ROWS - 1 || blocked[rr2 * COLS + cc] || gate[rr2 * COLS + cc]) return false;
@@ -2327,8 +2375,10 @@ function makeBuildingObj(kind, c, r) {
   const d = BUILD[kind];
   const b = { id: nextId++, kind, team: 'player', name: d.name, c, r, w: d.w, h: d.h,
     x0: c * TILE, y0: r * TILE, x1: (c + d.w) * TILE, y1: (r + d.h) * TILE, x: (c + d.w / 2) * TILE, y: (r + d.h) * TILE,
-    maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
+    maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
   if (kind === 'gtower') Object.assign(b, { range: 230, fireRate: 2.0, arrowDmg: 7, archerY: 112 });
+  if (kind === 'stower') Object.assign(b, { range: 265, fireRate: 1.6, arrowDmg: 8, archerY: 146 });
+  if (kind === 'greattower') Object.assign(b, { range: 290, fireRate: 1.4, arrowDmg: 9, archerY: 170, shots: 2 });
   if (isField(kind)) Object.assign(b, { amount: 0, max: 40 });
   return b;
 }
@@ -2363,12 +2413,16 @@ function assignBuilders(b) {
   }
   if (civs.length) commandBuild(civs, b);
 }
+const afford = d => res.wood >= (d.wood || 0) && res.gold >= (d.gold || 0) && res.stone >= (d.stone || 0);
+const pay = d => { res.wood -= d.wood || 0; res.gold -= d.gold || 0; res.stone -= d.stone || 0; };
+const lacking = d => res.wood < (d.wood || 0) ? 'wood' : res.stone < (d.stone || 0) ? 'stone' : 'gold';
+const isLine = k => k === 'wall' || k === 'highwall';
 function startPlacing(kind) {
   if (!started || won) return;
-  if (res.wood < BUILD[kind].wood || res.gold < (BUILD[kind].gold || 0)) { showBanner(`Not enough ${res.wood < BUILD[kind].wood ? 'wood' : 'gold'} for a ${BUILD[kind].name}.`, 2.5); return; }
+  if (!afford(BUILD[kind])) { showBanner(`Not enough ${lacking(BUILD[kind])} for a ${BUILD[kind].name}.${lacking(BUILD[kind]) === 'stone' ? ' Build a Quarry beside a grey rock.' : ''}`, 3); return; }
   if ((kind === 'garden' || kind === 'stocks') && structures.filter(b => b.kind === kind && !b.dead).length >= 3) { showBanner(`You can have at most 3 ${kind === 'garden' ? 'gardens' : 'sets of stocks'}.`, 2.5); return; }
   placing = { kind, start: null };
-  showBanner(kind === 'wall' ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Click near your keep to place the ${BUILD[kind].name}. Right-click or Esc cancels.`, 4);
+  showBanner(isLine(kind) ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Click near your keep to place the ${BUILD[kind].name}. Right-click or Esc cancels.`, 4);
   updateHud();
 }
 function cancelPlacing() { placing = null; updateHud(); }
@@ -2379,21 +2433,21 @@ function wallLine(c0, r0, c1, r1) {
 }
 function placeAt(sx, sy, keepGoing) {
   const w = toWorld(sx, sy), kind = placing.kind, d = BUILD[kind], { c, r } = tileFor(kind, w.x, w.y);
-  if (kind === 'wall') {
+  if (isLine(kind)) {
     if (!placing.start) { placing.start = { c, r }; showBanner('Now click where the wall should end.', 3); return; }
     let first = null, short = false;
     for (const t of wallLine(placing.start.c, placing.start.r, c, r)) {
-      if (!canPlace('wall', t.c, t.r)) continue;
-      if (res.wood < d.wood) { short = true; break; }
-      res.wood -= d.wood; const b = createBuilding('wall', t.c, t.r); if (!first) first = b;
+      if (!canPlace(kind, t.c, t.r)) continue;
+      if (!afford(d)) { short = true; break; }
+      pay(d); const b = createBuilding(kind, t.c, t.r); if (!first) first = b;
     }
-    if (short) showBanner('Not enough wood to finish the whole wall.', 3);
+    if (short) showBanner(`Not enough ${lacking(d)} to finish the whole wall.`, 3);
     if (first) { assignBuilders(first); AudioSys.ui('place'); }
-    placing = keepGoing ? { kind: 'wall', start: null } : null; updateHud(); return;
+    placing = keepGoing ? { kind, start: null } : null; updateHud(); return;
   }
-  if (!canPlace(kind, c, r)) { showBanner('You cannot build there. Build on open ground near your keep.', 2.5); return; }
-  if (res.wood < d.wood || res.gold < (d.gold || 0)) { showBanner('Not enough wood or gold.', 2); placing = null; updateHud(); return; }
-  res.wood -= d.wood; res.gold -= (d.gold || 0);
+  if (!canPlace(kind, c, r)) { showBanner(kind === 'stairs' ? 'Stairs must stand right beside one of your High Walls.' : kind === 'quarry' ? 'A quarry must stand beside a grey rock.' : 'You cannot build there. Build on open ground near your keep.', 2.5); return; }
+  if (!afford(d)) { showBanner(`Not enough ${lacking(d)}.`, 2); placing = null; updateHud(); return; }
+  pay(d);
   assignBuilders(createBuilding(kind, c, r)); AudioSys.ui('place');
   if (!keepGoing) placing = null;
   updateHud();
@@ -2403,17 +2457,17 @@ function drawPlacement(g) {
   g.save(); g.setLineDash([10, 8]); g.strokeStyle = 'rgba(255,230,140,0.55)'; g.lineWidth = 2;
   g.beginPath(); g.arc(k.x, (k.y0 + k.y1) / 2, TERRITORY, 0, Math.PI * 2); g.stroke(); g.restore();
   const w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y);
-  const spots = kind === 'wall' && placing.start ? wallLine(placing.start.c, placing.start.r, cur.c, cur.r) : [cur];
+  const spots = isLine(kind) && placing.start ? wallLine(placing.start.c, placing.start.r, cur.c, cur.r) : [cur];
   let cost = 0;
   for (const t of spots) {
-    const ok = canPlace(kind, t.c, t.r); if (ok) cost += d.wood;
+    const ok = canPlace(kind, t.c, t.r); if (ok) cost += d.stone || d.wood;
     const ghost = makeBuildingObj(kind, t.c, t.r); ghost.done = true; ghost.progress = 1;
     g.fillStyle = ok ? 'rgba(120,255,140,0.28)' : 'rgba(255,80,60,0.35)'; g.fillRect(ghost.x0, ghost.y0, ghost.x1 - ghost.x0, ghost.y1 - ghost.y0);
     g.save(); g.globalAlpha = 0.55; drawBuilding(g, ghost, time); g.restore();
   }
-  if (kind === 'wall') {
+  if (isLine(kind)) {
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
-    const label = placing.start ? `${cost} wood` : 'wall start'; g.strokeText(label, w.x, w.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, w.x, w.y - 24);
+    const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, w.x, w.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, w.x, w.y - 24);
   }
 }
 function drawBuilding(g, b, t) {
@@ -2440,6 +2494,11 @@ function drawBuilding(g, b, t) {
   else if (b.kind === 'wall') drawWall(g, b, P);
   else if (b.kind === 'gate') drawGate(g, b, P);
   else if (b.kind === 'gtower') drawGuardTower(g, b, P, t);
+  else if (b.kind === 'highwall') drawHighWall(g, b, P);
+  else if (b.kind === 'stairs') drawStairs(g, b, P);
+  else if (b.kind === 'stower') drawStoneTower(g, b, P, t);
+  else if (b.kind === 'greattower') drawGreatTower(g, b, P, t);
+  else if (b.kind === 'quarry') drawQuarry(g, b, P);
   else if (b.kind === 'woodhut') drawWoodHut(g, b, P);
   else if (b.kind === 'stockpile') drawStockpile(g, b, P);
   else if (b.kind === 'granary') drawGranary(g, b, P);
@@ -2661,6 +2720,89 @@ function drawGuardTower(g, b, P, t) {
   drawArchDoor(g, M, P, cx, gy, 8, 14);
   drawBanner(g, P, Rt + 4, T - 6, 28, 10, PAL.player.tunic, t, null);
   flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, L, T - 8, w + D, H + 8);
+}
+function drawHighWall(g, b, P) {
+  const M = mats(), x = b.x0, gy = b.y - 4, w = 32, H = 88;
+  softShadow(g, x + w / 2 + 12, gy + 2, 28, 7, 0.45);
+  g.fillStyle = M.stoneDark; g.fillRect(x - 1, gy - 9, w + 2, 9); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x - 1, gy - 9, w + 2, 1.5);
+  g.fillStyle = M.stone; g.fillRect(x, gy - H, w, H - 9); lightFace(g, x, gy - H, w, H - 9);
+  g.fillStyle = 'rgba(0,0,0,0.13)'; for (let yy = gy - H + 12; yy < gy - 9; yy += 12) g.fillRect(x, yy, w, 1);
+  g.fillStyle = M.stoneDark; g.fillRect(x, gy - H - 8, w, 8); g.fillStyle = 'rgba(255,240,210,0.12)'; g.fillRect(x, gy - H - 8, w, 8);
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x, gy - H, w, 1.5);
+  merlons(g, M, x + 2, gy - H - 14, 2, 16, 10, 7);
+  if ((b.c + b.r) % 2 === 0) { g.fillStyle = '#16110c'; g.fillRect(x + 14.8, gy - H + 24, 2.4, 15); }
+  if ((b.c * 7 + b.r * 3) % 4 === 0) mossAt(g, x, gy, w, b.c * 31 + b.r);
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, x, gy - H - 14, w, H + 14);
+}
+function drawStairs(g, b, P) {
+  const M = mats(), x = b.x0, gy = b.y - 4, n = 8, sw = 32 / n, sh = 11;
+  softShadow(g, x + 20, gy + 2, 24, 6, 0.4);
+  for (let i = 0; i < n; i++) {
+    const h = (i + 1) * sh, xx = x + i * sw;
+    g.fillStyle = M.stone; g.fillRect(xx, gy - h, sw + 0.5, h); lightFace(g, xx, gy - h, sw + 0.5, h);
+    g.fillStyle = 'rgba(255,240,210,0.3)'; g.fillRect(xx, gy - h, sw + 0.5, 1.6);
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(xx + sw - 0.6, gy - h, 0.8, h);
+  }
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, x, gy - n * sh, 32, n * sh);
+}
+function towerMerlon(g, M, x, y) {
+  g.fillStyle = M.stone; g.fillRect(x, y, 8, 9); g.fillStyle = 'rgba(255,240,210,0.25)'; g.fillRect(x, y, 8, 1.5);
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(x + 6, y, 2, 9); g.strokeStyle = 'rgba(30,26,20,0.5)'; g.lineWidth = 0.6; g.strokeRect(x, y, 8, 9);
+}
+function drawStoneTower(g, b, P, t) {
+  const M = mats(), cx = b.x, gy = b.y - 6, R = 30, H = 128, top = gy - H;
+  softShadow(g, cx + 26, gy + 4, 54, 15, 0.46);
+  const bodyPath = () => { g.beginPath(); g.moveTo(cx - R, top); g.lineTo(cx - R, gy); g.ellipse(cx, gy, R, 9, 0, Math.PI, 0, true); g.lineTo(cx + R, top); g.closePath(); };
+  fillPath(g, bodyPath, M.stone);
+  const sg = g.createLinearGradient(cx - R, 0, cx + R, 0); sg.addColorStop(0, 'rgba(0,0,0,0.22)'); sg.addColorStop(0.12, 'rgba(255,240,210,0.14)'); sg.addColorStop(0.35, 'rgba(255,240,210,0.22)'); sg.addColorStop(0.7, 'rgba(0,0,0,0.22)'); sg.addColorStop(1, 'rgba(0,0,0,0.62)');
+  fillPath(g, bodyPath, sg);
+  g.strokeStyle = 'rgba(0,0,0,0.14)'; g.lineWidth = 1; for (let yy = top + 14; yy < gy; yy += 12) { g.beginPath(); g.ellipse(cx, yy, R, 9, 0, 0, Math.PI); g.stroke(); }
+  g.fillStyle = M.stoneDark; g.beginPath(); g.ellipse(cx, top, R + 4, 11, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(cx, top + 1, R + 4, 11, 0, 0, Math.PI); g.lineTo(cx - R - 4, top + 4); g.fill();
+  g.fillStyle = '#5d5850'; g.beginPath(); g.ellipse(cx, top - 1, R - 2, 8, 0, 0, Math.PI * 2); g.fill();
+  for (let k = 0; k < 6; k++) { const a = Math.PI * (1.1 + k * 0.16); towerMerlon(g, M, cx + Math.cos(a) * (R + 1) - 4, top + Math.sin(a) * 10 - 9); }
+  if (b.done) drawLookoutArcher(g, P, cx + 4, top - 2, b.aim || 1, b.drawT, PAL.player.tunic, '#c3cad1', null, '#c98d5e');
+  for (let k = 0; k < 7; k++) { const a = Math.PI * (0.04 + k * 0.153); towerMerlon(g, M, cx + Math.cos(a) * (R + 1) - 4, top + Math.sin(a) * 10 - 9); }
+  g.fillStyle = '#16110c'; for (const [dx, yy] of [[-12, top + 34], [10, top + 62], [-4, top + 90]]) g.fillRect(cx + dx, yy, 2.6, 15);
+  drawArchDoor(g, M, P, cx, gy + 8, 9, 17);
+  drawBanner(g, P, cx + R + 2, top - 8, 30, 11, PAL.player.tunic, t, null);
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - R - 4, top - 10, 2 * R + 8, H + 20);
+}
+function drawGreatTower(g, b, P, t) {
+  const M = mats(), cx = b.x, gy = b.y - 4, w = 88, H = 150, D = 16, L = cx - w / 2, Rt = cx + w / 2, top = gy - H;
+  softShadow(g, cx + 34, gy + 4, 80, 20, 0.5);
+  const side = () => { g.beginPath(); g.moveTo(Rt, gy); g.lineTo(Rt + D, gy - 12); g.lineTo(Rt + D, top - 12); g.lineTo(Rt, top); g.closePath(); };
+  fillPath(g, side, M.stone); fillPath(g, side, 'rgba(0,0,0,0.42)');
+  const walk = () => { g.beginPath(); g.moveTo(L, top); g.lineTo(Rt, top); g.lineTo(Rt + D, top - 12); g.lineTo(L + D, top - 12); g.closePath(); };
+  fillPath(g, walk, M.stoneDark); fillPath(g, walk, 'rgba(255,240,210,0.1)');
+  merlons(g, M, L + D + 2, top - 20, 6, 14, 8, 8);
+  if (b.done) { drawLookoutArcher(g, P, cx - 16, top - 4, -(b.aim || 1), b.drawT, PAL.player.tunic, '#c3cad1', null, '#c98d5e'); drawLookoutArcher(g, P, cx + 18, top - 4, b.aim || 1, b.drawT, PAL.player.tunic, '#c3cad1', null, '#c98d5e'); }
+  g.fillStyle = M.stone; g.fillRect(L, top, w, H); lightFace(g, L, top, w, H);
+  g.fillStyle = 'rgba(0,0,0,0.12)'; for (let yy = top + 12; yy < gy; yy += 12) g.fillRect(L, yy, w, 1);
+  g.fillStyle = M.stoneDark; g.fillRect(L - 2, gy - 12, w + 4, 12);
+  g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(L - 1, top + 3, w + 2, 2);
+  merlons(g, M, L + 1, top - 8, 7, 13.2, 8, 8);
+  // corner turrets
+  for (const tx of [L - 4, Rt - 12]) {
+    g.fillStyle = M.stone; g.fillRect(tx, top - 26, 16, H + 14); lightFace(g, tx, top - 26, 16, H + 14);
+    g.fillStyle = M.stoneDark; g.fillRect(tx - 2, top - 30, 20, 5);
+    merlons(g, M, tx - 1, top - 37, 3, 7, 5, 7);
+  }
+  g.fillStyle = '#16110c'; for (const [dx, yy] of [[-22, top + 30], [20, top + 30], [-22, top + 74], [20, top + 74], [0, top + 52]]) g.fillRect(cx + dx, yy, 3, 16);
+  drawArchDoor(g, M, P, cx, gy, 12, 22);
+  drawBanner(g, P, Rt + 6, top - 18, 34, 12, PAL.player.tunic, t, null);
+  mossAt(g, L, gy, w, b.id * 13);
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, L - 6, top - 38, w + D + 12, H + 38);
+}
+function drawQuarry(g, b, P) {
+  const M = mats(), cx = b.x, gy = b.y - 6;
+  softShadow(g, cx + 6, gy + 2, 34, 9, 0.35);
+  g.fillStyle = '#4a4640'; g.beginPath(); g.ellipse(cx - 6, gy - 10, 20, 8, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(cx - 6, gy - 9, 15, 5, 0, 0, Math.PI * 2); g.fill();
+  for (const [x, y, w, h] of [[cx + 8, gy - 12, 12, 8], [cx + 18, gy - 12, 10, 8], [cx + 12, gy - 20, 11, 8], [cx - 26, gy - 4, 10, 7]]) { g.fillStyle = M.stone; g.fillRect(x, y, w, h); lightFace(g, x, y, w, h); g.strokeStyle = 'rgba(30,26,20,0.5)'; g.lineWidth = 0.6; g.strokeRect(x, y, w, h); }
+  g.strokeStyle = '#6b4a28'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(cx - 20, gy - 8); g.lineTo(cx - 6, gy - 46); g.lineTo(cx + 6, gy - 8); g.moveTo(cx - 6, gy - 46); g.lineTo(cx + 14, gy - 40); g.stroke();
+  g.strokeStyle = '#c9b38a'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(cx + 14, gy - 40); g.lineTo(cx + 14, gy - 26); g.stroke();
+  g.fillStyle = M.stone; g.fillRect(cx + 10, gy - 26, 8, 6);
 }
 document.querySelectorAll('.bb[data-b]').forEach(b => b.onclick = () => startPlacing(b.dataset.b));
 
@@ -2918,7 +3060,7 @@ const UI = (() => {
   }
   function iconBuilding(g, name, w, h) {
     const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (isField(name)) b.amount = b.max;
-    const vis = { wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
+    const vis = { highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -2966,6 +3108,8 @@ const UI = (() => {
     } else if (name === 'wood') {
       for (const [y, x] of [[14, 3], [8, 6]]) { g.fillStyle = '#7d5830'; g.fillRect(x, y - 3, 13, 6); g.strokeStyle = ol; g.lineWidth = 1; g.strokeRect(x, y - 3, 13, 6);
         g.fillStyle = '#d6b27a'; g.beginPath(); g.ellipse(x + 13, y, 2, 3, 0, 0, Math.PI * 2); g.fill(); g.stroke(); g.strokeStyle = '#8a6a3a'; g.beginPath(); g.ellipse(x + 13, y, 0.8, 1.4, 0, 0, Math.PI * 2); g.stroke(); }
+    } else if (name === 'stone') {
+      for (const [x, y, w, h, c] of [[2, 11, 9, 7, '#9a958c'], [11, 11, 9, 7, '#8a857c'], [6, 4, 10, 7, '#b0aba2']]) { g.fillStyle = c; g.fillRect(x, y, w, h); g.strokeStyle = ol; g.lineWidth = 1; g.strokeRect(x, y, w, h); g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x + 1, y + 1, w - 2, 1.2); }
     } else if (name === 'gold') {
       const gr = g.createRadialGradient(8, 8, 1, 11, 11, 9); gr.addColorStop(0, '#fff2b0'); gr.addColorStop(0.5, '#e8b83a'); gr.addColorStop(1, '#9a6c12');
       g.fillStyle = gr; g.beginPath(); g.arc(11, 11, 8.5, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 1; g.stroke();
@@ -3010,6 +3154,7 @@ const UI = (() => {
     statusEl.innerHTML = `<span class="chip" id="cCiv"><b></b></span>
       <span class="chip" title="Food"><canvas data-icon="r:food"></canvas><b id="vFood"></b><small id="vEat"></small></span>
       <span class="chip" title="Wood"><canvas data-icon="r:wood"></canvas><b id="vWood"></b></span>
+      <span class="chip" title="Stone"><canvas data-icon="r:stone"></canvas><b id="vStone"></b></span>
       <span class="chip" title="Gold"><canvas data-icon="r:gold"></canvas><b id="vGold"></b></span>
       <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b><small id="vIdle"></small></span>
       <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
@@ -3023,7 +3168,7 @@ const UI = (() => {
   function setStatus(d) {
     if (!built) buildStatus();
     const civB = $('cCiv').firstElementChild; civB.textContent = d.civ; civB.style.color = d.civColor;
-    $('vFood').textContent = d.food; $('vEat').textContent = `eating ${d.eat}/min`; $('vWood').textContent = d.wood; $('vGold').textContent = d.gold;
+    $('vFood').textContent = d.food; $('vEat').textContent = `eating ${d.eat}/min`; $('vWood').textContent = d.wood; $('vStone').textContent = d.stone; $('vGold').textContent = d.gold;
     $('vPeople').textContent = `${d.pop} of ${d.cap}`; $('vIdle').textContent = d.idle ? `${d.idle} idle` : '';
     const mv = $('vMood'); mv.textContent = `${d.mood} ${d.moodName}`; mv.style.color = d.moodColor;
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
@@ -3051,7 +3196,7 @@ const UI = (() => {
   function toggle(id) { const p = $(id); p.hidden = !p.hidden; if (id === 'moodPop' && !p.hidden) p.innerHTML = moodReport(); if (id === 'menuPop') $('btnMenu').setAttribute('aria-expanded', String(!p.hidden)); }
   function goodsReport() {
     const ln = (a, b) => `<div class="ln"><span>${a}</span><b>${b}</b></div>`;
-    return '<h3>GOODS</h3>' + ln('Food: berries, crops, bread', `${Math.floor(foodKinds.berries)}, ${Math.floor(foodKinds.crops)}, ${Math.floor(foodKinds.bread)}`) + ln('Wheat', Math.floor(res.wheat)) + ln('Flour', Math.floor(res.flour)) + ln('Hops', Math.floor(res.hops)) + ln('Ale', Math.floor(res.ale)) + ln('Iron', Math.floor(res.iron)) + ln('Bows', res.bow) + ln('Spears', res.spear) + ln('Swords', res.sword) + '<p style="margin:8px 0 0;font-size:14px;color:#d9c9a3">Build workshops in the Industry tab (key 5). Weapons in the armory make soldiers cheap.</p>';
+    return '<h3>GOODS</h3>' + ln('Food: berries, crops, bread', `${Math.floor(foodKinds.berries)}, ${Math.floor(foodKinds.crops)}, ${Math.floor(foodKinds.bread)}`) + ln('Wheat', Math.floor(res.wheat)) + ln('Flour', Math.floor(res.flour)) + ln('Stone', Math.floor(res.stone)) + ln('Hops', Math.floor(res.hops)) + ln('Ale', Math.floor(res.ale)) + ln('Iron', Math.floor(res.iron)) + ln('Bows', res.bow) + ln('Spears', res.spear) + ln('Swords', res.sword) + '<p style="margin:8px 0 0;font-size:14px;color:#d9c9a3">Build workshops in the Industry tab (key 5). Weapons in the armory make soldiers cheap.</p>';
   }
   function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
   // --- tabs and hiding the panel ---
@@ -3446,6 +3591,61 @@ const R3D = (() => {
       add(box(3, 13, 1, std('#16110c'), 0, 60, 24.6));
       info.flags.push(pole(inner, 22, 95, -22, 30, PAL.player.tunic));
       info.archer = towerArcher('player', 0.85); info.archer.root.position.set(4, 95, 12); add(info.archer.root);
+    } else if (b.kind === 'highwall') {
+      // as tall as the keep: a sloped plinth, the wall, a walkway, and battlements wherever the wall ends
+      add(box(34, 10, 34, texMat('stoneDark', 1, 1), 0, 5, 0));
+      add(box(32, 88, 32, stoneM(32, 88), 0, 54, 0));
+      add(box(33, 3, 26, texMat('stoneDark', 1, 1), 0, 97.5, 0));
+      const nb = (dc, dr) => structures.some(o => !o.dead && (o.kind === 'highwall' || o.kind === 'stower' || o.kind === 'greattower') && dc + b.c >= o.c && dc + b.c < o.c + o.w && dr + b.r >= o.r && dr + b.r < o.r + o.h && o.team === b.team);
+      const mm = stoneM(9, 9);
+      if (!nb(0, 1)) for (const x of [-9.5, 6.5]) add(box(9, 9, 6, mm, x, 103.5, 13));
+      if (!nb(0, -1)) for (const x of [-9.5, 6.5]) add(box(9, 9, 6, mm, x, 103.5, -13));
+      if (!nb(1, 0)) for (const z of [-9.5, 6.5]) add(box(6, 9, 9, mm, 13, 103.5, z));
+      if (!nb(-1, 0)) for (const z of [-9.5, 6.5]) add(box(6, 9, 9, mm, -13, 103.5, z));
+      if ((b.c + b.r) % 2 === 0) { add(box(2.4, 14, 1, std('#16110c'), 0, 68, 16.3)); add(box(2.4, 14, 1, std('#16110c'), 0, 68, -16.3)); }
+    } else if (b.kind === 'stairs') {
+      // stone steps rising toward the high wall beside them
+      let dir = [0, -1]; for (const d of [[0, -1], [1, 0], [-1, 0], [0, 1]]) if (structures.some(o => !o.dead && o.kind === 'highwall' && o.c === b.c + d[0] && o.r === b.r + d[1])) { dir = d; break; }
+      const st = new T.Group(); st.rotation.y = Math.atan2(dir[0], dir[1]); inner.add(st);
+      const n = 9, sm = stoneM(28, 12);
+      for (let i = 0; i < n; i++) { const h = (i + 1) * 10.7; const s1 = box(28, h, 32 / n + 0.2, sm, 0, h / 2, -16 + (i + 0.5) * 32 / n); st.add(s1); }
+      st.add(box(2, 98, 32, texMat('stoneDark', 1, 1), -14.5, 49, 0)); st.add(box(2, 98, 32, texMat('stoneDark', 1, 1), 14.5, 49, 0));
+    } else if (b.kind === 'stower') {
+      // round stone tower: battered base, tall drum, corbelled parapet with merlons all round
+      add(cyl(33, 36, 14, texMat('stoneDark', 2, 1), 0, 7, 0, 22));
+      add(cyl(29, 31, 136, stoneM(180, 136), 0, 75, 0, 24));
+      add(cyl(34, 30, 8, texMat('stoneDark', 2, 1), 0, 145, 0, 24));
+      add(cyl(33.5, 33.5, 3, stoneM(60, 3), 0, 150, 0, 24));
+      const mm = stoneM(8, 10);
+      for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, mb = box(8, 10, 5, mm, Math.sin(a) * 31, 156.5, Math.cos(a) * 31); mb.rotation.y = a; add(mb); }
+      door(inner, 0, 0, 30, 15, 22);
+      for (const [a, y] of [[0.3, 60], [2.4, 80], [4.2, 100], [-0.4, 118]]) { const sl = box(3, 15, 1.5, std('#16110c'), Math.sin(a) * 31, y, Math.cos(a) * 31); sl.rotation.y = a; add(sl); }
+      info.flags.push(pole(inner, -18, 151, -18, 32, PAL.player.tunic));
+      info.archer = towerArcher('player', 0.9); info.archer.root.position.set(6, 151, 14); add(info.archer.root);
+    } else if (b.kind === 'greattower') {
+      // great tower: taller than the keep, with four corner turrets
+      add(box(96, 14, 96, texMat('stoneDark', 2, 1), 0, 7, 0));
+      add(box(90, 156, 90, stoneM(90, 156), 0, 84, 0));
+      add(box(96, 6, 96, texMat('stoneDark', 2, 1), 0, 163, 0));
+      addMerlons(inner, -48, -48, 96, 96, 166, 13.5, 8, 10);
+      for (const [x, z] of [[-45, -45], [45, -45], [-45, 45], [45, 45]]) {
+        add(cyl(11, 12, 186, stoneM(60, 186), x, 93, z, 16));
+        add(cyl(13, 11, 6, texMat('stoneDark', 1, 1), x, 189, z, 16));
+        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; add(box(5, 7, 5, stoneM(5, 7), x + Math.sin(a) * 11, 195, z + Math.cos(a) * 11)); }
+      }
+      door(inner, 0, 0, 45, 24, 32);
+      for (const x of [-22, 22]) for (const y of [60, 110]) add(box(3.4, 16, 1, std('#16110c'), x, y, 45.6));
+      info.flags.push(pole(inner, 0, 169, 0, 40, PAL.player.tunic));
+      info.archer = towerArcher('player', 0.95); info.archer.root.position.set(14, 169, 30); add(info.archer.root);
+      const a2 = towerArcher('player', 0.95); a2.root.position.set(-20, 169, 30); a2.root.rotation.y = -0.4; add(a2.root);
+    } else if (b.kind === 'quarry') {
+      add(box(36, 1.5, 30, std('#4a4640', { roughness: 1 }), -6, 0.8, 0));
+      for (const [x, y, z, w, h, d] of [[14, 4, -10, 12, 8, 10], [24, 4, -6, 10, 8, 10], [18, 12, -8, 11, 8, 10], [16, 4, 12, 12, 8, 9], [-24, 3.5, 18, 9, 7, 8]]) add(box(w, h, d, stoneM(w, h), x, y, z));
+      const post = woodVM(3, 50);
+      for (const s of [-1, 1]) { const p1 = cyl(1.4, 1.6, 50, post, s * 10, 23, -2, 6); p1.rotation.z = s * 0.38; add(p1); }
+      const beam = cyl(1.2, 1.2, 26, woodHM(26, 3), 6, 45, -2, 6); beam.rotation.z = Math.PI / 2 - 0.2; add(beam);
+      add(cyl(0.3, 0.3, 16, std('#c9b38a'), 18, 36, -2, 4)); add(box(8, 6, 8, stoneM(8, 6), 18, 26, -2));
+      add(box(10, 3, 6, woodHM(10, 3), -22, 1.5, -14));
     } else if (b.kind === 'woodhut') {
       add(box(40, 26, 32, woodVM(40, 26), -6, 13, -4));
       door(inner, -6, 0, 12, 9, 17);
@@ -3843,9 +4043,10 @@ const R3D = (() => {
     for (const b of all) {
       seen.add(b.id);
       let md = bModels.get(b.id);
+      if (md && md.palVer !== palVer && !b.dead) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(b.id); md = null; }
       if (!md) {
-        md = buildingModel(b); bModels.set(b.id, md);
-        if ((b.kind === 'wall' || b.kind === 'gate') && !joined.has(b.id) && joined.add(b.id)) for (const o of structures) if (o !== b && o.kind === 'wall' && Math.abs(o.c - b.c) + Math.abs(o.r - b.r) === 1) { const om = bModels.get(o.id); if (om && !om.rubble) { scene.remove(om.g); bModels.delete(o.id); } }
+        md = buildingModel(b); md.palVer = palVer; bModels.set(b.id, md);
+        if (['wall', 'gate', 'highwall', 'stairs'].includes(b.kind) && !joined.has(b.id) && joined.add(b.id)) for (const o of structures) if (o !== b && (o.kind === 'wall' || o.kind === 'highwall' || o.kind === 'stairs') && Math.abs(o.c - b.c) + Math.abs(o.r - b.r) === 1) { const om = bModels.get(o.id); if (om && !om.rubble) { scene.remove(om.g); bModels.delete(o.id); } }
         if (isField(b.kind) || b.kind === 'house') hideGrass(b.x0, b.y0, b.x1, b.y1);
       }
       if (b.dead) { if (!md.rubble) { md.g.visible = false; md.rubble = b.kind === 'farm' ? null : rubble(b); } if (Math.random() < 0.05) spawn('smoke', b.x + RR(-25, 25), b.y - RR(5, 25), b.y); continue; }
@@ -3998,10 +4199,10 @@ const R3D = (() => {
     if (placing && mouse.inside) {
       const k = playerKeep(), w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y);
       if (k) { g.setLineDash([10, 8]); g.strokeStyle = 'rgba(255,230,140,0.6)'; g.lineWidth = 2; ringPath(g, k.x, (k.y0 + k.y1) / 2, TERRITORY); g.stroke(); g.setLineDash([]); }
-      const spots = kind === 'wall' && placing.start ? wallLine(placing.start.c, placing.start.r, cur.c, cur.r) : [cur];
+      const spots = isLine(kind) && placing.start ? wallLine(placing.start.c, placing.start.r, cur.c, cur.r) : [cur];
       let cost = 0;
       for (const t of spots) {
-        const okp = canPlace(kind, t.c, t.r); if (okp) cost += d.wood;
+        const okp = canPlace(kind, t.c, t.r); if (okp) cost += d.stone || d.wood;
         const x0 = t.c * TILE, z0 = t.r * TILE, x1 = x0 + d.w * TILE, z1 = z0 + d.h * TILE;
         const corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, 1, z));
         const top = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, Math.min(60, d.topH), z));
@@ -4011,7 +4212,7 @@ const R3D = (() => {
         g.beginPath(); top.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.closePath(); g.stroke();
         for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(corners[i].x, corners[i].y); g.lineTo(top[i].x, top[i].y); g.stroke(); }
       }
-      if (kind === 'wall') { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} wood` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
+      if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
     for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u) { const p = project(u.x, (u.type === 'ram' ? 62 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) drawHealthBar(g, p.x, p.y, 28, u.hp / u.maxHp); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
@@ -4204,12 +4405,14 @@ resize();
 cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
 document.getElementById('banner').style.opacity = 0;
+let palVer = 0;
 function startGame(key) {
+  palVer++;   // team colours change: 3D buildings made before this are rebuilt in the new colours
   AudioSys.init(); AudioSys.setTheme(key);
   CIV = CIVS[key];
   Object.assign(PAL.player, { tunic: CIV.color, tunicDark: CIV.dark, shield: CIV.color });
   PAL.civ.trim = CIV.color;
-  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2;
+  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 30;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople();
   planEnemyWalls(); buildEnemyWalls(16, true);
