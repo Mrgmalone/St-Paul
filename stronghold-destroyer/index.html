@@ -59,6 +59,9 @@
   #camCtl button{width:44px;height:40px;padding:0;font-size:22px;line-height:1}
   #camCtl span{font-size:13px;color:#e9dcbc;letter-spacing:1px}
   body:not(.v3d) #camCtl .c3{display:none}
+  body:not(.touch) #camCtl .tonly{display:none}
+  #camCtl button.on{outline:3px solid #9fe8a8;background:linear-gradient(#bff5c4,#6fc27a)}
+  body.touch #camCtl button{width:54px;height:50px;font-size:26px}
   #mini{position:absolute;right:8px;bottom:8px;width:190px;height:111px;border:2px solid #b08a4a;border-radius:4px;
     box-shadow:0 3px 10px rgba(0,0,0,.6);cursor:pointer;z-index:2;background:#1a2a12;touch-action:none}
   #selbox{display:flex;flex-direction:column;gap:5px;min-width:0}
@@ -227,6 +230,7 @@
   <div id="camCtl">
     <div class="cg c3"><div class="row"><button id="camL" title="Turn left (Q). Hold to keep turning.">&#10226;</button><button id="camR" title="Turn right (E). Hold to keep turning.">&#10227;</button></div><span>Turn</span></div>
     <div class="cg c3"><div class="row"><button id="camUp" title="Look down from above (R)">&#9650;</button><button id="camDn" title="Tilt toward a side view (F)">&#9660;</button></div><span>Tilt</span></div>
+    <div class="cg tonly"><div class="row"><button id="camAdd" title="Add mode: tap people to add them to your group">&#65291;</button></div><span>Add</span></div>
     <div class="cg"><div class="row"><button id="camHome" title="Back to your castle (Space)">&#8962;</button></div><span>Castle</span></div>
   </div>
   <div id="moodPop" class="pop" hidden></div>
@@ -242,6 +246,7 @@
   </div>
   <div id="help" class="hide"><div class="box">
     <h3>HOW TO PLAY</h3>
+    <p><b>iPad and touch:</b> tap a person to select them, then tap where they should go or what they should do: ground to move, a tree or bush or field to gather, an enemy to attack, your wall or tower to climb it. They start the job as soon as they arrive. Double-tap a person to select everyone of that kind on screen. Press and hold, then drag, to draw a selection box. Drag one finger to scroll (flick to glide); pinch to zoom; twist two fingers to turn the view. The Add button lets taps add people to your group.</p>
     <p><b>Select:</b> left-click a person, or drag a box around several. Double-click selects everyone on screen. On touch, tap or drag.</p>
     <p><b>Command:</b> right-click (or tap) the ground to move, an enemy to attack, a tree for wood, a berry bush or farm for food.</p>
     <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
@@ -2116,8 +2121,10 @@ function issueAt(sx, sy) {
 
 const pointers = new Map();
 let drag = null, pinch = null, mouse = { x: -1, y: -1, inside: false }, hover = null, lastClick = { t: 0, x: 0, y: 0 }, orbit = null;
-const edge = { x: -1, y: -1, on: false, held: 0 };
-window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { edge.x = e.clientX; edge.y = e.clientY; edge.on = true; } });
+const edge = { x: -1, y: -1, on: false, held: 0, touchUntil: 0 };
+// edge scrolling is for a real mouse only: touch screens can send stray 'mouse' positions (often the corner), which must not drag the view
+window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && performance.now() > edge.touchUntil && (e.movementX || e.movementY || edge.on)) { edge.x = e.clientX; edge.y = e.clientY; edge.on = true; } });
+window.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { edge.on = false; edge.touchUntil = performance.now() + 1500; } }, true);
 window.addEventListener('blur', () => { edge.on = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) edge.on = false; });
 function localPos(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
@@ -2131,16 +2138,68 @@ canvas.addEventListener('pointerdown', e => {
     if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
     else if (e.button === 2) { if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
-  } else {
-    if (pointers.size === 1) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: true, touch: true, t: performance.now() };
-    else if (pointers.size === 2) {
-      drag = null; const [a, b] = [...pointers.values()];
-      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z, wm: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
-    }
-  }
+  } else touchDown(p);
 });
+// ---------- touch (iPad, phone): tap to select, tap to command, one finger scrolls, two fingers zoom and turn ----------
+const TOUCH = { mode: null, sx: 0, sy: 0, lx: 0, ly: 0, t0: 0, vx: 0, vy: 0, lt: 0, hold: null, lastTap: null, add: false };
+const fling = { x: 0, y: 0 };
+function twoInfo() { const [a, b] = [...pointers.values()]; return { d: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; }
+function panBy(x0, y0, x1, y1) {   // move the view so the ground under the finger follows the finger
+  const w0 = toWorld(x0, y0), w1 = toWorld(x1, y1); if (!w0 || !w1) return { x: 0, y: 0 };
+  const dx = w1.x - w0.x, dy = w1.y - w0.y; cam.x -= dx; cam.y -= dy; clampCam(); return { x: dx, y: dy };
+}
+function touchDown(p) {
+  document.body.classList.add('touch'); fling.x = fling.y = 0; clearTimeout(TOUCH.hold);
+  if (pointers.size === 1) {
+    Object.assign(TOUCH, { mode: 'press', sx: p.x, sy: p.y, lx: p.x, ly: p.y, t0: performance.now(), lt: performance.now(), vx: 0, vy: 0 });
+    TOUCH.hold = setTimeout(() => { if (TOUCH.mode === 'press') { TOUCH.mode = 'box'; drag = { sx: TOUCH.sx, sy: TOUCH.sy, x: TOUCH.lx, y: TOUCH.ly, box: true, shift: TOUCH.add, touch: true }; markers.push(Object.assign(toWorld(TOUCH.sx, TOUCH.sy) || { x: 0, y: 0 }, { t: 0, col: '140,255,160' })); } }, 420);
+  } else if (pointers.size === 2) { drag = null; TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; }
+}
+function touchMove(p) {
+  if (TOUCH.mode === 'press' && Math.hypot(p.x - TOUCH.sx, p.y - TOUCH.sy) > 12) { TOUCH.mode = 'pan'; clearTimeout(TOUCH.hold); }
+  if (TOUCH.mode === 'pan') {
+    const now = performance.now(), d = panBy(TOUCH.lx, TOUCH.ly, p.x, p.y), dt = Math.max(1, now - TOUCH.lt) / 1000;
+    TOUCH.vx = TOUCH.vx * 0.6 + (-d.x / dt) * 0.4; TOUCH.vy = TOUCH.vy * 0.6 + (-d.y / dt) * 0.4; TOUCH.lx = p.x; TOUCH.ly = p.y; TOUCH.lt = now;
+  } else if (TOUCH.mode === 'box') { TOUCH.lx = p.x; TOUCH.ly = p.y; if (drag) { drag.x = p.x; drag.y = p.y; } }
+  else if (TOUCH.mode === 'two' && pointers.size >= 2) {
+    const t = twoInfo();
+    const nz = clamp(TOUCH.z0 * t.d / TOUCH.d0, R3D.active ? 0.45 : minZoom(), 2.4);
+    if (R3D.active) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = nz; centerOn(cx, cy); R3D.turn(-(t.ang - TOUCH.ang)); }
+    else { const w = toWorld(t.mx, t.my); cam.z = nz; cam.x = w.x - t.mx / cam.z; cam.y = w.y - t.my / cam.z; clampCam(); }
+    panBy(TOUCH.mx, TOUCH.my, t.mx, t.my);
+    TOUCH.ang = t.ang; TOUCH.mx = t.mx; TOUCH.my = t.my;
+  }
+}
+function touchUp(p) {
+  clearTimeout(TOUCH.hold);
+  const mode = TOUCH.mode;
+  if (pointers.size > 0) { if (mode === 'two') TOUCH.mode = 'after'; return; }
+  TOUCH.mode = null;
+  if (mode === 'pan') { if (performance.now() - TOUCH.lt < 160) { fling.x = clamp(TOUCH.vx, -2400, 2400); fling.y = clamp(TOUCH.vy, -2400, 2400); } return; }
+  if (mode === 'box') {
+    const bx0 = Math.min(TOUCH.sx, p.x) - 10, bx1 = Math.max(TOUCH.sx, p.x) + 10, by0 = Math.min(TOUCH.sy, p.y) - 12, by1 = Math.max(TOUCH.sy, p.y) + 12;
+    const inBox = units.filter(u => { if (u.team !== 'player' || u.dead) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
+    if (TOUCH.add) inBox.forEach(u => selection.add(u)); else selectOnly(inBox);
+    drag = null; return;
+  }
+  if (mode === 'press') touchTap(p);
+}
+function touchTap(p) {
+  if (settingRally) { setRallyAt(p.x, p.y); return; }
+  if (placing) { placeAt(p.x, p.y, false); return; }
+  const hit = pickScreen(p.x, p.y), now = performance.now(), last = TOUCH.lastTap;
+  TOUCH.lastTap = { t: now, x: p.x, y: p.y, hit };
+  if (isMine(hit)) {
+    if (last && last.hit && now - last.t < 380 && Math.hypot(p.x - last.x, p.y - last.y) < 40 && last.hit.type === hit.type) { selectOnly(onScreenPlayers().filter(u => u.type === hit.type || (hit.type !== 'civ' && u.type !== 'civ' && !isMachine(u) && !isMachine(hit)))); return; }
+    if (TOUCH.add) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); return; }
+    selectOnly([hit]); return;
+  }
+  if (selection.size) { issueAt(p.x, p.y); return; }
+}
+document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; document.getElementById('camAdd').classList.toggle('on', TOUCH.add); showBanner(TOUCH.add ? 'Add mode: tap people to add them to (or take them out of) your group.' : 'Add mode off: tapping a person selects just that person.', 2.5); };
 canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
+  if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
   if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
   if (orbit) { R3D.turn(-(p.x - orbit.x) * 0.007); R3D.tilt((p.y - orbit.y) * 0.004); orbit.x = p.x; orbit.y = p.y; return; }
@@ -2155,6 +2214,7 @@ canvas.addEventListener('pointermove', e => {
 });
 function endPointer(e) {
   const p = localPos(e);
+  if (e.pointerType !== 'mouse') { pointers.delete(e.pointerId); touchUp(p); pinch = null; return; }
   if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && placing && !drag.box) { placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId)) {
@@ -2181,7 +2241,7 @@ function endPointer(e) {
   if (pinch && (pinch.mid || pointers.size < 2)) pinch = null;
 }
 canvas.addEventListener('pointerup', endPointer);
-canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); drag = null; pinch = null; });
+canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); drag = null; pinch = null; clearTimeout(TOUCH.hold); TOUCH.mode = null; });
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse.inside = false; });
 canvas.addEventListener('wheel', e => {
   e.preventDefault(); const p = localPos(e), w = toWorld(p.x, p.y);
@@ -5127,7 +5187,7 @@ function frame(now) {
   let mx = 0, my = 0;
   if (keys.ArrowLeft) mx -= 1; if (keys.ArrowRight) mx += 1; if (keys.ArrowUp) my -= 1; if (keys.ArrowDown) my += 1;
   const modal = !document.getElementById('help').classList.contains('hide') || document.getElementById('pick').style.display !== 'none' && !started;
-  if (edge.on && !pinch && !orbit && !modal) { const E = 12, W = window.innerWidth, H = window.innerHeight; if (edge.x <= E) mx -= 1; if (edge.x >= W - 1 - E) mx += 1; if (edge.y <= E) my -= 1; if (edge.y >= H - 1 - E) my += 1; }
+  if (edge.on && !pinch && !orbit && !modal && !TOUCH.mode && performance.now() > edge.touchUntil) { const E = 12, W = window.innerWidth, H = window.innerHeight; if (edge.x <= E) mx -= 1; if (edge.x >= W - 1 - E) mx += 1; if (edge.y <= E) my -= 1; if (edge.y >= H - 1 - E) my += 1; }
   edge.held = (mx || my) && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown) ? edge.held + dt : 0;
   const boost = 1 + Math.min(1, edge.held / 1.2) * 0.8;   // edge scrolling speeds up the longer you hold
   mx *= boost; my *= boost;
@@ -5136,6 +5196,7 @@ function frame(now) {
   const ease = Math.min(1, dt * 9);
   camVel.x += (mx * sp / Math.max(dt, 1e-3) - camVel.x) * ease; camVel.y += (my * sp / Math.max(dt, 1e-3) - camVel.y) * ease;
   if (Math.abs(camVel.x) + Math.abs(camVel.y) > 2) { cam.x += camVel.x * dt; cam.y += camVel.y * dt; clampCam(); } else { camVel.x = camVel.y = 0; }
+  if (Math.abs(fling.x) + Math.abs(fling.y) > 4) { cam.x += fling.x * dt; cam.y += fling.y * dt; clampCam(); const k = Math.exp(-dt * 3.2); fling.x *= k; fling.y *= k; } else fling.x = fling.y = 0;
   // smooth zoom toward the wheel's target
   if (zoomAnim) {
     const z0 = cam.z, z1 = z0 + (zoomAnim.z - z0) * Math.min(1, dt * 11), done = Math.abs(zoomAnim.z - z1) < 0.002;
