@@ -246,7 +246,7 @@
     <p><b>Rally points:</b> in the Army list, choose Army rally point (new soldiers) or Town rally point (new civilians and rams), then click the ground. A flag marks each one. Send army to rally point gathers all your soldiers there.</p>
     <p><b>The enemy:</b> its workers cut wood and gather food and carry them home, and with them it builds up its camp: houses, towers and walls. Killing its workers slows it down. Raids come regularly, along the roads and through the woods from the north, the south and the west; a red ring on the map shows where. Difficulty (chosen at the start) sets how fast the enemy works and how often and how hard it raids.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
-    <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers.</p>
+    <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers. <b>Catapults</b> lob heavy stones from far away: best against walls and towers, and the stone hurts everyone where it lands, but it misses soldiers on the move. <b>Ballistas</b> fire great bolts that cut down soldiers at long range but only chip stone. Neither can fight up close: guard them. The enemy brings them too, in later raids.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
     <p><b>Keys:</b> S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
     <button id="btnHelpClose">Close</button>
@@ -289,6 +289,8 @@
         <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>1 spear &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>1 bow &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="catapult"><canvas data-icon="u:catapult"></canvas>Catapult<small>150 wood &middot; 30 stone &middot; 40 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="ballista"><canvas data-icon="u:ballista"></canvas>Ballista<small>110 wood &middot; 50 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <span id="queue"></span>
         <div class="rally"><button id="rallyArmy" title="Choose where newly trained soldiers gather">&#9873; Army rally point</button><button id="rallyTown" title="Choose where new civilians and rams gather">&#9873; Town rally point</button></div>
         <div class="rally"><button id="sendRally" title="Send every soldier to the army rally point">Send army to rally point</button></div>
@@ -530,10 +532,14 @@ function paintTerrain() {
 }
 
 // ---------- unit definitions ----------
+const MACHINE = { ram: 1, catapult: 1, ballista: 1 };
+const isMachine = u => !!(u && MACHINE[u.type]);
 const KINDS = {
   sword: { name: 'Swordsman', hp: 110, dmg: 13, range: 5, cd: 1.0, speed: 74, anim: 0.5, hitAt: 0.62 },
   spear: { name: 'Spearman', hp: 95, dmg: 15, range: 17, cd: 1.25, speed: 70, anim: 0.55, hitAt: 0.55 },
   ram: { name: 'Battering Ram', hp: 420, dmg: 70, range: 4, cd: 2.4, speed: 34, anim: 0.8, hitAt: 0.55 },
+  catapult: { name: 'Catapult', hp: 260, dmg: 95, range: 430, cd: 6.5, speed: 26, anim: 1.3, hitAt: 0.5 },
+  ballista: { name: 'Ballista', hp: 210, dmg: 46, range: 340, cd: 3.4, speed: 30, anim: 0.9, hitAt: 0.45 },
   archer: { name: 'Archer', hp: 70, dmg: 9, range: 170, cd: 1.6, speed: 72, anim: 0.6, hitAt: 0.55 },
   civ: { name: 'Civilian', hp: 50, dmg: 0, range: 0, cd: 1, speed: 66, anim: 0.6, hitAt: 2 }
 };
@@ -566,6 +572,7 @@ function makeUnit(team, kind, x, y) {
     carry: 0, carryType: null, task: null, sub: null, workT: 0, bad: new Set(), hair: HAIRS[Math.floor(Math.random() * HAIRS.length)]
   };
   if (kind === 'ram') u.radius = 16;
+  if (kind === 'catapult' || kind === 'ballista') u.radius = 17;
   if (kind === 'civ') u.pal = team === 'enemy' ? PAL.ecv : PAL.civ;
   else if (team === 'player') { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }
   units.push(u);
@@ -766,6 +773,15 @@ function doHit(u) {
     AudioSys.play('bow', u.x, u.y); AudioSys.combat(u.x, u.y);
     return;
   }
+  if (u.type === 'catapult' || u.type === 'ballista') {
+    const c = hitCenter(t), st = u.type === 'catapult';
+    const ax = c.x + (st && t.x0 === undefined ? RR(-24, 24) : 0), ay = c.y + (st && t.x0 === undefined ? RR(-14, 14) : 0);
+    const x0 = u.x + u.facing * (st ? -6 : 14), y0 = u.y - (st ? 44 : 30), dist = Math.hypot(ax - x0, ay - y0);
+    arrows.push({ kind: st ? 'stone' : 'bolt', x0, y0, x1: ax, y1: ay, t: 0, dur: dist / (st ? 300 : 620) + (st ? 0.5 : 0.08), h: st ? Math.min(220, 60 + dist * 0.35) : 12, target: t, from: u, dmg: Math.round(u.dmg * RR(0.9, 1.1)) });
+    AudioSys.play(st ? 'boom' : 'bow', u.x, u.y); AudioSys.combat(u.x, u.y);
+    for (let i = 0; i < 4; i++) spawn('dust', u.x + RR(-14, 14), u.y - 4, u.y);
+    return;
+  }
   if (u.type === 'ram' && t.x0 === undefined) return;
   let dmg = Math.round(u.dmg * RR(0.85, 1.15));
   if (isWall(t) && u.type !== 'ram') dmg = Math.max(1, Math.round(dmg * WALL_RESIST));
@@ -819,8 +835,8 @@ function underAttackAlert(u) {
 }
 function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
-  AudioSys.play(t.x0 !== undefined ? 'collapse' : t.type === 'ram' ? 'collapse' : 'fall', t.x, t.y);
-  if (t.team === 'player' && t.kind === 'unit' && t.type !== 'ram' && started) mood = Math.max(0, mood - 3);
+  AudioSys.play(t.x0 !== undefined ? 'collapse' : isMachine(t) ? 'collapse' : 'fall', t.x, t.y);
+  if (t.team === 'player' && t.kind === 'unit' && !isMachine(t) && started) mood = Math.max(0, mood - 3);
   selection.delete(t);
   if (t.x0 !== undefined) {
     for (const o of units) if (!o.dead && o.onWall === t) { dismount(o); o.hp -= 15; o.flash = 1; if (o.hp <= 0) kill(o); }
@@ -1034,8 +1050,26 @@ function ramBrain(u) {
     if (n) { u.order = 'attack'; u.target = n; u.repath = 0; }
   }
 }
+// catapults look for walls and buildings first; ballistas look for soldiers first
+function siegeTarget(u, reach) {
+  const wantB = u.type === 'catapult';
+  let b = null, bd = reach, m = null, md = reach;
+  for (const e of enemiesOf(u.team)) { if (e.onWall && u.type === 'catapult') continue; const d = edgeDist(u, e); if (e.x0 !== undefined) { if (e.done !== false && d < bd) { bd = d; b = e; } } else if (d < md) { md = d; m = e; } }
+  return wantB ? (b || m) : (m || b);
+}
+function siegeBrain(u) {
+  if (u.order === 'attack' && !alive(u.target)) { u.target = null; u.order = u.raider ? 'raid' : 'idle'; u.path = []; }
+  if (u.order === 'idle' || (u.order === 'raid' && !(u.route && u.route.length))) {
+    const t = siegeTarget(u, u.team === 'player' ? u.range + 10 : u.range + 60);
+    if (t) { u.order = 'attack'; u.target = t; u.repath = 0; u.moving = false; return true; }
+    if (u.order === 'raid') { const k = playerKeep(); if (k && (!u.path.length || u.repath <= 0)) { const ap = approachPoint(u, k); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; } return false; }
+    u.moving = false; return true;
+  }
+  return false;
+}
 function playerBrain(u) {
   if (u.type === 'ram') { ramBrain(u); return; }
+  if (u.type === 'catapult' || u.type === 'ballista') { siegeBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
@@ -1050,6 +1084,7 @@ function enemyBrain(u, dt) {
   u.think -= dt;
   if (u.type === 'civ') { enemyWorker(u, dt); return; }
   if (u.type === 'ram') { ramBrain(u); return; }
+  if ((u.type === 'catapult' || u.type === 'ballista') && !(u.order === 'raid' && u.route && u.route.length)) { siegeBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = aggro(u, 170);
     if (n) { u.target = n; u.repath = 0; }
@@ -1216,9 +1251,9 @@ function updateUnit(u, dt) {
   else if (u.order === 'raid') followPath(u, dt);
 
   // wounds slowly mend after 8 seconds out of harm's way
-  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving && u.type !== 'ram') u.hp = Math.min(u.maxHp, u.hp + CIV.heal * dt);
+  if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving && !isMachine(u)) u.hp = Math.min(u.maxHp, u.hp + CIV.heal * dt);
   // Stone Wardens: the keep tends the wounded nearby, even mid-battle
-  if (CIV.keepHeal && u.team === 'player' && u.type !== 'ram' && u.hp < u.maxHp && playerKeep() && edgeDist(u, keep) < 200) u.hp = Math.min(u.maxHp, u.hp + CIV.keepHeal * dt);
+  if (CIV.keepHeal && u.team === 'player' && !isMachine(u) && u.hp < u.maxHp && playerKeep() && edgeDist(u, keep) < 200) u.hp = Math.min(u.maxHp, u.hp + CIV.keepHeal * dt);
   u.lastX = u.x; u.lastY = u.y;
 }
 function separate() {
@@ -1553,6 +1588,59 @@ function drawRam(g, u, time) {
     for (let k = 0; k < 2; k++) { const an = u.walkPhase * 0.6 + k * Math.PI / 2; g.moveTo(wx + Math.cos(an) * 5.4, -5 + Math.sin(an) * 5.4); g.lineTo(wx - Math.cos(an) * 5.4, -5 - Math.sin(an) * 5.4); }
     g.stroke(); g.fillStyle = P('#4d5359'); g.beginPath(); g.arc(wx, -5, 1.6, 0, Math.PI * 2); g.fill();
   }
+  g.restore();
+}
+function drawMachine(g, u, time) { if (u.type === 'catapult') drawCatapult(g, u, time); else if (u.type === 'ballista') drawBallista(g, u, time); else drawRam(g, u, time); }
+function machineArm(u) {   // catapult arm angle: 0 = cocked back, 1 = thrown upright
+  const a = u.attackAnim; if (!(a > 0)) return 0;
+  const k = a / u.animDur; return k < 0.5 ? 0 : k < 0.58 ? ease((k - 0.5) / 0.08) : 1 - ease((k - 0.58) / 0.42);
+}
+function drawCatapult(g, u, time) {
+  let alpha = 1; if (u.dead && u.deathT > 7) alpha = Math.max(0, 1 - (u.deathT - 7) / 3); if (alpha <= 0) return;
+  const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.7 : 0, P = c => fk ? mixHex(c, '#ffffff', fk) : c;
+  g.save(); g.globalAlpha = alpha; g.translate(u.x, u.y);
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(0, 2, 28, 7, 0, 0, Math.PI * 2); g.fill();
+  g.scale(u.facing * 1.25, 1.25);
+  if (u.dead) { for (const [x, y, a] of [[-12, -3, 0.2], [8, -2, -0.5], [0, -6, 1.2]]) { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#5a3c20'; g.fillRect(-12, -2, 24, 4); g.restore(); } g.restore(); return; }
+  const team = u.team === 'player' ? PAL.player.tunic : '#ac3430';
+  g.fillStyle = P('#4a3018'); g.fillRect(-24, -12, 48, 5); g.fillStyle = P('#6b4a28'); g.fillRect(-24, -12, 48, 1.6);
+  // uprights and the crossbar the arm strikes
+  g.fillStyle = P('#5a3c20'); g.beginPath(); g.moveTo(4, -10); g.lineTo(10, -40); g.lineTo(14, -40); g.lineTo(12, -10); g.closePath(); g.fill();
+  g.fillRect(6, -42, 12, 4);
+  // torsion bundle and throwing arm
+  g.fillStyle = P('#b49464'); g.beginPath(); g.ellipse(-12, -14, 5, 4, 0, 0, Math.PI * 2); g.fill();
+  const ang = lerp(-0.12, -1.38, machineArm(u));
+  g.save(); g.translate(-12, -14); g.rotate(Math.PI + ang * -1);
+  g.fillStyle = P('#6b4a28'); g.fillRect(0, -2, 34, 4);
+  g.fillStyle = P('#3a2614'); g.beginPath(); g.ellipse(34, -2, 5.5, 3.6, 0, 0, Math.PI * 2); g.fill();
+  if (!(u.attackAnim > 0) || u.attackAnim / u.animDur < 0.5) { g.fillStyle = P('#8f897e'); g.beginPath(); g.arc(34, -4, 3.4, 0, Math.PI * 2); g.fill(); }
+  g.restore();
+  g.strokeStyle = '#3a2a18'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-20, -12); g.lineTo(-20, -30); g.stroke();
+  g.fillStyle = P(team); g.beginPath(); g.moveTo(-20, -30); g.lineTo(-10, -27.5 + Math.sin(time * 6)); g.lineTo(-20, -24.5); g.closePath(); g.fill();
+  for (const wx of [-15, 15]) { g.fillStyle = P('#5a3c20'); g.beginPath(); g.arc(wx, -5, 6, 0, Math.PI * 2); g.fill(); g.strokeStyle = P('#3d4247'); g.lineWidth = 1.4; g.stroke();
+    g.strokeStyle = P('#3a2614'); g.lineWidth = 1; g.beginPath(); const an = u.walkPhase * 0.6; g.moveTo(wx + Math.cos(an) * 5, -5 + Math.sin(an) * 5); g.lineTo(wx - Math.cos(an) * 5, -5 - Math.sin(an) * 5); g.stroke(); }
+  g.restore();
+}
+function drawBallista(g, u, time) {
+  let alpha = 1; if (u.dead && u.deathT > 7) alpha = Math.max(0, 1 - (u.deathT - 7) / 3); if (alpha <= 0) return;
+  const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.7 : 0, P = c => fk ? mixHex(c, '#ffffff', fk) : c;
+  g.save(); g.globalAlpha = alpha; g.translate(u.x, u.y);
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(0, 2, 24, 6, 0, 0, Math.PI * 2); g.fill();
+  g.scale(u.facing * 1.25, 1.25);
+  if (u.dead) { for (const [x, y, a] of [[-10, -3, 0.3], [8, -2, -0.4]]) { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#5a3c20'; g.fillRect(-11, -2, 22, 4); g.restore(); } g.restore(); return; }
+  const team = u.team === 'player' ? PAL.player.tunic : '#ac3430', fired = u.attackAnim > 0 && u.attackAnim / u.animDur > 0.45;
+  g.fillStyle = P('#4a3018'); g.beginPath(); g.moveTo(-22, -6); g.lineTo(6, -10); g.lineTo(6, -6); g.lineTo(-22, -2); g.closePath(); g.fill();   // trail
+  g.fillStyle = P('#5a3c20'); g.fillRect(-2, -26, 4, 18);   // stand
+  g.save(); g.translate(0, -27); g.rotate(-0.06);
+  g.fillStyle = P('#6b4a28'); g.fillRect(-18, -2.5, 36, 5); g.fillStyle = P('#8a6a3a'); g.fillRect(-18, -2.5, 36, 1.5);
+  // bow arms and string
+  g.strokeStyle = P('#4a3018'); g.lineWidth = 2.6; g.beginPath(); g.moveTo(14, 0); g.quadraticCurveTo(10, -12, 4, -17); g.moveTo(14, 0); g.quadraticCurveTo(10, 12, 4, 17); g.stroke();
+  const sx = fired ? 11 : -6; g.strokeStyle = '#e8e0c8'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(4, -17); g.lineTo(sx, 0); g.lineTo(4, 17); g.stroke();
+  if (!fired) { g.fillStyle = P('#3a2614'); g.fillRect(-6, -1.2, 26, 2.4); g.fillStyle = P('#80878e'); g.beginPath(); g.moveTo(20, -2.6); g.lineTo(25, 0); g.lineTo(20, 2.6); g.closePath(); g.fill(); }
+  g.restore();
+  g.strokeStyle = '#3a2a18'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-18, -4); g.lineTo(-18, -24); g.stroke();
+  g.fillStyle = P(team); g.beginPath(); g.moveTo(-18, -24); g.lineTo(-9, -21.5 + Math.sin(time * 6)); g.lineTo(-18, -19); g.closePath(); g.fill();
+  g.fillStyle = P('#5a3c20'); g.beginPath(); g.arc(2, -5, 5.5, 0, Math.PI * 2); g.fill(); g.strokeStyle = P('#3d4247'); g.lineWidth = 1.3; g.stroke();
   g.restore();
 }
 function drawBush(g, b) {
@@ -2133,8 +2221,8 @@ function endGame(title, text) {
 }
 function updateHud() {
   if (!started) return;
-  const mine = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length;
-  const pop = mine + trainQueue.filter(q => q.kind !== 'ram').length;
+  const mine = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length;
+  const pop = mine + trainQueue.filter(q => !MACHINE[q.kind]).length;
   const foes = enemiesOf('player').filter(e => !isWall(e)).length;
   const towerUp = structures.some(s => !s.dead);
   const raid = towerUp ? `Next raid in <b>${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}</b>` : '<b>Raids stopped</b>';
@@ -2158,7 +2246,7 @@ function updateHud() {
 
 // ---------- war systems: raids and the tower archer ----------
 let raidTimer = 60, raidCount = 0;
-const arrows = [], stuckArrows = [];
+const arrows = [], stuckArrows = [], stuckStones = [];
 let enemyWallPlan = [], enemyWallT = 20;
 function planEnemyWalls() {
   const tiles = [];
@@ -2190,7 +2278,7 @@ function raidRoutes() {
     { name: 'round the west, behind your castle', start: [2440, 230], way: [[1900, 140], [1100, 130], [300, 220], [180, hy - 240], [hx - 260, hy + 40]] }
   ];
 }
-let raidRouteI = 0;
+let raidRouteI = 0, n2 = null;
 // ---------- the enemy camp: its people gather, carry supplies home, and build up the camp ----------
 const DIFFS = {
   easy:   { key: 'easy',   name: 'Easy',   pace: 0.65, raidEvery: 95, size: 0.75, first: 120 },
@@ -2290,9 +2378,14 @@ function spawnRaid() {
     const u = makeUnit('enemy', kind, f.c * TILE + 16 + RR(-6, 6), f.r * TILE + 16);
     u.raider = true; u.order = 'raid'; u.repath = 0; u.route = route.way.map(([x, y]) => ({ x: x + RR(-30, 30), y: y + RR(-30, 30) }));
   }
+  if (raidCount >= 5 && raidCount % 3 === 2) {   // later raids bring a catapult or a ballista along their route
+    const kind = raidCount % 2 ? 'catapult' : 'ballista', f = nearestFree(Math.floor(route.start[0] / TILE), Math.floor(route.start[1] / TILE));
+    if (f) { const m = makeUnit('enemy', kind, f.c * TILE + 16, f.r * TILE + 16); m.raider = true; m.order = 'raid'; m.route = route.way.map(([x, y]) => ({ x, y })); n2 = kind; }
+  }
   const withRam = raidCount >= 3 && raidCount % 2 === 1;
   if (withRam) { const f = nearestFree(Math.floor((1905 + EXP) / TILE), Math.floor(560 / TILE)); if (f) { const r = makeUnit('enemy', 'ram', f.c * TILE + 16, f.r * TILE + 16); r.raider = true; r.order = 'raid'; } }
   AudioSys.ui('warhorn');
+  if (n2) { setTimeout(() => showBanner(`The enemy brings a ${n2}! Guard your walls.`, 3.5), 4600); n2 = null; }
   raidPing = { x: route.way[route.way.length - 1][0], y: route.way[route.way.length - 1][1], t: 0, from: route.name };
   showBanner(withRam ? `Enemy raid with a battering ram! ${n} soldiers and a ram are coming ${route.name}.` : `Enemy raid! ${n} soldiers are coming ${route.name}.`, 4.5);
 }
@@ -2332,6 +2425,22 @@ function updateWar(dt) {
     if (a.t < a.dur) continue;
     arrows.splice(i, 1);
     const t = a.target;
+    if (a.kind === 'stone') {   // a catapult stone: crushes what it lands on and everyone close by
+      const gy = t && t.x0 !== undefined ? t.y : a.y1 + 21;
+      if (alive(t) && t.x0 !== undefined) { t.hp -= isWall(t) ? Math.round(a.dmg * 0.8) : a.dmg; t.flash = 1; t.wobble = 1; if (t.hp <= 0) kill(t); else reactToHit(t, a.from); }
+      for (const o of units) { if (o.dead || o.team === (a.from && a.from.team) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= Math.round(a.dmg * 0.55 * (1 - d / 46)); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
+      for (let k = 0; k < 10; k++) spawn('chip', a.x1, a.y1, gy); for (let k = 0; k < 6; k++) spawn('dust', a.x1 + RR(-16, 16), gy - 4, gy);
+      AudioSys.play('stoneHit', a.x1, a.y1); AudioSys.play('boom', a.x1, a.y1); stuckStones.push({ x: a.x1 + RR(-6, 6), y: gy + 2, t: 0 });
+      continue;
+    }
+    if (a.kind === 'bolt' && alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 24)) {
+      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * 0.25)) : t.x0 !== undefined ? Math.round(a.dmg * 0.5) : t.onWall ? Math.round(a.dmg * 0.7) : a.dmg; t.flash = 1; t.lastHurt = time;
+      AudioSys.play('thunk', t.x, t.y - 16);
+      if (t.x0 === undefined) for (let k = 0; k < 4; k++) spawn('blood', t.x, t.y - 18, t.y); else for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
+      if (t.hp <= 0) kill(t); else reactToHit(t, a.from);
+      continue;
+    }
+    if (a.kind === 'bolt') { stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0, bolt: true }); continue; }
     if (alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18)) {
       t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : t.onWall ? Math.round(a.dmg * 0.5) : a.dmg; t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
@@ -2342,6 +2451,7 @@ function updateWar(dt) {
     } else stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0 });
   }
   for (let i = stuckArrows.length - 1; i >= 0; i--) { stuckArrows[i].t += dt; if (stuckArrows[i].t > 6) stuckArrows.splice(i, 1); }
+  for (let i = stuckStones.length - 1; i >= 0; i--) { stuckStones[i].t += dt; if (stuckStones[i].t > 20) stuckStones.splice(i, 1); }
 }
 
 // ---------- mood: rations, taxes, and how your people feel ----------
@@ -2423,24 +2533,24 @@ function spendFood(n) {
   else if (sum < res.food - 1) foodKinds.crops += res.food - sum;
 }
 const foodVariety = () => res.food > 0 ? Object.values(foodKinds).filter(v => v >= 1).length : 0;
-const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 0, wood: 0, gold: 10, time: 15 }, spear: { food: 0, wood: 0, gold: 10, time: 15 }, archer: { food: 0, wood: 0, gold: 10, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 } };
+const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 0, wood: 0, gold: 10, time: 15 }, spear: { food: 0, wood: 0, gold: 10, time: 15 }, archer: { food: 0, wood: 0, gold: 10, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 }, catapult: { food: 0, wood: 150, stone: 30, gold: 40, time: 30 }, ballista: { food: 0, wood: 110, gold: 50, time: 24 } };
 const trainQueue = [];
 const QUEUE_MAX = 10;   // up to ten of each kind waiting; each kind trains side by side
 const queuedOf = kind => trainQueue.filter(q => q.kind === kind).length;
 function whyNotTrain(kind) {
-  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length + trainQueue.filter(q => q.kind !== 'ram').length;
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
   if (!playerKeep()) return 'keep lost';
   if (queuedOf(kind) >= QUEUE_MAX) return 'queue full (10)';
   if (WEAPON[kind] && res[WEAPON[kind]] < 1) return 'need a ' + WEAPON[kind];
   if (WEAPON[kind] && res.gold < 10) return 'need 10 gold';
-  if (!WEAPON[kind]) { if (res.food < c.food) return `need ${c.food - Math.floor(res.food)} more food`; if (res.wood < c.wood) return `need ${c.wood - Math.floor(res.wood)} more wood`; if (res.gold < (c.gold || 0)) return `need ${c.gold - Math.floor(res.gold)} more gold`; }
-  if (kind !== 'ram' && pop >= popCap()) return 'houses full: build a house';
+  if (!WEAPON[kind]) { if (res.food < c.food) return `need ${c.food - Math.floor(res.food)} more food`; if (res.wood < c.wood) return `need ${c.wood - Math.floor(res.wood)} more wood`; if (res.stone < (c.stone || 0)) return `need ${c.stone - Math.floor(res.stone)} more stone`; if (res.gold < (c.gold || 0)) return `need ${c.gold - Math.floor(res.gold)} more gold`; }
+  if (!MACHINE[kind] && pop >= popCap()) return 'houses full: build a house';
   return '';
 }
 function cancelTrain(kind) {   // right-click a training button: take back the last one queued, with its cost
   for (let i = trainQueue.length - 1; i >= 0; i--) if (trainQueue[i].kind === kind) {
     const q = trainQueue.splice(i, 1)[0], c = COSTS[kind];
-    if (WEAPON[kind]) { res[WEAPON[kind]] += 1; res.gold += 10; } else { addFood('crops', c.food); res.wood += c.wood; res.gold += (c.gold || 0); }
+    if (WEAPON[kind]) { res[WEAPON[kind]] += 1; res.gold += 10; } else { if (c.food) addFood('crops', c.food); res.wood += c.wood; res.gold += (c.gold || 0); res.stone += (c.stone || 0); }
     floatText(keep.x, keep.y - 140, `${KINDS[kind].name} cancelled`, '#ffd98a'); updateHud(); return;
   }
 }
@@ -2456,8 +2566,8 @@ function buyWeapon(w) {
   res.gold -= BUY[w]; res[w] += 1; AudioSys.play('click'); updateHud();
 }
 function canTrain(kind) {
-  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length + trainQueue.filter(q => q.kind !== 'ram').length;
-  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0))) && (kind === 'ram' || pop < popCap()) && queuedOf(kind) < QUEUE_MAX;
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
+  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap()) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
@@ -2470,7 +2580,7 @@ function trainUnit(kind) {
   }
   const c = COSTS[kind];
   if (WEAPON[kind]) { res[WEAPON[kind]] -= 1; res.gold -= 10; }   // every soldier takes a weapon from the armory
-  else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); }
+  else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); res.stone -= (c.stone || 0); }
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
@@ -2557,7 +2667,7 @@ function updateEconomy(dt) {
   updateJobs(dt);
   const k = playerKeep();
   // everyone eats: 1 food per person every 15 seconds
-  const people = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram');
+  const people = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u));
   hungerT += people.length * dt * RATIONS[ration].eat / CIV.eatEvery;
   updateMood(dt, people);
   while (hungerT >= 1) { hungerT -= 1; spendFood(1); }
@@ -3334,7 +3444,7 @@ const UI = (() => {
   function iconUnit(g, type, w, h) {
     const u = fakeUnit(type);
     g.save(); g.translate(w / 2, h - 3);
-    if (type === 'ram') { const sc = Math.min((w - 4) / 56, (h - 4) / 58); g.scale(sc, sc); drawRam(g, u, 0); }
+    if (MACHINE[type]) { const sc = Math.min((w - 4) / 60, (h - 4) / 58); g.scale(sc, sc); u.animDur = 1; drawMachine(g, u, 0); }
     else { const sc = (h - 4) / 46; g.scale(sc, sc); drawPerson(g, u, 0); }
     g.restore();
   }
@@ -4236,6 +4346,65 @@ const R3D = (() => {
     const allMats = []; root.traverse(o => { if (o.isMesh && o.material && o.material.emissive && !allMats.includes(o.material)) allMats.push(o.material); });
     return { root, body, legs, arms, tools, head, mats: allMats, m, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
+
+  function machineCrew(u, spots, body) {
+    const crew = [];
+    for (const [x, z, ry] of spots) {
+      const fu = { kind: 'unit', type: 'civ', team: u.team, pal: u.team === 'enemy' ? PAL.ecv : PAL.civ, skin: ['#d9a57a', '#a8744e', '#e2b48c'][crew.length % 3], hair: '#3a2414', seed: crew.length, look: { beard: crew.length !== 1, longHair: false, w: 1, h: 1 } };
+      const p = personModel(fu); p.root.scale.setScalar(0.82); p.root.position.set(x, 0, z); p.root.rotation.y = ry || 0; body.add(p.root); crew.push(p);
+    }
+    return crew;
+  }
+  function wheel(x, y, z, r, iron) {
+    const w = new T.Group(); w.position.set(x, y, z);
+    const disc = cyl(r, r, 2.6, woodHM(12, 4), 0, 0, 0, 16); disc.rotation.z = Math.PI / 2; w.add(disc);
+    const rim = mesh(new T.TorusGeometry(r, 0.6, 6, 20), iron, 0, 0, 0); rim.rotation.y = Math.PI / 2; w.add(rim);
+    for (let k = 0; k < 2; k++) { const sp = box(2.8, r * 1.9, 0.5, std('#3e2a18'), 0, 0, 0); sp.rotation.x = k * Math.PI / 2; w.add(sp); }
+    return w;
+  }
+  function catapultModel(u) {
+    // a wheeled throwing engine: timber bed, two uprights with a padded crossbar, twisted-rope bundle and a long arm with a sling bowl
+    const root = new T.Group(), body = new T.Group(); root.add(body);
+    const beamM = woodHM(48, 5), postM = woodVM(4, 30), iron = std('#4d5359', { metalness: 0.75, roughness: 0.42 });
+    for (const x of [-10, 10]) body.add(box(4, 4.2, 54, beamM, x, 9, 0));
+    for (const z of [-22, -6, 10, 24]) body.add(box(24, 3.2, 3.4, beamM, 0, 9.5, z));
+    const wheels = []; for (const z of [-17, 17]) for (const x of [-13.5, 13.5]) { const w = wheel(x, 7, z, 7, iron); body.add(w); wheels.push(w); }
+    for (const x of [-10, 10]) { const up = box(3.4, 34, 3.4, postM, x, 26, 8); up.rotation.x = -0.18; body.add(up); const br = box(2.4, 24, 2.4, postM, x, 20, 16); br.rotation.x = 0.62; body.add(br); }
+    body.add(box(24, 4, 4.4, beamM, 0, 41, 5)); body.add(box(12, 4.6, 5, std('#8a6a48', { roughness: 1 }), 0, 41, 2.6));
+    const bundle = cyl(3.8, 3.8, 18, std('#b49464', { roughness: 1 }), 0, 13, -12, 12); bundle.rotation.z = Math.PI / 2; body.add(bundle);
+    for (const x of [-9, 9]) { const ring = cyl(4.4, 4.4, 1.6, iron, x, 13, -12, 12); ring.rotation.z = Math.PI / 2; body.add(ring); }
+    const arm = new T.Group(); arm.position.set(0, 13, -12); body.add(arm);
+    arm.add(box(3, 3, 40, woodHM(40, 4), 0, 0, 20));
+    const bowl = mesh(new T.SphereGeometry(5, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), woodVM(6, 6), 0, 1.5, 40); bowl.rotation.x = Math.PI; arm.add(bowl);
+    const stone = sph(3.6, std('#8f897e', { roughness: 0.95 }), 0, 4, 40, 10); arm.add(stone);
+    const f = flag(u.team === 'player' ? PAL.player.tunic : '#ac3430', 12, 7); f.position.set(-10, 40, -24); body.add(f); body.add(cyl(0.7, 0.7, 30, std('#3a2a18'), -10, 25, -24, 5));
+    const crew = machineCrew(u, [[-17, -14, 0], [17, -6, 0]], body);
+    root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    const mats = []; root.traverse(o => { if (o.isMesh && o.material.emissive && !mats.includes(o.material)) mats.push(o.material); });
+    return { root, body, wheels, crew, arm, stone, flag: f, mats, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2, ram: true, machine: 'catapult' };
+  }
+  function ballistaModel(u) {
+    // a giant crossbow on a two-wheeled carriage with a trail, bow arms, a real string and a bolt
+    const root = new T.Group(), body = new T.Group(); root.add(body);
+    const beamM = woodHM(40, 5), iron = std('#4d5359', { metalness: 0.75, roughness: 0.42 });
+    const wheels = []; for (const x of [-13, 13]) { const w = wheel(x, 7.5, 4, 7.5, iron); body.add(w); wheels.push(w); }
+    { const axle = cyl(1.2, 1.2, 28, iron, 0, 7.5, 4, 8); axle.rotation.z = Math.PI / 2; body.add(axle); }
+    const trail = box(4, 3.4, 30, beamM, 0, 6, -12); trail.rotation.x = -0.25; body.add(trail);
+    body.add(box(4, 18, 4, woodVM(4, 18), 0, 16, 4));
+    const bow = new T.Group(); bow.position.set(0, 26, 2); body.add(bow);
+    bow.add(box(4, 3.6, 40, beamM, 0, 0, 2));
+    bow.add(box(16, 5, 5, woodHM(16, 5), 0, 0, 16));
+    for (const sx of [-1, 1]) { const limb = box(18, 2.4, 2.4, woodHM(18, 3), sx * 13, 0, 13); limb.rotation.y = sx * 0.42; bow.add(limb); }
+    const sGeo = new T.BufferGeometry(); sGeo.setAttribute('position', new T.Float32BufferAttribute([-20.5, 0, 6, 0, 0, 2, 20.5, 0, 6], 3));
+    const str = new T.Line(sGeo, new T.LineBasicMaterial({ color: 0xe8e0c8 })); bow.add(str);
+    const bolt = new T.Group(); { const shaft = cyl(0.7, 0.7, 34, woodHM(30, 2), 0, 2.4, 12, 6); shaft.rotation.x = Math.PI / 2; bolt.add(shaft); }
+    const tip = mesh(new T.ConeGeometry(1.6, 5, 6), iron, 0, 2.4, 31); tip.rotation.x = Math.PI / 2; bolt.add(tip); bow.add(bolt);
+    const f = flag(u.team === 'player' ? PAL.player.tunic : '#ac3430', 12, 7); f.position.set(0, 44, -22); body.add(f); body.add(cyl(0.7, 0.7, 34, std('#3a2a18'), 0, 27, -22, 5));
+    const crew = machineCrew(u, [[-14, -10, 0], [12, -14, 0]], body);
+    root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    const mats = []; root.traverse(o => { if (o.isMesh && o.material.emissive && !mats.includes(o.material)) mats.push(o.material); });
+    return { root, body, wheels, crew, bow, bolt, string: sGeo, flag: f, mats, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2, ram: true, machine: 'ballista' };
+  }
   function ramModel(u) {
     // a covered siege ram: timber chassis on six wheels, plank roof under sagging wet hides,
     // hide curtains down the sides, the ram log hung on chains with an iron head, and a crew inside
@@ -4303,7 +4472,8 @@ const R3D = (() => {
     if (ghostGeos[type]) return ghostGeos[type];
     const W = new T.Color(1, 1, 1), parts = [], P = (geo, m) => parts.push({ geo, m, color: W });
     const rot = (rx, rz, x, y, z) => new T.Matrix4().makeRotationFromEuler(new T.Euler(rx, 0, rz)).setPosition(x, y, z);
-    if (type === 'ram') { P(new T.BoxGeometry(30, 32, 52), M4(0, 22, 0)); P(new T.CylinderGeometry(2, 22, 16, 4), M4(0, 46, 0, 1, 1, 1.7, Math.PI / 4)); P(new T.CylinderGeometry(3.6, 3.6, 18, 8), rot(Math.PI / 2, 0, 0, 22, 32)); }
+    if (type === 'catapult' || type === 'ballista') { P(new T.BoxGeometry(28, 16, 50), M4(0, 10, 0)); P(new T.BoxGeometry(22, 30, 6), M4(0, 26, 6)); }
+    else if (type === 'ram') { P(new T.BoxGeometry(30, 32, 52), M4(0, 22, 0)); P(new T.CylinderGeometry(2, 22, 16, 4), M4(0, 46, 0, 1, 1, 1.7, Math.PI / 4)); P(new T.CylinderGeometry(3.6, 3.6, 18, 8), rot(Math.PI / 2, 0, 0, 22, 32)); }
     else {
       P(new T.CylinderGeometry(5.0, 4.3, 15, 12), M4(0, 25.5, 0, 1, 1, 0.7));          // chest and belly
       P(new T.CylinderGeometry(4.6, 5.4, 6, 12), M4(0, 16.5, 0, 1, 1, 0.75));          // hips and tunic skirt
@@ -4415,7 +4585,7 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && outlinesOn && behindStructure(u);
       seen.add(u.id);
       const y = heightAt(u.x, u.y);
@@ -4430,7 +4600,11 @@ const R3D = (() => {
       md.root.rotation.y = md.heading;
       const sc = u.look ? u.look.h : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
       if (md.ram) {
-        const a = u.attackAnim; md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
+        const a = u.attackAnim;
+        if (md.arm) { const k = machineArm(u); md.arm.rotation.x = lerp(-0.32, -1.7, k); md.stone.visible = !(a > 0 && a / u.animDur >= 0.52); }
+        if (md.bolt) { const fired = a > 0 && a / u.animDur >= 0.45; md.bolt.visible = !fired; const ps = md.string.attributes.position; ps.setZ(1, fired ? 9 : 2); ps.needsUpdate = true;
+          if (u.target && alive(u.target)) { const tx = u.target.x, tz = u.target.y0 !== undefined ? (u.target.y0 + u.target.y1) / 2 : u.target.y; md.bow.rotation.x = -Math.min(0.25, Math.hypot(tx - u.x, tz - u.y) / 3000); } }
+        if (md.log) md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
         if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
       } else animatePerson(u, md, dt);
@@ -4505,7 +4679,7 @@ const R3D = (() => {
     for (const f of fires) if (f.m3) { const fl = 0.85 + 0.12 * Math.sin(time * 13) + 0.07 * Math.sin(time * 31); f.m3.f1.scale.set(fl, fl * (0.9 + 0.15 * Math.sin(time * 17)), fl); f.m3.f2.scale.set(fl, fl, fl); f.m3.light.intensity = 1.1 + 0.4 * fl; }
   }
   // ---------- arrows and particles ----------
-  let arrowPool = [], pts = [];
+  let arrowPool = [], pts = [], stonePool = [];
   function buildFx() {
     const vs = 'attribute float size; attribute vec4 rgba; varying vec4 vC; void main(){ vC = rgba; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * (700.0 / -mv.z); gl_Position = projectionMatrix * mv; }';
     const fs = 'varying vec4 vC; void main(){ vec2 d = gl_PointCoord - 0.5; float r = dot(d, d); if (r > 0.25) discard; gl_FragColor = vec4(vC.rgb, vC.a * (1.0 - r * 4.0)); }';
@@ -4534,21 +4708,26 @@ const R3D = (() => {
     pts.forEach((s, i) => { s.geo.setDrawRange(0, counts[i]); for (const n of ['position', 'rgba', 'size']) s.geo.attributes[n].needsUpdate = true; });
     // arrows in flight and stuck in the ground
     const list = [];
+    const stones = [];
     for (const a of arrows) {
+      if (a.t < 0) continue;
       const k = a.t / a.dur, from = a.from, to = a.target;
       const sx = from.x0 !== undefined ? from.x + 6 : from.x, sz = from.x0 !== undefined ? (from.y0 + from.y1) / 2 : from.y, sh = from.x0 !== undefined ? (from.archerY || 110) - 4 : 30;
       const ex = a.x1, ez = to && to.y !== undefined ? to.y : a.y1 + 16, eh = to && to.x0 !== undefined ? 30 : 20;
       const x = lerp(sx, ex, k), z = lerp(sz, ez, k), hgt = lerp(sh, eh, k) + a.h * 1.4 * 4 * k * (1 - k);
       const k2 = Math.min(1, k + 0.02), x2 = lerp(sx, ex, k2), z2 = lerp(sz, ez, k2), h2 = lerp(sh, eh, k2) + a.h * 1.4 * 4 * k2 * (1 - k2);
-      list.push([x, heightAt(x, z) + hgt, z, x2, heightAt(x2, z2) + h2, z2]);
+      if (a.kind === 'stone') { stones.push([x, heightAt(x, z) + (from.x0 !== undefined ? hgt : lerp(44, eh, k) + a.h * 4 * k * (1 - k)), z]); continue; }
+      list.push([x, heightAt(x, z) + hgt, z, x2, heightAt(x2, z2) + h2, z2, a.kind === 'bolt']);
     }
+    while (stonePool.length < stones.length + stuckStones.length) { const m = sph(5, std('#8f897e', { roughness: 0.95 }), 0, 0, 0, 10); scene.add(m); stonePool.push(m); }
+    stonePool.forEach((m, i) => { if (i < stones.length) { m.visible = true; m.position.set(...stones[i]); m.scale.setScalar(1); } else if (i < stones.length + stuckStones.length) { const st = stuckStones[i - stones.length]; m.visible = true; m.position.set(st.x, heightAt(st.x, st.y) + 2, st.y); m.scale.set(1.2, 0.6, 1); } else m.visible = false; });
     for (const s of stuckArrows) { const z = s.y; list.push([s.x, heightAt(s.x, z) + 4, z, s.x + 2, heightAt(s.x, z) - 2, z + 2]); }
     while (arrowPool.length < list.length) {
       const g = new T.Group(); const shaft = cyl(0.35, 0.35, 16, std('#5a3a1e'), 0, 0, 0, 4); shaft.rotation.x = Math.PI / 2; g.add(shaft);
       const tip = mesh(new T.ConeGeometry(0.8, 2.6, 5), std('#cfd5da', { metalness: 0.7 }), 0, 0, 9); tip.rotation.x = Math.PI / 2; g.add(tip);
       scene.add(g); arrowPool.push(g);
     }
-    arrowPool.forEach((g, i) => { if (i < list.length) { const [x, y, z, x2, y2, z2] = list[i]; g.visible = true; g.position.set(x, y, z); g.lookAt(x2, y2, z2); } else g.visible = false; });
+    arrowPool.forEach((g, i) => { if (i < list.length) { const [x, y, z, x2, y2, z2, big] = list[i]; g.visible = true; g.position.set(x, y, z); g.lookAt(x2, y2, z2); g.scale.setScalar(big ? 2.2 : 1); } else g.visible = false; });
   }
   // ---------- camera ----------
   function camCenter() { return { x: cam.x + vw / cam.z / 2, z: cam.y + vh / cam.z / 2 }; }
@@ -4575,7 +4754,7 @@ const R3D = (() => {
   // what is under a screen point: people first (by their projected body), then buildings
   function pick(sx, sy) {
     let best = null, bd = 26;
-    for (const u of units) { if (u.dead) continue; const p = project(u.x, (u.type === 'ram' ? 18 : 22) + elev3D(u), u.y); if (!p.ok) continue; const d = Math.hypot(p.x - sx, p.y - sy) * Math.min(1.6, Math.max(0.7, 1 / cam.z)); if (d < bd) { bd = d; best = u; } }
+    for (const u of units) { if (u.dead) continue; const p = project(u.x, (isMachine(u) ? 18 : 22) + elev3D(u), u.y); if (!p.ok) continue; const d = Math.hypot(p.x - sx, p.y - sy) * Math.min(1.6, Math.max(0.7, 1 / cam.z)); if (d < bd) { bd = d; best = u; } }
     if (best) return best;
     for (const s of structures) { if (s.dead) continue; if (inBox(sx, sy, s.x0, s.x1, s.y0, s.y1, s.topH || 40)) return s; }
     return null;
@@ -4603,7 +4782,7 @@ const R3D = (() => {
     g.setLineDash([5, 4]); g.strokeStyle = 'rgba(255,80,60,0.85)'; g.lineWidth = 2;
     for (const t of targeted) { ringPath(g, t.x, t.x0 !== undefined ? (t.y0 + t.y1) / 2 : t.y, t.x0 !== undefined ? (t.x1 - t.x0) * 0.75 : 14); g.stroke(); }
     g.setLineDash([]);
-    for (const u of selection) { if (u.dead) continue; ringPath(g, u.x, u.y, u.type === 'ram' ? 24 : 13, 1 + elev3D(u)); g.fillStyle = 'rgba(120,255,140,0.16)'; g.fill(); g.strokeStyle = 'rgba(130,255,150,0.95)'; g.lineWidth = 2; g.stroke(); }
+    for (const u of selection) { if (u.dead) continue; ringPath(g, u.x, u.y, isMachine(u) ? 24 : 13, 1 + elev3D(u)); g.fillStyle = 'rgba(120,255,140,0.16)'; g.fill(); g.strokeStyle = 'rgba(130,255,150,0.95)'; g.lineWidth = 2; g.stroke(); }
     if (hover && !hover.dead && hover.kind === 'unit' && !selection.has(hover)) { ringPath(g, hover.x, hover.y, 13); g.strokeStyle = hover.team === 'enemy' ? 'rgba(255,90,70,0.9)' : 'rgba(220,255,220,0.7)'; g.lineWidth = 1.6; g.stroke(); }
     if (placing && mouse.inside) {
       const k = playerKeep(), w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y);
@@ -4623,7 +4802,7 @@ const R3D = (() => {
       }
       if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
-    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u) { const p = project(u.x, (u.type === 'ram' ? 62 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) drawHealthBar(g, p.x, p.y, 28, u.hp / u.maxHp); } }
+    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u) { const p = project(u.x, (isMachine(u) ? 62 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) drawHealthBar(g, p.x, p.y, 28, u.hp / u.maxHp); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
     for (const fl of floats) { const gz = fl.y + 50, p = project(fl.x, 50 + fl.t * 22, gz); g.globalAlpha = 1 - fl.t / 1.6; g.strokeText(fl.text, p.x, p.y); g.fillStyle = fl.col; g.fillText(fl.text, p.x, p.y); }
@@ -4674,7 +4853,7 @@ let camSpin = 0, zoomAnim = null; const camVel = { x: 0, y: 0 };
 // ---------- rally points: where new soldiers, and new civilians and rams, gather ----------
 const rally = { army: null, town: null }; let settingRally = null;
 function rallyFor(kind) {
-  const k = keep, which = (kind === 'civ' || kind === 'ram') ? 'town' : 'army';
+  const k = keep, which = (kind === 'civ' || MACHINE[kind]) ? 'town' : 'army';
   return rally[which] || { x: k.x1 + 70, y: k.y1 - 10 };
 }
 function startRally(which) { if (!started) return; settingRally = settingRally === which ? null : which; placing = null; showBanner(settingRally ? `Click the ground where ${which === 'army' ? 'new soldiers' : 'new civilians and rams'} should gather. Right-click or Esc cancels.` : 'Rally point unchanged.', 3.5); rallyButtons(); }
@@ -4712,7 +4891,7 @@ function setView(want3d) {
 // ---------- outlines of people hidden behind walls and buildings (flat view) ----------
 const silCan = [document.createElement('canvas'), document.createElement('canvas')];
 function hiddenBy(u) {
-  const top = u.y - (u.type === 'ram' ? 62 : 46), hw = u.type === 'ram' ? 26 : 10, out = [];
+  const top = u.y - (isMachine(u) ? 62 : 46), hw = isMachine(u) ? 26 : 10, out = [];
   for (const b of structures) {
     if (b.dead || b.y <= u.y + 2 || isField(b.kind) || b.kind === 'garden' || b.kind === 'stocks') continue;
     const bt = b.y - (b.topH || 40) - (b.kind === 'highwall' || b.kind === 'wall' ? 6 : 14);
@@ -4730,7 +4909,7 @@ function drawHiddenOutlines(g, visible) {
     const ga = a.getContext('2d'), gb = b.getContext('2d');
     ga.setTransform(1, 0, 0, 1, 0, 0); ga.clearRect(0, 0, cw, ch);
     ga.setTransform(S, 0, 0, S, (W / 2 - u.x) * S, (H - 12 - u.y) * S);
-    (u.type === 'ram' ? drawRam : drawPerson)(ga, u, time);
+    (isMachine(u) ? drawMachine : drawPerson)(ga, u, time);
     ga.setTransform(1, 0, 0, 1, 0, 0); ga.globalCompositeOperation = 'source-in';
     const col = u.team === 'player' ? PAL.player.tunic : '#d23b2f';
     gb.setTransform(1, 0, 0, 1, 0, 0); gb.clearRect(0, 0, cw, ch); gb.drawImage(a, 0, 0); gb.globalCompositeOperation = 'source-in'; gb.fillStyle = '#fff6d8'; gb.fillRect(0, 0, cw, ch); gb.globalCompositeOperation = 'source-over';
@@ -4792,7 +4971,7 @@ function frame(now) {
   {
     const fire = fires.filter(f => f.x > cam.x - 100 && f.x < cam.x + vw / cam.z + 100 && f.y > cam.y - 100 && f.y < cam.y + vh / cam.z + 100);
     let marching = 0, mx = 0, my = 0;
-    for (const u of units) if (!u.dead && u.moving && u.type !== 'ram' && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z) { marching++; mx += u.x; my += u.y; }
+    for (const u of units) if (!u.dead && u.moving && !isMachine(u) && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z) { marching++; mx += u.x; my += u.y; }
     const k = playerKeep(), civCount = units.filter(u => !u.dead && u.type === 'civ').length;
     AudioSys.ambientTick(dt, { fires: fire, marching, mx: marching ? mx / marching : 0, my: marching ? my / marching : 0, town: k && civCount >= 3 ? { x: k.x, y: k.y } : null });
     const raiders = units.filter(u => u.raider && !u.dead).length;
@@ -4836,7 +5015,7 @@ function render() {
   for (const st of stumps) if (visible(st)) drawStump(g, st);
   for (const fm of farms) drawBuilding(g, fm, time);
   // fallen soldiers lie on the ground layer
-  for (const u of units) if (u.dead && visible(u)) (u.type === 'ram' ? drawRam : drawPerson)(g, u, time);
+  for (const u of units) if (u.dead && visible(u)) (isMachine(u) ? drawMachine : drawPerson)(g, u, time);
 
   // depth-sorted scene
   const list = [];
@@ -4858,7 +5037,7 @@ function render() {
     else if (BUILD[o.kind]) drawBuilding(g, o, time);
     else if (o.kind === 'bush') drawBush(g, o);
     else if (o.kind === 'fire') drawFire(g, o, time);
-    else if (o.type === 'ram') drawRam(g, o, time);
+    else if (isMachine(o)) drawMachine(g, o, time);
     else drawPerson(g, o, time);
   }
   if (outlinesOn) drawHiddenOutlines(g, visible);
@@ -4877,9 +5056,13 @@ function render() {
   for (const a of arrows) {
     const k = a.t / a.dur, x = lerp(a.x0, a.x1, k), y = lerp(a.y0, a.y1, k) - a.h * 4 * k * (1 - k);
     const dx = (a.x1 - a.x0) / a.dur, dy = (a.y1 - a.y0) / a.dur - a.h * 4 * (1 - 2 * k) / a.dur, ang = Math.atan2(dy, dx);
+    if (a.kind === 'stone') { if (a.t < 0) continue; g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(lerp(a.x0, a.x1, k), lerp(a.y0, a.y1, k) + 20, 5, 2, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#8f897e'; g.beginPath(); g.arc(x, y, 5.5, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(x - 1.5, y - 1.5, 2, 0, Math.PI * 2); g.fill(); continue; }
+    if (a.kind === 'bolt') { g.save(); g.translate(x, y); g.rotate(ang); g.strokeStyle = '#3a2614'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(-16, 0); g.lineTo(10, 0); g.stroke(); g.fillStyle = '#9aa1a8'; g.beginPath(); g.moveTo(15, 0); g.lineTo(9, -3); g.lineTo(9, 3); g.closePath(); g.fill(); g.restore(); continue; }
     drawArrow(g, x, y, ang, 1);
   }
   for (const a of stuckArrows) drawArrow(g, a.x, a.y, a.ang, Math.min(1, (6 - a.t) / 1.5));
+  for (const st of stuckStones) { g.globalAlpha = Math.min(1, (20 - st.t) / 3); g.fillStyle = '#7d776c'; g.beginPath(); g.ellipse(st.x, st.y, 6, 3.6, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; }
   drawAtmosphere(g);
 
   // health bars
