@@ -48,7 +48,7 @@
   .ib{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;padding:3px 8px 4px;min-width:86px;line-height:1.1;font-size:15px;flex:0 0 auto}
   .ib canvas{width:60px;height:46px}
   .ib small{font-size:12.5px;font-weight:normal;white-space:nowrap}
-  .tb.off,.bb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+  .tb.off,.bb.off,.wb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
   .bb.on{outline:3px solid #9fe8a8}
   #queue{font-size:15px;color:#eadfc4;align-self:center;padding:0 6px;min-width:120px}
   .grp{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 6px}
@@ -159,7 +159,7 @@
     <p><b>View:</b> arrow keys or the screen edge to scroll, mouse wheel or pinch to zoom, or click the map in the corner.</p>
     <p><b>Panel tabs:</b> Town, Castle, Army, Rule (keys 1 to 4). <b>Hide</b> (or the Tab key) shrinks the panel.</p>
     <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
-    <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; a soldier trained with a weapon costs that weapon and 10 gold.</p>
+    <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
     <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, chapels and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
@@ -203,12 +203,15 @@
         <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small></button>
       </div>
       <div class="pane" data-pane="army">
-        <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>40 food &middot; 30 wood</small></button>
-        <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>30 food &middot; 40 wood</small></button>
-        <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>20 food &middot; 25 wood &middot; 30 gold</small></button>
+        <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>1 sword &middot; 10 gold</small></button>
+        <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>1 spear &middot; 10 gold</small></button>
+        <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>1 bow &middot; 10 gold</small></button>
         <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small></button>
         <span id="queue"></span>
-        <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;align-self:center;padding:0 6px"></span>
+        <button class="wb ib" data-w="sword"><canvas data-icon="w:sword"></canvas>Buy Sword<small>40 gold</small></button>
+        <button class="wb ib" data-w="spear"><canvas data-icon="w:spear"></canvas>Buy Spear<small>20 gold</small></button>
+        <button class="wb ib" data-w="bow"><canvas data-icon="w:bow"></canvas>Buy Bow<small>30 gold</small></button>
+        <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;align-self:center;padding:0 6px;max-width:220px"></span>
       </div>
       <div class="pane" data-pane="industry">
         <button class="bb ib" data-b="wheatfarm"><canvas data-icon="b:wheatfarm"></canvas>Wheat Field<small>40 wood &middot; grows wheat</small></button>
@@ -1933,6 +1936,7 @@ document.getElementById('btnAll').onclick = () => selectOnly(units);
 document.getElementById('btnSold').onclick = () => selectOnly(units.filter(u => u.type !== 'civ'));
 document.getElementById('btnCiv').onclick = () => selectOnly(units.filter(u => u.type === 'civ'));
 document.querySelectorAll('.tb').forEach(b => b.onclick = () => trainUnit(b.dataset.k));
+document.querySelectorAll('.wb').forEach(b => b.onclick = () => buyWeapon(b.dataset.w));
 function toggleHelp() { document.getElementById('help').classList.toggle('hide'); }
 document.getElementById('btnHelp').onclick = toggleHelp;
 document.getElementById('btnClear').onclick = () => selection.clear();
@@ -1962,8 +1966,9 @@ function updateHud() {
     food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), gold: Math.floor(res.gold),
     pop, cap: popCap(), idle: idleCount(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
     moodRate: Math.round(moodRate), foes, raid: towerUp ? `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
-  document.querySelectorAll('.tb').forEach(b => { b.classList.toggle('off', !canTrain(b.dataset.k)); const w = WEAPON[b.dataset.k], sm = b.querySelector('small'); if (w && sm) { if (!sm.dataset.base) sm.dataset.base = sm.innerHTML; sm.innerHTML = weaponRoute(b.dataset.k) ? `1 ${w} + 10 gold` : sm.dataset.base; } });
-  const ar = document.getElementById('armoryInfo'); if (ar) ar.textContent = `Armory: ${res.sword} swords, ${res.spear} spears, ${res.bow} bows`;
+  document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
+  document.querySelectorAll('.wb').forEach(b => b.classList.toggle('off', !hasArmory() || res.gold < BUY[b.dataset.w]));
+  const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}` + (hasArmory() ? '' : ' · build an Armory to buy more');
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
   document.getElementById('feast').classList.toggle('off', res.gold < 50);
   document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b; b.classList.toggle('off', res.wood < BUILD[kb].wood || res.gold < (BUILD[kb].gold || 0) || ((kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3)); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
@@ -2134,31 +2139,41 @@ function spendFood(n) {
   else if (sum < res.food - 1) foodKinds.crops += res.food - sum;
 }
 const foodVariety = () => res.food > 0 ? Object.values(foodKinds).filter(v => v >= 1).length : 0;
-const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 40, wood: 30, time: 15 }, spear: { food: 30, wood: 40, time: 15 }, archer: { food: 20, wood: 25, gold: 30, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 } };
+const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 0, wood: 0, gold: 10, time: 15 }, spear: { food: 0, wood: 0, gold: 10, time: 15 }, archer: { food: 0, wood: 0, gold: 10, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 } };
 const trainQueue = [];
 let starving = false, hungerT = 0, starveMsgT = 0;
 const WEAPON = { sword: 'sword', spear: 'spear', archer: 'bow' };
 const weaponRoute = kind => WEAPON[kind] && res[WEAPON[kind]] >= 1 && res.gold >= 10;
+const BUY = { sword: 40, spear: 20, bow: 30 };
+const hasArmory = () => countOf('armory') > 0;
+function buyWeapon(w) {
+  if (!started || won) return;
+  if (!hasArmory()) { showBanner('Build an Armory first (Industry tab). Bought weapons are stored there.', 3); return; }
+  if (res.gold < BUY[w]) { showBanner(`A ${w} costs ${BUY[w]} gold. You have ${Math.floor(res.gold)}.`, 2.5); return; }
+  res.gold -= BUY[w]; res[w] += 1; AudioSys.play('click'); updateHud();
+}
 function canTrain(kind) {
   const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length + trainQueue.filter(q => q.kind !== 'ram').length;
-  return !!playerKeep() && (weaponRoute(kind) || (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0))) && pop < popCap() && trainQueue.length < 5;
+  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0))) && pop < popCap() && trainQueue.length < 5;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
     const c = COSTS[kind];
-    if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C').replace('an B', 'a B'), 2.5);
+    if (WEAPON[kind] && res[WEAPON[kind]] < 1) showBanner(`You need a ${WEAPON[kind]} to train a ${KINDS[kind].name}. Make one in a workshop or buy one at the armory.`, 3.5);
+    else if (WEAPON[kind] && res.gold < 10) showBanner(`Training a ${KINDS[kind].name} also costs 10 gold.`, 2.5);
+    else if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C').replace('an B', 'a B'), 2.5);
     else showBanner('Your keep cannot train more right now.', 2.5);
     return;
   }
   const c = COSTS[kind];
-  if (weaponRoute(kind)) { res[WEAPON[kind]] -= 1; res.gold -= 10; }   // a weapon from the armory makes a soldier cheap
+  if (WEAPON[kind]) { res[WEAPON[kind]] -= 1; res.gold -= 10; }   // every soldier takes a weapon from the armory
   else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); }
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
 // ---------- self-running workers ----------
 const JOBS = { wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
-const DROPS = { keep: ['wood', 'food', 'hops', 'iron', 'ale', 'bow', 'spear', 'sword', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'hops', 'iron', 'wheat', 'flour'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
+const DROPS = { keep: ['wood', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'hops', 'iron', 'wheat', 'flour'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
 const CRAFT = {
   brewery: { inp: { hops: 2 }, out: 'ale', time: 7, batch: 2 },
   mill: { inp: { wheat: 2 }, out: 'flour', time: 6, batch: 3 },
@@ -2175,7 +2190,7 @@ function craftBrain(u, dt) {
   const rc = CRAFT[site.kind];
   if (u.sub === 'toDrop') {
     const drop = nearestDrop(u, u.carryType);
-    if (!drop) { u.order = 'idle'; return; }
+    if (!drop) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - site.topH - 8, `Build an ${u.carryType === 'bow' || u.carryType === 'spear' || u.carryType === 'sword' ? 'armory' : 'store'} for the ${u.carryType}`, '#ffb38a'); u.waitMsgT = 10; } u.path = []; u.moving = false; return; }
     if (edgeDist(u, drop) <= 10) { if (u.carryType === 'bread') addFood('bread', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, '#e0c088'); u.carry = 0; u.sub = 'toSite'; u.path = []; return; }
     if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, drop); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
     followPath(u, dt); return;
@@ -2914,6 +2929,33 @@ const UI = (() => {
     else { const sc = (h - 4) / 46; g.scale(sc, sc); drawPerson(g, u, 0); }
     g.restore();
   }
+  function iconWeapon(g, name, w, h) {
+    const ol = 'rgba(20,12,4,0.85)'; g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.translate(w / 2 - 4, h / 2 + 2); g.rotate(-0.7);
+    if (name === 'sword') {
+      g.fillStyle = '#dfe5ea'; g.strokeStyle = ol; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(-2.4, -6); g.lineTo(-2.4, -26); g.lineTo(0, -30); g.lineTo(2.4, -26); g.lineTo(2.4, -6); g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = 'rgba(120,130,140,0.8)'; g.beginPath(); g.moveTo(0, -8); g.lineTo(0, -26); g.stroke();
+      g.fillStyle = '#c9a14a'; g.strokeStyle = ol; g.fillRect(-8, -7, 16, 3); g.strokeRect(-8, -7, 16, 3);
+      g.fillStyle = '#6a4424'; g.fillRect(-1.8, -4, 3.6, 9); g.strokeRect(-1.8, -4, 3.6, 9);
+      g.fillStyle = '#c9a14a'; g.beginPath(); g.arc(0, 7, 2.6, 0, Math.PI * 2); g.fill(); g.stroke();
+    } else if (name === 'spear') {
+      g.strokeStyle = ol; g.lineWidth = 4; g.beginPath(); g.moveTo(0, 14); g.lineTo(0, -22); g.stroke();
+      g.strokeStyle = '#8a6236'; g.lineWidth = 2.4; g.stroke();
+      g.fillStyle = '#dfe5ea'; g.lineWidth = 1; g.beginPath(); g.moveTo(-3.6, -21); g.lineTo(0, -32); g.lineTo(3.6, -21); g.lineTo(0, -18); g.closePath(); g.fill(); g.stroke();
+    } else {
+      g.rotate(0.7); g.translate(-2, -8);
+      g.strokeStyle = ol; g.lineWidth = 4.4; g.beginPath(); g.arc(-12, 0, 20, -1.05, 1.05); g.stroke();
+      g.strokeStyle = '#9a6a34'; g.lineWidth = 2.8; g.stroke();
+      const a = 1.05, x0 = -12 + 20 * Math.cos(a), y0 = 20 * Math.sin(a);
+      g.strokeStyle = '#efe6d0'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(x0, -y0); g.lineTo(x0, y0); g.stroke();
+      g.strokeStyle = '#6a4424'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-10, 0); g.lineTo(14, 0); g.stroke();
+      g.fillStyle = '#dfe5ea'; g.beginPath(); g.moveTo(14, -2.5); g.lineTo(19, 0); g.lineTo(14, 2.5); g.closePath(); g.fill();
+    }
+    g.restore();
+    g.fillStyle = '#e8c04a'; g.strokeStyle = 'rgba(90,60,10,0.9)'; g.lineWidth = 1; g.beginPath(); g.arc(w - 11, h - 10, 6.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#9a7418'; g.font = 'bold 8px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('G', w - 11, h - 9.6);
+  }
   function iconRes(g, name, w, h) {
     const s = Math.min(w, h) / 22; g.save(); g.scale(s, s); g.lineCap = 'round'; g.lineJoin = 'round';
     const ol = 'rgba(20,12,6,0.85)';
@@ -2960,7 +3002,7 @@ const UI = (() => {
     const w = chip ? 22 : 60, h = chip ? 22 : 46;
     c.width = w * 2; c.height = h * 2; const g = c.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, w, h);
     const [kind, name] = id.split(':');
-    try { if (kind === 'b') iconBuilding(g, name, w, h); else if (kind === 'u') iconUnit(g, name, w, h); else iconRes(g, name, w, h); } catch (e) {}
+    try { if (kind === 'b') iconBuilding(g, name, w, h); else if (kind === 'u') iconUnit(g, name, w, h); else if (kind === 'w') iconWeapon(g, name, w, h); else iconRes(g, name, w, h); } catch (e) {}
   }
   const paintIcons = (root = document) => root.querySelectorAll('canvas[data-icon]').forEach(paintIcon);
   // --- status bar ---
@@ -4069,7 +4111,7 @@ function startGame(key) {
   CIV = CIVS[key];
   Object.assign(PAL.player, { tunic: CIV.color, tunicDark: CIV.dark, shield: CIV.color });
   PAL.civ.trim = CIV.color;
-  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food;
+  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople();
   planEnemyWalls(); buildEnemyWalls(16, true);
@@ -4095,7 +4137,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
