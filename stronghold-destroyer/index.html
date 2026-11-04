@@ -239,6 +239,7 @@
   <div id="menuPop" class="pop" hidden>
     <h3>MENU</h3>
     <button id="btnHelp">Help and controls (H)</button>
+    <div class="row"><button id="btnTrees">Trees: Detailed</button><span style="font-size:14px;color:#d9c9a3">Simple runs faster on slower computers</span></div>
     <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
     <div class="row"><button id="btnView">View: 3D</button><span style="font-size:14px;color:#d9c9a3">V switches &middot; Q and E turn the camera</span></div>
@@ -4300,6 +4301,7 @@ const R3D = (() => {
     if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; }
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
+  let setTreeDetail = null, treeDetailWant = true; try { treeDetailWant = localStorage.getItem('sd-trees') !== 'simple'; } catch (e) {}
   let oakMesh, oakTrunks, pineMesh, pineTrunks, birchMesh, birchTrunks, leafDecid, rockMesh, treeList = [];
   const bushModels = new Map(), stumpSeen = new Set();
   function buildScenery() {
@@ -4307,13 +4309,62 @@ const R3D = (() => {
     const oakParts = [], R = mulberry32(99);
     const blobs = [[0, 46, 0, 15], [-11, 40, 4, 11], [11, 41, -3, 11.5], [3, 40, 11, 10.5], [-2, 42, -11, 11], [0, 57, 0, 11], [-8, 53, 6, 8.5], [8, 54, -5, 8.5], [5, 50, 8, 8], [-12, 47, -6, 8], [12, 48, 6, 8], [-5, 36, 10, 7.5], [6, 36, -10, 7.5], [0, 63, 2, 7]];
     for (const [x, y, z, r] of blobs) { const geo = new T.IcosahedronGeometry(r, 1); const pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (R() - 0.5) * 0.18; pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); } oakParts.push({ geo, m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') }); }
-    const oakGeo = merge(oakParts);
+    // ---- leaf-card crowns: a dark core with hundreds of see-through leaf clusters, lit as one soft volume ----
+    function leafCardTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), Rl = mulberry32(2024);
+      g.fillStyle = '#7a7a7a'; g.fillRect(0, 0, 6, 256);   // a solid strip the crown's core samples
+      for (let i = 0; i < 70; i++) {
+        const a = Rl() * Math.PI * 2, rr = Math.sqrt(Rl()) * 92, x = 128 + Math.cos(a) * rr, y = 128 + Math.sin(a) * rr, ang = a + (Rl() - 0.5) * 1.4, L = 15 + Rl() * 12, W = L * (0.38 + Rl() * 0.14);
+        const v = 140 + Rl() * 110 | 0; g.save(); g.translate(x, y); g.rotate(ang);
+        g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath(); g.moveTo(-L / 2, 0); g.quadraticCurveTo(0, -W, L / 2, 0); g.quadraticCurveTo(0, W, -L / 2, 0); g.fill();
+        g.strokeStyle = `rgba(40,40,40,0.22)`; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-L * 0.4, 0); g.lineTo(L * 0.4, 0); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.ellipse(-L * 0.1, -W * 0.25, L * 0.25, W * 0.25, 0, 0, Math.PI * 2); g.fill();
+        g.restore();
+      }
+      // bleed leaf colour into the clear pixels so the edges never fringe dark as the texture shrinks with distance
+      const img = g.getImageData(0, 0, 256, 256), d = img.data;
+      for (let pass = 0; pass < 4; pass++) for (let y = 1; y < 255; y++) for (let x = 7; x < 255; x++) { const i = (y * 256 + x) * 4; if (d[i + 3] > 0) continue; for (const o of [-4, 4, -1024, 1024]) { const j = i + o; if (d[j + 3] > 0) { d[i] = d[j]; d[i + 1] = d[j + 1]; d[i + 2] = d[j + 2]; d[i + 3] = 1; break; } } }
+      g.putImageData(img, 0, 0);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t;
+    }
+    function cardCrown(blobs, colorFn, seed, perBlob, size, centerY) {
+      const Rc = mulberry32(seed), pos = [], nor = [], col = [], uv = [];
+      const push = (p, n, c, u, v) => { pos.push(p.x, p.y, p.z); nor.push(n.x, n.y, n.z); col.push(c.r, c.g, c.b); uv.push(u, v); };
+      const ctr = new T.Vector3(0, centerY, 0);
+      for (const [bx, by, bz, br] of blobs) {
+        // core: a small dark blob that fills the gaps between leaf clusters
+        const core = new T.IcosahedronGeometry(br * 0.72, 0).toNonIndexed(), cp = core.attributes.position;
+        for (let i = 0; i < cp.count; i++) { const p = new T.Vector3(cp.getX(i) + bx, cp.getY(i) + by, cp.getZ(i) + bz), n = p.clone().sub(ctr).normalize(); const c = colorFn(p.x, p.y, p.z).multiplyScalar(0.62); push(p, n, c, 0.012, 0.5); }
+        for (let k = 0; k < perBlob; k++) {
+          const d = new T.Vector3(Rc() - 0.5, Rc() - 0.35, Rc() - 0.5).normalize(), c0 = new T.Vector3(bx, by, bz).addScaledVector(d, br * (0.7 + Rc() * 0.45));
+          const nrm = d.clone().add(new T.Vector3(Rc() - 0.5, Rc() - 0.5, Rc() - 0.5).multiplyScalar(0.9)).normalize();
+          const up = Math.abs(nrm.y) > 0.9 ? new T.Vector3(1, 0, 0) : new T.Vector3(0, 1, 0), ax = new T.Vector3().crossVectors(up, nrm).normalize(), ay = new T.Vector3().crossVectors(nrm, ax);
+          const rot = Rc() * Math.PI * 2, ca = Math.cos(rot), sa = Math.sin(rot), sz = size * (0.75 + Rc() * 0.6);
+          const X = ax.clone().multiplyScalar(ca).addScaledVector(ay, sa).multiplyScalar(sz), Y = ay.clone().multiplyScalar(ca).addScaledVector(ax, -sa).multiplyScalar(sz);
+          const corner = (sx, sy) => c0.clone().addScaledVector(X, sx).addScaledVector(Y, sy);
+          const lit = c0.clone().sub(ctr).normalize().lerp(nrm, 0.35).normalize(), c = colorFn(c0.x, c0.y, c0.z).multiplyScalar(0.85 + Rc() * 0.3);
+          const q = [[-1, -1, 0.06, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, -1, 0.06, 0], [1, 1, 1, 1], [-1, 1, 0.06, 1]];   // cards never touch the core's solid strip at the left edge
+          for (const [sx, sy, u, v] of q) push(corner(sx, sy), lit, c, u, v);
+        }
+      }
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+      g.computeBoundingSphere(); return g;
+    }
+    const cardTex = leafCardTexture();
+    const cardMat = new T.MeshStandardMaterial({ vertexColors: true, map: cardTex, alphaTest: 0.5, side: T.DoubleSide, roughness: 0.82 }); swayLeaves(cardMat, 28);
+    { const sway = cardMat.onBeforeCompile; cardMat.extensions = { derivatives: true };
+      cardMat.onBeforeCompile = sh => { sway(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', '#include <alphatest_fragment>\n  #ifdef USE_UV\n  if (vUv.x > 0.045) { vec3 fn = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))); if (abs(dot(fn, normalize(vViewPosition))) < 0.28) discard; }\n  #endif'); }; }
+    const cardDepth = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: cardTex, alphaTest: 0.5 });
+    const oakBlobGeo = merge(oakParts);
+    const oakGeo = cardCrown(blobs, lightCol('#24461c', '#8cb655'), 99, 11, 8.6, 47);
     const birchParts = [], Rb2 = mulberry32(512);
     for (const [x, y, z, r] of [[0, 52, 0, 9], [-6, 46, 3, 7], [6, 47, -2, 7], [2, 58, 4, 7], [-3, 63, -2, 6.5], [0, 69, 1, 5.5], [4, 41, 5, 6], [-5, 40, -5, 6], [3, 55, -6, 6]]) {
       const geo = new T.IcosahedronGeometry(r, 1), pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (Rb2() - 0.5) * 0.25; pp.setXYZ(i, pp.getX(i) * k * 0.85, pp.getY(i) * k * 1.25, pp.getZ(i) * k * 0.85); }
       birchParts.push({ geo, m: M4(x, y, z), color: lightCol('#3f6a24', '#a8c860') });
     }
-    const birchGeo = merge(birchParts);
+    const birchBlobGeo = merge(birchParts);
+    const birchGeo = cardCrown([[0, 52, 0, 9], [-6, 46, 3, 7], [6, 47, -2, 7], [2, 58, 4, 7], [-3, 63, -2, 6.5], [0, 69, 1, 5.5], [4, 41, 5, 6], [-5, 40, -5, 6], [3, 55, -6, 6]], lightCol('#3f6a24', '#a8c860'), 512, 10, 6.0, 54);
     const pineParts = [];
     for (let k = 0; k < 6; k++) {
       const geo = new T.ConeGeometry(17 - k * 2.5, 19, 14, 2, true), pp = geo.attributes.position, Rp = mulberry32(300 + k);
@@ -4343,8 +4394,15 @@ const R3D = (() => {
       for (const m of [mo, mp]) { m.castShadow = false; m.receiveShadow = true; scene.add(m); }
     }
     oakMesh = new T.InstancedMesh(oakGeo, leafMat, oaks.length); oakTrunks = new T.InstancedMesh(new T.CylinderGeometry(2.4, 3.8, 36, 8), barkMat, oaks.length);
-    leafDecid = leafMat.clone(); swayLeaves(leafDecid, 28); oakMesh.material = leafDecid;
-    birchMesh = new T.InstancedMesh(birchGeo, leafDecid, birches.length); birchTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.3, 2.1, 46, 8), std('#e6e2d6', { roughness: 0.8, map: barkMat.map }), birches.length);
+    leafDecid = cardMat; oakMesh.material = cardMat; oakMesh.customDepthMaterial = cardDepth;
+    const simpleMat = leafMat.clone(); swayLeaves(simpleMat, 28);
+    setTreeDetail = detailed => {   // detailed leaf crowns, or the older solid ones for slower computers
+      oakMesh.geometry = detailed ? oakGeo : oakBlobGeo; birchMesh.geometry = detailed ? birchGeo : birchBlobGeo;
+      const mt = detailed ? cardMat : simpleMat; oakMesh.material = birchMesh.material = mt; simpleMat.color.copy(cardMat.color); leafDecid = mt;
+      oakMesh.customDepthMaterial = birchMesh.customDepthMaterial = detailed ? cardDepth : undefined;
+    };
+    if (treeDetailWant === false) setTreeDetail(false);
+    birchMesh = new T.InstancedMesh(birchGeo, leafDecid, birches.length); birchMesh.customDepthMaterial = cardDepth; birchTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.3, 2.1, 46, 8), std('#e6e2d6', { roughness: 0.8, map: barkMat.map }), birches.length);
     pineMesh = new T.InstancedMesh(pineGeo, leafMat, pines.length); pineTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.8, 2.6, 22, 7), barkMat, pines.length);
     const place = (list, crown, trunk, trunkY) => list.forEach((t, i) => {
       const x = t.c * TILE + 16 + (t.x - (t.c * TILE + 16)), z = t.r * TILE + 16, y = heightAt(x, z), s = t.s * 1.05, ry = t.seed * 2.1;
@@ -5451,7 +5509,7 @@ const R3D = (() => {
   function tilt(d) { pitchTarget = clamp(pitchTarget + d, PITCH_MIN, PITCH_MAX); }
   function resetView() { yawTarget = Math.round(yawTarget / (Math.PI * 2)) * Math.PI * 2; pitchTarget = 0.8; }
   const panAxes = () => ({ c: Math.cos(yaw), s: Math.sin(yaw) });
-  return { leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
+  return { treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
 let paused = false;
@@ -5574,6 +5632,10 @@ function drawWeatherFx(g) {
   }
   g.restore();
 }
+(function treesButton() {
+  const b = document.getElementById('btnTrees'), show = () => { b.textContent = 'Trees: ' + (R3D.treeDetailOn() ? 'Detailed' : 'Simple'); };
+  b.onclick = () => { R3D.treeDetail(!R3D.treeDetailOn()); show(); }; show();
+})();
 (function weatherButton() {
   const b = document.getElementById('btnWeather'), show = () => { b.textContent = 'Weather: ' + (WEATHER.on ? 'On' : 'Off'); };
   b.onclick = () => { WEATHER.on = !WEATHER.on; try { localStorage.setItem('sd-weather', WEATHER.on ? 'on' : 'off'); } catch (e) {} if (WEATHER.on) WEATHER.t = Math.min(WEATHER.t, 30); show(); }; show();
