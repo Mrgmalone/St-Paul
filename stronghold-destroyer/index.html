@@ -248,6 +248,7 @@
     <p><b>Rally points:</b> in the Army list, choose Army rally point (new soldiers) or Town rally point (new civilians and rams), then click the ground. A flag marks each one. Send army to rally point gathers all your soldiers there.</p>
     <p><b>The enemy:</b> its workers cut wood and gather food and carry them home, and with them it builds up its camp: houses, towers and walls. Killing its workers slows it down. Raids come regularly, along the roads and through the woods from the north, the south and the west; a red ring on the map shows where. Difficulty (chosen at the start) sets how fast the enemy works and how often and how hard it raids.</p>
     <p><b>Moats and pits:</b> draw a Moat like a wall (start, then end); your workers dig it for free. Water stops everyone, and rams, catapults and ballistas can never cross; enemy soldiers who are blocked will shovel it full, slowly, under your arrows. Leave a gap for your own people. A Spike Pit (10 wood) does not block anyone: it is hidden under branches, and the enemy who steps on it is badly hurt. It springs three times, then collapses.</p>
+    <p><b>The rival lord:</b> Lord Varek of Ashmoor commands the enemy. He is big, tough and hits hard, and his men fight harder near him; his name and health always show above him and a gold dot marks him on the map. He guards his camp, and in later raids he rides out at their head. Kill him and the enemy's spirit breaks: no raids for three minutes, and their camp works more slowly from then on.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers. <b>Catapults</b> lob heavy stones from far away: best against walls and towers, and the stone hurts everyone where it lands, but it misses soldiers on the move. <b>Ballistas</b> fire great bolts that cut down soldiers at long range but only chip stone. Neither can fight up close: guard them. The enemy brings them too, in later raids.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
@@ -553,6 +554,7 @@ const PAL = {
   player: { tunic: '#2f63b0', tunicDark: '#1d3f76', trim: '#e0b84e', helmet: '#c3cad1', helmetDark: '#6f7881', plume: null, shield: '#2f63b0', shieldRim: '#d9b04a', pants: '#5a4630', pantsDark: '#45351f', boot: '#3a2a1a', bootDark: '#2a1e12' },
   enemy: { tunic: '#ac3430', tunicDark: '#6d1d1a', trim: '#2c2622', helmet: '#7a726b', helmetDark: '#3b3632', plume: '#d23b2f', shield: '#7a2420', shieldRim: '#2b2724', pants: '#3e3428', pantsDark: '#2e261c', boot: '#22190f', bootDark: '#170f08' }
 };
+PAL.lord = Object.assign({}, PAL.enemy, { tunic: '#7a1a18', tunicDark: '#4a0e0c', helmet: '#d9b04a', helmetDark: '#8a6a1a', plume: '#f0e6d0', shield: '#2b2724', shieldRim: '#d9b04a' });
 PAL.ecv = Object.assign({}, PAL.civ, { tunic: '#7a5a48', tunicDark: '#5a3e30', trim: '#ac3430' });
 const CIVS = {
   legion:  { name: 'Iron Legion',   color: '#2f63b0', dark: '#1d3f76', sHp: 1.2,  sDmg: 1.2,  sSpeed: 1,    train: 0.7, gather: 0.75, carry: 10, eatEvery: 12, popCap: 15, regrow: 5, heal: 1.5, keepHeal: 0, food: 100, wood: 80,  keepHp: 1500, keepRate: 2.2, keepDmg: 7,  keepRange: 240, bldHp: 1 },
@@ -789,7 +791,7 @@ function doHit(u) {
     return;
   }
   if (u.type === 'ram' && t.x0 === undefined) return;
-  let dmg = Math.round(u.dmg * RR(0.85, 1.15));
+  let dmg = Math.round(u.dmg * RR(0.85, 1.15) * (u.team === 'enemy' && lordNear(u) ? 1.2 : 1));
   if (isWall(t) && u.type !== 'ram' && t.kind !== 'moat') dmg = Math.max(1, Math.round(dmg * WALL_RESIST));
   if (t.kind === 'moat' && u.type === 'ram') return;
   t.hp -= dmg; t.flash = 1;
@@ -1438,7 +1440,7 @@ function drawPerson(g, u, time) {
   const sr = u.dead ? 23 : 14, sg = g.createRadialGradient(0, 0, 0, 0, 0, sr);
   sg.addColorStop(0, 'rgba(0,0,0,0.42)'); sg.addColorStop(0.65, 'rgba(0,0,0,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = sg; g.beginPath(); g.arc(0, 0, sr, 0, Math.PI * 2); g.fill(); g.restore();
-  g.scale(u.facing * 1.35, 1.35 * lk.h);
+  g.scale(u.facing * 1.35 * (lk.s || 1), 1.35 * lk.h * (lk.s || 1));
   if (u.dead) { let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f); g.rotate(-f * Math.PI / 2 * 0.94); }
 
   const moving = u.moving && !u.dead, ph = u.walkPhase;
@@ -2347,14 +2349,14 @@ function enemyWorker(u, dt) {
     const b = u.ejob; if (!b || b.dead || b.done) { u.sub = null; u.ejob = null; u.order = 'idle'; return; }
     u.moving = false; u.facing = b.x >= u.x ? 1 : -1;
     if (u.attackAnim === 0) u.attackAnim = 0.001;
-    b.progress = Math.min(1, b.progress + dt * DIFF.pace / b.buildTime); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dt * DIFF.pace / b.buildTime);
+    b.progress = Math.min(1, b.progress + dt * ePace() / b.buildTime); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dt * ePace() / b.buildTime);
     if (b.progress >= 1) { b.done = true; ENEMY.built++; u.sub = null; u.ejob = null; u.order = 'idle'; }
     return;
   }
   if (u.sub === 'toNode') {
     const n = u.enode; if (!n || n.gone || n.amount <= 0) { u.sub = null; return; }
     const c = nodeCenter(n);
-    if (Math.hypot(c.x - u.x, c.y - u.y) <= nodeReach(n) + 6) { u.sub = 'work'; u.workT = 3.2 / DIFF.pace; u.path = []; u.moving = false; } else walk(c.x, c.y);
+    if (Math.hypot(c.x - u.x, c.y - u.y) <= nodeReach(n) + 6) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.path = []; u.moving = false; } else walk(c.x, c.y);
     return;
   }
   if (u.sub === 'work') {
@@ -2371,6 +2373,31 @@ function enemyWorker(u, dt) {
     const ap = approachPoint(u, camp);
     if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14) { ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
     else walk(ap.x, ap.y);
+  }
+}
+// ---------- the rival lord: Lord Varek of Ashmoor ----------
+const LORD = { name: 'Lord Varek of Ashmoor', unit: null, said: {}, broken: false };
+const ePace = () => DIFF.pace * (LORD.broken ? 0.6 : 1);
+function lordSay(key, text, delay = 0) {
+  if (LORD.said[key]) return; LORD.said[key] = true;
+  setTimeout(() => { showBanner(`<b>${LORD.name}:</b> “${text}”`, 4.5); AudioSys.ui('warhorn'); }, delay);
+}
+function spawnLord() {
+  const camp = enemyCamp(); if (!camp) return;
+  const f = nearestFree(Math.floor((camp.x - 70) / TILE), Math.floor((camp.y + 70) / TILE)); if (!f) return;
+  const u = makeUnit('enemy', 'sword', f.c * TILE + 16, f.r * TILE + 16);
+  const hp = { easy: 520, medium: 760, hard: 1000 }[DIFF.key] || 760;
+  Object.assign(u, { lord: true, name: LORD.name, hp, maxHp: hp, dmg: 30, speed: 66, radius: 13, pal: PAL.lord, look: { beard: true, longHair: true, w: 1.08, h: 1.0, s: 1.3 }, post: { x: u.x, y: u.y } });
+  LORD.unit = u;
+}
+function lordNear(u, r = 170) { const L = LORD.unit; return L && !L.dead && L !== u && L.team === u.team && Math.hypot(L.x - u.x, L.y - u.y) < r; }
+function updateLord() {
+  const L = LORD.unit; if (!L || !started) return;
+  if (!L.dead && L.hp < L.maxHp * 0.5) lordSay('hurt', 'You have drawn my blood. You will pay for every drop.');
+  if (L.dead && !LORD.broken) {
+    LORD.broken = true; raidTimer += 180;
+    setTimeout(() => showBanner(`<b>${LORD.name} has fallen!</b> The enemy's spirit is broken: no raids for three minutes, and their camp works more slowly.`, 6), 300);
+    AudioSys.ui('victory');
   }
 }
 function spawnRaid() {
@@ -2390,10 +2417,15 @@ function spawnRaid() {
     const kind = raidCount % 2 ? 'catapult' : 'ballista', f = nearestFree(Math.floor(route.start[0] / TILE), Math.floor(route.start[1] / TILE));
     if (f) { const m = makeUnit('enemy', kind, f.c * TILE + 16, f.r * TILE + 16); m.raider = true; m.order = 'raid'; m.route = route.way.map(([x, y]) => ({ x, y })); n2 = kind; }
   }
+  const L = LORD.unit;
+  if (L && !L.dead && !L.raider && raidCount >= 6 && raidCount % 4 === 2) {
+    L.raider = true; L.order = 'raid'; L.repath = 0; L.path = []; L.route = route.way.map(([x, y]) => ({ x, y }));
+    lordSay('lead' + raidCount, 'I ride with my men today. Your walls will not save you.', 300); LORD.said['lead' + raidCount] = true;
+  }
   const withRam = raidCount >= 3 && raidCount % 2 === 1;
   if (withRam) { const f = nearestFree(Math.floor((1905 + EXP) / TILE), Math.floor(560 / TILE)); if (f) { const r = makeUnit('enemy', 'ram', f.c * TILE + 16, f.r * TILE + 16); r.raider = true; r.order = 'raid'; } }
   AudioSys.ui('warhorn');
-  if (n2) { setTimeout(() => showBanner(`The enemy brings a ${n2}! Guard your walls.`, 3.5), 4600); n2 = null; }
+  if (n2) { const machine = n2; setTimeout(() => showBanner(`The enemy brings a ${machine}! Guard your walls.`, 3.5), 4600); n2 = null; }
   raidPing = { x: route.way[route.way.length - 1][0], y: route.way[route.way.length - 1][1], t: 0, from: route.name };
   showBanner(withRam ? `Enemy raid with a battering ram! ${n} soldiers and a ram are coming ${route.name}.` : `Enemy raid! ${n} soldiers are coming ${route.name}.`, 4.5);
 }
@@ -2423,11 +2455,11 @@ function updateTraps(dt) {
   }
 }
 function updateWar(dt) {
-  updateTraps(dt);
+  updateTraps(dt); updateLord();
   alertCooldown -= dt;
   for (const s of structures) {
     if (s.dead || s.done === false || !s.range) continue;
-    if (s.kind === 'tower') { raidTimer -= dt; if (raidTimer <= 0) { spawnRaid(); raidTimer = DIFF.raidEvery; } enemyWallT -= dt; if (enemyWallT <= 0) { enemyWallT = 20 / DIFF.pace; buildEnemyWalls(2, false); } updateEnemyBase(dt); }
+    if (s.kind === 'tower') { raidTimer -= dt; if (raidTimer <= 0) { spawnRaid(); raidTimer = DIFF.raidEvery; } enemyWallT -= dt; if (enemyWallT <= 0) { enemyWallT = 20 / ePace(); buildEnemyWalls(2, false); } updateEnemyBase(dt); }
     s.drawT = (s.drawT || 0) - dt;
     s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
     if (s.archerT <= 0) {
@@ -3695,6 +3727,7 @@ const UI = (() => {
       if (u.dead) continue;
       g.fillStyle = u.team !== 'player' ? '#ff5a4a' : u.type === 'civ' ? '#f2e2b8' : shade(PAL.player.tunic, 0.35);
       g.fillRect(u.x * sx - d / 2, u.y * sy - d / 2, d, d);
+      if (u.lord) { g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(u.x * sx, u.y * sy, d * 1.6, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#3a0a08'; g.lineWidth = dpr; g.stroke(); }
     }
     if (raidPing && raidPing.t < 12) { raidPing.t += 1 / 30; const pr = (6 + (raidPing.t * 14) % 14) * dpr; g.strokeStyle = 'rgba(255,80,60,0.95)'; g.lineWidth = 2 * dpr; g.beginPath(); g.arc(raidPing.x * sx, raidPing.y * sy, pr, 0, Math.PI * 2); g.stroke(); }
     g.strokeStyle = '#ffffff'; g.lineWidth = 1.5 * dpr;
@@ -4675,7 +4708,7 @@ const R3D = (() => {
       if (want !== null) md.heading = angLerp(md.heading, want, Math.min(1, dt * 10));
       md.px = u.x; md.pz = u.y;
       md.root.rotation.y = md.heading;
-      const sc = u.look ? u.look.h : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
+      const sc = u.look ? u.look.h * (u.look.s || 1) : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
       if (md.ram) {
         const a = u.attackAnim;
         if (md.arm) { const k = machineArm(u); md.arm.rotation.x = lerp(-0.32, -1.7, k); md.stone.visible = !(a > 0 && a / u.animDur >= 0.52); }
@@ -4882,7 +4915,7 @@ const R3D = (() => {
       }
       if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
-    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u) { const p = project(u.x, (isMachine(u) ? 62 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) drawHealthBar(g, p.x, p.y, 28, u.hp / u.maxHp); } }
+    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
     for (const fl of floats) { const gz = fl.y + 50, p = project(fl.x, 50 + fl.t * 22, gz); g.globalAlpha = 1 - fl.t / 1.6; g.strokeText(fl.text, p.x, p.y); g.fillStyle = fl.col; g.fillText(fl.text, p.x, p.y); }
@@ -5208,7 +5241,8 @@ function render() {
   // health bars
   for (const u of units) {
     if (u.dead || !visible(u)) continue;
-    if (selection.has(u) || u.hp < u.maxHp || hover === u) drawHealthBar(g, u.x, u.y - 58 - elev2D(u), 28, u.hp / u.maxHp);
+    if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) drawHealthBar(g, u.x, u.y - (u.lord ? 74 : 58) - elev2D(u), u.lord ? 44 : 28, u.hp / u.maxHp);
+    if (u.lord) { g.save(); g.font = 'bold 13px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, u.x, u.y - 80 - elev2D(u)); g.fillStyle = '#ffd98a'; g.fillText(u.name, u.x, u.y - 80 - elev2D(u)); g.restore(); }
   }
   for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - s.topH - 24, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp);
   g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
@@ -5246,6 +5280,8 @@ function startGame(key) {
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = DIFF.first;
+  LORD.unit = null; LORD.said = {}; LORD.broken = false; spawnLord();
+  setTimeout(() => lordSay('hello', 'So, a new lord in the west. Enjoy your little keep while it stands.'), 22000);
   { const camp = enemyCamp(); for (let i = 0; i < 4; i++) { const f = nearestFree(Math.floor((camp.x - 70 + i * 22) / TILE), Math.floor((camp.y + 40) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); } }
   started = true;
   document.getElementById('pick').style.display = 'none';
@@ -5274,7 +5310,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
