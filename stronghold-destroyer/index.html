@@ -224,6 +224,7 @@
   <div id="menuPop" class="pop" hidden>
     <h3>MENU</h3>
     <button id="btnHelp">Help and controls (H)</button>
+    <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
     <div class="row"><button id="btnView">View: 3D</button><span style="font-size:14px;color:#d9c9a3">V switches &middot; Q and E turn the camera</span></div>
     <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
@@ -241,6 +242,7 @@
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
     <p><b>Stone castles:</b> a Quarry beside a grey rock cuts stone. High Walls stand as tall as your keep; archers climb them by Stairs placed beside the wall (or from a tower joined to it). Stone Towers and the Great Tower are far tougher than the wooden Tower, shoot farther, and hold more archers.</p>
+    <p><b>Weather:</b> it changes every minute or two; the top bar shows it, with an arrow for the wind. Wind pushes arrows, bolts and stones off course, so long shots miss more. Rain and snow shorten every shot; rain slows marching a little and helps crops grow; snow slows everyone more and settles on the ground. Turn weather off in the Menu.</p>
     <p><b>Outlines:</b> when a wall, tower or building hides your people (or enemies), you see their shape through it in their team colour. Turn this off in the Menu.</p>
     <p><b>Training:</b> click a soldier or civilian button again to queue more, up to 10 of each. The green ring empties as each one is made; the number shows how many are waiting; right-click a button to cancel one. If you cannot train, the button says why.</p>
     <p><b>Rally points:</b> in the Army list, choose Army rally point (new soldiers) or Town rally point (new civilians and rams), then click the ground. A flag marks each one. Send army to rally point gathers all your soldiers there.</p>
@@ -769,7 +771,7 @@ function doHit(u) {
   if (!alive(t) || edgeDist(u, t) > rangeOf(u) + 8) return;
   if (u.type === 'archer') { // loose an arrow; it lands a moment later
     const c = hitCenter(t), x0 = u.x + u.facing * 8, y0 = u.y - 26;
-    arrows.push({ x0, y0, x1: c.x, y1: c.y, t: 0, dur: Math.hypot(c.x - x0, c.y - y0) / 460 + 0.08, h: 18, target: t, from: u, dmg: Math.round(u.dmg * RR(0.85, 1.15)) });
+    fire({ x0, y0, x1: c.x, y1: c.y, t: 0, dur: Math.hypot(c.x - x0, c.y - y0) / 460 + 0.08, h: 18, target: t, from: u, dmg: Math.round(u.dmg * RR(0.85, 1.15)) });
     AudioSys.play('bow', u.x, u.y); AudioSys.combat(u.x, u.y);
     return;
   }
@@ -777,7 +779,7 @@ function doHit(u) {
     const c = hitCenter(t), st = u.type === 'catapult';
     const ax = c.x + (st && t.x0 === undefined ? RR(-24, 24) : 0), ay = c.y + (st && t.x0 === undefined ? RR(-14, 14) : 0);
     const x0 = u.x + u.facing * (st ? -6 : 14), y0 = u.y - (st ? 44 : 30), dist = Math.hypot(ax - x0, ay - y0);
-    arrows.push({ kind: st ? 'stone' : 'bolt', x0, y0, x1: ax, y1: ay, t: 0, dur: dist / (st ? 300 : 620) + (st ? 0.5 : 0.08), h: st ? Math.min(220, 60 + dist * 0.35) : 12, target: t, from: u, dmg: Math.round(u.dmg * RR(0.9, 1.1)) });
+    fire({ kind: st ? 'stone' : 'bolt', x0, y0, x1: ax, y1: ay, t: 0, dur: dist / (st ? 300 : 620) + (st ? 0.5 : 0.08), h: st ? Math.min(220, 60 + dist * 0.35) : 12, target: t, from: u, dmg: Math.round(u.dmg * RR(0.9, 1.1)) });
     AudioSys.play(st ? 'boom' : 'bow', u.x, u.y); AudioSys.combat(u.x, u.y);
     for (let i = 0; i < 4; i++) spawn('dust', u.x + RR(-14, 14), u.y - 4, u.y);
     return;
@@ -922,7 +924,7 @@ const WALL_INFO = { wall: { posts: 2, e2: 30, e3: 31.5, rng: 1.35 }, gtower: { p
 const WALL_POSTS = Object.fromEntries(Object.entries(WALL_INFO).map(([k, v]) => [k, v.posts]));
 const elev2D = u => u.onWall ? WALL_INFO[u.onWall.kind].e2 : 0;
 const elev3D = u => u.onWall ? WALL_INFO[u.onWall.kind].e3 : 0;
-const rangeOf = u => u.onWall ? u.range * WALL_INFO[u.onWall.kind].rng : u.range;
+const rangeOf = u => (u.onWall ? u.range * WALL_INFO[u.onWall.kind].rng : u.range) * (u.range > 40 ? weatherRange() : 1);
 // a high wall can only be climbed from stairs beside it, or from a tower joined to the same stretch of wall
 function structAt(c, r) { for (const o of structures) if (!o.dead && o.team === 'player' && c >= o.c && c < o.c + o.w && r >= o.r && r < o.r + o.h) return o; return null; }
 function wallAccess(b) {
@@ -978,7 +980,7 @@ function commandStop(list) { for (const u of list) { if (u.type === 'civ') { u.j
 // ---------- unit update ----------
 function followPath(u, dt) {
   if (!u.path.length) { u.moving = false; return; }
-  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt;
+  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt * weatherSpeed();
   if (d <= Math.max(step, 2.5)) {
     if (!circleBlocked(wp.x, wp.y, u.radius * 0.8)) { u.x = wp.x; u.y = wp.y; }
     u.path.shift();
@@ -2405,16 +2407,16 @@ function updateWar(dt) {
     s.drawT = (s.drawT || 0) - dt;
     s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
     if (s.archerT <= 0) {
-      let tgt = null, bd = s.range;
+      let tgt = null, bd = s.range * weatherRange();
       for (const u of units) if (!u.dead && u.team !== s.team) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < bd) { bd = d; tgt = u; } }
       if (tgt) {
         s.aim = tgt.x > s.x + 6 ? 1 : -1; s.tx = tgt.x; s.ty = tgt.y; s.drawT = 0.3; s.archerT = s.fireRate;
         const x0 = s.x + 6 + s.aim * 8, y0 = s.y - s.archerY, x1 = tgt.x + RR(-7, 7), y1 = tgt.y - 16 + RR(-4, 4);
-        arrows.push({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s, dmg: s.arrowDmg });
+        fire({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s, dmg: s.arrowDmg });
         if (s.shots > 1) {   // a second archer on the great tower picks another foe
           let t2 = tgt, b2 = s.range; for (const u of units) if (!u.dead && u.team !== s.team && u !== tgt) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < b2) { b2 = d; t2 = u; } }
           const xa = s.x - 6 - s.aim * 8, xb = t2.x + RR(-7, 7), yb = t2.y - 16 + RR(-4, 4);
-          arrows.push({ x0: xa, y0, x1: xb, y1: yb, t: -0.15, dur: Math.hypot(xb - xa, yb - y0) / 430 + 0.12, h: 26, target: t2, from: s, dmg: s.arrowDmg });
+          fire({ x0: xa, y0, x1: xb, y1: yb, t: -0.15, dur: Math.hypot(xb - xa, yb - y0) / 430 + 0.12, h: 26, target: t2, from: s, dmg: s.arrowDmg });
         }
         AudioSys.play('bow', s.x, s.y - 100);
       } else s.archerT = 0.4;
@@ -2679,7 +2681,7 @@ function updateEconomy(dt) {
   }
   // berry bushes slowly grow back
   for (const b of bushes) b.amount = Math.min(b.max, b.amount + dt / CIV.regrow);
-  for (const fm of farms) if (fm.done) fm.amount = Math.min(fm.max, fm.amount + dt / 1.2);
+  for (const fm of farms) if (fm.done) fm.amount = Math.min(fm.max, fm.amount + dt / 1.2 * (1 + 0.25 * WEATHER.rain - 0.3 * WEATHER.snow));
   // training at the keep
   if (k && trainQueue.length) {
     const heads = new Set();
@@ -3418,7 +3420,13 @@ const AudioSys = (() => {
     let pk = 0, sq = 0; for (const v of d) { pk = Math.max(pk, Math.abs(v)); sq += v * v; }
     return { peak: pk, rms: Math.sqrt(sq / d.length), state: ac.state, music: !!musicTimer, mode };
   }
-  return { setTheme, theme: () => themeName, setVol, vol: k => on[k === 'music' ? 'musicVol' : 'sfxVol'], ambientTick, debugLevel, init, play, setOn, isOn: k => on[k], combat(x, y) { const sx = (x - cam.x) * cam.z, sy = (y - cam.y) * cam.z; if (sx > -200 && sx < vw + 200 && sy > -200 && sy < vh + 200) lastCombat = performance.now(); }, stopMusic, ui: n => play(n) };
+  let rainG = null, rainF = null;
+  function setRain(level, wind) {
+    if (!ac || !noiseBuf) return;
+    if (!rainG) { const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true; rainF = ac.createBiquadFilter(); rainF.type = 'highpass'; rainF.frequency.value = 900; rainG = ac.createGain(); rainG.gain.value = 0; src.connect(rainF); rainF.connect(rainG); rainG.connect(ambBus); src.start(); }
+    rainG.gain.setTargetAtTime(Math.min(1, level) * 0.55 + wind * 0.08, ac.currentTime, 0.8);
+  }
+  return { setRain, setTheme, theme: () => themeName, setVol, vol: k => on[k === 'music' ? 'musicVol' : 'sfxVol'], ambientTick, debugLevel, init, play, setOn, isOn: k => on[k], combat(x, y) { const sx = (x - cam.x) * cam.z, sy = (y - cam.y) * cam.z; if (sx > -200 && sx < vw + 200 && sy > -200 && sy < vh + 200) lastCombat = performance.now(); }, stopMusic, ui: n => play(n) };
 })();
 function refreshSoundButtons() {
   document.getElementById('btnMusic').textContent = 'Music: ' + (AudioSys.isOn('music') ? 'On' : 'Off');
@@ -3537,6 +3545,7 @@ const UI = (() => {
       <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
       <span class="chip" title="Enemies left"><canvas data-icon="r:foes"></canvas><b id="vFoes"></b></span>
       <button class="chip" id="cGoods" title="Goods: click for the list"><canvas data-icon="r:goods"></canvas><b id="vGoods"></b></button>
+      <span class="chip" title="Weather and wind"><b id="vWeather">☀ Clear</b><i id="vWind" style="display:inline-block;font-style:normal;color:#cfe3ff;transition:transform 1s">➤</i></span>
       <span class="chip" title="Next enemy raid"><canvas data-icon="r:raid"></canvas><b id="vRaid"></b></span>`;
     paintIcons(statusEl); built = true;
     $('cMood').onclick = () => toggle('moodPop');
@@ -3677,7 +3686,7 @@ const R3D = (() => {
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const h = (u, v) => wn(u / 9, v / 9) + 0.5 * wn(u / 4 + 20, v / 4); const dx = h(x + 1, y) - h(x - 1, y), dy = h(x, y + 1) - h(x, y - 1), i = (y * n + x) * 4;
       d[i] = 128 + dx * 160; d[i + 1] = 128 + dy * 160; d[i + 2] = 255; d[i + 3] = 255; }
     g.putImageData(img, 0, 0); }, 6);
-  let envCube = null;
+  let envCube = null, gmatRef = null;
   function std(hex, o = {}) { const m = new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); if (envCube && (o.metalness || 0) >= 0.45) { m.envMap = envCube; m.envMapIntensity = 0.85; } return m; }
   function texMat(name, rx, ry, tint, o = {}) {
     const key = name + rx.toFixed(2) + ry.toFixed(2) + (tint || '');
@@ -3756,10 +3765,12 @@ const R3D = (() => {
       for (let i = 0; i < 900; i++) { const x = R() * 256, y = R() * 256, v = R() < 0.5 ? 60 : 175; g.fillStyle = `rgba(${v},${v},${v},0.35)`; g.fillRect(x, y, 1.4, 1.4); } }
     const detTex = new T.CanvasTexture(det); detTex.wrapS = detTex.wrapT = T.RepeatWrapping; detTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const gmat = new T.MeshStandardMaterial({ map: tex, roughness: 0.97 });
+    gmatRef = gmat;
     gmat.onBeforeCompile = sh => {
+      gmat.userData.sh = sh; sh.uniforms.snowAmt = { value: 0 };
       sh.uniforms.detailMap = { value: detTex }; sh.uniforms.detailRep = { value: new T.Vector2(MW / 26, MH / 26) };
-      sh.fragmentShader = 'uniform sampler2D detailMap; uniform vec2 detailRep;\n' + sh.fragmentShader.replace('#include <map_fragment>',
-        '#include <map_fragment>\n  { float d1 = texture2D(detailMap, vUv * detailRep).r, d2 = texture2D(detailMap, vUv * detailRep * 0.27 + 0.31).r; diffuseColor.rgb *= mix(0.84, 1.16, d1 * 0.65 + d2 * 0.35); }');
+      sh.fragmentShader = 'uniform sampler2D detailMap; uniform vec2 detailRep; uniform float snowAmt;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n  { float d1 = texture2D(detailMap, vUv * detailRep).r, d2 = texture2D(detailMap, vUv * detailRep * 0.27 + 0.31).r; diffuseColor.rgb *= mix(0.84, 1.16, d1 * 0.65 + d2 * 0.35); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.97), snowAmt * clamp(0.45 + 0.5 * d2, 0.0, 0.92)); }');
     };
     groundMesh = mesh(geo, gmat, 0, 0, 0, false);
     scene.add(groundMesh);
@@ -4741,7 +4752,9 @@ const R3D = (() => {
     fill.position.set(c.x + 600, ty + 420, c.z + 500); fill.target.position.set(c.x, ty, c.z); fill.target.updateMatrixWorld();
     sky.position.copy(camera.position);
     const s = Math.max(500, D * 0.95); Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s }); sun.shadow.camera.updateProjectionMatrix();
-    scene.fog.near = D * 1.1; scene.fog.far = D * 3.2;
+    const wet = WEATHER.rain, sn = WEATHER.snow; scene.fog.near = D * (1.1 - 0.5 * wet - 0.3 * sn); scene.fog.far = D * (3.2 - 1.5 * wet - 1.0 * sn);
+    scene.fog.color.setRGB(0.718 - 0.2 * wet + 0.12 * sn, 0.776 - 0.2 * wet + 0.1 * sn, 0.8 - 0.15 * wet + 0.1 * sn); scene.background = scene.fog.color;
+    sun.intensity = 1.75 * (1 - 0.5 * wet - 0.25 * sn); if (gmatRef && gmatRef.userData.sh) gmatRef.userData.sh.uniforms.snowAmt.value = WEATHER.cover;
   }
   const ray = available ? new T.Raycaster() : null, v2 = available ? new T.Vector2() : null, plane = available ? new T.Plane(new T.Vector3(0, 1, 0), 0) : null, hit = available ? new T.Vector3() : null;
   function groundAt(sx, sy) {
@@ -4888,6 +4901,63 @@ function setView(want3d) {
   resize();
 }
 
+// ---------- weather: wind pushes missiles off course, rain and snow shorten shots and slow feet ----------
+const WTYPES = {
+  clear:  { name: 'Clear',  icon: '☀', rain: 0, snow: 0, wind: 0.12, msg: 'The sky clears.' },
+  breezy: { name: 'Breezy', icon: '☁', rain: 0, snow: 0, wind: 0.42, msg: 'A breeze picks up: arrows drift a little with the wind.' },
+  windy:  { name: 'Windy',  icon: '☁', rain: 0, snow: 0, wind: 0.85, msg: 'Strong winds! Arrows, bolts and stones drift off course.' },
+  rain:   { name: 'Rain',   icon: '☂', rain: 0.7, snow: 0, wind: 0.3, msg: 'Rain is falling: arrows fall shorter and the ground is muddy.' },
+  storm:  { name: 'Storm',  icon: '☂', rain: 1, snow: 0, wind: 0.9, msg: 'A storm rolls in! Short, wild shots and slow, muddy marching.' },
+  snow:   { name: 'Snow',   icon: '❄', rain: 0, snow: 0.85, wind: 0.3, msg: 'Snow is falling: shorter shots, and everyone moves slowly.' }
+};
+const WEATHER = { kind: 'clear', rain: 0, snow: 0, wind: 0.12, ang: 0.6, angT: 0.6, cover: 0, t: 75, on: true };
+try { WEATHER.on = localStorage.getItem('sd-weather') !== 'off'; } catch (e) {}
+const weatherRange = () => 1 - 0.14 * WEATHER.rain - 0.1 * WEATHER.snow;
+const weatherSpeed = () => 1 - 0.08 * WEATHER.rain - 0.16 * WEATHER.snow;
+function setWeather(kind, quiet) {
+  WEATHER.kind = kind; WEATHER.t = 70 + Math.random() * 70; WEATHER.angT = Math.random() * Math.PI * 2;
+  if (!quiet && started) showBanner(WTYPES[kind].msg, 3.5);
+}
+function updateWeather(dt) {
+  if (!WEATHER.on) { WEATHER.kind = 'clear'; }
+  else { WEATHER.t -= dt; if (WEATHER.t <= 0 && started) { const order = ['clear', 'breezy', 'windy', 'rain', 'storm', 'snow', 'clear', 'breezy', 'rain'], opts = order.filter(k => k !== WEATHER.kind); setWeather(opts[Math.floor(Math.random() * opts.length)]); } }
+  const w = WTYPES[WEATHER.kind], k = Math.min(1, dt / 6);
+  WEATHER.rain += (w.rain - WEATHER.rain) * k; WEATHER.snow += (w.snow - WEATHER.snow) * k; WEATHER.wind += (w.wind - WEATHER.wind) * k;
+  WEATHER.ang += Math.atan2(Math.sin(WEATHER.angT - WEATHER.ang), Math.cos(WEATHER.angT - WEATHER.ang)) * Math.min(1, dt / 8);
+  WEATHER.cover = clamp(WEATHER.cover + (WEATHER.snow > 0.3 ? dt / 50 : -dt / 40), 0, 1);   // snow settles on the ground, then melts
+  const el = document.getElementById('vWeather'); if (el) { el.textContent = `${w.icon} ${w.name}`; const a = document.getElementById('vWind'); a.style.transform = `rotate(${WEATHER.ang}rad)`; a.style.opacity = 0.35 + WEATHER.wind * 0.65; a.title = `Wind ${WEATHER.wind > 0.7 ? 'strong' : WEATHER.wind > 0.35 ? 'moderate' : 'light'}`; }
+}
+// every missile leaves through here: the wind pushes where it comes down
+function fire(a) {
+  const push = a.kind === 'stone' ? 40 : a.kind === 'bolt' ? 34 : 72, d = Math.max(0, a.dur) * WEATHER.wind * push * RR(0.45, 1.35);   // gusts: some shots blow wide, some fly true
+  const jit = 1 + WEATHER.rain * 0.6 + WEATHER.snow * 0.4;
+  a.x1 += Math.cos(WEATHER.ang) * d + RR(-2, 2) * jit * WEATHER.rain; a.y1 += Math.sin(WEATHER.ang) * d * 0.6;
+  arrows.push(a);
+}
+const wdrops = [];
+function drawWeatherFx(g) {
+  const W = vw, H = vh, rain = WEATHER.rain, snow = WEATHER.snow;
+  g.save(); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (rain > 0.02) { g.fillStyle = `rgba(30,40,58,${0.22 * rain})`; g.fillRect(0, 0, W, H); }
+  if (snow > 0.02) { g.fillStyle = `rgba(210,220,235,${0.1 * snow})`; g.fillRect(0, 0, W, H); }
+  const want = Math.round(420 * rain + 320 * snow);
+  while (wdrops.length < want) wdrops.push({ x: Math.random() * W, y: Math.random() * H, z: 0.5 + Math.random() * 0.5, s: Math.random() < snow / Math.max(0.01, rain + snow) });
+  if (wdrops.length > want) wdrops.length = want;
+  const wx = Math.cos(WEATHER.ang) * WEATHER.wind, dt = frameDt;
+  g.lineCap = 'round';
+  for (const d of wdrops) {
+    if (d.s) { d.x += (wx * 90 + Math.sin(time * 1.3 + d.z * 20) * 18) * d.z * dt; d.y += 46 * d.z * dt; }
+    else { d.x += wx * 380 * d.z * dt; d.y += 900 * d.z * dt; }
+    if (d.y > H) { d.y -= H + 20; d.x = Math.random() * W; d.s = Math.random() < snow / Math.max(0.01, rain + snow); } if (d.x > W + 20) d.x -= W + 40; if (d.x < -20) d.x += W + 40;
+    if (d.s) { g.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * d.z})`; g.beginPath(); g.arc(d.x, d.y, 1.2 + 1.6 * d.z, 0, Math.PI * 2); g.fill(); }
+    else { g.strokeStyle = `rgba(200,215,235,${0.25 + 0.3 * d.z})`; g.lineWidth = 0.8 + 0.6 * d.z; g.beginPath(); g.moveTo(d.x, d.y); g.lineTo(d.x - wx * 18 * d.z, d.y - 16 * d.z); g.stroke(); }
+  }
+  g.restore();
+}
+(function weatherButton() {
+  const b = document.getElementById('btnWeather'), show = () => { b.textContent = 'Weather: ' + (WEATHER.on ? 'On' : 'Off'); };
+  b.onclick = () => { WEATHER.on = !WEATHER.on; try { localStorage.setItem('sd-weather', WEATHER.on ? 'on' : 'off'); } catch (e) {} if (WEATHER.on) WEATHER.t = 20; show(); }; show();
+})();
 // ---------- outlines of people hidden behind walls and buildings (flat view) ----------
 const silCan = [document.createElement('canvas'), document.createElement('canvas')];
 function hiddenBy(u) {
@@ -4961,7 +5031,7 @@ function frame(now) {
   for (let i = units.length - 1; i >= 0; i--) if (units[i].dead && units[i].deathT > 10) units.splice(i, 1);
 
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
-  updateTrainButtons();
+  updateTrainButtons(); updateWeather(dt); AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
   const civSel = [...selection].some(u => u.type === 'civ');
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
@@ -4983,12 +5053,13 @@ function frame(now) {
 }
 
 function render() {
-  if (R3D.active) { R3D.render(ctx, frameDt); return; }
+  if (R3D.active) { R3D.render(ctx, frameDt); drawWeatherFx(ctx); return; }
   const g = ctx, z = cam.z * dpr;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#1a2a12'; g.fillRect(0, 0, canvas.width, canvas.height);
   g.setTransform(z, 0, 0, z, -cam.x * z, -cam.y * z);
   g.imageSmoothingEnabled = true;
   g.drawImage(terrain, 0, 0);
+  if (WEATHER.cover > 0.01) { g.fillStyle = `rgba(236,240,246,${0.42 * WEATHER.cover})`; g.fillRect(0, 0, MW, MH); }
   const vx0 = cam.x - 80, vy0 = cam.y - 60, vx1 = cam.x + vw / cam.z + 80, vy1 = cam.y + vh / cam.z + 200;
   const visible = o => o.x > vx0 && o.x < vx1 && o.y > vy0 && o.y < vy1;
 
@@ -5075,6 +5146,7 @@ function render() {
   for (const fl of floats) { const a = 1 - fl.t / 1.6; g.globalAlpha = a; g.strokeText(fl.text, fl.x, fl.y - fl.t * 22); g.fillStyle = fl.col; g.fillText(fl.text, fl.x, fl.y - fl.t * 22); }
   g.globalAlpha = 1;
 
+  drawWeatherFx(g);
   // selection box (screen space)
   if (drag && drag.box) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -5133,7 +5205,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
