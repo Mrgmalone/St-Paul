@@ -253,6 +253,7 @@
     <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
+    <p><b>Running a workplace:</b> click any hut, farm, mine or workshop to see its status, workers, what it makes and how fast, and what it has made so far. Add workers there (up to 2 at huts and farms, 3 at other industries); each one adds the same again to its output. Remove a worker, or put the building to sleep with Z (press Z again to wake it), to free people: they go gathering, and when your houses are full, training a soldier calls up a free civilian. Civilians without a building job gather food and wood by themselves (up to 5 at one bush or tree), and every few minutes a worker takes a 20 to 30 second break by the fire.</p>
     <p><b>Stores and gear:</b> click a Stockpile, Granary, Armory or your Keep to see exactly what you hold. Workers carry the right gear from the moment they are given a job: an axe, and logs on the shoulder, for wood; a basket for berries; a sickle and a sack for wheat and hops; a pickaxe and a wheelbarrow for stone. Grey rocks can be quarried by hand for stone (right-click or tap one with a civilian selected), and every Quarry gets an ox cart that hauls its cut stone to your stockpile.</p>
     <p><b>Workers:</b> every workplace (hut, farm, mine, workshop) gets a worker by itself as soon as it is built: an idle civilian, or if none is idle, a gatherer is called over. Send a second civilian to it (select, then right-click or tap the building) and it makes twice as much. Workshops grow skilled with use: every few batches they need 5% less material, down to half. Stockpiles show the wood, stone and goods you really have. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
@@ -1160,7 +1161,7 @@ function cartBrain(u, dt) {
   const walk = (x, y) => { if (!u.path.length || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; } followPath(u, dt); };
   if (u.sub === 'haul') {
     const drop = nearestDrop(u, 'stone'); if (!drop) { u.moving = false; return; }
-    if (edgeDist(u, drop) <= 14) { res.stone += u.carry; floatText(u.x, u.y - 60, `+${u.carry} stone`, '#e0c088'); u.carry = 0; u.carryType = null; u.sub = 'back'; u.path = []; return; }
+    if (edgeDist(u, drop) <= 14) { q.produced = (q.produced || 0) + u.carry; res.stone += u.carry; floatText(u.x, u.y - 60, `+${u.carry} stone`, '#e0c088'); u.carry = 0; u.carryType = null; u.sub = 'back'; u.path = []; return; }
     const ap = approachPoint(u, drop); walk(ap.x, ap.y); return;
   }
   if (edgeDist(u, q) > 20) { const ap = approachPoint(u, q); walk(ap.x, ap.y); return; }
@@ -1336,7 +1337,7 @@ function civBrain(u, dt) {
     const drop = nearestDrop(u, u.carryType || task.type);
     if (!drop) { u.order = 'idle'; u.task = null; return; }
     if (edgeDist(u, drop) <= 10) {
-      if (u.carry > 0) { if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
+      if (u.carry > 0) { if (u.job) u.job.produced = (u.job.produced || 0) + u.carry; if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
       u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
       return;
     }
@@ -2275,6 +2276,47 @@ function pickResource(wx, wy) {
 }
 const STORE_KINDS = { stockpile: 1, granary: 1, armory: 1, keep: 1 };
 let storeShown = null;
+const OUTPUT = { woodhut: 'wood', farm: 'food (crops)', wheatfarm: 'wheat', hopfarm: 'hops', quarry: 'stone' };
+function showSite(b) {
+  storeShown = b; const p = document.getElementById('storePop'); if (b.dead) { p.hidden = true; storeShown = null; return; }
+  const n = staffOf(b), mx = maxStaff(b.kind), rc = CRAFT[b.kind], ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`;
+  const status = b.done === false ? 'Being built' : b.asleep ? 'Asleep (Z to wake)' : n ? `Working: ${n} ${n > 1 ? 'people' : 'person'}` : 'No workers yet';
+  let html = ln('Status', status) + ln('Workers', `${n} of ${mx}`);
+  if (rc) {
+    const per = (rc.n || 1) / rc.time * 60, inp = Object.entries(rc.inp).map(([k, v]) => `${+(v * craftCost(b)).toFixed(1)} ${k}`).join(' + ');
+    html += ln('Makes', rc.out + (inp ? ` from ${inp}` : '')) + ln('Rate', n ? `up to ${Math.round(per * n * workMul())} ${rc.out} a minute${n > 1 ? ` (${n}x)` : ''}` : 'none (no workers)');
+    if (Object.keys(rc.inp).length) html += ln('Skill', `uses ${Math.round(craftCost(b) * 100)}% of the usual material`);
+    if (b.kind === 'quarry') html += ln('Cut stone waiting for the cart', b.stock || 0);
+  } else if (OUTPUT[b.kind]) html += ln('Makes', OUTPUT[b.kind]) + ln('Speed', n > 1 ? `${n}x one worker` : 'one worker');
+  html += ln('Made so far', Math.floor(b.produced || 0));
+  // the buttons are built once per building; only the figures above them refresh, so a click is never lost
+  if (p.dataset.site !== String(b.id) || !document.getElementById('siteInfo')) {
+    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div><div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` +
+      '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Workers you remove (or free by sleeping a building) go gathering, and can be called up as soldiers when your houses are full. Esc closes.</div>';
+    p.dataset.site = String(b.id);
+  }
+  document.getElementById('siteInfo').innerHTML = html; document.getElementById('siteSleep').textContent = b.asleep ? 'Wake (Z)' : 'Sleep (Z)'; p.hidden = false;
+}
+function siteAction(b, act) {
+  if (!b || b.dead) return;
+  if (act === 'sleep') {
+    b.asleep = !b.asleep;
+    if (b.asleep) for (const u of units) if (u.job === b) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
+    floatText(b.x, b.y - b.topH - 20, b.asleep ? `${b.name} is asleep` : `${b.name} wakes up`, '#e9dcbc');
+  } else if (act === 'add') {
+    if (b.done === false) { showBanner('Finish building it first.', 2); return; }
+    if (staffOf(b) >= maxStaff(b.kind)) { showBanner(`${b.name} already has ${maxStaff(b.kind)} workers, its most.`, 2.5); return; }
+    const free = units.filter(u => u.team === 'player' && !u.dead && u.type === 'civ' && !u.job && !(u.breakUntil > time)).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
+    if (!free) { showBanner('No free civilian: train one at the keep, or put another building to sleep.', 3); return; }
+    b.asleep = false; free.job = b; free.manualT = -99; free.order = 'idle'; free.task = null; startJob(free);
+    floatText(b.x, b.y - b.topH - 20, `${b.name}: ${staffOf(b)} workers`, '#9fe8a8');
+  } else if (act === 'remove') {
+    const w = units.filter(u => u.job === b && !u.dead).pop(); if (!w) return;
+    w.job = null; w.order = 'idle'; w.task = null; w.crafting = null; floatText(w.x, w.y - 50, 'Freed to gather', '#e9dcbc');
+  }
+  AudioSys.ui('select'); showSite(b);
+}
+document.getElementById('storePop').addEventListener('click', e => { const t = e.target.closest('[data-site]'); if (t && storeShown) siteAction(storeShown, t.dataset.site); });
 function showStore(b) {
   storeShown = b; if (b.dead) { document.getElementById('storePop').hidden = true; storeShown = null; return; }
   const p = document.getElementById('storePop'), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`, F = Math.floor;
@@ -2285,7 +2327,7 @@ function showStore(b) {
   const q = structures.filter(o => o.kind === 'quarry' && o.team === 'player' && !o.dead && o.stock);
   if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));
   html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
-  p.innerHTML = html; p.hidden = false;
+  p.innerHTML = html; p.dataset.site = ''; p.hidden = false;
 }
 function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
 
@@ -2306,8 +2348,9 @@ function issueAt(sx, sy) {
   if (canMount(hit) && sold.some(u => u.type === 'archer')) { const arch = sold.filter(u => u.type === 'archer'); commandMount(arch, hit); const rest = sold.filter(u => u.type !== 'archer'); if (rest.length) commandMove(rest, w.x, w.y + 40); return true; }
   if (hit && hit.team === 'player' && hit.done && JOBS[hit.kind] && civs.length) {
     let added = 0;
-    for (const u of civs) { if (staffOf(hit) >= JOB_MAX && u.job !== hit) break; u.job = hit; u.manualT = -99; u.order = 'idle'; startJob(u); added++; }
-    floatText(hit.x, hit.y - hit.topH - 10, added ? `${hit.name}: ${staffOf(hit)} worker${staffOf(hit) > 1 ? 's' : ''}${staffOf(hit) > 1 ? ' (double output)' : ''}` : `${hit.name} already has ${JOB_MAX} workers`, '#9fe8a8');
+    if (hit.asleep) { hit.asleep = false; floatText(hit.x, hit.y - hit.topH - 24, `${hit.name} wakes up`, '#9fe8a8'); }
+    for (const u of civs) { if (staffOf(hit) >= maxStaff(hit.kind) && u.job !== hit) break; u.job = hit; u.manualT = -99; u.order = 'idle'; startJob(u); added++; }
+    floatText(hit.x, hit.y - hit.topH - 10, added ? `${hit.name}: ${staffOf(hit)} worker${staffOf(hit) > 1 ? 's' : ''}${staffOf(hit) > 1 ? ` (${staffOf(hit)}x output)` : ''}` : `${hit.name} already has ${maxStaff(hit.kind)} workers`, '#9fe8a8');
     if (sold.length) commandMove(sold, w.x, w.y); return true;
   }
   if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
@@ -2394,6 +2437,7 @@ function touchTap(p) {
     selectOnly([hit]); return;
   }
   if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false && !selection.size) { showStore(hit); return; }
+  if (hit && hit.team === 'player' && JOBS[hit.kind] && !selection.size) { showSite(hit); return; }
   if (selection.size) { issueAt(p.x, p.y); return; }
   document.getElementById('storePop').hidden = true; storeShown = null;
 }
@@ -2433,6 +2477,8 @@ function endPointer(e) {
         if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
         else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else selectOnly([hit]); }
         else if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false) showStore(hit);
+        else if (hit && hit.team === 'player' && JOBS[hit.kind]) showSite(hit);
+        else if (!hit && pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) && isField((pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) || {}).kind) && !selection.size) showSite(pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y));
         else if (!drag.shift) { selection.clear(); document.getElementById('storePop').hidden = true; storeShown = null; }
         lastClick = { t: now, x: p.x, y: p.y };
       }
@@ -2460,6 +2506,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Tab') { e.preventDefault(); UI.toggleHide(); }
   if (e.key === 'h' || e.key === 'H') toggleHelp();
   if (e.key === 'p' || e.key === 'P') setPaused(!paused);
+  if ((e.key === 'z' || e.key === 'Z') && storeShown && JOBS[storeShown.kind]) siteAction(storeShown, 'sleep');
   if (e.key === 'q' || e.key === 'Q') R3D.rotate(-1);
   if (e.key === 'e' || e.key === 'E') R3D.rotate(1);
   if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
@@ -2877,7 +2924,7 @@ function whyNotTrain(kind) {
   if (WEAPON[kind] && res[WEAPON[kind]] < 1) return 'need a ' + WEAPON[kind];
   if (WEAPON[kind] && res.gold < 10) return 'need 10 gold';
   if (!WEAPON[kind]) { if (res.food < c.food) return `need ${c.food - Math.floor(res.food)} more food`; if (res.wood < c.wood) return `need ${c.wood - Math.floor(res.wood)} more wood`; if (res.stone < (c.stone || 0)) return `need ${c.stone - Math.floor(res.stone)} more stone`; if (res.gold < (c.gold || 0)) return `need ${c.gold - Math.floor(res.gold)} more gold`; }
-  if (!MACHINE[kind] && pop >= popCap()) return 'houses full: build a house';
+  if (!MACHINE[kind] && pop >= popCap() && !(kind !== 'civ' && draftable())) return kind === 'civ' ? 'houses full: build a house' : 'houses full and no free civilian to call up';
   return '';
 }
 function cancelTrain(kind) {   // right-click a training button: take back the last one queued, with its cost
@@ -2898,9 +2945,11 @@ function buyWeapon(w) {
   if (res.gold < BUY[w]) { showBanner(`A ${w} costs ${BUY[w]} gold. You have ${Math.floor(res.gold)}.`, 2.5); return; }
   res.gold -= BUY[w]; res[w] += 1; AudioSys.play('click'); updateHud();
 }
+// a free civilian (no building job) who can be called up to become a soldier
+const draftable = () => units.find(u => u.team === 'player' && !u.dead && u.type === 'civ' && !u.job);
 function canTrain(kind) {
   const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
-  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap()) && queuedOf(kind) < QUEUE_MAX;
+  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap() || (kind !== 'civ' && draftable())) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
@@ -2914,12 +2963,15 @@ function trainUnit(kind) {
   const c = COSTS[kind];
   if (WEAPON[kind]) { res[WEAPON[kind]] -= 1; res.gold -= 10; }   // every soldier takes a weapon from the armory
   else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); res.stone -= (c.stone || 0); }
+  { const pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length, d = draftable();
+    if (!MACHINE[kind] && kind !== 'civ' && pop >= popCap() && d) { units.splice(units.indexOf(d), 1); selection.delete(d); floatText(d.x, d.y - 50, `Called up to be a ${KINDS[kind].name}`, '#9fe8a8'); } }
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
 }
 // ---------- self-running workers ----------
 const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
-const JOB_MAX = 2;   // a second worker, added by you, doubles the output
+const JOB_MAX = 3;
+const maxStaff = k => (k === 'woodhut' || isField(k)) ? 2 : 3;   // huts and farms hold 2, other industries 3; each worker adds full output
 const staffOf = site => units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.job === site).length;
 const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], woodhut: ['wood'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
 const CRAFT = {
@@ -2941,7 +2993,7 @@ function craftBrain(u, dt) {
   if (u.sub === 'toDrop') {
     const drop = nearestDrop(u, u.carryType);
     if (!drop) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - site.topH - 8, `Build an ${u.carryType === 'bow' || u.carryType === 'spear' || u.carryType === 'sword' ? 'armory' : 'store'} for the ${u.carryType}`, '#ffb38a'); u.waitMsgT = 10; } u.path = []; u.moving = false; return; }
-    if (edgeDist(u, drop) <= 10) { if (u.carryType === 'bread') addFood('bread', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, '#e0c088'); u.carry = 0; u.sub = 'toSite'; u.path = []; return; }
+    if (edgeDist(u, drop) <= 10) { site.produced = (site.produced || 0) + u.carry; if (u.carryType === 'bread') addFood('bread', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, '#e0c088'); u.carry = 0; u.sub = 'toSite'; u.path = []; return; }
     if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, drop); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
     followPath(u, dt); return;
   }
@@ -2992,7 +3044,8 @@ function updateJobs(dt) {
   }
   const civs = units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.order !== 'leave');
   for (const u of civs) if (u.job && (u.job.dead || (u.job.x0 !== undefined && !farms.includes(u.job) && !structures.includes(u.job)))) u.job = null;
-  const sites = structures.concat(farms).filter(b => JOBS[b.kind] && b.team === 'player' && !b.dead && b.done);
+  const sites = structures.concat(farms).filter(b => JOBS[b.kind] && b.team === 'player' && !b.dead && b.done && !b.asleep);
+  for (const u of civs) if (u.job && u.job.asleep) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
   for (const site of sites) {
     let staff = civs.filter(u => u.job === site).length;
     while (staff < JOBS[site.kind]) {
@@ -3006,7 +3059,30 @@ function updateJobs(dt) {
       floatText(free[0].x, free[0].y - 50, JOB_NAME[site.kind] || 'Worker', '#ffe9a8');
     }
   }
-  for (const u of civs) if (u.job && u.order === 'idle') startJob(u);
+  // breaks: every few minutes a worker rests 20 to 30 seconds by the fire, then goes back to the same work
+  for (const u of civs) {
+    if (u.breakUntil) { if (time < u.breakUntil) continue; u.breakUntil = 0; u.workedT = 0; if (u.job) { u.order = 'idle'; } else if (u.breakNode && nodeOk(u.breakNode, u.breakType)) commandGather([u], u.breakNode); continue; }
+    const busy = (u.order === 'gather' || u.order === 'craft') && !isManual(u);
+    if (busy) u.workedT = (u.workedT || 0) + 1;
+    if (busy && playerFire && u.carry === 0 && u.workedT > 170 + (u.seed * 37 % 70) && (u.sub === 'toNode' || u.sub === 'toSite')) {
+      u.breakNode = u.task && u.task.node; u.breakType = u.task && u.task.type; u.breakUntil = time + 20 + Math.random() * 10;
+      const a = Math.random() * Math.PI * 2, d = { x: playerFire.x + Math.cos(a) * 46, y: playerFire.y + Math.sin(a) * 32 };
+      u.order = 'move'; u.dest = d; u.stuckT = 0; u.path = findPath(u.x, u.y, d.x, d.y); u.task = null; u.crafting = null;
+      floatText(u.x, u.y - 50, 'Taking a short break', '#e9dcbc');
+    }
+  }
+  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time)) startJob(u);
+  // anyone with no building job gathers by themselves: food when stores are low, otherwise wood; at most 5 to a bush, tree or rock
+  const onNode = n => civs.filter(o => o.task && o.task.node === n && o.order === 'gather').length;
+  for (const u of civs) {
+    if (u.job || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
+    const want = res.food < 120 || foodKinds.berries + foodKinds.crops < res.wood * 0.6 ? 'food' : 'wood';
+    for (const type of [want, want === 'food' ? 'wood' : 'food']) {
+      const list = type === 'wood' ? trees : bushes; let best = null, bd = 1100;
+      for (const n of list) { if (!nodeOk(n, type) || onNode(n) >= 5 || (u.bad && u.bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - u.x, c.y - u.y); if (d < bd) { bd = d; best = n; } }
+      if (best) { commandGather([u], best); break; }
+    }
+  }
   // people with no job wait by the campfire
   if (playerFire) for (const u of civs) if (!u.job && u.order === 'idle' && !isManual(u) && Math.hypot(u.x - playerFire.x, u.y - playerFire.y) > 75) {
     const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26, d = { x: playerFire.x + Math.cos(a) * r, y: playerFire.y + Math.sin(a) * r * 0.7 };
@@ -3946,7 +4022,7 @@ const UI = (() => {
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
     if (!$('goodsPop').hidden) $('goodsPop').innerHTML = goodsReport();
-    if (storeShown && !$('storePop').hidden) showStore(storeShown);
+    if (storeShown && !$('storePop').hidden) (JOBS[storeShown.kind] ? showSite : showStore)(storeShown);
     if (!$('moodPop').hidden) $('moodPop').innerHTML = moodReport();
   }
   function moodReport() {
@@ -5331,6 +5407,7 @@ const R3D = (() => {
       if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
     for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
+    for (const s of structures.concat(farms)) if (s.asleep && !s.dead) { const q = project(s.x, (s.topH || 20) + 30, (s.y0 + s.y1) / 2); if (q.ok) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', q.x, q.y); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', q.x, q.y); g.restore(); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
     for (const fl of floats) { const gz = fl.y + 50, p = project(fl.x, 50 + fl.t * 22, gz); g.globalAlpha = 1 - fl.t / 1.6; g.strokeText(fl.text, p.x, p.y); g.fillStyle = fl.col; g.fillText(fl.text, p.x, p.y); }
@@ -5690,6 +5767,7 @@ function render() {
     if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) drawHealthBar(g, u.x, u.y - (u.lord ? 74 : 58) - elev2D(u), u.lord ? 44 : 28, u.hp / u.maxHp);
     if (u.lord) { g.save(); g.font = 'bold 13px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, u.x, u.y - 80 - elev2D(u)); g.fillStyle = '#ffd98a'; g.fillText(u.name, u.x, u.y - 80 - elev2D(u)); g.restore(); }
   }
+  for (const s of structures.concat(farms)) if (s.asleep && !s.dead && visible(s)) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', s.x, s.y - (s.topH || 20) - 30); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', s.x, s.y - (s.topH || 20) - 30); g.restore(); }
   for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - s.topH - 24, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp);
   g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
   for (const fl of floats) { const a = 1 - fl.t / 1.6; g.globalAlpha = a; g.strokeText(fl.text, fl.x, fl.y - fl.t * 22); g.fillStyle = fl.col; g.fillText(fl.text, fl.x, fl.y - fl.t * 22); }
@@ -5757,7 +5835,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { showSite, siteAction, staffOf, maxStaff, LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
