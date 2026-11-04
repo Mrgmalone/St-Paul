@@ -66,7 +66,20 @@
   .ib{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;padding:5px 4px 6px;min-width:0;width:100%;line-height:1.15;font-size:15px;text-align:center}
   .ib canvas{width:60px;height:46px}
   .ib small{font-size:12.5px;font-weight:normal;white-space:normal}
-  .tb.off,.bb.off,.wb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+  .tb.off,.bb.off,.wb.off{filter:saturate(.45) brightness(.82);cursor:not-allowed}
+  .ib{position:relative}
+  .ib .ring{position:absolute;left:50%;top:2px;width:52px;height:52px;margin-left:-26px;border-radius:50%;pointer-events:none;display:none;
+    background:conic-gradient(#5dea6c calc(var(--p) * 1turn), rgba(0,0,0,.25) 0);-webkit-mask:radial-gradient(circle,transparent 21px,#000 22px);mask:radial-gradient(circle,transparent 21px,#000 22px)}
+  .ib.training .ring{display:block}
+  .ib .cnt{position:absolute;right:4px;top:4px;min-width:26px;height:26px;border-radius:13px;background:#1f5f2a;color:#fff;border:2px solid #bff5c4;font-size:15px;line-height:22px;text-align:center;display:none;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+  .ib.queued .cnt{display:block}
+  .ib .secs{position:absolute;left:4px;top:6px;font-size:13px;font-weight:bold;color:#1c3b1f;background:rgba(220,255,220,.85);border-radius:5px;padding:0 4px;display:none}
+  .ib.training .secs{display:block}
+  .ib .why{display:none;font-size:12px;font-weight:bold;color:#fff;background:#8a2a20;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:normal}
+  .ib.off .why{display:block}
+  .rally{display:flex;gap:6px;grid-column:1 / -1}
+  .rally button{flex:1;font-size:14px;padding:6px 4px}
+  .rally button.on{outline:3px solid #9fe8a8;background:linear-gradient(#fff0b8,#e2b860)}
   .bb.on{outline:3px solid #9fe8a8}
   #queue{font-size:15px;color:#eadfc4;padding:2px 4px}
   #queue:empty{display:none}
@@ -192,6 +205,8 @@
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
     <p><b>Stone castles:</b> a Quarry beside a grey rock cuts stone. High Walls stand as tall as your keep; archers climb them by Stairs placed beside the wall (or from a tower joined to it). Stone Towers and the Great Tower are far tougher than the wooden Tower, shoot farther, and hold more archers.</p>
     <p><b>Outlines:</b> when a wall, tower or building hides your people (or enemies), you see their shape through it in their team colour. Turn this off in the Menu.</p>
+    <p><b>Training:</b> click a soldier or civilian button again to queue more, up to 10 of each. The green ring empties as each one is made; the number shows how many are waiting; right-click a button to cancel one. If you cannot train, the button says why.</p>
+    <p><b>Rally points:</b> in the Army list, choose Army rally point (new soldiers) or Town rally point (new civilians and rams), then click the ground. A flag marks each one. Send army to rally point gathers all your soldiers there.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
@@ -212,58 +227,60 @@
   <div id="secs">
       <button class="tab active" data-tab="town" title="Town (key 1)" aria-expanded="true"><span class="tl">Town</span><span class="key">1</span><span class="chev">&#9662;</span></button>
       <div class="pane active" data-pane="town">
-        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small></button>
-        <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small></button>
-        <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>Chapel<small>80 wood &middot; 40 gold</small></button>
-        <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; 1 worker</small></button>
-        <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small></button>
-        <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small></button>
-        <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small></button>
+        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small><span class="why"></span></button>
+        <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small><span class="why"></span></button>
+        <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>Chapel<small>80 wood &middot; 40 gold</small><span class="why"></span></button>
+        <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; 1 worker</small><span class="why"></span></button>
+        <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small><span class="why"></span></button>
+        <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small><span class="why"></span></button>
+        <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
       </div>
       <button class="tab" data-tab="castle" title="Castle (key 2)" aria-expanded="false"><span class="tl">Castle</span><span class="key">2</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="castle">
-        <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small></button>
-        <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small></button>
-        <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small></button>
-        <button class="bb ib" data-b="highwall"><canvas data-icon="b:highwall"></canvas>High Wall<small>6 stone each</small></button>
-        <button class="bb ib" data-b="stairs"><canvas data-icon="b:stairs"></canvas>Stairs<small>4 stone &middot; climb high walls</small></button>
-        <button class="bb ib" data-b="stower"><canvas data-icon="b:stower"></canvas>Stone Tower<small>60 stone &middot; 20 wood</small></button>
-        <button class="bb ib" data-b="greattower"><canvas data-icon="b:greattower"></canvas>Great Tower<small>120 stone &middot; 40 wood &middot; 30 gold</small></button>
+        <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small><span class="why"></span></button>
+        <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small><span class="why"></span></button>
+        <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small><span class="why"></span></button>
+        <button class="bb ib" data-b="highwall"><canvas data-icon="b:highwall"></canvas>High Wall<small>6 stone each</small><span class="why"></span></button>
+        <button class="bb ib" data-b="stairs"><canvas data-icon="b:stairs"></canvas>Stairs<small>4 stone &middot; climb high walls</small><span class="why"></span></button>
+        <button class="bb ib" data-b="stower"><canvas data-icon="b:stower"></canvas>Stone Tower<small>60 stone &middot; 20 wood</small><span class="why"></span></button>
+        <button class="bb ib" data-b="greattower"><canvas data-icon="b:greattower"></canvas>Great Tower<small>120 stone &middot; 40 wood &middot; 30 gold</small><span class="why"></span></button>
       </div>
       <button class="tab" data-tab="army" title="Army (key 3)" aria-expanded="false"><span class="tl">Army</span><span class="key">3</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="army">
-        <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>1 sword &middot; 10 gold</small></button>
-        <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>1 spear &middot; 10 gold</small></button>
-        <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>1 bow &middot; 10 gold</small></button>
-        <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small></button>
+        <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>1 sword &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>1 spear &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>1 bow &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <span id="queue"></span>
-        <button class="wb ib" data-w="sword"><canvas data-icon="w:sword"></canvas>Buy Sword<small>40 gold</small></button>
-        <button class="wb ib" data-w="spear"><canvas data-icon="w:spear"></canvas>Buy Spear<small>20 gold</small></button>
-        <button class="wb ib" data-w="bow"><canvas data-icon="w:bow"></canvas>Buy Bow<small>30 gold</small></button>
+        <div class="rally"><button id="rallyArmy" title="Choose where newly trained soldiers gather">&#9873; Army rally point</button><button id="rallyTown" title="Choose where new civilians and rams gather">&#9873; Town rally point</button></div>
+        <div class="rally"><button id="sendRally" title="Send every soldier to the army rally point">Send army to rally point</button></div>
+        <button class="wb ib" data-w="sword"><canvas data-icon="w:sword"></canvas>Buy Sword<small>40 gold</small><span class="why"></span></button>
+        <button class="wb ib" data-w="spear"><canvas data-icon="w:spear"></canvas>Buy Spear<small>20 gold</small><span class="why"></span></button>
+        <button class="wb ib" data-w="bow"><canvas data-icon="w:bow"></canvas>Buy Bow<small>30 gold</small><span class="why"></span></button>
         <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;padding:2px 4px"></span>
       </div>
       <button class="tab" data-tab="rule" title="Rule (key 4)" aria-expanded="false"><span class="tl">Rule</span><span class="key">4</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="rule" id="rule">
         <div class="grp"><span class="tl">Rations</span><div class="row"><button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button></div></div>
         <div class="grp"><span class="tl">Taxes</span><div class="row"><button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button></div></div>
-        <button class="bb ib" data-b="garden"><canvas data-icon="b:garden"></canvas>Garden<small>20 wood &middot; 10 gold &middot; happier, slower</small></button>
-        <button class="bb ib" data-b="stocks"><canvas data-icon="b:stocks"></canvas>Stocks<small>15 wood &middot; harder work, unhappier</small></button>
+        <button class="bb ib" data-b="garden"><canvas data-icon="b:garden"></canvas>Garden<small>20 wood &middot; 10 gold &middot; happier, slower</small><span class="why"></span></button>
+        <button class="bb ib" data-b="stocks"><canvas data-icon="b:stocks"></canvas>Stocks<small>15 wood &middot; harder work, unhappier</small><span class="why"></span></button>
         <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +15 mood</small></button>
       </div>
       <button class="tab" data-tab="industry" title="Industry (key 5)" aria-expanded="false"><span class="tl">Industry</span><span class="key">5</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="industry">
-        <button class="bb ib" data-b="wheatfarm"><canvas data-icon="b:wheatfarm"></canvas>Wheat Field<small>40 wood &middot; grows wheat</small></button>
-        <button class="bb ib" data-b="mill"><canvas data-icon="b:mill"></canvas>Mill<small>60 wood &middot; wheat to flour</small></button>
-        <button class="bb ib" data-b="bakery"><canvas data-icon="b:bakery"></canvas>Bakery<small>50 wood &middot; flour to bread</small></button>
-        <button class="bb ib" data-b="hopfarm"><canvas data-icon="b:hopfarm"></canvas>Hop Farm<small>40 wood &middot; grows hops</small></button>
-        <button class="bb ib" data-b="brewery"><canvas data-icon="b:brewery"></canvas>Brewery<small>50 wood &middot; hops to ale</small></button>
-        <button class="bb ib" data-b="tavern"><canvas data-icon="b:tavern"></canvas>Tavern<small>60 wood &middot; serves ale</small></button>
-        <button class="bb ib" data-b="quarry"><canvas data-icon="b:quarry"></canvas>Quarry<small>40 wood &middot; by grey rock</small></button>
-        <button class="bb ib" data-b="ironmine"><canvas data-icon="b:ironmine"></canvas>Iron Mine<small>40 wood &middot; by iron rock</small></button>
-        <button class="bb ib" data-b="bowyer"><canvas data-icon="b:bowyer"></canvas>Bowyer<small>40 wood &middot; wood to bows</small></button>
-        <button class="bb ib" data-b="poleturner"><canvas data-icon="b:poleturner"></canvas>Spear-maker<small>40 wood &middot; wood to spears</small></button>
-        <button class="bb ib" data-b="smithy"><canvas data-icon="b:smithy"></canvas>Smithy<small>50 wood &middot; iron to swords</small></button>
-        <button class="bb ib" data-b="armory"><canvas data-icon="b:armory"></canvas>Armory<small>50 wood &middot; stores weapons</small></button>
+        <button class="bb ib" data-b="wheatfarm"><canvas data-icon="b:wheatfarm"></canvas>Wheat Field<small>40 wood &middot; grows wheat</small><span class="why"></span></button>
+        <button class="bb ib" data-b="mill"><canvas data-icon="b:mill"></canvas>Mill<small>60 wood &middot; wheat to flour</small><span class="why"></span></button>
+        <button class="bb ib" data-b="bakery"><canvas data-icon="b:bakery"></canvas>Bakery<small>50 wood &middot; flour to bread</small><span class="why"></span></button>
+        <button class="bb ib" data-b="hopfarm"><canvas data-icon="b:hopfarm"></canvas>Hop Farm<small>40 wood &middot; grows hops</small><span class="why"></span></button>
+        <button class="bb ib" data-b="brewery"><canvas data-icon="b:brewery"></canvas>Brewery<small>50 wood &middot; hops to ale</small><span class="why"></span></button>
+        <button class="bb ib" data-b="tavern"><canvas data-icon="b:tavern"></canvas>Tavern<small>60 wood &middot; serves ale</small><span class="why"></span></button>
+        <button class="bb ib" data-b="quarry"><canvas data-icon="b:quarry"></canvas>Quarry<small>40 wood &middot; by grey rock</small><span class="why"></span></button>
+        <button class="bb ib" data-b="ironmine"><canvas data-icon="b:ironmine"></canvas>Iron Mine<small>40 wood &middot; by iron rock</small><span class="why"></span></button>
+        <button class="bb ib" data-b="bowyer"><canvas data-icon="b:bowyer"></canvas>Bowyer<small>40 wood &middot; wood to bows</small><span class="why"></span></button>
+        <button class="bb ib" data-b="poleturner"><canvas data-icon="b:poleturner"></canvas>Spear-maker<small>40 wood &middot; wood to spears</small><span class="why"></span></button>
+        <button class="bb ib" data-b="smithy"><canvas data-icon="b:smithy"></canvas>Smithy<small>50 wood &middot; iron to swords</small><span class="why"></span></button>
+        <button class="bb ib" data-b="armory"><canvas data-icon="b:armory"></canvas>Armory<small>50 wood &middot; stores weapons</small><span class="why"></span></button>
       </div>
   </div>
   </div></div>
@@ -1936,6 +1953,8 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   const p = localPos(e); canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, p);
   if (e.pointerType === 'mouse') {
+    if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
+    if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
     if (e.button === 0 && e.altKey && R3D.active) { orbit = { x: p.x, y: p.y }; return; }
     if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
     else if (e.button === 2) { if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
@@ -2002,6 +2021,7 @@ canvas.addEventListener('wheel', e => {
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
+  if (e.key === 'Escape' && settingRally) { settingRally = null; rallyButtons(); return; }
   if (e.key === 'Escape') { if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); else if (UI.closePops()) {} else if (placing) cancelPlacing(); else selection.clear(); }
   if (['1', '2', '3', '4', '5'].includes(e.key)) UI.showTab(['town', 'castle', 'army', 'rule', 'industry'][+e.key - 1]);
   if (e.key === 'Tab') { e.preventDefault(); UI.toggleHide(); }
@@ -2020,7 +2040,16 @@ window.addEventListener('keyup', e => { keys[e.key] = false; });
 document.getElementById('btnAll').onclick = () => selectOnly(units);
 document.getElementById('btnSold').onclick = () => selectOnly(units.filter(u => u.type !== 'civ'));
 document.getElementById('btnCiv').onclick = () => selectOnly(units.filter(u => u.type === 'civ'));
-document.querySelectorAll('.tb').forEach(b => b.onclick = () => trainUnit(b.dataset.k));
+document.querySelectorAll('.tb').forEach(b => { b.onclick = () => trainUnit(b.dataset.k); b.oncontextmenu = e => { e.preventDefault(); cancelTrain(b.dataset.k); }; });
+// rings that empty as each one is made, a count of how many are waiting, and the seconds left
+function updateTrainButtons() {
+  document.querySelectorAll('.tb').forEach(b => {
+    const k = b.dataset.k, list = trainQueue.filter(q => q.kind === k), head = list[0];
+    b.classList.toggle('queued', list.length > 0); b.classList.toggle('training', !!head);
+    if (head) { b.style.setProperty('--p', Math.max(0, 1 - head.t / head.dur).toFixed(3)); b.querySelector('.secs').textContent = Math.ceil(head.dur - head.t) + 's'; }
+    b.querySelector('.cnt').textContent = list.length;
+  });
+}
 document.querySelectorAll('.wb').forEach(b => b.onclick = () => buyWeapon(b.dataset.w));
 function toggleHelp() { document.getElementById('help').classList.toggle('hide'); }
 document.getElementById('btnHelp').onclick = toggleHelp;
@@ -2051,13 +2080,13 @@ function updateHud() {
     food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), stone: Math.floor(res.stone), gold: Math.floor(res.gold),
     pop, cap: popCap(), idle: idleCount(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
     moodRate: Math.round(moodRate), foes, raid: towerUp ? `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
-  document.querySelectorAll('.tb').forEach(b => b.classList.toggle('off', !canTrain(b.dataset.k)));
-  document.querySelectorAll('.wb').forEach(b => b.classList.toggle('off', !hasArmory() || res.gold < BUY[b.dataset.w]));
+  document.querySelectorAll('.tb').forEach(b => { const w = whyNotTrain(b.dataset.k); b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
+  document.querySelectorAll('.wb').forEach(b => { const w = !hasArmory() ? 'build an armory' : res.gold < BUY[b.dataset.w] ? `need ${BUY[b.dataset.w] - Math.floor(res.gold)} more gold` : ''; b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
   const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}` + (hasArmory() ? '' : ' · build an Armory to buy more');
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
   document.getElementById('feast').classList.toggle('off', res.gold < 50);
-  document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b; b.classList.toggle('off', !afford(BUILD[kb]) || ((kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3)); b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
-  document.getElementById('queue').textContent = trainQueue.length ? `Training ${KINDS[trainQueue[0].kind].name}: ${Math.ceil(trainQueue[0].dur - trainQueue[0].t)}s` + (trainQueue.length > 1 ? ` (+${trainQueue.length - 1} waiting)` : '') : '';
+  document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b, d = BUILD[kb], lim = (kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3; b.classList.toggle('off', !afford(d) || lim); const why = b.querySelector('.why'); if (why) { const l = lacking(d), need = l === 'wood' ? d.wood - Math.floor(res.wood) : l === 'stone' ? d.stone - Math.floor(res.stone) : (d.gold || 0) - Math.floor(res.gold); why.textContent = lim ? 'limit of 3 reached' : afford(d) ? '' : `need ${need} more ${l}`; } b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
+  document.getElementById('queue').textContent = trainQueue.length ? `In training: ${trainQueue.length} (right-click a button to cancel one)` : '';
   const sel = selectedList();
   UI.setSelection(sel);
   if (!won && foes === 0) endGame('VICTORY', 'The enemy camp has been destroyed.');
@@ -2231,6 +2260,25 @@ function spendFood(n) {
 const foodVariety = () => res.food > 0 ? Object.values(foodKinds).filter(v => v >= 1).length : 0;
 const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 0, wood: 0, gold: 10, time: 15 }, spear: { food: 0, wood: 0, gold: 10, time: 15 }, archer: { food: 0, wood: 0, gold: 10, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 } };
 const trainQueue = [];
+const QUEUE_MAX = 10;   // up to ten of each kind waiting; each kind trains side by side
+const queuedOf = kind => trainQueue.filter(q => q.kind === kind).length;
+function whyNotTrain(kind) {
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length + trainQueue.filter(q => q.kind !== 'ram').length;
+  if (!playerKeep()) return 'keep lost';
+  if (queuedOf(kind) >= QUEUE_MAX) return 'queue full (10)';
+  if (WEAPON[kind] && res[WEAPON[kind]] < 1) return 'need a ' + WEAPON[kind];
+  if (WEAPON[kind] && res.gold < 10) return 'need 10 gold';
+  if (!WEAPON[kind]) { if (res.food < c.food) return `need ${c.food - Math.floor(res.food)} more food`; if (res.wood < c.wood) return `need ${c.wood - Math.floor(res.wood)} more wood`; if (res.gold < (c.gold || 0)) return `need ${c.gold - Math.floor(res.gold)} more gold`; }
+  if (kind !== 'ram' && pop >= popCap()) return 'houses full: build a house';
+  return '';
+}
+function cancelTrain(kind) {   // right-click a training button: take back the last one queued, with its cost
+  for (let i = trainQueue.length - 1; i >= 0; i--) if (trainQueue[i].kind === kind) {
+    const q = trainQueue.splice(i, 1)[0], c = COSTS[kind];
+    if (WEAPON[kind]) { res[WEAPON[kind]] += 1; res.gold += 10; } else { addFood('crops', c.food); res.wood += c.wood; res.gold += (c.gold || 0); }
+    floatText(keep.x, keep.y - 140, `${KINDS[kind].name} cancelled`, '#ffd98a'); updateHud(); return;
+  }
+}
 let starving = false, hungerT = 0, starveMsgT = 0;
 const WEAPON = { sword: 'sword', spear: 'spear', archer: 'bow' };
 const weaponRoute = kind => WEAPON[kind] && res[WEAPON[kind]] >= 1 && res.gold >= 10;
@@ -2244,15 +2292,15 @@ function buyWeapon(w) {
 }
 function canTrain(kind) {
   const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'ram').length + trainQueue.filter(q => q.kind !== 'ram').length;
-  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0))) && pop < popCap() && trainQueue.length < 5;
+  return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0))) && (kind === 'ram' || pop < popCap()) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
   if (!canTrain(kind)) {
     const c = COSTS[kind];
-    if (WEAPON[kind] && res[WEAPON[kind]] < 1) showBanner(`You need a ${WEAPON[kind]} to train a ${KINDS[kind].name}. Make one in a workshop or buy one at the armory.`, 3.5);
+    if (WEAPON[kind] && res[WEAPON[kind]] < 1) showBanner(`You need a ${WEAPON[kind]} to train ${/^[AEIOU]/.test(KINDS[kind].name) ? 'an' : 'a'} ${KINDS[kind].name}. Make one in a workshop or buy one at the armory.`, 3.5);
     else if (WEAPON[kind] && res.gold < 10) showBanner(`Training a ${KINDS[kind].name} also costs 10 gold.`, 2.5);
     else if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C').replace('an B', 'a B'), 2.5);
-    else showBanner('Your keep cannot train more right now.', 2.5);
+    else showBanner(queuedOf(kind) >= QUEUE_MAX ? `Ten ${KINDS[kind].name}s are already waiting.` : 'Your houses are full. Build a house for more people.', 2.5);
     return;
   }
   const c = COSTS[kind];
@@ -2359,12 +2407,16 @@ function updateEconomy(dt) {
   for (const fm of farms) if (fm.done) fm.amount = Math.min(fm.max, fm.amount + dt / 1.2);
   // training at the keep
   if (k && trainQueue.length) {
-    const q = trainQueue[0]; q.t += dt;
-    if (q.t >= q.dur) {
-      trainQueue.shift();
-      const u = makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20);
-      commandMove([u], k.x1 + 70 + RR(-25, 25), k.y1 - 10 + RR(-25, 25));
-      floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8'); AudioSys.ui('ready');
+    const heads = new Set();
+    for (const q of trainQueue.slice()) {
+      if (heads.has(q.kind)) continue; heads.add(q.kind);
+      q.t += dt;
+      if (q.t >= q.dur) {
+        trainQueue.splice(trainQueue.indexOf(q), 1);
+        const u = makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20), rp = rallyFor(q.kind);
+        commandMove([u], rp.x + RR(-25, 25), rp.y + RR(-20, 20));
+        floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8'); AudioSys.ui('ready');
+      }
     }
   }
   for (let i = floats.length - 1; i >= 0; i--) { floats[i].t += dt; if (floats[i].t > 1.6) floats.splice(i, 1); }
@@ -4109,6 +4161,22 @@ const R3D = (() => {
     }
     return false;
   }
+  const rallyModels = {};
+  function syncRally() {
+    for (const which of ['army', 'town']) {
+      const r = rally[which]; let md = rallyModels[which];
+      if (!r) { if (md) md.g.visible = false; continue; }
+      if (!md) {
+        const g = new T.Group(), col = which === 'army' ? '#d23b2f' : PAL.player.tunic;
+        const f = pole(g, 0, 0, 0, 46, col); g.add(cyl(5, 6, 2, std('#6b6359'), 0, 1, 0, 10));
+        const ring = mesh(new T.RingGeometry(16, 19, 32), new T.MeshBasicMaterial({ color: C(which === 'army' ? '#ffcf5a' : '#9fe8a8'), transparent: true, opacity: 0.75, side: T.DoubleSide, depthWrite: false }), 0, 1.5, 0, false); ring.rotation.x = -Math.PI / 2; g.add(ring);
+        scene.add(g); md = rallyModels[which] = { g, f, ring };
+      }
+      md.g.visible = true; md.g.position.set(r.x, heightAt(r.x, r.y), r.y);
+      const p = md.f.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i); p.setZ(i, Math.sin(time * 5 + x * 0.25) * Math.min(3, x * 0.15)); } p.needsUpdate = true;
+      md.ring.scale.setScalar(1 + Math.sin(time * 3) * 0.06);
+    }
+  }
   const unitModels = new Map();
   const angLerp = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * t; };
   function animatePerson(u, md, dt) {
@@ -4396,7 +4464,7 @@ const R3D = (() => {
     const pr = quality >= 1 ? 1 : dpr, W = Math.round(vw * pr), H = Math.round(vh * pr);
     if (glCanvas.width !== W || glCanvas.height !== H) { renderer.setPixelRatio(pr); renderer.setSize(vw, vh, false); }
     adapt();
-    placeCamera(dt); syncWater(dt); syncScenery(); syncBuildings(dt); syncUnits(dt); syncFx();
+    placeCamera(dt); syncWater(dt); syncScenery(); syncBuildings(dt); syncUnits(dt); syncRally(); syncFx();
     renderer.render(scene, camera);
     overlay(g);
   }
@@ -4414,6 +4482,18 @@ const R3D = (() => {
 })();
 
 let camSpin = 0;
+// ---------- rally points: where new soldiers, and new civilians and rams, gather ----------
+const rally = { army: null, town: null }; let settingRally = null;
+function rallyFor(kind) {
+  const k = keep, which = (kind === 'civ' || kind === 'ram') ? 'town' : 'army';
+  return rally[which] || { x: k.x1 + 70, y: k.y1 - 10 };
+}
+function startRally(which) { if (!started) return; settingRally = settingRally === which ? null : which; placing = null; showBanner(settingRally ? `Click the ground where ${which === 'army' ? 'new soldiers' : 'new civilians and rams'} should gather. Right-click or Esc cancels.` : 'Rally point unchanged.', 3.5); rallyButtons(); }
+function setRallyAt(sx, sy) { const w = toWorld(sx, sy); if (!w || w.x < 20 || w.y < 20 || w.x > MW - 20 || w.y > MH - 20) return; rally[settingRally] = { x: w.x, y: w.y }; markers.push({ x: w.x, y: w.y, t: 0, col: '255,230,120' }); showBanner(`${settingRally === 'army' ? 'Army' : 'Town'} rally point set.`, 2); AudioSys.ui('place'); settingRally = null; rallyButtons(); }
+function rallyButtons() { document.getElementById('rallyArmy').classList.toggle('on', settingRally === 'army'); document.getElementById('rallyTown').classList.toggle('on', settingRally === 'town'); }
+document.getElementById('rallyArmy').onclick = () => startRally('army');
+document.getElementById('rallyTown').onclick = () => startRally('town');
+document.getElementById('sendRally').onclick = () => { const rp = rallyFor('sword'), sold = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'civ' && u.type !== 'ram' && !u.onWall); if (!sold.length) return; commandMove(sold, rp.x, rp.y); showBanner(`${sold.length} soldiers are marching to the rally point.`, 2.5); };
 function goHome() { const k = playerKeep(); if (k) { if (R3D.active) R3D.resetView(); centerOn(k.x + 40, k.y - 20); } }
 (function camButtons() {
   const hold = (id, dir) => { const b = document.getElementById(id); let t0 = 0, timer = null;
@@ -4502,6 +4582,7 @@ function frame(now) {
   for (let i = units.length - 1; i >= 0; i--) if (units[i].dead && units[i].deathT > 10) units.splice(i, 1);
 
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
+  updateTrainButtons();
   const civSel = [...selection].some(u => u.type === 'civ');
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
@@ -4581,6 +4662,16 @@ function render() {
     else drawPerson(g, o, time);
   }
   if (outlinesOn) drawHiddenOutlines(g, visible);
+  for (const which of ['army', 'town']) {   // rally flags
+    const r = rally[which]; if (!r) continue;
+    const col = which === 'army' ? '#d23b2f' : PAL.player.tunic;
+    g.save(); g.strokeStyle = which === 'army' ? 'rgba(255,207,90,0.8)' : 'rgba(159,232,168,0.8)'; g.lineWidth = 2.5; g.beginPath(); g.ellipse(r.x, r.y, 18 + Math.sin(time * 3), 7, 0, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = '#3a2a18'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(r.x, r.y); g.lineTo(r.x, r.y - 46); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.moveTo(r.x, r.y - 46); g.quadraticCurveTo(r.x + 12, r.y - 44 + Math.sin(time * 5) * 2, r.x + 24, r.y - 40); g.lineTo(r.x, r.y - 33); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 0.8; g.stroke();
+    g.fillStyle = '#fff'; g.font = 'bold 9px Georgia, serif'; g.textAlign = 'center'; g.fillText(which === 'army' ? 'A' : 'T', r.x + 9, r.y - 37);
+    g.restore();
+  }
   if (placing && mouse.inside) drawPlacement(g);
   drawParticles(g);
   for (const a of arrows) {
@@ -4652,7 +4743,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
