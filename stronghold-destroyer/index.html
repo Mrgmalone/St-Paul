@@ -252,13 +252,13 @@
     <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
-    <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
+    <p><b>Workers:</b> every workplace (hut, farm, mine, workshop) gets a worker by itself as soon as it is built: an idle civilian, or if none is idle, a gatherer is called over. Send a second civilian to it (select, then right-click or tap the building) and it makes twice as much. Workshops grow skilled with use: every few batches they need 5% less material, down to half. Stockpiles show the wood, stone and goods you really have. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
     <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, houses of prayer and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
     <p><b>Build:</b> pick a building, then click near your keep. Walls: click the start, then the end. Right-click or Esc cancels.</p>
     <p><b>Mood:</b> click Mood at the top to see what is raising or lowering it. Happy people work faster and settlers arrive; unhappy people leave.</p>
     <p><b>Stone castles:</b> a Quarry beside a grey rock cuts stone. High Walls stand as tall as your keep; archers climb them by Stairs placed beside the wall (or from a tower joined to it). Stone Towers and the Great Tower are far tougher than the wooden Tower, shoot farther, and hold more archers.</p>
-    <p><b>Weather:</b> it changes every minute or two; the top bar shows it, with an arrow for the wind. Wind pushes arrows, bolts and stones off course, so long shots miss more. Rain and snow shorten every shot; rain slows marching a little and helps crops grow; snow slows everyone more and settles on the ground. Turn weather off in the Menu.</p>
+    <p><b>Weather and seasons:</b> the seasons turn every 15 minutes (spring, summer, autumn, winter) and the weather holds for 10 to 15 minutes, fitting the season: rain in spring and autumn, storms in summer, snow only in winter; the top bar shows it, with an arrow for the wind. Wind pushes arrows, bolts and stones off course, so long shots miss more. Rain and snow shorten every shot; rain slows marching a little and helps crops grow; snow slows everyone more and settles on the ground. Turn weather off in the Menu.</p>
     <p><b>Outlines:</b> when a wall, tower or building hides your people (or enemies), you see their shape through it in their team colour. Turn this off in the Menu.</p>
     <p><b>Training:</b> click a soldier or civilian button again to queue more, up to 10 of each. The green ring empties as each one is made; the number shows how many are waiting; right-click a button to cancel one. If you cannot train, the button says why.</p>
     <p><b>Rally points:</b> in the Army list, choose Army rally point (new soldiers) or Town rally point (new civilians and rams), then click the ground. A flag marks each one. Send army to rally point gathers all your soldiers there.</p>
@@ -286,10 +286,10 @@
   <div id="secs">
       <button class="tab active" data-tab="town" title="Town (key 1)" aria-expanded="true"><span class="tl">Town</span><span class="key">1</span><span class="chev">&#9662;</span></button>
       <div class="pane active" data-pane="town">
-        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small><span class="why"></span></button>
+        <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; worker comes by itself</small><span class="why"></span></button>
         <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small><span class="why"></span></button>
         <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>House of Prayer<small>80 wood &middot; 40 gold</small><span class="why"></span></button>
-        <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; 1 worker</small><span class="why"></span></button>
+        <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; worker comes by itself</small><span class="why"></span></button>
         <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small><span class="why"></span></button>
         <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
@@ -1289,7 +1289,7 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); }
     u.workT += dt;
-    const rate = (task.type === 'wood' ? 1.0 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
+    const rate = (task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
     if (u.workT >= rate) {
       u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = task.node.kind === 'bush' ? 'berries' : 'crops';
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
@@ -2222,6 +2222,12 @@ function issueAt(sx, sy) {
   }
   if (hit && hit.team === 'player' && hit.done === false && civs.length) { commandBuild(civs, hit); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   if (canMount(hit) && sold.some(u => u.type === 'archer')) { const arch = sold.filter(u => u.type === 'archer'); commandMount(arch, hit); const rest = sold.filter(u => u.type !== 'archer'); if (rest.length) commandMove(rest, w.x, w.y + 40); return true; }
+  if (hit && hit.team === 'player' && hit.done && JOBS[hit.kind] && civs.length) {
+    let added = 0;
+    for (const u of civs) { if (staffOf(hit) >= JOB_MAX && u.job !== hit) break; u.job = hit; u.manualT = -99; u.order = 'idle'; startJob(u); added++; }
+    floatText(hit.x, hit.y - hit.topH - 10, added ? `${hit.name}: ${staffOf(hit)} worker${staffOf(hit) > 1 ? 's' : ''}${staffOf(hit) > 1 ? ' (double output)' : ''}` : `${hit.name} already has ${JOB_MAX} workers`, '#9fe8a8');
+    if (sold.length) commandMove(sold, w.x, w.y); return true;
+  }
   if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResourceScreen(sx, sy);
   if (node && isField(node.kind) && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
@@ -2828,7 +2834,9 @@ function trainUnit(kind) {
 }
 // ---------- self-running workers ----------
 const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
-const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
+const JOB_MAX = 2;   // a second worker, added by you, doubles the output
+const staffOf = site => units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.job === site).length;
+const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], woodhut: ['wood'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
 const CRAFT = {
   brewery: { inp: { hops: 2 }, out: 'ale', time: 7, batch: 2 },
   mill: { inp: { wheat: 2 }, out: 'flour', time: 6, batch: 3 },
@@ -2841,6 +2849,7 @@ const CRAFT = {
 };
 const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1 };
 const JOB_NAME = { quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
+const craftCost = site => Math.max(0.5, 1 - 0.05 * Math.floor((site.made || 0) / 4));   // every 4 made: 5% less material, down to half
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
   const rc = CRAFT[site.kind];
@@ -2854,17 +2863,20 @@ function craftBrain(u, dt) {
   if (edgeDist(u, site) > 12) { u.sub = 'toSite'; if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, site); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; } followPath(u, dt); return; }
   u.sub = 'work'; u.path = []; u.moving = false; u.facing = site.x >= u.x ? 1 : -1;
   if (u.crafting === null || u.crafting === undefined) {
-    if (!Object.entries(rc.inp).every(([k, v]) => res[k] >= v)) {   // waiting for materials
+    if (!Object.entries(rc.inp).every(([k, v]) => res[k] >= v * craftCost(site))) {   // waiting for materials
       u.waitMsgT = (u.waitMsgT || 0) - dt;
-      if (u.waitMsgT <= 0) { floatText(site.x, site.y - site.topH - 8, `${site.name} needs ${Object.keys(rc.inp).join(' and ')}`, '#ffb38a'); u.waitMsgT = 10; }
+      if (u.waitMsgT <= 0) { const need = Object.entries(rc.inp).filter(([k, v]) => res[k] < v * craftCost(site)).map(([k, v]) => `${k} (needs ${+(v * craftCost(site)).toFixed(1)}, you have ${Math.floor(res[k])})`); floatText(site.x, site.y - site.topH - 8, `${site.name} is waiting for ${need.join(' and ')}`, '#ffb38a'); u.waitMsgT = 10; }
       return;
     }
-    for (const [k, v] of Object.entries(rc.inp)) res[k] -= v;
+    for (const [k, v] of Object.entries(rc.inp)) res[k] -= v * craftCost(site);
     u.crafting = 0;
   }
   if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play(site.kind === 'ironmine' || site.kind === 'quarry' ? 'chop' : 'hammer', u.x, u.y); }
   u.crafting += dt * workMul();
-  if (u.crafting >= rc.time) { u.crafting = null; u.carry += rc.n || 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
+  if (u.crafting >= rc.time) {
+    u.crafting = null; site.made = (site.made || 0) + 1;
+    if (Object.keys(rc.inp).length && site.made % 4 === 0 && craftCost(site) > 0.55) floatText(site.x, site.y - site.topH - 14, `${site.name} is getting skilled: now uses ${Math.round((1 - craftCost(site)) * 100)}% less material`, '#9fe8a8');
+    u.carry += rc.n || 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
 }
 function nearestDrop(u, type) {
   let best = null, bd = 1e9;
@@ -2890,8 +2902,11 @@ function updateJobs(dt) {
   for (const site of sites) {
     let staff = civs.filter(u => u.job === site).length;
     while (staff < JOBS[site.kind]) {
-      const free = civs.filter(u => !u.job && u.order === 'idle' && !isManual(u));
-      if (!free.length) break;
+      // first an idle person; if nobody is idle, a gatherer with no job is called over, so every new workplace is staffed by itself
+      let free = civs.filter(u => !u.job && u.order === 'idle' && !isManual(u));
+      if (!free.length) free = civs.filter(u => !u.job && (u.order === 'gather' || u.order === 'move' || u.order === 'idle') && u.order !== 'build' && !(u.task && u.task.node && JOBS[u.task.node.kind]));
+      if (!free.length) { if (!site.noStaffMsg) { site.noStaffMsg = true; floatText(site.x, site.y - site.topH - 10, `${site.name}: no free civilian. Train one at the keep (Town list).`, '#ffb38a'); } break; }
+      site.noStaffMsg = false;
       free.sort((a, b) => Math.hypot(a.x - site.x, a.y - site.y) - Math.hypot(b.x - site.x, b.y - site.y));
       free[0].job = site; staff++;
       floatText(free[0].x, free[0].y - 50, JOB_NAME[site.kind] || 'Worker', '#ffe9a8');
@@ -3154,8 +3169,12 @@ function drawStockpile(g, b, P) {
   const M = mats(), x0 = b.x0 + 4, y0 = b.y0 + 10, w = b.x1 - b.x0 - 8, h = b.y1 - b.y0 - 14;
   softShadow(g, b.x + 6, b.y - 4, 38, 11, 0.35);
   g.fillStyle = M.woodH; g.fillRect(x0, y0, w, h); lightFace(g, x0, y0, w, h);
-  for (let r = 0; r < 3; r++) for (let k = 0; k < 4 - r; k++) { const x = x0 + 6 + k * 7 + r * 3.5, y = y0 + h - 6 - r * 5; g.fillStyle = '#6b4a28'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9a26a'; g.beginPath(); g.arc(x, y, 1.9, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = M.stone; g.fillRect(x0 + w - 22, y0 + h - 14, 16, 10); lightFace(g, x0 + w - 22, y0 + h - 14, 16, 10);
+  const logs = Math.min(10, Math.ceil(res.wood / 20)); let li = 0;
+  for (let r = 0; r < 4; r++) for (let k = 0; k < 4 - r; k++) { if (li++ >= logs) continue; const x = x0 + 6 + k * 7 + r * 3.5, y = y0 + h - 6 - r * 5; g.fillStyle = '#6b4a28'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9a26a'; g.beginPath(); g.arc(x, y, 1.9, 0, Math.PI * 2); g.fill(); }
+  const blocks = Math.min(6, Math.ceil(res.stone / 15));
+  for (let i = 0; i < blocks; i++) { const bx = x0 + w - 24 + (i % 2) * 9, by = y0 + h - 12 - Math.floor(i / 2) * 6; g.fillStyle = M.stone; g.fillRect(bx, by, 8, 6); lightFace(g, bx, by, 8, 6); }
+  const sacks = Math.min(4, Math.ceil(((res.wheat || 0) + (res.flour || 0) + (res.hops || 0) + (res.iron || 0)) / 8));
+  for (let i = 0; i < sacks; i++) { g.fillStyle = i % 2 ? '#c9b38a' : '#a88a5a'; g.beginPath(); g.ellipse(x0 + w / 2 + i * 6 - 6, y0 + 6, 3.4, 4, 0, 0, Math.PI * 2); g.fill(); }
   flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, x0, y0, w, h);
 }
 function drawGranary(g, b, P) {
@@ -3875,6 +3894,7 @@ const UI = (() => {
     const counts = {}; for (const u of sel) counts[u.name] = (counts[u.name] || 0) + 1;
     const plural = n => n.endsWith('man') ? n.slice(0, -3) + 'men' : n + 's';
     let txt = Object.entries(counts).map(([n, c]) => `${c} ${c > 1 ? plural(n) : n}`).join(', ');
+    if (sel.length === 1 && sel[0].type === 'civ' && sel[0].job && CRAFT[sel[0].job.kind] && Object.keys(CRAFT[sel[0].job.kind].inp).length) { const st = sel[0].job; txt += ` · ${st.name}: ${staffOf(st)} worker(s), uses ${Math.round(craftCost(st) * 100)}% of the usual material`; }
     if (sel.length === 1 && sel[0].type === 'civ') { const u = sel[0]; txt += u.job ? ` (${(JOB_NAME[u.job.kind] || 'worker').toLowerCase()})` + (u.carry > 0 ? `, carrying ${u.carry} ${u.carryType}` : '') : u.carry > 0 ? ` (carrying ${u.carry} ${u.carryType})` : u.order === 'gather' && u.task ? ` (gathering ${u.task.type})` : u.order === 'build' ? ' (building)' : ' (idle)'; }
     $('selSum').textContent = txt || 'Click a person or drag a box to select.';
     const f = sel.length ? sel.reduce((a, u) => a + u.hp / u.maxHp, 0) / sel.length : 0;
@@ -4057,7 +4077,7 @@ const R3D = (() => {
   let water = null, grass = null, grassPos = [], windU = { value: 0 }, windAmt = { value: 0.3 }, windDir = { value: T ? new T.Vector2(1, 0) : null };   // (no 3D library: the flat view still runs)
   function swayLeaves(mat, lift) {   // tree crowns bend with the wind: more at the top, each tree in its own rhythm
     mat.onBeforeCompile = sh => { sh.uniforms.uWind = windU; sh.uniforms.uWindAmt = windAmt; sh.uniforms.uWindDir = windDir;
-      sh.vertexShader = 'uniform float uWind; uniform float uWindAmt; uniform vec2 uWindDir;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  { float ph = instanceMatrix[3].x * 0.031 + instanceMatrix[3].z * 0.027; float hgt = max(0.0, position.y - ' + lift.toFixed(1) + ') / 40.0; float g = sin(uWind * 1.3 + ph) * 0.6 + sin(uWind * 3.1 + ph * 2.0) * 0.25 + 0.35; float flutter = sin(uWind * 7.0 + position.x * 0.4 + position.z * 0.3 + ph) * 0.35;\n    transformed.x += (uWindDir.x * g + flutter * 0.3) * hgt * hgt * uWindAmt * 5.0; transformed.z += (uWindDir.y * g + flutter * 0.3) * hgt * hgt * uWindAmt * 5.0; transformed.y -= g * hgt * hgt * uWindAmt * 0.8; }'); };
+      sh.vertexShader = 'uniform float uWind; uniform float uWindAmt; uniform vec2 uWindDir;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  { float ph = instanceMatrix[3].x * 0.031 + instanceMatrix[3].z * 0.027; float hgt = max(0.0, position.y - ' + lift.toFixed(1) + ') / 40.0; float gust = sin(uWind * 0.55 - dot(instanceMatrix[3].xz, uWindDir) * 0.0045) * 0.5 + 0.5; float g = (sin(uWind * 1.3 + ph) * 0.6 + sin(uWind * 3.1 + ph * 2.0) * 0.25 + 0.35) * (0.45 + gust * 1.1); float flutter = sin(uWind * 7.0 + position.x * 0.4 + position.z * 0.3 + ph) * 0.35;\n    transformed.x += (uWindDir.x * g + flutter * 0.45) * hgt * hgt * uWindAmt * 9.0; transformed.z += (uWindDir.y * g + flutter * 0.45) * hgt * hgt * uWindAmt * 9.0; transformed.y -= g * hgt * hgt * uWindAmt * 0.8; }'); };
   }
   function buildWater() {
     if (!pond) return;
@@ -4099,12 +4119,13 @@ const R3D = (() => {
     if (hit) grass.instanceMatrix.needsUpdate = true;
   }
   function syncWater(dt) {
-    windU.value = time; windAmt.value = 0.22 + WEATHER.wind * 1.1 + WEATHER.rain * 0.2; windDir.value.set(Math.cos(WEATHER.ang), Math.sin(WEATHER.ang));
+    if (leafDecid) { const se = WEATHER.season, tgt = [[1.0, 1.08, 0.86], [0.92, 1.0, 0.86], [1.75, 0.78, 0.28], [0.82, 0.72, 0.6]][se]; const c = leafDecid.color, kk = Math.min(1, dt * 0.35); c.r += (tgt[0] - c.r) * kk; c.g += (tgt[1] - c.g) * kk; c.b += (tgt[2] - c.b) * kk; }
+    windU.value = time; windAmt.value = 0.38 + WEATHER.wind * 1.2 + WEATHER.rain * 0.2; windDir.value.set(Math.cos(WEATHER.ang), Math.sin(WEATHER.ang));
     if (clouds3) { const t = clouds3.material.alphaMap; t.offset.x = time * 0.0022; t.offset.y = time * 0.0012; }
     if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; }
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
-  let oakMesh, oakTrunks, pineMesh, pineTrunks, rockMesh, treeList = [];
+  let oakMesh, oakTrunks, pineMesh, pineTrunks, birchMesh, birchTrunks, leafDecid, rockMesh, treeList = [];
   const bushModels = new Map(), stumpSeen = new Set();
   function buildScenery() {
     const lightCol = (base, top) => (x, y, z) => { const t = clamp(0.35 + y / 70 - x / 120 - z / 160, 0, 1); return new T.Color().copy(C(base)).lerp(C(top), t); };
@@ -4112,6 +4133,12 @@ const R3D = (() => {
     const blobs = [[0, 46, 0, 15], [-11, 40, 4, 11], [11, 41, -3, 11.5], [3, 40, 11, 10.5], [-2, 42, -11, 11], [0, 57, 0, 11], [-8, 53, 6, 8.5], [8, 54, -5, 8.5], [5, 50, 8, 8], [-12, 47, -6, 8], [12, 48, 6, 8], [-5, 36, 10, 7.5], [6, 36, -10, 7.5], [0, 63, 2, 7]];
     for (const [x, y, z, r] of blobs) { const geo = new T.IcosahedronGeometry(r, 1); const pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (R() - 0.5) * 0.18; pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); } oakParts.push({ geo, m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') }); }
     const oakGeo = merge(oakParts);
+    const birchParts = [], Rb2 = mulberry32(512);
+    for (const [x, y, z, r] of [[0, 52, 0, 9], [-6, 46, 3, 7], [6, 47, -2, 7], [2, 58, 4, 7], [-3, 63, -2, 6.5], [0, 69, 1, 5.5], [4, 41, 5, 6], [-5, 40, -5, 6], [3, 55, -6, 6]]) {
+      const geo = new T.IcosahedronGeometry(r, 1), pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (Rb2() - 0.5) * 0.25; pp.setXYZ(i, pp.getX(i) * k * 0.85, pp.getY(i) * k * 1.25, pp.getZ(i) * k * 0.85); }
+      birchParts.push({ geo, m: M4(x, y, z), color: lightCol('#3f6a24', '#a8c860') });
+    }
+    const birchGeo = merge(birchParts);
     const pineParts = [];
     for (let k = 0; k < 6; k++) {
       const geo = new T.ConeGeometry(17 - k * 2.5, 19, 14, 2, true), pp = geo.attributes.position, Rp = mulberry32(300 + k);
@@ -4128,7 +4155,8 @@ const R3D = (() => {
       const px = x + (Rb() - 0.5) * 26, pz = z + (Rb() - 0.5) * 26;
       border.push({ x: px, c: (px - 16) / TILE, r: (pz - 16) / TILE, s: 0.9 + Rb() * 0.5, pine: Rb() < 0.4, seed: Rb() * 10, tone: Rb() });
     }
-    const oaks = trees.filter(t => !t.pine), pines = trees.filter(t => t.pine);
+    const isBirch = t => !t.pine && ((t.seed * 13.7) % 1) < 0.32;
+    const oaks = trees.filter(t => !t.pine && !isBirch(t)), pines = trees.filter(t => t.pine), birches = trees.filter(isBirch);
     {
       const lowOak = merge([[0, 44, 0, 16], [-10, 40, 5, 12], [10, 41, -4, 12], [0, 56, 0, 12], [3, 40, 11, 10]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#7aa64a') })).map(p => (p.geo = new T.IcosahedronGeometry(p.geo.parameters.radius, 1), p)));
       const lowPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(16 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#13301a', '#447e42') })));
@@ -4140,15 +4168,19 @@ const R3D = (() => {
       for (const m of [mo, mp]) { m.castShadow = false; m.receiveShadow = true; scene.add(m); }
     }
     oakMesh = new T.InstancedMesh(oakGeo, leafMat, oaks.length); oakTrunks = new T.InstancedMesh(new T.CylinderGeometry(2.4, 3.8, 36, 8), barkMat, oaks.length);
+    leafDecid = leafMat.clone(); swayLeaves(leafDecid, 28); oakMesh.material = leafDecid;
+    birchMesh = new T.InstancedMesh(birchGeo, leafDecid, birches.length); birchTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.3, 2.1, 46, 8), std('#e6e2d6', { roughness: 0.8, map: barkMat.map }), birches.length);
     pineMesh = new T.InstancedMesh(pineGeo, leafMat, pines.length); pineTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.8, 2.6, 22, 7), barkMat, pines.length);
     const place = (list, crown, trunk, trunkY) => list.forEach((t, i) => {
       const x = t.c * TILE + 16 + (t.x - (t.c * TILE + 16)), z = t.r * TILE + 16, y = heightAt(x, z), s = t.s * 1.05, ry = t.seed * 2.1;
-      crown.setMatrixAt(i, M4(x, y, z, s, s * (0.9 + (t.seed % 1) * 0.25), s, ry)); trunk.setMatrixAt(i, M4(x, y + trunkY * s, z, s, s, s));
-      crown.setColorAt(i, new T.Color().setHSL(0.27 + (t.tone - 0.5) * 0.05, 0.25, 0.5 + t.tone * 0.12).multiplyScalar(1.7));
+      const v1 = (t.seed * 3.31) % 1, v2 = (t.seed * 7.77) % 1;
+      crown.setMatrixAt(i, new T.Matrix4().compose(new T.Vector3(x, y, z), new T.Quaternion().setFromEuler(new T.Euler((v1 - 0.5) * 0.12, ry, (v2 - 0.5) * 0.12)), new T.Vector3(s * (0.85 + v1 * 0.3), s * (0.85 + (t.seed % 1) * 0.4), s * (0.85 + v2 * 0.3))));
+      trunk.setMatrixAt(i, M4(x, y + trunkY * s, z, s, s, s));
+      crown.setColorAt(i, new T.Color().setHSL(0.25 + (t.tone - 0.5) * 0.09, 0.22 + v2 * 0.14, 0.46 + t.tone * 0.16).multiplyScalar(1.7));
       treeList.push({ t, crown, trunk, i });
     });
-    place(oaks, oakMesh, oakTrunks, 18); place(pines, pineMesh, pineTrunks, 11);
-    for (const m of [oakMesh, oakTrunks, pineMesh, pineTrunks]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); }
+    place(oaks, oakMesh, oakTrunks, 18); place(pines, pineMesh, pineTrunks, 11); place(birches, birchMesh, birchTrunks, 23);
+    for (const m of [oakMesh, oakTrunks, pineMesh, pineTrunks, birchMesh, birchTrunks]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); }
     // rocks
     const rg = new T.IcosahedronGeometry(1, 0); const rp = rg.attributes.position;
     for (let i = 0; i < rp.count; i++) { const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i), k = 0.8 + ((Math.sin(x * 12.9 + y * 78.2 + z * 37.7) * 43758.5) % 1 + 1) % 1 * 0.4; rp.setXYZ(i, x * k, y * k, z * k); }
@@ -4368,8 +4400,10 @@ const R3D = (() => {
       add(box(56, 3, 52, woodHM(56, 4), 0, 1.5, 0));
       for (const [x, z] of [[-27, -25], [27, -25], [-27, 25], [27, 25]]) add(cyl(1.4, 1.4, 12, woodVM(3, 12), x, 6, z, 6));
       const logM = woodHM(20, 4);
-      for (let r = 0; r < 4; r++) for (let k = 0; k < 5 - r; k++) { const l = cyl(2.7, 2.7, 24, logM, -12, 5.6 + r * 4.7, -12 + k * 5.6 + r * 2.8, 8); l.rotation.z = Math.PI / 2; add(l); }
-      for (let i = 0; i < 6; i++) add(box(8, 6, 8, stoneM(8, 6), 14 + (i % 2) * 9, 6 + Math.floor(i / 2) * 6.2, -10 + (i % 3) * 9));
+      info.stockLogs = []; info.stockStones = []; info.stockSacks = [];
+      for (let r = 0; r < 4; r++) for (let k = 0; k < 5 - r; k++) { const l = cyl(2.7, 2.7, 24, logM, -12, 5.6 + r * 4.7, -12 + k * 5.6 + r * 2.8, 8); l.rotation.z = Math.PI / 2; add(l); info.stockLogs.push(l); }
+      for (let i = 0; i < 6; i++) { const st = add(box(8, 6, 8, stoneM(8, 6), 14 + (i % 2) * 9, 6 + Math.floor(i / 2) * 6.2, -10 + (i % 3) * 9)); info.stockStones.push(st); }
+      for (let i = 0; i < 4; i++) { const sk = sph(4, std(i % 2 ? '#c9b38a' : '#a88a5a', { roughness: 1 }), 10 + i * 6, 5.5, 18, 10); sk.scale.set(1, 1.2, 0.9); add(sk); info.stockSacks.push(sk); }
     } else if (b.kind === 'granary') {
       add(box(54, 4, 46, stoneM(54, 4), 0, 2, 0));
       add(box(48, 34, 40, woodVM(48, 34), 0, 21, 0));
@@ -4528,6 +4562,7 @@ const R3D = (() => {
       const shin = capsule(1.85, 1.35, 8.4, m.boot, 12); knee.add(shin);
       const foot = sph(1.5, m.boot, 0, -8.9, 1.3, 12); foot.scale.set(1.05, 0.62, 2.0); knee.add(foot);
       knee.add(cyl(2.0, 1.95, 1.0, m.belt, 0, -2.6, 0, 12));   // boot cuff
+      const sole = box(2.9, 0.5, 4.6, std('#2a1e14', { roughness: 0.7 }), 0, -9.85, 1.2); knee.add(sole);
       legs.push({ hip, knee, side });
     }
     // torso: hips, waist, chest and sloping shoulders in one smooth shape, deeper at the chest than the back
@@ -4542,6 +4577,8 @@ const R3D = (() => {
     }
     if (u.type === 'archer') { const jk = lathe([[5.0, 30.5], [5.4, 27.5], [4.7, 22.5], [5.2, 17.5], [5.8, 14.2]], m.skirt, 22, true); jk.scale.set(1.02, 1, 0.74); body.add(jk); }
     const belt = cyl(4.75, 4.75, 1.4, m.belt, 0, 20.3, 0, 18); belt.scale.set(1, 1, 0.74); body.add(belt); body.add(box(1.6, 1.6, 0.6, m.gold, 0.6, 20.3, 3.55));
+    { const pouch = sph(1.3, m.belt, 3.9, 18.6, 1.6, 10); pouch.scale.set(0.8, 1, 0.55); body.add(pouch); }
+    if (!soldier) { const hem = lathe([[5.95, 12.6], [5.9, 12.0]], std(u.type === 'civ' ? (u.team === 'enemy' ? '#ac3430' : PAL.player.tunic) : P.tunicDark, { side: T.DoubleSide }), 22, true); hem.scale.set(1, 1, 0.78); body.add(hem); }
     // neck and head with jaw, nose, eyes, brows, ears and mouth
     const neck = capsule(1.45, 1.6, 2.6, m.skin, 10); neck.position.set(0, 35.6, 0.15); body.add(neck);
     const head = new T.Group(); head.position.set(0, 38.4, 0.25); body.add(head);
@@ -4549,12 +4586,19 @@ const R3D = (() => {
     const jaw = sph(2.3, m.skin, 0, -1.25, 0.55, 14); jaw.scale.set(0.92, 0.85, 1.0); head.add(jaw);
     const nose = mesh(new T.ConeGeometry(0.55, 1.6, 8), m.skin, 0, -0.1, 2.85); nose.rotation.x = Math.PI / 2 + 0.35; head.add(nose);
     for (const side of [-1, 1]) {
-      const ew = sph(0.5, m.eyeW, side * 0.95, 0.55, 2.35, 8); ew.scale.set(1, 0.7, 0.5); head.add(ew);
-      head.add(sph(0.28, m.eye, side * 0.95, 0.55, 2.58, 6));
+      const ew = sph(0.36, std('#cfc6b6', { roughness: 0.5 }), side * 0.95, 0.55, 2.4, 8); ew.scale.set(1, 0.6, 0.45); head.add(ew);
+      head.add(sph(0.22, m.eye, side * 0.95, 0.55, 2.56, 6));
       const brow = box(1.3, 0.32, 0.45, m.hair, side * 1.0, 1.25, 2.5); brow.rotation.z = -side * 0.14; head.add(brow);
       const ear = sph(0.75, m.skin, side * 2.6, 0.1, 0.1, 8); ear.scale.set(0.45, 1, 0.75); head.add(ear);
     }
     const mouth = box(1.25, 0.25, 0.3, m.lip, 0, -1.55, 2.55); head.add(mouth);
+    const lower = sph(0.55, m.lip, 0, -1.72, 2.4, 8); lower.scale.set(1.1, 0.4, 0.45); head.add(lower);
+    for (const side of [-1, 1]) {
+      const lid = sph(0.56, m.skin, side * 0.95, 0.78, 2.32, 8); lid.scale.set(1.05, 0.42, 0.55); head.add(lid);
+      const cheek = sph(0.9, m.skin, side * 1.5, -0.6, 1.95, 8); cheek.scale.set(0.9, 0.7, 0.6); head.add(cheek);
+      if (u.type === 'civ' || u.type === 'archer') { const tm = box(0.55, 1.6, 1.2, m.hair, side * 2.62, 0.4, 0.5); head.add(tm); }
+    }
+    const chin = sph(0.8, m.skin, 0, -2.45, 1.65, 8); chin.scale.set(1.15, 0.7, 0.8); head.add(chin);
     if (lk.beard) { const bd = sph(2.35, m.hair, 0, -1.65, 0.85, 12); bd.scale.set(0.96, 0.85, 1.0); head.add(bd); head.add(box(1.6, 0.4, 0.4, m.hair, 0, -1.0, 2.65)); }
     if (soldier) {
       // pointed steel helmet with a nose guard and a mail hood over neck and shoulders
@@ -4569,6 +4613,7 @@ const R3D = (() => {
       const hood = lathe([[3.2, -1.0], [3.3, 1.0], [2.9, 2.8], [1.8, 4.0], [0, 4.4]], std('#5e4a2c', { roughness: 0.95, side: T.DoubleSide }), 16); hood.scale.set(1, 1, 1.05); hood.position.z = -0.3; head.add(hood); m.hood = hood.material;
       const cowl = lathe([[3.3, -0.8], [3.8, -2.6], [5.2, -4.6]], m.hood, 16, true); cowl.scale.set(1, 1, 0.8); cowl.position.z = -0.35; head.add(cowl);
       const fe = box(0.35, 5, 0.3, m.cloth, -2.0, 4.2, -1.6); fe.rotation.z = 0.7; head.add(fe);
+      const cape = mesh(new T.PlaneGeometry(8.5, 13, 1, 4), new T.MeshStandardMaterial({ color: C('#4e3d24'), side: T.DoubleSide, roughness: 0.95, map: fabricTex() }), 0, 25.5, -4.0); body.add(cape); m.cloak = cape; m.cloakM = cape.material;
     } else {
       const hairCap = mesh(new T.SphereGeometry(3.0, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.75), m.hair, 0, 0.5, -0.25); hairCap.scale.set(0.95, 1.05, 1.05); head.add(hairCap);
       const cap = mesh(new T.SphereGeometry(3.15, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2.7), std(u.team === 'enemy' ? '#ac3430' : PAL.player.tunic), 0, 1.25, -0.1); head.add(cap); m.cap = cap.material;
@@ -4587,6 +4632,7 @@ const R3D = (() => {
       const hand = new T.Group(); hand.position.set(0, -6.6, 0); el.add(hand);
       const palm = sph(1.15, gloved ? m.glove : m.skin, 0, -0.5, 0.25, 10); palm.scale.set(0.78, 1.15, 1.0); hand.add(palm);
       const thumb = capsule(0.38, 0.34, 1.0, gloved ? m.glove : m.skin, 6); thumb.position.set(-side * 0.65, -0.1, 0.85); thumb.rotation.x = -0.9; hand.add(thumb);
+      for (let f = 0; f < 4; f++) { const fg = capsule(0.24, 0.21, 1.05, gloved ? m.glove : m.skin, 6); fg.position.set((f - 1.5) * 0.36, -1.5, 0.55); fg.rotation.x = -0.6 - f * 0.05; hand.add(fg); }
       arms.push({ sh, el, hand, side });
     }
     const R = arms[1], L = arms[0], tools = {};
@@ -4964,6 +5010,8 @@ const R3D = (() => {
       for (const mt of md.mats) mt.emissive.setRGB(fk, fk, fk);
       md.inner.rotation.z = Math.sin(time * 40) * (b.wobble || 0) * 0.01;
       if (md.sails && b.done) md.sails.rotation.z = time * 0.9;
+      if (md.stockLogs) { const nl = Math.ceil(res.wood / 20), ns = Math.ceil(res.stone / 15), nk = Math.ceil(((res.wheat || 0) + (res.flour || 0) + (res.hops || 0) + (res.iron || 0)) / 8);
+        md.stockLogs.forEach((l, i) => l.visible = i < nl); md.stockStones.forEach((l, i) => l.visible = i < ns); md.stockSacks.forEach((l, i) => l.visible = i < nk); }
       if (md.pitCover) { const open = b.sprung > 0 || b.done === false; md.pitCover.visible = !open; md.pitStakes.visible = open; }
       for (const f of md.flags) { const p = f.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i); p.setZ(i, Math.sin(time * 5 + x * 0.25) * Math.min(3, x * 0.15)); } p.needsUpdate = true; }
       if (md.archer) {
@@ -5173,7 +5221,7 @@ const R3D = (() => {
   function tilt(d) { pitchTarget = clamp(pitchTarget + d, PITCH_MIN, PITCH_MAX); }
   function resetView() { yawTarget = Math.round(yawTarget / (Math.PI * 2)) * Math.PI * 2; pitchTarget = 0.8; }
   const panAxes = () => ({ c: Math.cos(yaw), s: Math.sin(yaw) });
-  return { quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
+  return { leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
 let paused = false;
@@ -5239,22 +5287,35 @@ const WTYPES = {
   storm:  { name: 'Storm',  icon: '☂', rain: 1, snow: 0, wind: 0.9, msg: 'A storm rolls in! Short, wild shots and slow, muddy marching.' },
   snow:   { name: 'Snow',   icon: '❄', rain: 0, snow: 0.85, wind: 0.3, msg: 'Snow is falling: shorter shots, and everyone moves slowly.' }
 };
-const WEATHER = { kind: 'clear', rain: 0, snow: 0, wind: 0.12, ang: 0.6, angT: 0.6, cover: 0, t: 75, on: true };
+const WEATHER = { kind: 'clear', rain: 0, snow: 0, wind: 0.12, ang: 0.6, angT: 0.6, cover: 0, t: 600, on: true, season: 0, seasonT: 900 };
+// seasons turn every 15 minutes; weather holds 10 to 15 minutes and fits the season: snow only in winter
+const SEASONS = [
+  { name: 'Spring', icon: '\u2740', pick: ['clear', 'breezy', 'rain', 'rain', 'clear'] },
+  { name: 'Summer', icon: '\u2600', pick: ['clear', 'clear', 'breezy', 'windy', 'storm'] },
+  { name: 'Autumn', icon: '\u2766', pick: ['windy', 'rain', 'breezy', 'storm', 'clear'] },
+  { name: 'Winter', icon: '\u2744', pick: ['snow', 'snow', 'clear', 'windy', 'snow'] }
+];
+const SEASON_LEN = 900, weatherHold = () => 600 + Math.random() * 300;
+function pickWeather(not) { const opts = SEASONS[WEATHER.season].pick.filter(k => k !== not); return opts[Math.floor(Math.random() * opts.length)] || 'clear'; }
 try { WEATHER.on = localStorage.getItem('sd-weather') !== 'off'; } catch (e) {}
 const weatherRange = () => 1 - 0.14 * WEATHER.rain - 0.1 * WEATHER.snow;
 const weatherSpeed = () => 1 - 0.08 * WEATHER.rain - 0.16 * WEATHER.snow;
 function setWeather(kind, quiet) {
-  WEATHER.kind = kind; WEATHER.t = 70 + Math.random() * 70; WEATHER.angT = Math.random() * Math.PI * 2;
+  WEATHER.kind = kind; WEATHER.t = weatherHold(); WEATHER.angT = Math.random() * Math.PI * 2;
   if (!quiet && started) showBanner(WTYPES[kind].msg, 3.5);
 }
 function updateWeather(dt) {
   if (!WEATHER.on) { WEATHER.kind = 'clear'; }
-  else { WEATHER.t -= dt; if (WEATHER.t <= 0 && started) { const order = ['clear', 'breezy', 'windy', 'rain', 'storm', 'snow', 'clear', 'breezy', 'rain'], opts = order.filter(k => k !== WEATHER.kind); setWeather(opts[Math.floor(Math.random() * opts.length)]); } }
+  else if (started) {
+    WEATHER.seasonT -= dt;
+    if (WEATHER.seasonT <= 0) { WEATHER.season = (WEATHER.season + 1) % 4; WEATHER.seasonT = SEASON_LEN; const ns = SEASONS[WEATHER.season]; const k = pickWeather(); WEATHER.kind = k; WEATHER.t = weatherHold(); WEATHER.angT = Math.random() * Math.PI * 2; showBanner(`${ns.icon} ${ns.name} has come. ${WTYPES[k].msg}`, 4.5); }
+    WEATHER.t -= dt; if (WEATHER.t <= 0) setWeather(pickWeather(WEATHER.kind));
+  }
   const w = WTYPES[WEATHER.kind], k = Math.min(1, dt / 6);
   WEATHER.rain += (w.rain - WEATHER.rain) * k; WEATHER.snow += (w.snow - WEATHER.snow) * k; WEATHER.wind += (w.wind - WEATHER.wind) * k;
   WEATHER.ang += Math.atan2(Math.sin(WEATHER.angT - WEATHER.ang), Math.cos(WEATHER.angT - WEATHER.ang)) * Math.min(1, dt / 8);
-  WEATHER.cover = clamp(WEATHER.cover + (WEATHER.snow > 0.3 ? dt / 50 : -dt / 40), 0, 1);   // snow settles on the ground, then melts
-  const el = document.getElementById('vWeather'); if (el) { el.textContent = `${w.icon} ${w.name}`; const a = document.getElementById('vWind'); a.style.transform = `rotate(${WEATHER.ang}rad)`; a.style.opacity = 0.35 + WEATHER.wind * 0.65; a.title = `Wind ${WEATHER.wind > 0.7 ? 'strong' : WEATHER.wind > 0.35 ? 'moderate' : 'light'}`; }
+  WEATHER.cover = clamp(WEATHER.cover + (WEATHER.snow > 0.3 ? dt / 50 : -dt / (WEATHER.season === 3 ? 400 : 40)), 0, 1);   // snow settles on the ground, then melts
+  const el = document.getElementById('vWeather'); if (el) { el.textContent = `${SEASONS[WEATHER.season].name} · ${w.icon} ${w.name}`; const a = document.getElementById('vWind'); a.style.transform = `rotate(${WEATHER.ang}rad)`; a.style.opacity = 0.35 + WEATHER.wind * 0.65; a.title = `Wind ${WEATHER.wind > 0.7 ? 'strong' : WEATHER.wind > 0.35 ? 'moderate' : 'light'}`; }
 }
 // every missile leaves through here: the wind pushes where it comes down
 function fire(a) {
@@ -5285,7 +5346,7 @@ function drawWeatherFx(g) {
 }
 (function weatherButton() {
   const b = document.getElementById('btnWeather'), show = () => { b.textContent = 'Weather: ' + (WEATHER.on ? 'On' : 'Off'); };
-  b.onclick = () => { WEATHER.on = !WEATHER.on; try { localStorage.setItem('sd-weather', WEATHER.on ? 'on' : 'off'); } catch (e) {} if (WEATHER.on) WEATHER.t = 20; show(); }; show();
+  b.onclick = () => { WEATHER.on = !WEATHER.on; try { localStorage.setItem('sd-weather', WEATHER.on ? 'on' : 'off'); } catch (e) {} if (WEATHER.on) WEATHER.t = Math.min(WEATHER.t, 30); show(); }; show();
 })();
 // ---------- outlines of people hidden behind walls and buildings (flat view) ----------
 const silCan = [document.createElement('canvas'), document.createElement('canvas')];
@@ -5512,6 +5573,7 @@ function startGame(key) {
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
+  Object.assign(WEATHER, { season: 0, seasonT: SEASON_LEN, kind: 'clear', t: weatherHold(), cover: 0 });
   LORD.unit = null; LORD.said = {}; LORD.broken = false; spawnLord();
   setTimeout(() => lordSay('hello', 'So, a new lord in the west. Enjoy your little keep while it stands.'), 22000);
   { const camp = enemyCamp(); for (let i = 0; i < 4; i++) { const f = nearestFree(Math.floor((camp.x - 70 + i * 22) / TILE), Math.floor((camp.y + 40) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); } }
