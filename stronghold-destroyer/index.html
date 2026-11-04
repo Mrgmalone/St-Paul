@@ -20,12 +20,38 @@
   .chip small{font-size:13px;color:#d9c9a3}
   button.chip{cursor:pointer;border-bottom:2px dotted #b08a4a;border-radius:0}
   #btnMenu{margin-left:auto;padding:5px 12px;font-size:15px}
-  #view{flex:1 1 auto;position:relative;min-height:0}
+  #main{flex:1 1 auto;display:flex;min-height:0;position:relative}
+  #view{flex:1 1 auto;position:relative;min-height:0;min-width:0}
+  #side{flex:0 0 312px;display:flex;flex-direction:column;min-height:0;background:linear-gradient(90deg,#2c2117,#1b130c);border-left:2px solid #8a6a3a;box-shadow:-3px 0 10px rgba(0,0,0,.5);z-index:4;position:relative}
+  #sideHead{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 6px 12px;border-bottom:1px solid #5a4226;font-size:14px;letter-spacing:2px;color:#d9c9a3}
+  #btnHide{font-size:14px;padding:4px 10px}
+  #sideScroll{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;direction:rtl;scrollbar-width:thin;scrollbar-color:#b08a4a #1b130c;touch-action:pan-y}
+  #sideIn{direction:ltr;padding:8px 10px 14px;display:flex;flex-direction:column;gap:10px}
+  #secs{display:flex;flex-direction:column;gap:6px}
+  .tab{display:flex;align-items:center;gap:8px;width:100%;font-size:18px;padding:9px 12px;border-radius:7px;text-align:left;background:linear-gradient(#4a3826,#33261a);color:#f3ead7;border:2px solid #6e5128}
+  .tab .tl{flex:1}
+  .tab .key{font-size:12px;font-weight:normal;color:#c9b38a;border:1px solid #8a6a3a;border-radius:4px;padding:0 5px}
+  .tab .chev{transition:transform .2s;font-size:15px}
+  .tab.active{background:linear-gradient(#f1d38f,#c99a4a);color:#1c140b}
+  .tab.active .key{color:#3a2a14;border-color:#6e5128}
+  .tab.active .chev{transform:rotate(180deg)}
+  .pane{display:none;grid-template-columns:1fr 1fr;gap:6px;padding:6px;background:#231910;border:2px solid #6e5128;border-top:none;border-radius:0 0 7px 7px;margin-top:-6px}
+  .pane.active{display:grid}
+  .pane > .grp,.pane > #queue,.pane > #armoryInfo{grid-column:1 / -1}
+  #btnShow{display:none;position:absolute;right:0;top:40%;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;font-size:16px;border-radius:8px 0 0 8px;z-index:5}
+  #btnShow span{writing-mode:vertical-rl;letter-spacing:2px}
+  #side.collapsed{flex-basis:0;border-left:none}
+  #side.collapsed #sideHead,#side.collapsed #sideScroll{display:none}
+  #side.collapsed #btnShow{display:flex}
   #game{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:default}
+  #camCtl{position:absolute;left:10px;bottom:10px;z-index:2;display:flex;gap:8px;align-items:flex-end}
+  #camCtl .cg{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(20,14,8,.72);border:2px solid #8a6a3a;border-radius:8px;padding:5px}
+  #camCtl .row{display:flex;gap:4px}
+  #camCtl button{width:44px;height:40px;padding:0;font-size:22px;line-height:1}
+  #camCtl span{font-size:13px;color:#e9dcbc;letter-spacing:1px}
+  body:not(.v3d) #camCtl .c3{display:none}
   #mini{position:absolute;right:8px;bottom:8px;width:176px;height:116px;border:2px solid #b08a4a;border-radius:4px;
     box-shadow:0 3px 10px rgba(0,0,0,.6);cursor:pointer;z-index:2;background:#1a2a12;touch-action:none}
-  #bottom{flex:0 0 auto;display:grid;grid-template-columns:minmax(170px,230px) minmax(0,1fr);gap:8px 12px;
-    padding:6px 10px 8px;background:linear-gradient(#2c2117,#160f09);border-top:2px solid #8a6a3a;z-index:3}
   #selbox{display:flex;flex-direction:column;gap:5px;min-width:0}
   #selLabel{font-size:16px;font-weight:bold;color:#fff3d6}
   #selSum{font-size:14px;color:#e9dcbc;line-height:1.3}
@@ -37,27 +63,19 @@
   button:active{transform:translateY(1px)}
   button:focus-visible{outline:3px solid #9fe8a8;outline-offset:1px}
   button.sm{font-size:14px;padding:4px 9px}
-  #cmd{display:flex;flex-direction:column;min-width:0}
-  #tabs{display:flex;gap:3px;align-items:flex-end;overflow-x:auto}
-  .tab{font-size:16px;padding:5px 15px;border-radius:7px 7px 0 0;background:linear-gradient(#4a3826,#33261a);color:#f3ead7;border:2px solid #6e5128;border-bottom:none}
-  .tab.active{background:linear-gradient(#f1d38f,#c99a4a);color:#1c140b}
-  #btnHide{margin-left:auto;font-size:14px;padding:4px 10px;border-radius:7px 7px 0 0}
-  #panes{background:#231910;border:2px solid #6e5128;border-radius:0 7px 7px 7px;padding:6px;min-height:84px;display:flex;align-items:stretch}
-  .pane{display:none;gap:6px;overflow-x:auto;align-items:stretch;min-width:0;flex:1}
-  .pane.active{display:flex}
-  .ib{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;padding:3px 8px 4px;min-width:86px;line-height:1.1;font-size:15px;flex:0 0 auto}
+  .ib{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;padding:5px 4px 6px;min-width:0;width:100%;line-height:1.15;font-size:15px;text-align:center}
   .ib canvas{width:60px;height:46px}
-  .ib small{font-size:12.5px;font-weight:normal;white-space:nowrap}
+  .ib small{font-size:12.5px;font-weight:normal;white-space:normal}
   .tb.off,.bb.off,.wb.off{filter:grayscale(1) brightness(.6);cursor:not-allowed}
   .bb.on{outline:3px solid #9fe8a8}
-  #queue{font-size:15px;color:#eadfc4;align-self:center;padding:0 6px;min-width:120px}
-  .grp{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 6px}
+  #queue{font-size:15px;color:#eadfc4;padding:2px 4px}
+  #queue:empty{display:none}
+  .grp{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:2px 2px 4px}
   .grp .tl{font-size:15px;color:#ffd98a;font-weight:bold}
   .grp .row{display:flex;gap:4px}
+  .grp .row .rb{flex:1}
   .rb{padding:6px 11px;font-size:15px}
   .rb.on{outline:3px solid #9fe8a8;background:linear-gradient(#fff0b8,#e2b860)}
-  #bottom.collapsed #panes,#bottom.collapsed #selSum,#bottom.collapsed #selBar,#bottom.collapsed .btns{display:none}
-  #bottom.collapsed{grid-template-columns:auto minmax(0,1fr)}
   .pop{position:absolute;z-index:7;background:rgba(28,20,12,.97);border:2px solid #b08a4a;border-radius:8px;padding:12px 14px;
     box-shadow:0 6px 18px rgba(0,0,0,.6);font-size:16px;line-height:1.45;color:#f3ead7;max-width:min(420px,calc(100% - 24px))}
   .pop h3{margin:0 0 6px;font-size:17px;color:#ffd98a;letter-spacing:1px}
@@ -91,15 +109,9 @@
     #btnMenu .lbl{display:none}
     #status{font-size:15px;gap:2px 11px}
     .chip small{display:none}
-    #bottom{grid-template-columns:minmax(0,1fr);gap:5px;padding:5px 8px 6px}
-    #selbox{flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 8px}
-    #selSum{display:none}
-    #selBar{width:70px}
     #mini{width:124px;height:82px}
-    .ib{min-width:76px;padding:3px 5px 4px}
-    .ib canvas{width:50px;height:38px}
-    #panes{min-height:72px}
-    .tab{padding:5px 11px;font-size:15px}
+    #side{position:absolute;right:0;top:0;bottom:0;width:min(320px,88vw)}
+    #side.collapsed{width:0}
   }
   #banner{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:88%;
     background:rgba(20,14,8,.86);border:2px solid #b08a4a;border-radius:8px;padding:12px 20px;
@@ -129,6 +141,7 @@
   <div id="status"><b>Choose your civilization to begin</b></div>
   <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9881;<span class="lbl"> Menu</span></button>
 </div>
+<div id="main">
 <div id="view">
   <canvas id="game"></canvas>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
@@ -151,6 +164,11 @@
     </div>
   </div></div>
   <canvas id="mini" title="Map: click or drag to move the view"></canvas>
+  <div id="camCtl">
+    <div class="cg c3"><div class="row"><button id="camL" title="Turn left (Q). Hold to keep turning.">&#10226;</button><button id="camR" title="Turn right (E). Hold to keep turning.">&#10227;</button></div><span>Turn</span></div>
+    <div class="cg c3"><div class="row"><button id="camUp" title="Look down from above (R)">&#9650;</button><button id="camDn" title="Tilt toward a side view (F)">&#9660;</button></div><span>Tilt</span></div>
+    <div class="cg"><div class="row"><button id="camHome" title="Back to your castle (Space)">&#8962;</button></div><span>Castle</span></div>
+  </div>
   <div id="moodPop" class="pop" hidden></div>
   <div id="goodsPop" class="pop" hidden style="left:auto;right:10px;top:8px"></div>
   <div id="menuPop" class="pop" hidden>
@@ -164,8 +182,8 @@
     <h3>HOW TO PLAY</h3>
     <p><b>Select:</b> left-click a person, or drag a box around several. Double-click selects everyone on screen. On touch, tap or drag.</p>
     <p><b>Command:</b> right-click (or tap) the ground to move, an enemy to attack, a tree for wood, a berry bush or farm for food.</p>
-    <p><b>View:</b> arrow keys or the screen edge to scroll, mouse wheel or pinch to zoom, or click the map in the corner.</p>
-    <p><b>Panel tabs:</b> Town, Castle, Army, Rule (keys 1 to 4). <b>Hide</b> (or the Tab key) shrinks the panel.</p>
+    <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
+    <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
     <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, chapels and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
@@ -180,23 +198,17 @@
   </div></div>
   <div id="win"><div class="box"><h1 id="endTitle">VICTORY</h1><p id="endText">The enemy camp has been destroyed.</p><button id="again">Play Again</button></div></div>
 </div>
-<div id="bottom">
+<div id="side">
+  <div id="sideHead"><span>COMMANDS</span><button id="btnHide" title="Hide or show this panel (Tab)">&#9656; Hide</button></div>
+  <div id="sideScroll"><div id="sideIn">
   <div id="selbox">
     <span id="selLabel">No soldiers selected</span>
     <div id="selSum"></div>
     <div id="selBar"><i></i></div>
     <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button></div>
   </div>
-  <div id="cmd">
-    <div id="tabs" role="tablist">
-      <button class="tab active" role="tab" data-tab="town" title="Town (1)">Town</button>
-      <button class="tab" role="tab" data-tab="castle" title="Castle (2)">Castle</button>
-      <button class="tab" role="tab" data-tab="army" title="Army (3)">Army</button>
-      <button class="tab" role="tab" data-tab="rule" title="Rule (4)">Rule</button>
-      <button class="tab" role="tab" data-tab="industry" title="Industry (5)">Industry</button>
-      <button id="btnHide" title="Hide or show the panel (Tab)">&#9662; Hide</button>
-    </div>
-    <div id="panes">
+  <div id="secs">
+      <button class="tab active" data-tab="town" title="Town (key 1)" aria-expanded="true"><span class="tl">Town</span><span class="key">1</span><span class="chev">&#9662;</span></button>
       <div class="pane active" data-pane="town">
         <button class="bb ib" data-b="farm"><canvas data-icon="b:farm"></canvas>Farm<small>60 wood &middot; 1 worker</small></button>
         <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small></button>
@@ -206,6 +218,7 @@
         <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small></button>
         <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small></button>
       </div>
+      <button class="tab" data-tab="castle" title="Castle (key 2)" aria-expanded="false"><span class="tl">Castle</span><span class="key">2</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="castle">
         <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small></button>
         <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small></button>
@@ -215,6 +228,7 @@
         <button class="bb ib" data-b="stower"><canvas data-icon="b:stower"></canvas>Stone Tower<small>60 stone &middot; 20 wood</small></button>
         <button class="bb ib" data-b="greattower"><canvas data-icon="b:greattower"></canvas>Great Tower<small>120 stone &middot; 40 wood &middot; 30 gold</small></button>
       </div>
+      <button class="tab" data-tab="army" title="Army (key 3)" aria-expanded="false"><span class="tl">Army</span><span class="key">3</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="army">
         <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>1 sword &middot; 10 gold</small></button>
         <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>1 spear &middot; 10 gold</small></button>
@@ -224,8 +238,17 @@
         <button class="wb ib" data-w="sword"><canvas data-icon="w:sword"></canvas>Buy Sword<small>40 gold</small></button>
         <button class="wb ib" data-w="spear"><canvas data-icon="w:spear"></canvas>Buy Spear<small>20 gold</small></button>
         <button class="wb ib" data-w="bow"><canvas data-icon="w:bow"></canvas>Buy Bow<small>30 gold</small></button>
-        <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;align-self:center;padding:0 6px;max-width:220px"></span>
+        <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;padding:2px 4px"></span>
       </div>
+      <button class="tab" data-tab="rule" title="Rule (key 4)" aria-expanded="false"><span class="tl">Rule</span><span class="key">4</span><span class="chev">&#9662;</span></button>
+      <div class="pane" data-pane="rule" id="rule">
+        <div class="grp"><span class="tl">Rations</span><div class="row"><button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button></div></div>
+        <div class="grp"><span class="tl">Taxes</span><div class="row"><button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button></div></div>
+        <button class="bb ib" data-b="garden"><canvas data-icon="b:garden"></canvas>Garden<small>20 wood &middot; 10 gold &middot; happier, slower</small></button>
+        <button class="bb ib" data-b="stocks"><canvas data-icon="b:stocks"></canvas>Stocks<small>15 wood &middot; harder work, unhappier</small></button>
+        <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +15 mood</small></button>
+      </div>
+      <button class="tab" data-tab="industry" title="Industry (key 5)" aria-expanded="false"><span class="tl">Industry</span><span class="key">5</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="industry">
         <button class="bb ib" data-b="wheatfarm"><canvas data-icon="b:wheatfarm"></canvas>Wheat Field<small>40 wood &middot; grows wheat</small></button>
         <button class="bb ib" data-b="mill"><canvas data-icon="b:mill"></canvas>Mill<small>60 wood &middot; wheat to flour</small></button>
@@ -240,15 +263,10 @@
         <button class="bb ib" data-b="smithy"><canvas data-icon="b:smithy"></canvas>Smithy<small>50 wood &middot; iron to swords</small></button>
         <button class="bb ib" data-b="armory"><canvas data-icon="b:armory"></canvas>Armory<small>50 wood &middot; stores weapons</small></button>
       </div>
-      <div class="pane" data-pane="rule" id="rule">
-        <div class="grp"><span class="tl">Rations</span><div class="row"><button class="rb" data-r="0">Lean</button><button class="rb" data-r="1">Normal</button><button class="rb" data-r="2">Generous</button></div></div>
-        <div class="grp"><span class="tl">Taxes</span><div class="row"><button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button></div></div>
-        <button class="bb ib" data-b="garden"><canvas data-icon="b:garden"></canvas>Garden<small>20 wood &middot; 10 gold &middot; happier, slower</small></button>
-        <button class="bb ib" data-b="stocks"><canvas data-icon="b:stocks"></canvas>Stocks<small>15 wood &middot; harder work, unhappier</small></button>
-        <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +15 mood</small></button>
-      </div>
-    </div>
   </div>
+  </div></div>
+  <button id="btnShow" title="Show the command panel (Tab)">&#9666;<span>MENU</span></button>
+</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -296,7 +314,8 @@ bezier({ x: -30, y: 1170 }, { x: 600, y: 1190 }, { x: 650, y: 720 }, { x: 1100, 
 bezier({ x: 1100, y: 650 }, { x: 1350, y: 610 }, { x: 1450, y: 520 }, { x: 1590, y: 470 }, 50, road);
 function roadDist(x, y) { let m = 1e9; for (const p of road) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < m) m = d; } return Math.sqrt(m); }
 
-const PLAYER_START = { x: 270, y: 1070 };
+const HOME = { dx: 352, dy: -96 };   // your castle sits well inside the map, with room all round it
+const PLAYER_START = { x: 270 + HOME.dx, y: 1070 + HOME.dy };
 const CAMP = { x: 1640, y: 440 };
 
 // ---------- world objects ----------
@@ -491,8 +510,7 @@ function makeKeep(c, r) {
 }
 const bushes = [], stumps = [];
 function placeBushes() {
-  const spots = [[300, 860], [330, 875], [285, 895], [318, 905], [470, 960], [500, 975], [455, 990],
-                 [140, 1150], [175, 1160], [820, 940], [850, 955], [830, 985], [865, 920], [800, 970]];
+  const spots = [[300, 860], [330, 875], [285, 895], [318, 905], [470, 960], [500, 975], [455, 990], [140, 1150], [175, 1160]].map(([x, y]) => [x + HOME.dx, y + HOME.dy]).concat([ [160, 760], [190, 780], [150, 800], [820, 940], [850, 955], [830, 985], [865, 920], [800, 970]]);
   for (const [bx, by] of spots) {
     let x = bx, y = by, tries = 0;
     while ((circleBlocked(x, y, 12) || roadDist(x, y) < 36) && tries++ < 40) { x = bx + RR(-60, 60); y = by + RR(-60, 60); }
@@ -505,7 +523,7 @@ let playerFire = null;
 let pond = null;
 function placeIron() {
   // three rusty outcrops: one near your town, two out in the field
-  const want = [[560, 860], [980, 330], [1180, 1020]];
+  const want = [[560 + HOME.dx, 860 + HOME.dy], [980, 330], [1180, 1020]];
   for (const [wx, wy] of want) {
     let best = null;
     for (let rad = 0; rad < 10 && !best; rad++) for (let dc = -rad; dc <= rad && !best; dc++) for (let dr = -rad; dr <= rad && !best; dr++) {
@@ -556,9 +574,9 @@ function makeTower(c, r) {
 function setupWorld() {
   // tower + campfire are placed before obstacles so their tiles are reserved
   makeTower(51, 12);
-  keep = makeKeep(3, 29);
+  keep = makeKeep(3 + HOME.dx / TILE, 29 + HOME.dy / TILE);
   fires.push({ kind: 'fire', x: 1584, y: 442 });
-  playerFire = { kind: 'fire', x: 236, y: 1104, player: true }; fires.push(playerFire); setBlock(Math.floor(236 / TILE), Math.floor(1104 / TILE), 1);
+  playerFire = { kind: 'fire', x: 236 + HOME.dx, y: 1104 + HOME.dy, player: true }; fires.push(playerFire); setBlock(Math.floor(playerFire.x / TILE), Math.floor(playerFire.y / TILE), 1);
   setBlock(49, 13, 1);
   placeObstacles();
   placePond();
@@ -570,8 +588,8 @@ function setupWorld() {
 }
 function spawnPlayerPeople() {
   [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
-    .forEach(([k, x, y]) => makeUnit('player', k, x, y));
-  [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058]].forEach(([x, y]) => makeUnit('player', 'civ', x, y));
+    .forEach(([k, x, y]) => makeUnit('player', k, x + HOME.dx, y + HOME.dy));
+  [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058]].forEach(([x, y]) => makeUnit('player', 'civ', x + HOME.dx, y + HOME.dy));
   // enemy guards at their posts
   [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
     .forEach(([k, x, y]) => { const g = makeUnit('enemy', k, x, y); g.maxHp = g.hp = Math.round(g.hp * 0.85); });
@@ -1421,27 +1439,37 @@ function drawRam(g, u, time) {
   const a = u.attackAnim;
   const swing = a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0;
   const team = u.team === 'player' ? PAL.player.tunic : '#ac3430';
-  // swinging log with an iron head
-  g.fillStyle = P('#5a3a1e'); g.fillRect(-14 + swing, -19, 36, 6);
-  g.fillStyle = P('#6a4a2a'); g.fillRect(-14 + swing, -19, 36, 2);
-  g.fillStyle = P('#5d636a'); g.fillRect(21 + swing, -21, 7, 10); g.fillStyle = P('#80878e'); g.fillRect(21 + swing, -21, 7, 3);
-  // timber frame
-  g.fillStyle = P('#6b4a28');
-  g.fillRect(-19, -30, 4, 26); g.fillRect(14, -30, 4, 26); g.fillRect(-19, -10, 37, 4);
-  g.strokeStyle = P('#4a3018'); g.lineWidth = 2; g.beginPath(); g.moveTo(-17, -8); g.lineTo(16, -28); g.moveTo(16, -8); g.lineTo(-17, -28); g.stroke();
-  // hide-covered roof
-  g.fillStyle = P('#8a6a48'); g.beginPath(); g.moveTo(-23, -27); g.lineTo(-2, -42); g.lineTo(22, -27); g.closePath(); g.fill();
-  g.fillStyle = P('#6e5236'); g.beginPath(); g.moveTo(-23, -27); g.lineTo(-2, -42); g.lineTo(-6, -27); g.closePath(); g.fill();
-  g.strokeStyle = 'rgba(40,25,12,0.5)'; g.lineWidth = 1; for (let k = -16; k < 20; k += 7) { g.beginPath(); g.moveTo(k, -27); g.lineTo(k * 0.4 - 1.2, -38); g.stroke(); }
-  // team pennant
-  g.strokeStyle = '#3a2a18'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-2, -42); g.lineTo(-2, -56); g.stroke();
-  g.fillStyle = P(team); g.beginPath(); g.moveTo(-2, -56); g.lineTo(10, -53 + Math.sin(time * 6) * 1.2); g.lineTo(-2, -49); g.closePath(); g.fill();
-  // wheels turn as it rolls
-  for (const wx of [-12, 11]) {
-    g.fillStyle = P('#4a3018'); g.beginPath(); g.arc(wx, -4, 5.5, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = P('#8a6a48'); g.lineWidth = 1.2; g.beginPath();
-    for (let k = 0; k < 3; k++) { const an = u.walkPhase * 0.6 + k * Math.PI / 3; g.moveTo(wx + Math.cos(an) * 5, -4 + Math.sin(an) * 5); g.lineTo(wx - Math.cos(an) * 5, -4 - Math.sin(an) * 5); }
-    g.stroke();
+  // the ram log poking out of the front, iron-capped with a pointed tip
+  g.fillStyle = P('#5a3a1e'); g.fillRect(4 + swing, -22, 26, 7); g.fillStyle = P('#7a5a34'); g.fillRect(4 + swing, -22, 26, 2);
+  g.fillStyle = P('#4d5359'); g.fillRect(28 + swing, -24, 6, 11); g.beginPath(); g.moveTo(34 + swing, -24); g.lineTo(39 + swing, -18.5); g.lineTo(34 + swing, -13); g.closePath(); g.fill();
+  g.fillStyle = P('#80878e'); g.fillRect(28 + swing, -24, 6, 2.2);
+  // chassis
+  g.fillStyle = P('#4a3018'); g.fillRect(-25, -12, 50, 5); g.fillStyle = P('#6b4a28'); g.fillRect(-25, -12, 50, 1.6);
+  // hide curtain down the side, with a ragged hem and stitched seams
+  const cur = () => { g.beginPath(); g.moveTo(-23, -31); g.lineTo(23, -31); g.lineTo(23, -12); for (let x = 23; x >= -23; x -= 4) g.lineTo(x - 2, -11 + ((x * 7) % 3)); g.closePath(); };
+  const cg = g.createLinearGradient(0, -31, 0, -11); cg.addColorStop(0, P('#7d5c3d')); cg.addColorStop(1, P('#5a402a'));
+  fillPath(g, cur, cg);
+  g.strokeStyle = 'rgba(30,18,8,0.55)'; g.lineWidth = 0.8; for (const x of [-12, 0, 12]) { g.beginPath(); g.moveTo(x, -31); g.lineTo(x + 0.6, -12); g.stroke(); }
+  g.fillStyle = 'rgba(40,24,10,0.35)'; g.beginPath(); g.ellipse(-6, -21, 5, 3, 0.2, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(14, -24, 3.5, 2.2, -0.3, 0, Math.PI * 2); g.fill();
+  // corner posts
+  g.fillStyle = P('#5a3c20'); g.fillRect(-25, -32, 3.4, 22); g.fillRect(21.6, -32, 3.4, 22);
+  // pitched roof of planks under wet hides
+  const roof = () => { g.beginPath(); g.moveTo(-27, -30); g.lineTo(-21, -45); g.lineTo(21, -45); g.lineTo(27, -30); g.closePath(); };
+  const rg = g.createLinearGradient(0, -45, 0, -30); rg.addColorStop(0, P('#9a7550')); rg.addColorStop(1, P('#6e5236'));
+  fillPath(g, roof, rg);
+  g.strokeStyle = 'rgba(40,25,12,0.45)'; g.lineWidth = 0.8; for (let k = -18; k <= 18; k += 6) { g.beginPath(); g.moveTo(k * 1.25, -30); g.lineTo(k, -45); g.stroke(); }
+  g.fillStyle = P('#4a3018'); g.fillRect(-22, -46.5, 44, 2.4);
+  roof(); g.strokeStyle = 'rgba(25,15,6,0.7)'; g.lineWidth = 1; g.stroke();
+  // team pennant at the rear
+  g.strokeStyle = '#3a2a18'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-16, -46); g.lineTo(-16, -60); g.stroke();
+  g.fillStyle = P(team); g.beginPath(); g.moveTo(-16, -60); g.lineTo(-4, -57 + Math.sin(time * 6) * 1.2); g.lineTo(-16, -53); g.closePath(); g.fill();
+  // three solid wheels with iron rims turn as it rolls
+  for (const wx of [-16, 0, 16]) {
+    g.fillStyle = P('#5a3c20'); g.beginPath(); g.arc(wx, -5, 6, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = P('#3d4247'); g.lineWidth = 1.6; g.stroke();
+    g.strokeStyle = P('#3a2614'); g.lineWidth = 1.1; g.beginPath();
+    for (let k = 0; k < 2; k++) { const an = u.walkPhase * 0.6 + k * Math.PI / 2; g.moveTo(wx + Math.cos(an) * 5.4, -5 + Math.sin(an) * 5.4); g.lineTo(wx - Math.cos(an) * 5.4, -5 - Math.sin(an) * 5.4); }
+    g.stroke(); g.fillStyle = P('#4d5359'); g.beginPath(); g.arc(wx, -5, 1.6, 0, Math.PI * 2); g.fill();
   }
   g.restore();
 }
@@ -1831,14 +1859,23 @@ const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
 let vw = 800, vh = 600, dpr = 1;
 const cam = { x: 0, y: 0, z: 1 };
 function minZoom() { return Math.max(vw / MW, vh / MH); }
+let resized = false;
 function resize() {
   const r = canvas.parentElement.getBoundingClientRect();
   dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const ocx = cam.x + vw / cam.z / 2, ocy = cam.y + vh / cam.z / 2;   // keep the same spot in the middle when the panel opens or closes
   vw = Math.max(200, r.width); vh = Math.max(150, r.height);
   canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
-  cam.z = clamp(cam.z, minZoom(), 2.4); clampCam();
+  let a3 = false; try { a3 = R3D.active; } catch (e) {}
+  if (!a3) cam.z = clamp(cam.z, minZoom(), 2.4);
+  if (resized) { cam.x = ocx - vw / cam.z / 2; cam.y = ocy - vh / cam.z / 2; } resized = true;
+  clampCam();
 }
-function clampCam() { cam.x = clamp(cam.x, 0, Math.max(0, MW - vw / cam.z)); cam.y = clamp(cam.y, 0, Math.max(0, MH - vh / cam.z)); }
+function clampCam() {
+  let a3 = false; try { a3 = R3D.active; } catch (e) {}
+  if (a3) { const hw = vw / cam.z / 2, hh = vh / cam.z / 2, cx = clamp(cam.x + hw, -200, MW + 200), cy = clamp(cam.y + hh, -200, MH + 200); cam.x = cx - hw; cam.y = cy - hh; return; }
+  cam.x = clamp(cam.x, 0, Math.max(0, MW - vw / cam.z)); cam.y = clamp(cam.y, 0, Math.max(0, MH - vh / cam.z));
+}
 const toWorld = (sx, sy) => (typeof R3D !== 'undefined' && R3D.active) ? R3D.groundAt(sx, sy) : ({ x: sx / cam.z + cam.x, y: sy / cam.z + cam.y });
 const screenOf = (x, y, h = 0) => (typeof R3D !== 'undefined' && R3D.active) ? R3D.project(x, h, y) : { x: (x - cam.x) * cam.z, y: (y - h - cam.y) * cam.z, ok: true };
 function pickScreen(sx, sy) { if (R3D.active) return R3D.pick(sx, sy); const w = toWorld(sx, sy); return pickAt(w.x, w.y); }
@@ -1887,12 +1924,17 @@ function issueAt(sx, sy) {
 }
 
 const pointers = new Map();
-let drag = null, pinch = null, mouse = { x: -1, y: -1, inside: false }, hover = null, lastClick = { t: 0, x: 0, y: 0 };
+let drag = null, pinch = null, mouse = { x: -1, y: -1, inside: false }, hover = null, lastClick = { t: 0, x: 0, y: 0 }, orbit = null;
+const edge = { x: -1, y: -1, on: false, held: 0 };
+window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { edge.x = e.clientX; edge.y = e.clientY; edge.on = true; } });
+window.addEventListener('blur', () => { edge.on = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) edge.on = false; });
 function localPos(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   const p = localPos(e); canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, p);
   if (e.pointerType === 'mouse') {
+    if (e.button === 0 && e.altKey && R3D.active) { orbit = { x: p.x, y: p.y }; return; }
     if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
     else if (e.button === 2) { if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
@@ -1908,6 +1950,7 @@ canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
   if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
+  if (orbit) { R3D.turn(-(p.x - orbit.x) * 0.007); R3D.tilt((p.y - orbit.y) * 0.004); orbit.x = p.x; orbit.y = p.y; return; }
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
     const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -1919,6 +1962,7 @@ canvas.addEventListener('pointermove', e => {
 });
 function endPointer(e) {
   const p = localPos(e);
+  if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && placing && !drag.box) { placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId)) {
     if (drag.box) {
@@ -1948,6 +1992,7 @@ canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); dr
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse.inside = false; });
 canvas.addEventListener('wheel', e => {
   e.preventDefault(); const p = localPos(e), w = toWorld(p.x, p.y);
+  if (R3D.active && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.2 && !e.ctrlKey) { R3D.turn(e.deltaX * 0.004); return; }
   if (R3D.active) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = clamp(cam.z * Math.exp(-e.deltaY * 0.0015), 0.45, 2.4); centerOn(cx, cy); return; }
   cam.z = clamp(cam.z * Math.exp(-e.deltaY * 0.0015), minZoom(), 2.4);
   cam.x = w.x - p.x / cam.z; cam.y = w.y - p.y / cam.z; clampCam();
@@ -1961,6 +2006,9 @@ window.addEventListener('keydown', e => {
   if (e.key === 'h' || e.key === 'H') toggleHelp();
   if (e.key === 'q' || e.key === 'Q') R3D.rotate(-1);
   if (e.key === 'e' || e.key === 'E') R3D.rotate(1);
+  if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
+  if (e.key === 'f' || e.key === 'F') R3D.tilt(-0.12);
+  if (e.key === ' ' && started) { e.preventDefault(); goHome(); }
   if (e.key === 'v' || e.key === 'V') setView(!R3D.active);
   if (e.key === 'm' || e.key === 'M') { const anyOn = AudioSys.isOn('music') || AudioSys.isOn('sfx'); AudioSys.setOn('music', !anyOn); AudioSys.setOn('sfx', !anyOn); refreshSoundButtons(); }
   if (e.key === 's' || e.key === 'S') commandStop(selectedList());
@@ -3200,14 +3248,18 @@ const UI = (() => {
   }
   function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
   // --- tabs and hiding the panel ---
-  function showTab(name) {
-    document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
-    $('bottom').classList.remove('collapsed'); $('btnHide').innerHTML = '&#9662; Hide';
+  // drop-down sections in the side panel: one opens at a time; clicking an open one closes it
+  function showTab(name, toggleIfOpen) {
+    const hdr = document.querySelector(`.tab[data-tab="${name}"]`), close = toggleIfOpen && hdr && hdr.classList.contains('active');
+    document.querySelectorAll('.tab[data-tab]').forEach(t => { const on = !close && t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-expanded', on ? 'true' : 'false'); });
+    document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', !close && p.dataset.pane === name));
+    $('side').classList.remove('collapsed');
+    if (!close && hdr) requestAnimationFrame(() => { const sc = $('sideScroll'), r = hdr.getBoundingClientRect(), rs = sc.getBoundingClientRect(); if (r.top < rs.top || r.top > rs.top + rs.height * 0.5) sc.scrollTop += r.top - rs.top - 8; });
   }
-  function toggleHide() { const c = $('bottom').classList.toggle('collapsed'); $('btnHide').innerHTML = c ? '&#9652; Show' : '&#9662; Hide'; }
-  document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => showTab(t.dataset.tab));
-  $('btnHide').onclick = toggleHide;
+  function toggleHide() { $('side').classList.toggle('collapsed'); }
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => showTab(t.dataset.tab, true));
+  $('btnHide').onclick = toggleHide; $('btnShow').onclick = toggleHide;
+  if (window.innerWidth <= 760) $('side').classList.add('collapsed');
   $('btnMenu').onclick = () => toggle('menuPop');
   $('btnHelpClose').onclick = () => toggleHelp();
   // --- selection summary ---
@@ -3271,8 +3323,8 @@ const R3D = (() => {
   const T = window.THREE;
   const available = !!T && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
   let active = false, ready = false, renderer, scene, camera, sun, fill, sky, clouds3, glCanvas, groundMesh;
-  let yaw = 0, yawTarget = 0;
-  const PITCH = 0.8;
+  let yaw = 0, yawTarget = 0, pitch = 0.8, pitchTarget = 0.8;
+  const PITCH_MIN = 0.36, PITCH_MAX = 1.25;
   const hN = available ? makeNoise(77) : null;
   const heightAt = (x, z) => { let h = hN ? (hN(x / 240, z / 240) - 0.5) * 12 + (hN(x / 90 + 40, z / 90) - 0.5) * 3 : 0; if (pond) { const d = Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry); if (d < 1.25) h -= 9 * (1 - ease(clamp((d - 0.55) / 0.7, 0, 1))); } return h; };
   const C = hex => new T.Color(hex).convertSRGBToLinear();
@@ -3942,22 +3994,62 @@ const R3D = (() => {
     return { root, body, legs, arms, tools, head, mats: allMats, m, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
   function ramModel(u) {
+    // a covered siege ram: timber chassis on six wheels, plank roof under sagging wet hides,
+    // hide curtains down the sides, the ram log hung on chains with an iron head, and a crew inside
     const root = new T.Group(), body = new T.Group(); root.add(body);
-    const wood = woodVM(4, 30), plank = woodHM(40, 4), hide = std('#8a6a48', { roughness: 0.95 });
-    for (const [x, z] of [[-10, -16], [10, -16], [-10, 16], [10, 16]]) body.add(box(3.2, 26, 3.2, wood, x, 18, z));
-    body.add(box(24, 3, 38, plank, 0, 6, 0));
-    const shape = new T.Shape(); shape.moveTo(-15, 0); shape.lineTo(15, 0); shape.lineTo(0, 16); shape.closePath();
-    const rg = new T.ExtrudeGeometry(shape, { depth: 42, bevelEnabled: false }); rg.translate(0, 0, -21);
-    body.add(mesh(rg, hide, 0, 30, 0));
-    const log = new T.Group(); log.add(cyl(3, 3, 44, woodHM(44, 6), 0, 0, 0, 10)); log.add(cyl(4, 3.5, 7, std('#5d636a', { metalness: 0.7, roughness: 0.4 }), 0, 23, 0, 10));
-    log.rotation.x = Math.PI / 2; log.position.set(0, 18, 4); body.add(log);
+    const beamM = woodHM(48, 5), postM = woodVM(4, 30), plankM = woodHM(30, 30), iron = std('#4d5359', { metalness: 0.75, roughness: 0.42 });
+    const hideM = new T.MeshStandardMaterial({ color: C('#7a5a3c'), roughness: 0.95, side: T.DoubleSide, map: fabricTex() });
+    const hideDark = new T.MeshStandardMaterial({ color: C('#5e432c'), roughness: 0.95, side: T.DoubleSide, map: fabricTex() });
+    // chassis
+    for (const x of [-11.5, 11.5]) body.add(box(4.2, 4.2, 50, beamM, x, 8, 0));
+    for (const z of [-22, -8, 8, 22]) body.add(box(27, 3.4, 3.4, beamM, 0, 8.5, z));
+    // wheels: solid plank discs with an iron rim and hub
     const wheels = [];
-    for (const [x, z] of [[-13, -12], [13, -12], [-13, 12], [13, 12]]) { const w = cyl(6, 6, 2.4, woodHM(10, 4), x, 6, z, 14); w.rotation.z = Math.PI / 2; body.add(w); wheels.push(w); }
-    const f = flag(u.team === 'player' ? PAL.player.tunic : '#ac3430', 12, 7); f.position.set(0, 52, 0); body.add(f);
-    body.add(cyl(0.8, 0.8, 8, std('#3a2a18'), 0, 48, 0, 5));
+    for (const z of [-17, 0, 17]) for (const x of [-15.2, 15.2]) {
+      const w = new T.Group(); w.position.set(x, 7, z);
+      const disc = cyl(6.6, 6.6, 3, woodHM(12, 4), 0, 0, 0, 18); disc.rotation.z = Math.PI / 2; w.add(disc);
+      const rim = mesh(new T.TorusGeometry(6.6, 0.75, 6, 22), iron, 0, 0, 0); rim.rotation.y = Math.PI / 2; w.add(rim);
+      const hub = cyl(1.6, 1.6, 4.2, iron, 0, 0, 0, 10); hub.rotation.z = Math.PI / 2; w.add(hub);
+      for (let k = 0; k < 2; k++) { const pl = box(3.2, 12.6, 0.5, std('#3e2a18'), 0, 0, 0); pl.rotation.x = k * Math.PI / 2; w.add(pl); }
+      body.add(w); wheels.push(w);
+    }
+    // posts and a ridge beam
+    for (const z of [-22, -7, 7, 22]) for (const x of [-11.5, 11.5]) body.add(box(3, 24, 3, postM, x, 21, z));
+    for (const x of [-11.5, 11.5]) body.add(box(3, 3, 50, beamM, x, 33, 0));
+    body.add(box(3, 3, 54, beamM, 0, 47, 0));
+    // roof planks, then wet hides draped over them, sagging between the rafters
+    for (const s of [-1, 1]) {
+      const roof = box(18.4, 1.4, 54, plankM, 0, 0, 0); roof.position.set(s * 6.6, 40.4, 0); roof.rotation.z = -s * 0.86; body.add(roof);
+      const geo = new T.PlaneGeometry(21, 58, 6, 16), P = geo.attributes.position;
+      for (let i = 0; i < P.count; i++) { const x = P.getX(i), y = P.getY(i); const sag = Math.sin((y / 58 + 0.5) * Math.PI * 3.5) * 0.6 + Math.sin(x * 0.6 + y * 0.3) * 0.25; P.setZ(i, Math.abs(sag)); }
+      geo.computeVertexNormals();
+      const hide = mesh(geo, s > 0 ? hideM : hideDark); hide.rotation.set(-Math.PI / 2, 0, 0);
+      const hg = new T.Group(); hg.add(hide); hg.position.set(s * 7.0, 41.6, 0); hg.rotation.z = -s * 0.86; body.add(hg);
+      // side curtain of hides from the eave down
+      const cg = new T.PlaneGeometry(52, 20, 14, 4), CP = cg.attributes.position;
+      for (let i = 0; i < CP.count; i++) { const x = CP.getX(i), y = CP.getY(i); CP.setZ(i, Math.sin(x * 0.42) * 0.9 * (0.5 - y / 20)); if (y < -8) CP.setY(i, y + Math.sin(x * 1.3) * 1.2); }
+      cg.computeVertexNormals();
+      const cur = mesh(cg, hideDark, s * 13.6, 22, 0); cur.rotation.y = Math.PI / 2; body.add(cur);
+    }
+    // the ram: a long log on chains, iron-capped head with a pointed tip, iron bands along it
+    const log = new T.Group();
+    const trunk = cyl(3.2, 3.6, 60, woodHM(60, 7), 0, 0, 0, 14); trunk.rotation.x = Math.PI / 2; log.add(trunk);
+    const cap = cyl(4.4, 4.0, 8, iron, 0, 0, 30, 14); cap.rotation.x = Math.PI / 2; log.add(cap);
+    const tip = mesh(new T.ConeGeometry(4.4, 6, 14), iron, 0, 0, 37); tip.rotation.x = Math.PI / 2; log.add(tip);
+    for (const z of [-18, -2, 14]) { const band = mesh(new T.TorusGeometry(3.6, 0.55, 6, 16), iron, 0, 0, z); log.add(band); }
+    for (const z of [-12, 12]) for (let k = 0; k < 4; k++) log.add(cyl(0.35, 0.35, 3.2, iron, 0, 4.8 + k * 3.1, z, 5));
+    log.position.set(0, 22, 4); body.add(log);
+    // crew inside, pushing
+    const crew = [];
+    for (const [x, z] of [[-6, -12], [6, -6], [-5, 6]]) {
+      const fu = { kind: 'unit', type: 'civ', team: u.team, pal: PAL[u.team], skin: ['#d9a57a', '#a8744e', '#e2b48c'][crew.length], hair: '#3a2414', seed: crew.length, look: { beard: crew.length !== 1, longHair: false, w: 1, h: 1 } };
+      const p = personModel(fu); p.root.scale.setScalar(0.78); p.root.position.set(x, 1, z); body.add(p.root); crew.push(p);
+    }
+    const f = flag(u.team === 'player' ? PAL.player.tunic : '#ac3430', 13, 8); f.position.set(0, 66, -20); body.add(f);
+    body.add(cyl(0.8, 0.8, 18, std('#3a2a18'), 0, 57, -20, 5));
     root.traverse(o => { if (o.isMesh) o.castShadow = true; });
     const mats = []; root.traverse(o => { if (o.isMesh && o.material.emissive && !mats.includes(o.material)) mats.push(o.material); });
-    return { root, body, log, wheels, flag: f, mats, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2, ram: true };
+    return { root, body, log, wheels, crew, flag: f, mats, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2, ram: true };
   }
   const unitModels = new Map();
   const angLerp = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * t; };
@@ -4024,6 +4116,7 @@ const R3D = (() => {
       if (md.ram) {
         const a = u.attackAnim; md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
+        if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
       } else animatePerson(u, md, dt);
       // hit flash, falling, fading
       const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
@@ -4144,7 +4237,7 @@ const R3D = (() => {
   // ---------- camera ----------
   function camCenter() { return { x: cam.x + vw / cam.z / 2, z: cam.y + vh / cam.z / 2 }; }
   function placeCamera(dt) {
-    yaw = angLerp(yaw, yawTarget, Math.min(1, dt * 6));
+    yaw = angLerp(yaw, yawTarget, Math.min(1, dt * 6)); pitch += (pitchTarget - pitch) * Math.min(1, dt * 6); const PITCH = pitch;
     const c = camCenter(), D = 820 / cam.z, ty = heightAt(c.x, c.z);
     camera.position.set(c.x + Math.sin(yaw) * Math.cos(PITCH) * D, ty + Math.sin(PITCH) * D, c.z + Math.cos(yaw) * Math.cos(PITCH) * D);
     camera.lookAt(c.x, ty, c.z);
@@ -4253,13 +4346,29 @@ const R3D = (() => {
     if (glCanvas) glCanvas.style.display = active ? 'block' : 'none';
     try { localStorage.setItem('sd-view', active ? '3d' : '2d'); } catch (e) {}
   }
-  function rotate(dir) { yawTarget += dir * Math.PI / 4; }
+  function rotate(dir) { yawTarget = Math.round((yawTarget + dir * Math.PI / 4) / (Math.PI / 4)) * (Math.PI / 4); }
+  function turn(rad) { yawTarget += rad; }
+  function tilt(d) { pitchTarget = clamp(pitchTarget + d, PITCH_MIN, PITCH_MAX); }
+  function resetView() { yawTarget = Math.round(yawTarget / (Math.PI * 2)) * Math.PI * 2; pitchTarget = 0.8; }
   const panAxes = () => ({ c: Math.cos(yaw), s: Math.sin(yaw) });
-  return { quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, panAxes, heightAt };
+  return { quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
+let camSpin = 0;
+function goHome() { const k = playerKeep(); if (k) { if (R3D.active) R3D.resetView(); centerOn(k.x + 40, k.y - 20); } }
+(function camButtons() {
+  const hold = (id, dir) => { const b = document.getElementById(id); let t0 = 0, timer = null;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); t0 = performance.now(); timer = setTimeout(() => { camSpin = dir; }, 250); });
+    const up = () => { if (!t0) return; clearTimeout(timer); if (performance.now() - t0 < 250) R3D.rotate(dir); camSpin = 0; t0 = 0; };
+    b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up); };
+  hold('camL', -1); hold('camR', 1);
+  document.getElementById('camUp').onclick = () => R3D.tilt(0.14);
+  document.getElementById('camDn').onclick = () => R3D.tilt(-0.14);
+  document.getElementById('camHome').onclick = goHome;
+})();
 function setView(want3d) {
   R3D.setActive(want3d);
+  document.body.classList.toggle('v3d', R3D.active);
   if (R3D.active && cam.z < 1.05) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = 1.15; centerOn(cx, cy); }
   const b = document.getElementById('btnView');
   if (b) { b.textContent = R3D.available ? 'View: ' + (R3D.active ? '3D' : 'Flat') : 'View: Flat (3D unavailable)'; b.disabled = !R3D.available; }
@@ -4274,7 +4383,12 @@ function frame(now) {
   const sp = 620 / cam.z * dt;
   let mx = 0, my = 0;
   if (keys.ArrowLeft) mx -= 1; if (keys.ArrowRight) mx += 1; if (keys.ArrowUp) my -= 1; if (keys.ArrowDown) my += 1;
-  if (mouse.inside && !pinch) { if (mouse.x < 14) mx -= 1; if (mouse.x > vw - 14) mx += 1; if (mouse.y < 14) my -= 1; if (mouse.y > vh - 14) my += 1; }
+  const modal = !document.getElementById('help').classList.contains('hide') || document.getElementById('pick').style.display !== 'none' && !started;
+  if (edge.on && !pinch && !orbit && !modal) { const E = 12, W = window.innerWidth, H = window.innerHeight; if (edge.x <= E) mx -= 1; if (edge.x >= W - 1 - E) mx += 1; if (edge.y <= E) my -= 1; if (edge.y >= H - 1 - E) my += 1; }
+  edge.held = (mx || my) && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown) ? edge.held + dt : 0;
+  const boost = 1 + Math.min(1, edge.held / 1.2) * 0.8;   // edge scrolling speeds up the longer you hold
+  mx *= boost; my *= boost;
+  if (camSpin) { R3D.turn(camSpin * dt * 1.7); }
   if (mx || my) { if (R3D.active) { const { c, s } = R3D.panAxes(); const ax = mx * c + my * s, ay = -mx * s + my * c; mx = ax; my = ay; } cam.x += mx * sp; cam.y += my * sp; clampCam(); }
 
   for (const u of units) updateUnit(u, dt);
@@ -4415,6 +4529,7 @@ function startGame(key) {
   res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 30;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople();
+  centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   started = true;
   document.getElementById('pick').style.display = 'none';
