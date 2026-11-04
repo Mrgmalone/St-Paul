@@ -436,7 +436,7 @@ function placeObstacles() {
   // groves
   // forest belts the north and south roads cut through, and woods behind the enemy camp
   const belt = (c0, c1, r0, r1, dens) => { for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) if (srand() < dens) addTree(c, r); };
-  belt(24, 70, 3, 7, 0.42); belt(36, 76, 42, 50, 0.4); belt(88, 93, 3, 24, 0.5); belt(3, 9, 3, 14, 0.35); belt(60, 74, 24, 34, 0.3);
+  belt(24, 70, 3, 8, 0.62); belt(36, 76, 41, 50, 0.6); belt(88, 93, 3, 24, 0.6); belt(3, 9, 3, 14, 0.5); belt(60, 74, 24, 34, 0.45); belt(10, 22, 40, 52, 0.55); belt(28, 38, 14, 22, 0.5);
   for (let k = 0; k < Math.round(17 * AF); k++) {
     const cc = Math.floor(SR(5, COLS - 5)), cr = Math.floor(SR(4, ROWS - 4));
     const n = Math.floor(SR(4, 10));
@@ -551,6 +551,24 @@ function paintTerrain() {
     g.strokeStyle = '#3d6828'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(x, y + 3); g.lineTo(x, y); g.stroke();
     g.fillStyle = fl[Math.floor(srand() * fl.length)]; g.beginPath(); g.arc(x, y, SR(1, 1.8), 0, Math.PI * 2); g.fill();
     g.fillStyle = 'rgba(240,200,60,0.9)'; g.fillRect(x - 0.4, y - 0.4, 0.8, 0.8);
+  }
+  { // hill shading (light from the north-west), then bare rock and snow where the mountains rise
+    const sc = document.createElement('canvas'); sc.width = EW; sc.height = EH; const sg = sc.getContext('2d'), si = sg.createImageData(EW, EH), sd = si.data;
+    const rc = document.createElement('canvas'); rc.width = EW; rc.height = EH; const rg = rc.getContext('2d'), ri = rg.createImageData(EW, EH), rd = ri.data;
+    const RN = makeNoise(5);
+    for (let j = 0; j < EH; j++) for (let i = 0; i < EW; i++) {
+      const x = (i - 1) * EG, y = (j - 1) * EG, e = (a, b) => elevAt(a, b);
+      const sh = clamp(((e(x - EG, y - EG) - e(x + EG, y + EG)) * 0.05), -0.75, 0.75), o = (j * EW + i) * 4;
+      if (sh > 0) { sd[o] = 255; sd[o + 1] = 240; sd[o + 2] = 200; sd[o + 3] = sh * 95; } else { sd[o] = 12; sd[o + 1] = 16; sd[o + 2] = 10; sd[o + 3] = -sh * 230; }
+      const m = mountAt(x, y), rk = clamp((m - 16) / 30, 0, 1), sn = clamp((m - 128) / 18, 0, 1), nv = RN(x / 40, y / 40), nv2 = RN(x / 13 + 9, y / 13);
+      const base = [74 + nv * 30 + nv2 * 14, 66 + nv * 24 + nv2 * 12, 54 + nv * 18 + nv2 * 8];
+      rd[o] = lerp(base[0], 236, sn); rd[o + 1] = lerp(base[1], 240, sn); rd[o + 2] = lerp(base[2], 246, sn); rd[o + 3] = rk * 235;
+    }
+    rg.putImageData(ri, 0, 0); sg.putImageData(si, 0, 0);
+    g.drawImage(rc, -EG * 1.5, -EG * 1.5, EW * EG, EH * EG);
+    // cracks, scree and boulders on the rock faces
+    for (let n = 0; n < 9000; n++) { const x = SR(0, MW), y = SR(0, MH), m = mountAt(x, y); if (m < 30) continue; g.fillStyle = srand() < 0.55 ? 'rgba(40,34,28,0.35)' : 'rgba(230,222,205,0.25)'; g.fillRect(x, y, SR(1, 4), SR(0.8, 2.2)); }
+    g.drawImage(sc, -EG * 1.5, -EG * 1.5, EW * EG, EH * EG);
   }
 }
 
@@ -677,6 +695,38 @@ function makeTower(c, r) {
   return s;
 }
 
+// ---------- the land: rolling hills, mountain ridges that armies must go around, flat ground for building ----------
+const MOUNTAINS = [
+  { x: 1560, y: 420, len: 330, w: 95, ang: 0.12, h: 150 },    // between the north road and the main road
+  { x: 1880, y: 1160, len: 320, w: 110, ang: -0.22, h: 140 }, // between the main road and the south road
+  { x: 2330, y: 1700, len: 260, w: 70, ang: 0.05, h: 110 },   // the far south
+  { x: 150, y: 210, len: 230, w: 120, ang: 0.6, h: 150 }      // behind your castle, to the north-west
+];
+const EG = 16, EW = Math.ceil(MW / EG) + 2, EH = Math.ceil(MH / EG) + 2;
+let ELEV = null, MOUNT = null;
+function buildElevation() {
+  const TN = makeNoise(77), k = keep, kx = k ? k.x : PLAYER_START.x, ky = k ? (k.y0 + k.y1) / 2 : PLAYER_START.y;
+  ELEV = new Float32Array(EW * EH); MOUNT = new Float32Array(EW * EH);
+  for (let j = 0; j < EH; j++) for (let i = 0; i < EW; i++) {
+    const x = (i - 1) * EG, y = (j - 1) * EG;
+    let h = (TN(x / 240, y / 240) - 0.5) * 12 + (TN(x / 90 + 40, y / 90) - 0.5) * 3 + (TN(x / 560 + 7, y / 560 + 3) - 0.5) * 64;
+    let m = 0;
+    for (const M of MOUNTAINS) { const dx = x - M.x, dy = y - M.y, c = Math.cos(M.ang), s2 = Math.sin(M.ang), u = dx * c + dy * s2, v = -dx * s2 + dy * c, d = (u / M.len) ** 2 + (v / M.w) ** 2; if (d < 5) m = Math.max(m, M.h * Math.exp(-d * 1.5) * (0.72 + 0.55 * TN(x / 55 + M.x, y / 55))); }
+    // keep the ground flat where people build and walk the roads
+    const fk = clamp((Math.hypot(x - kx, y - ky) - 520) / 260, 0, 1), fc = clamp((Math.hypot(x - CAMP.x, y - CAMP.y) - 420) / 240, 0, 1), fr = clamp((roadDist(x, y) - 50) / 120, 0, 1);
+    const f = fk * fc * fr;
+    ELEV[j * EW + i] = h * f + m * f; MOUNT[j * EW + i] = m * f;
+  }
+  // mountain slopes too steep to cross block the way
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (mountAt(c * TILE + 16, r * TILE + 16) > 40) setBlock(c, r, 1);
+}
+function sampleGrid(G, x, y) {
+  if (!G) return 0;
+  const gx = clamp(x / EG + 1, 0, EW - 1.001), gy = clamp(y / EG + 1, 0, EH - 1.001), i = Math.floor(gx), j = Math.floor(gy), fx = gx - i, fy = gy - j;
+  const a = G[j * EW + i], b = G[j * EW + i + 1], c = G[(j + 1) * EW + i], d = G[(j + 1) * EW + i + 1];
+  return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+}
+const elevAt = (x, y) => sampleGrid(ELEV, x, y), mountAt = (x, y) => sampleGrid(MOUNT, x, y);
 function setupWorld() {
   // tower + campfire are placed before obstacles so their tiles are reserved
   makeTower(51 + EX, 12);
@@ -684,6 +734,7 @@ function setupWorld() {
   fires.push({ kind: 'fire', x: 1584 + EXP, y: 442 });
   playerFire = { kind: 'fire', x: 236 + HOME.dx, y: 1104 + HOME.dy, player: true }; fires.push(playerFire); setBlock(Math.floor(playerFire.x / TILE), Math.floor(playerFire.y / TILE), 1);
   setBlock(49 + EX, 13, 1);
+  buildElevation();
   placeObstacles();
   placePond();
   placeIron();
@@ -1127,6 +1178,13 @@ function enemyBrain(u, dt) {
   }
   if (u.order === 'raid' && u.route && u.route.length) {
     const w = u.route[0];
+    if (u.chopTree) {   // cutting a way through the woods
+      u.moving = false; u.facing = u.chopTree.x >= u.x ? 1 : -1; if (u.attackAnim === 0) u.attackAnim = 0.001;
+      u.chopT -= dt; if (u.chopT <= 0) { if (!u.chopTree.gone) fellTree(u.chopTree); u.chopTree = null; u.path = []; u.repath = 0; }
+      return;
+    }
+    const movedSq = (u.x - (u.rlx || 0)) ** 2 + (u.y - (u.rly || 0)) ** 2; u.rlx = u.x; u.rly = u.y; u.rstuck = movedSq < 0.05 ? (u.rstuck || 0) + dt : 0;
+    if (u.rstuck > 1.6 && !isMachine(u)) { let best = null, bd = 46; for (const t of trees) { if (t.gone) continue; const d = Math.hypot(t.x - u.x, t.y - u.y); if (d < bd && ((t.x - u.x) * (w.x - u.x) + (t.y - u.y) * (w.y - u.y)) > 0) { bd = d; best = t; } } if (best) { u.chopTree = best; u.chopT = 3.5; u.rstuck = 0; return; } }
     if (Math.hypot(w.x - u.x, w.y - u.y) < 70) { u.route.shift(); u.path = []; u.repath = 0; }
     else if (u.repath <= 0 || !u.path.length) { u.path = findPath(u.x, u.y, w.x, w.y); u.repath = 4; if (!u.path.length) u.route.shift(); }
     return;
@@ -3877,7 +3935,7 @@ const R3D = (() => {
   let yaw = 0, yawTarget = 0, pitch = 0.8, pitchTarget = 0.8;
   const PITCH_MIN = 0.36, PITCH_MAX = 1.25;
   const hN = available ? makeNoise(77) : null;
-  const heightAt = (x, z) => { let h = hN ? (hN(x / 240, z / 240) - 0.5) * 12 + (hN(x / 90 + 40, z / 90) - 0.5) * 3 : 0; if (pond) { const d = Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry); if (d < 1.25) h -= 9 * (1 - ease(clamp((d - 0.55) / 0.7, 0, 1))); } return h; };
+  const heightAt = (x, z) => { let h = elevAt(x, z); if (pond) { const d = Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry); if (d < 1.25) h -= 9 * (1 - ease(clamp((d - 0.55) / 0.7, 0, 1))); } return h; };
   const C = hex => new T.Color(hex).convertSRGBToLinear();
   const matCache = {};
   const texCache = {};
@@ -3963,7 +4021,7 @@ const R3D = (() => {
     ready = true;
   }
   function buildGround() {
-    const geo = new T.PlaneGeometry(MW + 1400, MH + 1400, 180, 130); geo.rotateX(-Math.PI / 2); geo.translate(MW / 2, 0, MH / 2);
+    const geo = new T.PlaneGeometry(MW + 1400, MH + 1400, 300, 190); geo.rotateX(-Math.PI / 2); geo.translate(MW / 2, 0, MH / 2);
     const p = geo.attributes.position, uv = geo.attributes.uv;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, heightAt(x, z)); uv.setXY(i, x / MW, 1 - z / MH); }
     geo.computeVertexNormals();
@@ -3996,7 +4054,7 @@ const R3D = (() => {
     clouds3.renderOrder = 1; scene.add(clouds3);
   }
   // ---------- water and grass ----------
-  let water = null, grass = null, grassPos = [], windU = { value: 0 }, windAmt = { value: 0.3 }, windDir = { value: new T.Vector2(1, 0) };
+  let water = null, grass = null, grassPos = [], windU = { value: 0 }, windAmt = { value: 0.3 }, windDir = { value: T ? new T.Vector2(1, 0) : null };   // (no 3D library: the flat view still runs)
   function swayLeaves(mat, lift) {   // tree crowns bend with the wind: more at the top, each tree in its own rhythm
     mat.onBeforeCompile = sh => { sh.uniforms.uWind = windU; sh.uniforms.uWindAmt = windAmt; sh.uniforms.uWindDir = windDir;
       sh.vertexShader = 'uniform float uWind; uniform float uWindAmt; uniform vec2 uWindDir;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  { float ph = instanceMatrix[3].x * 0.031 + instanceMatrix[3].z * 0.027; float hgt = max(0.0, position.y - ' + lift.toFixed(1) + ') / 40.0; float g = sin(uWind * 1.3 + ph) * 0.6 + sin(uWind * 3.1 + ph * 2.0) * 0.25 + 0.35; float flutter = sin(uWind * 7.0 + position.x * 0.4 + position.z * 0.3 + ph) * 0.35;\n    transformed.x += (uWindDir.x * g + flutter * 0.3) * hgt * hgt * uWindAmt * 5.0; transformed.z += (uWindDir.y * g + flutter * 0.3) * hgt * hgt * uWindAmt * 5.0; transformed.y -= g * hgt * hgt * uWindAmt * 0.8; }'); };
@@ -4025,7 +4083,7 @@ const R3D = (() => {
     let k = 0, tries = 0;
     while (k < N && tries++ < N * 4) {
       const x = Rg() * MW, z = Rg() * MH;
-      if (blockedAt(x, z) || roadDist(x, z) < 22 || Math.hypot(x - CAMP.x, z - CAMP.y) < 150) continue;
+      if (blockedAt(x, z) || roadDist(x, z) < 22 || Math.hypot(x - CAMP.x, z - CAMP.y) < 150 || mountAt(x, z) > 18) continue;
       if (pond && Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry) < 1.05) continue;
       const s = 0.6 + Rg() * 0.6;
       grass.setMatrixAt(k, M4(x, heightAt(x, z) - 0.2, z, s, s * (0.8 + Rg() * 0.4), s, Rg() * 6.28));
@@ -4096,6 +4154,12 @@ const R3D = (() => {
     for (let i = 0; i < rp.count; i++) { const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i), k = 0.8 + ((Math.sin(x * 12.9 + y * 78.2 + z * 37.7) * 43758.5) % 1 + 1) % 1 * 0.4; rp.setXYZ(i, x * k, y * k, z * k); }
     rg.computeVertexNormals();
     rockMesh = new T.InstancedMesh(rg, std('#8d8a83', { roughness: 0.95, flatShading: true }), rocks.length);
+    { const spots = [], Rm = mulberry32(909); for (let n = 0; n < 9000 && spots.length < 700; n++) { const x = Rm() * MW, z = Rm() * MH, m = mountAt(x, z); if (m > 26 && Rm() < 0.6) spots.push([x, z, m]); }
+      spots.length = Math.min(spots.length, 420);
+      const bg = new T.DodecahedronGeometry(1, 1); { const P = bg.attributes.position, Rj = mulberry32(31); for (let i = 0; i < P.count; i++) { const f = 0.82 + Rj() * 0.3; P.setXYZ(i, P.getX(i) * f, P.getY(i) * f, P.getZ(i) * f); } bg.computeVertexNormals(); }
+      const bmesh = new T.InstancedMesh(bg, std('#9a9181', { roughness: 0.96, flatShading: true }), spots.length);
+      spots.forEach(([x, z, m], i) => { const sz = 5 + Rm() * 12 + m * 0.05; bmesh.setMatrixAt(i, new T.Matrix4().compose(new T.Vector3(x, heightAt(x, z) - sz * 0.3, z), new T.Quaternion().setFromEuler(new T.Euler(Rm() * 3, Rm() * 3, Rm() * 3)), new T.Vector3(sz, sz * (0.55 + Rm() * 0.4), sz * (0.8 + Rm() * 0.4)))); bmesh.setColorAt(i, new T.Color().setHSL(0.08 + Rm() * 0.05, 0.1, 0.62 + Rm() * 0.22)); });
+      bmesh.castShadow = true; bmesh.receiveShadow = true; scene.add(bmesh); }
     rocks.forEach((r, i) => { const z = r.y - 6, y = heightAt(r.x, z); rockMesh.setMatrixAt(i, new T.Matrix4().compose(new T.Vector3(r.x, y + 3 * r.s, z), new T.Quaternion().setFromEuler(new T.Euler(r.seed, r.seed * 3, r.seed * 0.5)), new T.Vector3(13 * r.s, 9 * r.s, 11 * r.s))); });
     rocks.forEach((r, i) => rockMesh.setColorAt(i, r.iron ? new T.Color('#c27a4a') : new T.Color('#ffffff'))); if (rockMesh.instanceColor) rockMesh.instanceColor.needsUpdate = true;
     rockMesh.castShadow = true; rockMesh.receiveShadow = true; scene.add(rockMesh);
