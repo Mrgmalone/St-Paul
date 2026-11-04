@@ -251,6 +251,7 @@
     <p><b>Command:</b> right-click (or tap) the ground to move, an enemy to attack, a tree for wood, a berry bush or farm for food.</p>
     <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
+    <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
     <p><b>Workers:</b> a Woodcutter's Hut or a Farm takes an idle civilian as its worker by itself. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
     <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, houses of prayer and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
@@ -1248,8 +1249,30 @@ function civBrain(u, dt) {
     followPath(u, dt);
   }
 }
+// resting: people with nothing to do sit, kneel, squat or lie watching, and get up when trouble comes
+function restPoseFor(u) {
+  const r = (u.seed * 7.31) % 1;
+  if (u.onWall) return 'crouch';
+  if (u.type === 'civ') return 'sit';
+  if (u.type === 'archer') return r < 0.4 ? 'prone' : 'crouch';
+  return r < 0.4 ? 'sit' : r < 0.75 ? 'kneel' : 'crouch';
+}
+function updateRest(u, dt) {
+  if (isMachine(u) || u.lord) { u.pose = null; u.poseK = 0; return; }
+  u.alertT = (u.alertT || 0) - dt;
+  if (u.alertT <= 0) { u.alertT = 0.4; u.danger = units.some(e => !e.dead && e.team !== u.team && e.type !== 'civ' && Math.hypot(e.x - u.x, e.y - u.y) < 300); }
+  const still = !u.moving && !(u.attackAnim > 0) && (u.order === 'idle' || u.order === 'hold' || (u.order === 'mount' && u.onWall)) && !u.danger && u.combatT <= 0 && time - u.lastHurt > 4;
+  u.idleT = still ? (u.idleT || 0) + dt : 0;
+  if (u.idleT > 2.5) { if (!u.pose) u.pose = restPoseFor(u); u.poseK = Math.min(1, (u.poseK || 0) + dt * 1.6); }
+  else { u.poseK = Math.max(0, (u.poseK || 0) - dt * 4); if (u.poseK === 0) u.pose = null; }
+  if (u.pose && u.idleT > 2.5 && u.idleT - dt <= 2.5) {   // face the fire if one is close, otherwise look out over the land
+    let f = null, fd = 150; for (const fi of fires) { const d = Math.hypot(fi.x - u.x, fi.y - u.y); if (d < fd) { fd = d; f = fi; } }
+    u.restFace = f ? Math.atan2(f.x - u.x, f.y - u.y) : null;
+  }
+}
 function updateUnit(u, dt) {
   if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
+  updateRest(u, dt);
   curTeam = u.team;
   u.flash = Math.max(0, u.flash - dt * 5);
   u.atkTimer -= dt; u.combatT -= dt; u.repath -= dt;
@@ -1456,7 +1479,8 @@ function drawPerson(g, u, time) {
   const sr = u.dead ? 23 : 14, sg = g.createRadialGradient(0, 0, 0, 0, 0, sr);
   sg.addColorStop(0, 'rgba(0,0,0,0.42)'); sg.addColorStop(0.65, 'rgba(0,0,0,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = sg; g.beginPath(); g.arc(0, 0, sr, 0, Math.PI * 2); g.fill(); g.restore();
-  g.scale(u.facing * 1.35 * (lk.s || 1), 1.35 * lk.h * (lk.s || 1));
+  const rk = u.poseK || 0, squash = u.pose === 'prone' ? 1 - 0.55 * rk : 1 - (u.pose === 'sit' ? 0.3 : u.pose === 'kneel' ? 0.18 : u.pose === 'crouch' ? 0.22 : 0) * rk;
+  g.scale(u.facing * 1.35 * (lk.s || 1) * (u.pose === 'prone' ? 1 + 0.5 * rk : 1), 1.35 * lk.h * (lk.s || 1) * squash);
   if (u.dead) { let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f); g.rotate(-f * Math.PI / 2 * 0.94); }
 
   const moving = u.moving && !u.dead, ph = u.walkPhase;
@@ -4355,7 +4379,7 @@ const R3D = (() => {
   const mailM = () => std('#8b9197', { metalness: 0.55, roughness: 0.45 });
   // smooth, rounded body parts made by spinning a profile (no boxy limbs)
   function capsule(rTop, rBot, len, mat, seg = 12) {
-    const pts = [];
+    seg = Math.max(seg, 16); const pts = [];
     for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + (i / 5) * Math.PI / 2; pts.push(new T.Vector2(Math.max(0.001, Math.cos(a) * rBot), -len + Math.sin(a) * rBot)); }
     for (let i = 0; i <= 5; i++) { const a = (i / 5) * Math.PI / 2; pts.push(new T.Vector2(Math.max(0.001, Math.cos(a) * rTop), Math.sin(a) * rTop)); }
     return mesh(new T.LatheGeometry(pts, seg), mat);
@@ -4410,21 +4434,21 @@ const R3D = (() => {
       legs.push({ hip, knee, side });
     }
     // torso: hips, waist, chest and sloping shoulders in one smooth shape, deeper at the chest than the back
-    const torso = lathe([[0, 15.6], [4.3, 16.2], [4.6, 18], [4.15, 20.5], [4.5, 23.5], [5.2, 27], [5.35, 29.6], [4.9, 31.3], [3.4, 32.6], [1.7, 33.4], [0, 33.6]], soldier ? m.mail : m.cloth, 18);
+    const torso = lathe([[0, 15.6], [4.3, 16.2], [4.6, 18], [4.15, 20.5], [4.5, 23.5], [5.2, 27], [5.35, 29.6], [4.9, 31.3], [3.4, 32.6], [1.7, 33.4], [0, 33.6]], soldier ? m.mail : m.cloth, 24);
     torso.scale.set(1, 1, 0.7); body.add(torso);
     // tunic skirt or mail skirt flaring over the thighs
-    const sk = lathe([[4.75, 20.2], [5.0, 18], [5.5, 15], [5.9, 12.2]], soldier ? m.mailSkirt : m.skirt, 18, true); sk.scale.set(1, 1, 0.78); body.add(sk);
+    const sk = lathe([[4.75, 20.2], [5.0, 18], [5.5, 15], [5.9, 12.2]], soldier ? m.mailSkirt : m.skirt, 22, true); sk.scale.set(1, 1, 0.78); sk.geometry.translate(0, -20.2, 0); sk.position.y = 20.2; body.add(sk); sk.userData.keep = true; const cloth = [sk];
     if (soldier) {
       // surcoat in the team colour, front and back, with a belt and a gold badge
-      const sc = lathe([[4.95, 30.6], [5.45, 28], [4.75, 23.5], [4.75, 20.4], [5.6, 16.5], [6.0, 13.4]], m.skirt, 18, true); sc.scale.set(1.01, 1, 0.73); body.add(sc);
+      const sc = lathe([[4.95, 30.6], [5.45, 28], [4.75, 23.5], [4.75, 20.4], [5.6, 16.5], [6.0, 13.4]], m.skirt, 22, true); sc.scale.set(1.01, 1, 0.73); body.add(sc);
       const badge = sph(1.2, m.gold, 0, 26.5, 3.85, 10); badge.scale.set(1, 1.15, 0.35); body.add(badge);
     }
-    if (u.type === 'archer') { const jk = lathe([[5.0, 30.5], [5.4, 27.5], [4.7, 22.5], [5.2, 17.5], [5.8, 14.2]], m.skirt, 18, true); jk.scale.set(1.02, 1, 0.74); body.add(jk); }
+    if (u.type === 'archer') { const jk = lathe([[5.0, 30.5], [5.4, 27.5], [4.7, 22.5], [5.2, 17.5], [5.8, 14.2]], m.skirt, 22, true); jk.scale.set(1.02, 1, 0.74); body.add(jk); }
     const belt = cyl(4.75, 4.75, 1.4, m.belt, 0, 20.3, 0, 18); belt.scale.set(1, 1, 0.74); body.add(belt); body.add(box(1.6, 1.6, 0.6, m.gold, 0.6, 20.3, 3.55));
     // neck and head with jaw, nose, eyes, brows, ears and mouth
     const neck = capsule(1.45, 1.6, 2.6, m.skin, 10); neck.position.set(0, 35.6, 0.15); body.add(neck);
     const head = new T.Group(); head.position.set(0, 38.4, 0.25); body.add(head);
-    const skull = sph(2.85, m.skin, 0, 0.35, 0, 18); skull.scale.set(0.93, 1.1, 1.02); head.add(skull);
+    const skull = sph(2.85, m.skin, 0, 0.35, 0, 22); skull.scale.set(0.93, 1.1, 1.02); head.add(skull);
     const jaw = sph(2.3, m.skin, 0, -1.25, 0.55, 14); jaw.scale.set(0.92, 0.85, 1.0); head.add(jaw);
     const nose = mesh(new T.ConeGeometry(0.55, 1.6, 8), m.skin, 0, -0.1, 2.85); nose.rotation.x = Math.PI / 2 + 0.35; head.add(nose);
     for (const side of [-1, 1]) {
@@ -4526,7 +4550,7 @@ const R3D = (() => {
     if (m.cloak) m.cloak.userData.keep = true;
     compact(root);
     const allMats = []; root.traverse(o => { if (o.isMesh && o.material && o.material.emissive && !allMats.includes(o.material)) allMats.push(o.material); });
-    return { root, body, legs, arms, tools, head, mats: allMats, m, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
+    return { root, body, legs, arms, tools, head, mats: allMats, m, cloth, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 
   function machineCrew(u, spots, body) {
@@ -4752,7 +4776,27 @@ const R3D = (() => {
       const t = md.tools; t.axe.visible = type === 'wood'; t.hammer.visible = type === 'build'; t.basket.visible = type === 'food';
       t.logs.visible = u.carry > 0 && u.carryType === 'wood'; t.pack.visible = u.carry > 0 && u.carryType !== 'wood'; t.berries.visible = u.carry > 0 && u.carryType === 'food';
     }
+    // resting poses, blended in and out
+    const k = u.poseK || 0, pose = u.pose;
+    let lean = 0, drop = 0;
+    if (k > 0 && pose) {
+      const legs = md.legs, Lg = legs[0], Rg = legs[1], kk = ease(k);
+      const mixL = (o, v) => o + (v - o) * kk;
+      if (pose === 'sit') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.75); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.05); g.hip.rotation.z = mixL(0, g.side * 0.32); } drop = 14.5; lean = -0.08; fR = mixL(fR, 0.75); bR = mixL(bR, 0.9); fL = mixL(fL, 0.75); bL = mixL(bL, 0.9); }
+      else if (pose === 'kneel') { Lg.hip.rotation.x = mixL(Lg.hip.rotation.x, -1.5); Lg.knee.rotation.x = mixL(Lg.knee.rotation.x, 1.55); Rg.hip.rotation.x = mixL(Rg.hip.rotation.x, 0.15); Rg.knee.rotation.x = mixL(Rg.knee.rotation.x, 1.6); drop = 8.6; lean = 0.08; fL = mixL(fL, 0.9); bL = mixL(bL, 0.7); }
+      else if (pose === 'crouch') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.25); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.2); g.hip.rotation.z = mixL(0, g.side * 0.2); } drop = 9.5; lean = 0.32; fL = mixL(fL, 0.9); bL = mixL(bL, 0.8); fR = mixL(fR, 0.6); bR = mixL(bR, 0.9); }
+      else if (pose === 'prone') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, 0); g.knee.rotation.x = mixL(g.knee.rotation.x, 0.15); } fL = mixL(fL, 2.7); bL = mixL(bL, 0.3); fR = mixL(fR, 2.5); bR = mixL(bR, 0.5); }
+      md.body.position.y -= drop * kk;
+      md.body.rotation.x = pose === 'prone' ? Math.PI / 2 * kk : lean * kk;
+      md.body.position.z = pose === 'prone' ? -6 * kk : 0;
+      if (pose === 'prone') md.body.position.y = 3.2 * kk + md.body.position.y * (1 - kk);
+      md.head.rotation.y = Math.sin(time * 0.45 + (u.seed || 0) * 3) * 0.55 * kk;   // looking out over the land, or chatting to the next man
+      md.head.rotation.x = pose === 'prone' ? -1.2 * kk : 0;
+    } else { md.body.rotation.x = 0; md.body.position.z = 0; md.head.rotation.y = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
     R.sh.rotation.x = -fR; R.el.rotation.x = -bR; L.sh.rotation.x = -fL; L.el.rotation.x = -bL;
+    // clothing moves: the skirt and surcoat swing with each step and stir in the wind, even when seated
+    const wind = (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2), sway = Math.sin(time * 2.3 + (u.seed || 0) * 5) * (0.02 + wind * 0.05);
+    for (const cm of md.cloth || []) { cm.rotation.x = (moving ? Math.sin(ph) * 0.07 : 0) + sway + (k > 0 && pose === 'sit' ? -0.35 * k : 0); cm.rotation.z = (moving ? Math.cos(ph) * 0.05 : 0) + sway * 0.6; }
     const tl = md.tools;
     if (tl.shieldGrip) tl.shieldGrip.rotation.x = fL + bL;   // shield stays upright, facing forward
     if (tl.spearGrip) tl.spearGrip.rotation.x = fR + bR + (md.spearTilt || 0);
@@ -4761,7 +4805,7 @@ const R3D = (() => {
       const drawn = u.type === 'archer' && (a > 0 || u.order === 'attack') ? (a > 0 && a < 0.55 ? ease(a / 0.55) : a > 0 ? Math.max(0, 1 - (a - 0.55) * 6) : 0.15) : 0;
       const pz = tl.tipX - drawn * 7; const ps = tl.string.attributes.position; ps.setX(1, pz); ps.needsUpdate = true;
     }
-    if (md.m.cloak) md.m.cloak.rotation.x = 0.12 + (moving ? 0.25 + Math.sin(ph * 0.5) * 0.08 : Math.sin(time * 1.3 + u.seed) * 0.04);
+    if (md.m.cloak) md.m.cloak.rotation.x = 0.12 + (moving ? 0.25 + Math.sin(ph * 0.5) * 0.08 : Math.sin(time * 1.3 + u.seed) * (0.04 + 0.08 * (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2))) + ((u.poseK || 0) > 0 && u.pose !== 'prone' ? 0.5 * u.poseK : 0);
   }
   function syncUnits(dt) {
     const seen = new Set();
@@ -4777,7 +4821,8 @@ const R3D = (() => {
       if (u.target && alive(u.target) && (u.attackAnim > 0 || u.order === 'attack') && !u.moving) want = Math.atan2(u.target.x - u.x, u.target.y - u.y);
       else if (u.moving && md.px !== undefined) { const dx = u.x - md.px, dz = u.y - md.pz; if (dx * dx + dz * dz > 0.01) want = Math.atan2(dx, dz); }
       else if (u.type === 'civ' && u.sub === 'work' && u.task && u.task.node) { const c = nodeCenter(u.task.node); want = Math.atan2(c.x - u.x, c.y - u.y); }
-      if (want !== null) md.heading = angLerp(md.heading, want, Math.min(1, dt * 10));
+      if (want === null && u.pose && u.restFace !== null && u.restFace !== undefined) want = u.restFace;
+      if (want !== null) md.heading = angLerp(md.heading, want, Math.min(1, dt * (u.pose ? 3 : 10)));
       md.px = u.x; md.pz = u.y;
       md.root.rotation.y = md.heading;
       const sc = u.look ? u.look.h * (u.look.s || 1) : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
