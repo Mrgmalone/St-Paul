@@ -109,7 +109,7 @@
   .pop .plus{color:#9fe39a}.pop .minus{color:#ff9d86}
   #moodPop{left:10px;top:8px}
   #menuPop{right:10px;top:8px;display:flex;flex-direction:column;gap:10px}
-  #menuPop[hidden],#moodPop[hidden],#goodsPop[hidden]{display:none}
+  #menuPop[hidden],#moodPop[hidden],#goodsPop[hidden],#storePop[hidden]{display:none}
   #menuPop .row{display:flex;align-items:center;gap:10px}
   .vol{display:flex;flex-direction:column;font-size:14px;font-weight:bold;color:#ffd98a;gap:2px}
   .vol input{width:130px;height:24px;accent-color:#e0b84e;cursor:pointer}
@@ -235,6 +235,7 @@
   </div>
   <div id="moodPop" class="pop" hidden></div>
   <div id="goodsPop" class="pop" hidden style="left:auto;right:10px;top:8px"></div>
+  <div id="storePop" class="pop" hidden style="left:10px;top:8px;min-width:230px"></div>
   <div id="menuPop" class="pop" hidden>
     <h3>MENU</h3>
     <button id="btnHelp">Help and controls (H)</button>
@@ -252,6 +253,7 @@
     <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
+    <p><b>Stores and gear:</b> click a Stockpile, Granary, Armory or your Keep to see exactly what you hold. Workers carry the right gear from the moment they are given a job: an axe, and logs on the shoulder, for wood; a basket for berries; a sickle and a sack for wheat and hops; a pickaxe and a wheelbarrow for stone. Grey rocks can be quarried by hand for stone (right-click or tap one with a civilian selected), and every Quarry gets an ox cart that hauls its cut stone to your stockpile.</p>
     <p><b>Workers:</b> every workplace (hut, farm, mine, workshop) gets a worker by itself as soon as it is built: an idle civilian, or if none is idle, a gatherer is called over. Send a second civilian to it (select, then right-click or tap the building) and it makes twice as much. Workshops grow skilled with use: every few batches they need 5% less material, down to half. Stockpiles show the wood, stone and goods you really have. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
     <p><b>Popularity:</b> click Mood for every factor. Two or three kinds of food in store, ale, houses of prayer and gardens raise mood; high taxes, crowding and stocks lower it. Stocks make people work harder; gardens make them work slower.</p>
@@ -443,11 +445,16 @@ function placeObstacles() {
     for (let i = 0; i < n; i++) addTree(cc + Math.round(SR(-2.4, 2.4)), cr + Math.round(SR(-2, 2)));
   }
   // rocks
-  for (let k = 0; k < Math.round(22 * AF); k++) {
+  for (let k = 0; k < Math.round(40 * AF); k++) {
     const c = Math.floor(SR(3, COLS - 3)), r = Math.floor(SR(3, ROWS - 3));
     if (!ok(c, r)) continue;
     setBlock(c, r, 1);
-    rocks.push({ kind: 'rock', x: c * TILE + 16 + SR(-3, 3), y: r * TILE + 22, s: SR(0.8, 1.25), seed: srand() * 10 });
+    rocks.push({ kind: 'rock', x: c * TILE + 16 + SR(-3, 3), y: r * TILE + 22, s: SR(0.8, 1.25), seed: srand() * 10, amount: 60 });
+  }
+  // stone outcrops: clusters of grey rock near your castle and out in the field, for gathering stone
+  for (const [ox, oy] of [[PLAYER_START.x + 330, PLAYER_START.y - 230], [PLAYER_START.x - 250, PLAYER_START.y + 260], [1250, 560], [1500, 1320], [2050, 900]]) {
+    let n = 0;
+    for (let t2 = 0; t2 < 40 && n < 6; t2++) { const c = Math.floor((ox + SR(-70, 70)) / TILE), r = Math.floor((oy + SR(-55, 55)) / TILE); if (!ok(c, r)) continue; setBlock(c, r, 1); rocks.push({ kind: 'rock', x: c * TILE + 16 + SR(-3, 3), y: r * TILE + 22, s: SR(0.95, 1.4), seed: srand() * 10, amount: 60 }); n++; }
   }
 }
 
@@ -573,13 +580,14 @@ function paintTerrain() {
 }
 
 // ---------- unit definitions ----------
-const MACHINE = { ram: 1, catapult: 1, ballista: 1 };
+const MACHINE = { ram: 1, catapult: 1, ballista: 1, oxcart: 1 };
 const isMachine = u => !!(u && MACHINE[u.type]);
 const KINDS = {
   sword: { name: 'Swordsman', hp: 110, dmg: 13, range: 5, cd: 1.0, speed: 74, anim: 0.5, hitAt: 0.62 },
   spear: { name: 'Spearman', hp: 95, dmg: 15, range: 17, cd: 1.25, speed: 70, anim: 0.55, hitAt: 0.55 },
   ram: { name: 'Battering Ram', hp: 420, dmg: 70, range: 4, cd: 2.4, speed: 34, anim: 0.8, hitAt: 0.55 },
   catapult: { name: 'Catapult', hp: 260, dmg: 95, range: 430, cd: 6.5, speed: 26, anim: 1.3, hitAt: 0.5 },
+  oxcart: { name: 'Ox Cart', hp: 180, dmg: 0, range: 0, cd: 1, speed: 46, anim: 0.6, hitAt: 2 },
   ballista: { name: 'Ballista', hp: 210, dmg: 46, range: 340, cd: 3.4, speed: 30, anim: 0.9, hitAt: 0.45 },
   archer: { name: 'Archer', hp: 70, dmg: 9, range: 170, cd: 1.6, speed: 72, anim: 0.6, hitAt: 0.55 },
   civ: { name: 'Civilian', hp: 50, dmg: 0, range: 0, cd: 1, speed: 66, anim: 0.6, hitAt: 2 }
@@ -614,7 +622,7 @@ function makeUnit(team, kind, x, y) {
     carry: 0, carryType: null, task: null, sub: null, workT: 0, bad: new Set(), hair: HAIRS[Math.floor(Math.random() * HAIRS.length)]
   };
   if (kind === 'ram') u.radius = 16;
-  if (kind === 'catapult' || kind === 'ballista') u.radius = 17;
+  if (kind === 'catapult' || kind === 'ballista' || kind === 'oxcart') u.radius = 17;
   if (kind === 'civ') u.pal = team === 'enemy' ? PAL.ecv : PAL.civ;
   else if (team === 'player') { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }
   units.push(u);
@@ -983,7 +991,7 @@ function commandMove(list, x, y) {
   markers.push({ x, y, t: 0, col: '120,255,140' });
 }
 function commandGather(list, node) {
-  const type = node.kind === 'tree' ? 'wood' : node.kind === 'hopfarm' ? 'hops' : node.kind === 'wheatfarm' ? 'wheat' : 'food';
+  const type = node.kind === 'rock' ? 'stone' : node.kind === 'tree' ? 'wood' : node.kind === 'hopfarm' ? 'hops' : node.kind === 'wheatfarm' ? 'wheat' : 'food';
   for (const u of list) { u.order = 'gather'; u.task = { type, node }; u.sub = (u.carry > 0 && u.carryType !== type) ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0; u.bad.clear(); }
   markers.push({ x: node.x, y: node.y, t: 0, col: '255,220,90' });
 }
@@ -1145,7 +1153,22 @@ function siegeBrain(u) {
   }
   return false;
 }
+// the ox cart: waits at its quarry while the stone is cut, then hauls the load to your nearest store
+function cartBrain(u, dt) {
+  const q = u.home; u.order = 'cart';
+  if (!q || q.dead) { u.moving = false; return; }
+  const walk = (x, y) => { if (!u.path.length || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; } followPath(u, dt); };
+  if (u.sub === 'haul') {
+    const drop = nearestDrop(u, 'stone'); if (!drop) { u.moving = false; return; }
+    if (edgeDist(u, drop) <= 14) { res.stone += u.carry; floatText(u.x, u.y - 60, `+${u.carry} stone`, '#e0c088'); u.carry = 0; u.carryType = null; u.sub = 'back'; u.path = []; return; }
+    const ap = approachPoint(u, drop); walk(ap.x, ap.y); return;
+  }
+  if (edgeDist(u, q) > 20) { const ap = approachPoint(u, q); walk(ap.x, ap.y); return; }
+  u.moving = false; u.path = [];
+  if ((q.stock || 0) >= 8) { const n = Math.min(q.stock, 24); q.stock -= n; u.carry = n; u.carryType = 'stone'; u.sub = 'haul'; u.path = []; }
+}
 function playerBrain(u) {
+  if (u.type === 'oxcart') { cartBrain(u, frameDt); return; }
   if (u.type === 'ram') { ramBrain(u); return; }
   if (u.type === 'catapult' || u.type === 'ballista') { siegeBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
@@ -1215,14 +1238,26 @@ function enemyBrain(u, dt) {
 }
 // ---------- civilians ----------
 function isField(k) { return k === 'farm' || k === 'hopfarm' || k === 'wheatfarm'; }
-const nodeCenter = n => isField(n.kind) ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y1) / 2 } : n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : { x: n.x, y: n.y };
-const nodeReach = n => isField(n.kind) ? 30 : n.kind === 'tree' ? 33 : 24;
-const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood' ? n.amount > 0 : n.amount >= 1);
+// the gear a civilian carries: picked up when the job is given, carried there, used, and loaded for the walk home
+function gearOf(u) {
+  if (u.order === 'build') return 'build';
+  const t = u.task ? u.task.type : u.carry > 0 ? u.carryType : null;
+  if (u.order === 'craft' && u.job) return u.job.kind === 'quarry' || u.job.kind === 'ironmine' ? 'stone' : 'build';
+  if (t === 'wood') return 'wood'; if (t === 'food') return 'food'; if (t === 'stone' || t === 'iron') return 'stone'; if (t === 'hops' || t === 'wheat') return 'grain';
+  return null;
+}
+const nodeCenter = n => isField(n.kind) ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y1) / 2 } : n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : n.kind === 'rock' ? { x: Math.floor(n.x / TILE) * TILE + 16, y: Math.floor((n.y - 6) / TILE) * TILE + 16 } : { x: n.x, y: n.y };
+const nodeReach = n => isField(n.kind) ? 30 : n.kind === 'tree' ? 33 : n.kind === 'rock' ? 30 : 24;
+const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood' || type === 'stone' ? n.amount > 0 : n.amount >= 1);
 function nearestNode(type, x, y, maxD, bad) {
-  const list = type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm') : bushes.concat(farms.filter(f => f.kind === 'farm'));
+  const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone) : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm') : bushes.concat(farms.filter(f => f.kind === 'farm'));
   let best = null, bd = maxD;
   for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
   return best;
+}
+function breakRock(r) {
+  r.gone = true; r.amount = 0; setBlock(Math.floor(r.x / TILE), Math.floor((r.y - 6) / TILE), 0);
+  for (let k = 0; k < 16; k++) spawn('chip', r.x + RR(-10, 10), r.y - RR(4, 18), r.y); floatText(r.x, r.y - 30, 'Rock quarried away', '#e9dcbc');
 }
 function fellTree(t) {
   t.gone = true; setBlock(t.c, t.r, 0);
@@ -1287,12 +1322,14 @@ function civBrain(u, dt) {
       if (n) { task.node = n; u.sub = 'toNode'; } else if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; }
       return;
     }
-    if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); }
+    if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); else if (task.type === 'stone') AudioSys.play('stoneHit', u.x, u.y); }
     u.workT += dt;
-    const rate = (task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
+    const rate = (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
     if (u.workT >= rate) {
       u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = task.node.kind === 'bush' ? 'berries' : 'crops';
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
+      if (task.type === 'stone' && task.node.amount <= 0) breakRock(task.node);
+      if (task.type === 'stone' && Math.random() < 0.5) spawn('chip', task.node.x + RR(-6, 6), task.node.y - 12, task.node.y);
       if (u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
     }
   } else if (u.sub === 'toKeep') {
@@ -1516,6 +1553,15 @@ function drawShield(g, u, P, x, y, kite) {
   g.fillStyle = P('#c9ced3'); g.beginPath(); g.arc(x, kite ? y - 1.9 : y, 1.0, 0, Math.PI * 2); g.fill();
 }
 function drawLoad(g, u, P) {
+  if (u.carryType === 'stone' || u.carryType === 'iron') {   // pushing a wheelbarrow of stone
+    g.fillStyle = P('#6b4a28'); g.beginPath(); g.moveTo(4, -14); g.lineTo(18, -14); g.lineTo(16, -8); g.lineTo(6, -8); g.closePath(); g.fill();
+    g.fillStyle = P(u.carryType === 'iron' ? '#a0684a' : '#9a958c'); for (const [bx, by] of [[8, -16], [11.5, -16.5], [15, -16], [10, -18.5], [13.5, -18.8]]) { g.fillRect(bx - 1.6, by - 1.3, 3.2, 2.6); }
+    g.strokeStyle = P('#4a3018'); g.lineWidth = 1.2; g.beginPath(); g.moveTo(5, -12); g.lineTo(-2, -10); g.stroke();
+    g.fillStyle = P('#4a3018'); g.beginPath(); g.arc(17, -6, 2.6, 0, Math.PI * 2); g.fill();
+    return;
+  }
+  if (u.carryType === 'hops' || u.carryType === 'wheat' || u.carryType === 'flour') { g.fillStyle = P('#c9b38a'); g.beginPath(); g.ellipse(-6, -24, 4, 5, 0.3, 0, Math.PI * 2); g.fill(); g.strokeStyle = P('#8a6a3a'); g.lineWidth = 0.7; g.stroke(); return; }
+  if (u.carryType === 'food') { g.fillStyle = P('#8a6a3a'); rr(g, 2, -16, 8, 6, 2); g.fill(); g.fillStyle = P('#c0263a'); for (const [bx, by] of [[3.6, -16.4], [6, -17.2], [8.4, -16.4]]) { g.beginPath(); g.arc(bx, by, 1.5, 0, Math.PI * 2); g.fill(); } return; }
   if (u.carryType === 'wood') {
     for (let k = 0; k < 3; k++) { g.fillStyle = P(k % 2 ? '#6b4a28' : '#7d5830'); rr(g, -10, -23 + k * 3.4, 8, 3.2, 1.4); g.fill(); g.fillStyle = P('#c9a26a'); g.beginPath(); g.arc(-10, -21.4 + k * 3.4, 1.4, 0, Math.PI * 2); g.fill(); }
   } else {
@@ -1579,7 +1625,7 @@ function drawPerson(g, u, time) {
   // front arm and what it holds
   const shX = sx + 0.9, shY = sy + 1.1;
   if (u.type === 'civ') {
-    const type = (u.order === 'build' || u.order === 'craft') ? 'build' : u.task ? (u.task.type === 'wood' ? 'wood' : 'food') : (u.carry > 0 ? (u.carryType === 'wood' ? 'wood' : 'food') : null), working = u.sub === 'work' && (u.order === 'gather' || u.order === 'build' || u.order === 'craft');
+    const type = gearOf(u), working = u.sub === 'work' && (u.order === 'gather' || u.order === 'build' || u.order === 'craft');
     let ang;
     if ((type === 'wood' || type === 'build') && working && a > 0) ang = a < 0.5 ? lerp(0.5, -2.1, ease(a / 0.5)) : lerp(-2.1, 1.5, ease(Math.min(1, (a - 0.5) / 0.25)));
     else if (type === 'food' && working && a > 0) ang = 1.0 + Math.sin(a * Math.PI * 2) * 0.45;
@@ -1588,10 +1634,14 @@ function drawPerson(g, u, time) {
     if (type === 'wood') {
       seg(g, 0, -2.2, 0, 10.3, 1.4, P('#6b4a28'));
       g.fillStyle = P('#b9c0c6'); g.beginPath(); g.moveTo(0.6, 5.8); g.lineTo(6, 4.2); g.lineTo(6.6, 10.4); g.lineTo(0.6, 9.4); g.closePath(); g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 0.5; g.stroke();
+    } else if (type === 'stone' && !(u.carry > 0 && !working)) {
+      seg(g, 0, -2.2, 0, 10.3, 1.4, P('#6b4a28')); g.strokeStyle = P('#9aa1a8'); g.lineWidth = 1.6; g.beginPath(); g.moveTo(-4, 9.6); g.quadraticCurveTo(0, 8.2, 4.5, 9.8); g.stroke();
+    } else if (type === 'grain' && !(u.carry > 0 && !working)) {
+      seg(g, 0, -2.2, 0, 4, 1.2, P('#6b4a28')); g.strokeStyle = P('#c3cad1'); g.lineWidth = 1.1; g.beginPath(); g.arc(2.6, 5.4, 2.8, Math.PI * 0.9, Math.PI * 2.1); g.stroke();
     } else if (type === 'build') {
       seg(g, 0, -2.2, 0, 7.8, 1.4, P('#6b4a28'));
       g.fillStyle = P('#7d858c'); g.fillRect(-3, 6.3, 6.5, 3.4); g.strokeStyle = OUTLINE; g.lineWidth = 0.5; g.strokeRect(-3, 6.3, 6.5, 3.4);
-    } else if (type === 'food') {
+    } else if (type === 'food' && !(u.carry > 0)) {
       g.fillStyle = P('#8a6a3a'); rr(g, -3.2, 0.3, 6.4, 5, 1.6); g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 0.5; g.stroke();
       g.fillStyle = P('#c0263a'); g.beginPath(); g.arc(-1, 0.4, 1.2, 0, Math.PI * 2); g.arc(1.4, 0.2, 1.2, 0, Math.PI * 2); g.fill();
     }
@@ -1698,7 +1748,23 @@ function drawRam(g, u, time) {
   }
   g.restore();
 }
-function drawMachine(g, u, time) { if (u.type === 'catapult') drawCatapult(g, u, time); else if (u.type === 'ballista') drawBallista(g, u, time); else drawRam(g, u, time); }
+function drawOxCart(g, u, time) {
+  let alpha = 1; if (u.dead && u.deathT > 7) alpha = Math.max(0, 1 - (u.deathT - 7) / 3); if (alpha <= 0) return;
+  const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.7 : 0, P = c => fk ? mixHex(c, '#ffffff', fk) : c, ph = u.walkPhase || 0, mv = u.moving && !u.dead;
+  g.save(); g.globalAlpha = alpha; g.translate(u.x, u.y); g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(0, 2, 34, 7, 0, 0, Math.PI * 2); g.fill(); g.scale(u.facing * 1.2, 1.2);
+  // the ox
+  g.fillStyle = P('#7a5a3a'); g.beginPath(); g.ellipse(14, -14, 11, 6.5, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = P('#6a4a2e'); g.beginPath(); g.ellipse(26, -16, 4.6, 4, 0.3, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = P('#e8dcc0'); g.lineWidth = 1.2; g.beginPath(); g.moveTo(26, -19); g.quadraticCurveTo(29, -23, 31, -21); g.stroke();
+  g.strokeStyle = P('#5a3c22'); g.lineWidth = 2; for (const [lx, o] of [[7, 0], [10, Math.PI], [18, Math.PI], [21, 0]]) { const sw = mv ? Math.sin(ph + o) * 2 : 0; g.beginPath(); g.moveTo(lx, -9); g.lineTo(lx + sw, -1); g.stroke(); }
+  g.strokeStyle = P('#4a3018'); g.lineWidth = 1.5; g.beginPath(); g.moveTo(4, -15); g.lineTo(-6, -13); g.stroke();
+  // the cart and its load of stone
+  g.fillStyle = P('#6b4a28'); g.fillRect(-26, -20, 22, 9); g.fillStyle = P('#8a6a3a'); g.fillRect(-26, -20, 22, 2);
+  if (u.carry > 0) { g.fillStyle = P('#9a958c'); for (let i = 0; i < Math.min(6, Math.ceil(u.carry / 4)); i++) g.fillRect(-24 + (i % 3) * 6.4, -25 - Math.floor(i / 3) * 4.5, 5.6, 4.6); }
+  g.fillStyle = P('#4a3018'); g.beginPath(); g.arc(-15, -6, 6, 0, Math.PI * 2); g.fill(); g.strokeStyle = P('#8a6a48'); g.lineWidth = 1; g.beginPath(); const an = ph * 0.6; g.moveTo(-15 + Math.cos(an) * 5, -6 + Math.sin(an) * 5); g.lineTo(-15 - Math.cos(an) * 5, -6 - Math.sin(an) * 5); g.stroke();
+  g.restore();
+}
+function drawMachine(g, u, time) { if (u.type === 'oxcart') { drawOxCart(g, u, time); return; } if (u.type === 'catapult') drawCatapult(g, u, time); else if (u.type === 'ballista') drawBallista(g, u, time); else drawRam(g, u, time); }
 function machineArm(u) {   // catapult arm angle: 0 = cocked back, 1 = thrown upright
   const a = u.attackAnim; if (!(a > 0)) return 0;
   const k = a / u.animDur; return k < 0.5 ? 0 : k < 0.58 ? ease((k - 0.5) / 0.08) : 1 - ease((k - 0.58) / 0.42);
@@ -2064,6 +2130,7 @@ function drawIronRock(g, r) {
   g.fillStyle = 'rgba(40,40,46,0.8)'; for (const [a, b] of [[-6, -12], [5, -10], [-1, -6]]) { g.beginPath(); g.arc(x + a * s, y + b * s, 1.4 * s, 0, Math.PI * 2); g.fill(); }
 }
 function drawRock(g, r) {
+  if (r.gone) return;
   if (r.iron) { drawIronRock(g, r); return; }
   const s = r.s, x = r.x, y = r.y;
   softShadow(g, x + 5, y + 1, 18 * s, 6 * s, 0.4);
@@ -2197,18 +2264,33 @@ function pickAt(wx, wy, radius = 19) {
   return null;
 }
 const selectedList = () => [...selection].filter(alive);
-function selectOnly(list) { selection = new Set(list.filter(u => u.kind === 'unit' && u.team === 'player' && !u.dead)); }
+function selectOnly(list) { selection = new Set(list.filter(u => u.kind === 'unit' && u.team === 'player' && !u.dead && u.type !== 'oxcart')); }
 const isMine = h => h && h.kind === 'unit' && h.team === 'player';
 function pickResource(wx, wy) {
   for (const b of bushes) if (Math.hypot(wx - b.x, wy - (b.y - 7)) < 17) return b;
   for (const fm of farms) if (wx > fm.x0 && wx < fm.x1 && wy > fm.y0 && wy < fm.y1) return fm;
   for (const t of trees) if (Math.abs(wx - t.x) < 15 * t.s && wy < t.y + 6 && wy > t.y - 50 * t.s) return t;
+  for (const r of rocks) if (!r.iron && !r.gone && Math.hypot(wx - r.x, wy - (r.y - 8)) < 16 * r.s) return r;
   return null;
+}
+const STORE_KINDS = { stockpile: 1, granary: 1, armory: 1, keep: 1 };
+let storeShown = null;
+function showStore(b) {
+  storeShown = b; if (b.dead) { document.getElementById('storePop').hidden = true; storeShown = null; return; }
+  const p = document.getElementById('storePop'), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`, F = Math.floor;
+  let html = `<h3>${b.name.toUpperCase()}</h3>`;
+  if (b.kind === 'stockpile' || b.kind === 'keep') html += ln('Wood', F(res.wood)) + ln('Stone', F(res.stone)) + ln('Iron', F(res.iron)) + ln('Hops', F(res.hops)) + ln('Wheat', F(res.wheat)) + ln('Flour', F(res.flour));
+  if (b.kind === 'granary' || b.kind === 'keep') html += ln('Berries', F(foodKinds.berries)) + ln('Crops', F(foodKinds.crops)) + ln('Bread', F(foodKinds.bread)) + ln('Ale', F(res.ale));
+  if (b.kind === 'armory' || b.kind === 'keep') html += ln('Swords', res.sword) + ln('Spears', res.spear) + ln('Bows', res.bow);
+  const q = structures.filter(o => o.kind === 'quarry' && o.team === 'player' && !o.dead && o.stock);
+  if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));
+  html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
+  p.innerHTML = html; p.hidden = false;
 }
 function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
 
 function issueAt(sx, sy) {
-  const sel = selectedList(); if (!sel.length) return false;
+  const sel = selectedList().filter(u => u.type !== 'oxcart'); if (!sel.length) return false;
   AudioSys.ui('ack');
   for (const u of sel) if (u.type === 'civ') { u.job = null; u.manualT = time; }
   const w = toWorld(sx, sy), hit = pickScreen(sx, sy);
@@ -2311,7 +2393,9 @@ function touchTap(p) {
     if (TOUCH.add) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); return; }
     selectOnly([hit]); return;
   }
+  if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false && !selection.size) { showStore(hit); return; }
   if (selection.size) { issueAt(p.x, p.y); return; }
+  document.getElementById('storePop').hidden = true; storeShown = null;
 }
 document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; document.getElementById('camAdd').classList.toggle('on', TOUCH.add); showBanner(TOUCH.add ? 'Add mode: tap people to add them to (or take them out of) your group.' : 'Add mode off: tapping a person selects just that person.', 2.5); };
 canvas.addEventListener('pointermove', e => {
@@ -2348,7 +2432,8 @@ function endPointer(e) {
         const now = performance.now();
         if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
         else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else selectOnly([hit]); }
-        else if (!drag.shift) selection.clear();
+        else if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false) showStore(hit);
+        else if (!drag.shift) { selection.clear(); document.getElementById('storePop').hidden = true; storeShown = null; }
         lastClick = { t: now, x: p.x, y: p.y };
       }
     }
@@ -2387,7 +2472,7 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 document.getElementById('btnAll').onclick = () => selectOnly(units);
-document.getElementById('btnSold').onclick = () => selectOnly(units.filter(u => u.type !== 'civ'));
+document.getElementById('btnSold').onclick = () => selectOnly(units.filter(u => u.type !== 'civ' && u.type !== 'oxcart'));
 document.getElementById('btnCiv').onclick = () => selectOnly(units.filter(u => u.type === 'civ'));
 document.querySelectorAll('.tb').forEach(b => { b.onclick = () => trainUnit(b.dataset.k); b.oncontextmenu = e => { e.preventDefault(); cancelTrain(b.dataset.k); }; });
 // rings that empty as each one is made, a count of how many are waiting, and the seconds left
@@ -2863,6 +2948,7 @@ function craftBrain(u, dt) {
   if (edgeDist(u, site) > 12) { u.sub = 'toSite'; if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, site); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; } followPath(u, dt); return; }
   u.sub = 'work'; u.path = []; u.moving = false; u.facing = site.x >= u.x ? 1 : -1;
   if (u.crafting === null || u.crafting === undefined) {
+    if (site.kind === 'quarry' && (site.stock || 0) >= 60) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - 40, 'Quarry pile full: waiting for the ox cart', '#ffb38a'); u.waitMsgT = 10; } return; }
     if (!Object.entries(rc.inp).every(([k, v]) => res[k] >= v * craftCost(site))) {   // waiting for materials
       u.waitMsgT = (u.waitMsgT || 0) - dt;
       if (u.waitMsgT <= 0) { const need = Object.entries(rc.inp).filter(([k, v]) => res[k] < v * craftCost(site)).map(([k, v]) => `${k} (needs ${+(v * craftCost(site)).toFixed(1)}, you have ${Math.floor(res[k])})`); floatText(site.x, site.y - site.topH - 8, `${site.name} is waiting for ${need.join(' and ')}`, '#ffb38a'); u.waitMsgT = 10; }
@@ -2876,6 +2962,11 @@ function craftBrain(u, dt) {
   if (u.crafting >= rc.time) {
     u.crafting = null; site.made = (site.made || 0) + 1;
     if (Object.keys(rc.inp).length && site.made % 4 === 0 && craftCost(site) > 0.55) floatText(site.x, site.y - site.topH - 14, `${site.name} is getting skilled: now uses ${Math.round((1 - craftCost(site)) * 100)}% less material`, '#9fe8a8');
+    if (site.kind === 'quarry' && units.some(o => o.type === 'oxcart' && !o.dead && o.home === site)) {
+      site.stock = (site.stock || 0) + (rc.n || 1); if (site.stock > 60) site.stock = 60;
+      if (site.stock % 4 === 0) floatText(site.x, site.y - 40, `${site.stock} stone cut, waiting for the ox cart`, '#e9dcbc');
+      return;
+    }
     u.carry += rc.n || 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
 }
 function nearestDrop(u, type) {
@@ -2896,6 +2987,9 @@ function startJob(u) {
 let jobT = 0;
 function updateJobs(dt) {
   jobT -= dt; if (jobT > 0) return; jobT = 1;
+  for (const q of structures) if (q.kind === 'quarry' && q.team === 'player' && q.done && !q.dead && !units.some(o => o.type === 'oxcart' && !o.dead && o.home === q)) {
+    const f = nearestFree(Math.floor((q.x + 40) / TILE), Math.floor(q.y / TILE)); if (f) { const c = makeUnit('player', 'oxcart', f.c * TILE + 16, f.r * TILE + 16); c.home = q; c.order = 'cart'; c.facing = 1; floatText(q.x, q.y - 60, 'An ox cart arrives to haul the stone', '#9fe8a8'); }
+  }
   const civs = units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.order !== 'leave');
   for (const u of civs) if (u.job && (u.job.dead || (u.job.x0 !== undefined && !farms.includes(u.job) && !structures.includes(u.job)))) u.job = null;
   const sites = structures.concat(farms).filter(b => JOBS[b.kind] && b.team === 'player' && !b.dead && b.done);
@@ -2996,7 +3090,7 @@ function canPlace(kind, c, r) {
   const cx = (c + d.w / 2) * TILE, cy = (r + d.h / 2) * TILE;
   if (kind !== 'ironmine' && kind !== 'quarry' && Math.hypot(cx - k.x, cy - (k.y0 + k.y1) / 2) > TERRITORY) return false;
   if (kind === 'ironmine' && !rocks.some(rk => rk.iron && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
-  if (kind === 'quarry' && !rocks.some(rk => !rk.iron && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
+  if (kind === 'quarry' && !rocks.some(rk => !rk.iron && !rk.gone && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
   if (kind === 'stairs' && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => { const o = structAt(c + dc, r + dr); return o && o.kind === 'highwall'; })) return false;
   for (let i = 0; i < d.w; i++) for (let j = 0; j < d.h; j++) {
     const cc = c + i, rr2 = r + j;
@@ -3169,6 +3263,10 @@ function drawStockpile(g, b, P) {
   const M = mats(), x0 = b.x0 + 4, y0 = b.y0 + 10, w = b.x1 - b.x0 - 8, h = b.y1 - b.y0 - 14;
   softShadow(g, b.x + 6, b.y - 4, 38, 11, 0.35);
   g.fillStyle = M.woodH; g.fillRect(x0, y0, w, h); lightFace(g, x0, y0, w, h);
+  // posts, rails and a lean-to roof so it reads as a raised timber store even when empty
+  g.fillStyle = '#4a3018'; for (const px of [x0 - 1, x0 + w - 2]) g.fillRect(px, y0 - 26, 3, h + 26);
+  g.fillStyle = M.woodH; g.beginPath(); g.moveTo(x0 - 4, y0 - 26); g.lineTo(x0 + w + 4, y0 - 26); g.lineTo(x0 + w + 2, y0 - 18); g.lineTo(x0 - 2, y0 - 18); g.closePath(); g.fill(); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x0 - 2, y0 - 18, w + 4, 2);
+  g.fillStyle = 'rgba(40,24,10,0.5)'; for (const yy of [y0 + h * 0.33, y0 + h * 0.66]) g.fillRect(x0, yy, w, 1.4);
   const logs = Math.min(10, Math.ceil(res.wood / 20)); let li = 0;
   for (let r = 0; r < 4; r++) for (let k = 0; k < 4 - r; k++) { if (li++ >= logs) continue; const x = x0 + 6 + k * 7 + r * 3.5, y = y0 + h - 6 - r * 5; g.fillStyle = '#6b4a28'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9a26a'; g.beginPath(); g.arc(x, y, 1.9, 0, Math.PI * 2); g.fill(); }
   const blocks = Math.min(6, Math.ceil(res.stone / 15));
@@ -3848,6 +3946,7 @@ const UI = (() => {
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
     if (!$('goodsPop').hidden) $('goodsPop').innerHTML = goodsReport();
+    if (storeShown && !$('storePop').hidden) showStore(storeShown);
     if (!$('moodPop').hidden) $('moodPop').innerHTML = moodReport();
   }
   function moodReport() {
@@ -3872,7 +3971,7 @@ const UI = (() => {
     const ln = (a, b) => `<div class="ln"><span>${a}</span><b>${b}</b></div>`;
     return '<h3>GOODS</h3>' + ln('Food: berries, crops, bread', `${Math.floor(foodKinds.berries)}, ${Math.floor(foodKinds.crops)}, ${Math.floor(foodKinds.bread)}`) + ln('Wheat', Math.floor(res.wheat)) + ln('Flour', Math.floor(res.flour)) + ln('Stone', Math.floor(res.stone)) + ln('Hops', Math.floor(res.hops)) + ln('Ale', Math.floor(res.ale)) + ln('Iron', Math.floor(res.iron)) + ln('Bows', res.bow) + ln('Spears', res.spear) + ln('Swords', res.sword) + '<p style="margin:8px 0 0;font-size:14px;color:#d9c9a3">Build workshops in the Industry tab (key 5). Weapons in the armory make soldiers cheap.</p>';
   }
-  function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
+  function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop', 'storePop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
   // --- tabs and hiding the panel ---
   // drop-down sections in the side panel: one opens at a time; clicking an open one closes it
   function showTab(name, toggleIfOpen) {
@@ -4400,6 +4499,10 @@ const R3D = (() => {
       add(box(56, 3, 52, woodHM(56, 4), 0, 1.5, 0));
       for (const [x, z] of [[-27, -25], [27, -25], [-27, 25], [27, 25]]) add(cyl(1.4, 1.4, 12, woodVM(3, 12), x, 6, z, 6));
       const logM = woodHM(20, 4);
+      for (const [x, z] of [[-27, -25], [27, -25]]) add(cyl(1.6, 1.6, 30, woodVM(3, 30), x, 15, z, 6));
+      const lean = box(60, 1.6, 22, woodHM(60, 22), 0, 31, -16); lean.rotation.x = 0.32; add(lean);
+      for (const z of [-20, 4, 22]) add(box(54, 2, 2, woodHM(54, 2), 0, 3.6, z));
+      add(box(2, 8, 50, woodVM(2, 8), -20, 6, 0)); add(box(2, 8, 50, woodVM(2, 8), 6, 6, 0));
       info.stockLogs = []; info.stockStones = []; info.stockSacks = [];
       for (let r = 0; r < 4; r++) for (let k = 0; k < 5 - r; k++) { const l = cyl(2.7, 2.7, 24, logM, -12, 5.6 + r * 4.7, -12 + k * 5.6 + r * 2.8, 8); l.rotation.z = Math.PI / 2; add(l); info.stockLogs.push(l); }
       for (let i = 0; i < 6; i++) { const st = add(box(8, 6, 8, stoneM(8, 6), 14 + (i % 2) * 9, 6 + Math.floor(i / 2) * 6.2, -10 + (i % 3) * 9)); info.stockStones.push(st); }
@@ -4684,12 +4787,25 @@ const R3D = (() => {
       const axe = new T.Group(); axe.add(cyl(0.45, 0.5, 13, m.wood, 0, -4, 0, 7)); const ah = box(0.6, 3.6, 4.4, m.steel, 0, -9.6, 2.2); axe.add(ah); R.hand.add(axe); tools.axe = axe;
       const hammer = new T.Group(); hammer.add(cyl(0.45, 0.45, 10, m.wood, 0, -3, 0, 7)); hammer.add(box(2.0, 2.2, 4.6, std('#5d636a', { metalness: 0.7, roughness: 0.4 }), 0, -8, 0)); R.hand.add(hammer); tools.hammer = hammer;
       const basket = cyl(3.2, 2.5, 4.2, std('#8a6a3a', { roughness: 0.95 }), 0, -2.2, 1.5, 14); R.hand.add(basket); tools.basket = basket;
-      const logs = new T.Group(); for (let k = 0; k < 3; k++) { const l = cyl(1.3, 1.3, 9, woodHM(9, 3), (k - 1) * 0.6, 26 + k * 2.4, -5.2, 10); l.rotation.z = Math.PI / 2; logs.add(l); } body.add(logs); tools.logs = logs;
+      // logs carried on the right shoulder, running front to back
+      const logs = new T.Group(); for (let k = 0; k < 3; k++) { const l = cyl(1.25, 1.25, 16, woodHM(16, 3), 4.6 + (k - 1) * 1.6, 33.6 + (k === 1 ? 1.8 : 0), 0, 10); l.rotation.x = Math.PI / 2; logs.add(l); } body.add(logs); tools.logs = logs;
+      // a grain sack over the shoulder for wheat and hops; a pack for workshop goods
+      const sack = sph(3.2, std('#c9b38a', { roughness: 1 }), -4.2, 32.5, -2.5, 12); sack.scale.set(1, 1.25, 0.9); body.add(sack); tools.sack = sack;
       const pack = cyl(2.8, 2.3, 6, std('#8a6a3a', { roughness: 0.95 }), 0, 27, -5, 12); body.add(pack); tools.pack = pack;
-      const berries = sph(2.4, std('#c41a34', { roughness: 0.4 }), 0, 30.3, -5, 10); body.add(berries); tools.berries = berries;
+      // berries fill the basket in the hand
+      const berries = new T.Group(); for (const [bx, bz] of [[-1, 1], [1, 2], [0, 0.6], [1.3, 0.4], [-1.1, 2.2]]) berries.add(sph(1.05, std('#c41a34', { roughness: 0.35 }), bx, 0.3, bz, 8)); R.hand.add(berries); tools.berries = berries;
+      // a pickaxe for rock, a sickle for the fields
+      const pick = new T.Group(); pick.add(cyl(0.45, 0.5, 13, m.wood, 0, -4, 0, 7)); { const hd = box(0.7, 0.9, 7.5, m.steel, 0, -10, 0.6); pick.add(hd); } R.hand.add(pick); tools.pick = pick;
+      const sickle = new T.Group(); sickle.add(cyl(0.4, 0.4, 5, m.wood, 0, -2, 0, 6)); { const bl = mesh(new T.TorusGeometry(2.6, 0.32, 4, 12, Math.PI * 1.1), m.steel, 0, -6.4, 1.8); bl.rotation.y = Math.PI / 2; sickle.add(bl); } R.hand.add(sickle); tools.sickle = sickle;
+      // a wheelbarrow pushed in front, full of stone when loaded
+      const barrow = new T.Group(); barrow.position.set(0, 0, 9);
+      { const tray = box(9, 3.6, 10, woodHM(10, 4), 0, 10.5, 2); barrow.add(tray); const wh = cyl(3, 3, 1.4, woodHM(6, 3), 0, 3, 8, 12); wh.rotation.z = Math.PI / 2; barrow.add(wh); tools.barrowWheel = wh;
+        for (const sx of [-3.5, 3.5]) { const h = box(0.8, 0.8, 11, m.wood, sx, 12.5, -5); h.rotation.x = -0.25; barrow.add(h); const leg = box(0.7, 6, 0.7, m.wood, sx, 6.5, -1); barrow.add(leg); }
+        const load = new T.Group(); for (const [x, z] of [[-2, 0.5], [2, 1], [0, 3.4], [-1.6, 4], [1.8, 4.2], [0, 1.6]]) load.add(box(2.6 + (x * 7 % 1), 2.2, 2.6, stoneM(3, 3), x, 13.4 + (z % 1), z)); barrow.add(load); tools.stones = load; }
+      body.add(barrow); tools.barrow = barrow;
     }
     root.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingSphere(); o.castShadow = o.geometry.boundingSphere.radius > 1.9; } });
-    for (const k of ['basket', 'pack', 'berries']) if (tools[k]) tools[k].userData.keep = true;
+    for (const k of ['basket', 'pack', 'berries', 'sack', 'logs', 'pick', 'sickle', 'barrow']) if (tools[k]) { tools[k].userData.keep = true; tools[k].traverse(o => o.userData.keep = true); }
     if (m.cloak) m.cloak.userData.keep = true;
     compact(root);
     const allMats = []; root.traverse(o => { if (o.isMesh && o.material && o.material.emissive && !allMats.includes(o.material)) allMats.push(o.material); });
@@ -4710,6 +4826,30 @@ const R3D = (() => {
     const rim = mesh(new T.TorusGeometry(r, 0.6, 6, 20), iron, 0, 0, 0); rim.rotation.y = Math.PI / 2; w.add(rim);
     for (let k = 0; k < 2; k++) { const sp = box(2.8, r * 1.9, 0.5, std('#3e2a18'), 0, 0, 0); sp.rotation.x = k * Math.PI / 2; w.add(sp); }
     return w;
+  }
+  function oxcartModel(u) {
+    const root = new T.Group(), body = new T.Group(); root.add(body);
+    const hide = std('#7a5a3a', { roughness: 0.9 }), dark = std('#5a3c24', { roughness: 0.9 }), horn = std('#e8dcc0', { roughness: 0.5 }), iron = std('#4d5359', { metalness: 0.7, roughness: 0.45 });
+    // the ox: a heavy body, neck, head with horns, four legs that step
+    const ox = new T.Group(); ox.position.set(0, 0, 22); body.add(ox);
+    const torso = sph(9, hide, 0, 17, 0, 16); torso.scale.set(0.95, 0.9, 1.65); ox.add(torso);
+    const hump = sph(5, hide, 0, 24, 8, 12); hump.scale.set(1, 0.8, 1.2); ox.add(hump);
+    const head = new T.Group(); head.position.set(0, 20, 17); ox.add(head);
+    const skull = sph(4.2, dark, 0, 0, 2, 12); skull.scale.set(0.9, 0.85, 1.4); head.add(skull);
+    const muzzle = sph(2.6, std('#3e2a1a'), 0, -1.5, 6.6, 10); muzzle.scale.set(1.1, 0.8, 0.9); head.add(muzzle);
+    for (const sx of [-1, 1]) { const h = cyl(0.5, 1.0, 6, horn, sx * 4.2, 2.4, 1, 6); h.rotation.z = sx * 1.1; h.rotation.x = -0.3; head.add(h); const ear = sph(1.2, dark, sx * 3.6, 0.6, -0.5, 8); ear.scale.set(1.4, 0.5, 0.9); head.add(ear); }
+    const legs = []; for (const [x, z] of [[-4.2, 9], [4.2, 9], [-4.2, -9], [4.2, -9]]) { const lg = new T.Group(); lg.position.set(x, 12, z); lg.add(capsule(1.8, 1.4, 11, dark, 10)); ox.add(lg); legs.push(lg); }
+    const tail = cyl(0.4, 0.3, 9, dark, 0, 15, -14, 5); tail.rotation.x = 0.4; ox.add(tail);
+    // yoke and pole
+    ox.add(box(16, 1.6, 1.6, woodHM(16, 2), 0, 25, 13)); const pole = box(1.4, 1.4, 22, woodHM(22, 2), 0, 14, -4); body.add(pole);
+    // the cart: bed, sides, two big wheels, and a load of stone
+    body.add(box(18, 2.2, 22, woodHM(22, 4), 0, 11, -18)); for (const sx of [-1, 1]) body.add(box(1.2, 5, 22, woodHM(22, 5), sx * 8.6, 14, -18)); body.add(box(18, 5, 1.2, woodHM(18, 5), 0, 14, -29));
+    const wheels = []; for (const sx of [-1, 1]) { const w = new T.Group(); w.position.set(sx * 10.5, 8, -18); const d = cyl(8, 8, 1.8, woodHM(14, 4), 0, 0, 0, 18); d.rotation.z = Math.PI / 2; w.add(d); const rim = mesh(new T.TorusGeometry(8, 0.6, 6, 22), iron, 0, 0, 0); rim.rotation.y = Math.PI / 2; w.add(rim); for (let k = 0; k < 3; k++) { const sp = box(1.9, 15, 0.8, std('#3e2a18'), 0, 0, 0); sp.rotation.x = k * Math.PI / 3; w.add(sp); } body.add(w); wheels.push(w); }
+    const load = new T.Group(); for (let i = 0; i < 8; i++) load.add(box(5 + (i % 3), 4, 5, stoneM(5, 4), -5 + (i % 3) * 5, 15 + Math.floor(i / 3) * 3.6, -24 + (i % 2) * 8)); body.add(load);
+    const driver = personModel({ kind: 'unit', type: 'civ', team: 'player', pal: PAL.civ, skin: '#c98d5e', hair: '#3a2414', seed: 4, look: { beard: true, longHair: false, w: 1, h: 1 } }); driver.root.scale.setScalar(0.85); driver.root.position.set(-12, 0, 4); body.add(driver.root);
+    root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    const mats = []; root.traverse(o => { if (o.isMesh && o.material.emissive && !mats.includes(o.material)) mats.push(o.material); });
+    return { root, body, wheels, crew: [driver], oxLegs: legs, load, mats, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2, ram: true, machine: 'oxcart' };
   }
   function catapultModel(u) {
     // a wheeled throwing engine: timber bed, two uprights with a padded crossbar, twisted-rope bundle and a long arm with a sling bowl
@@ -4821,7 +4961,7 @@ const R3D = (() => {
     if (ghostGeos[type]) return ghostGeos[type];
     const W = new T.Color(1, 1, 1), parts = [], P = (geo, m) => parts.push({ geo, m, color: W });
     const rot = (rx, rz, x, y, z) => new T.Matrix4().makeRotationFromEuler(new T.Euler(rx, 0, rz)).setPosition(x, y, z);
-    if (type === 'catapult' || type === 'ballista') { P(new T.BoxGeometry(28, 16, 50), M4(0, 10, 0)); P(new T.BoxGeometry(22, 30, 6), M4(0, 26, 6)); }
+    if (type === 'catapult' || type === 'ballista' || type === 'oxcart') { P(new T.BoxGeometry(28, 16, 50), M4(0, 10, 0)); P(new T.BoxGeometry(22, 30, 6), M4(0, 26, 6)); }
     else if (type === 'ram') { P(new T.BoxGeometry(30, 32, 52), M4(0, 22, 0)); P(new T.CylinderGeometry(2, 22, 16, 4), M4(0, 46, 0, 1, 1, 1.7, Math.PI / 4)); P(new T.CylinderGeometry(3.6, 3.6, 18, 8), rot(Math.PI / 2, 0, 0, 22, 32)); }
     else {
       P(new T.CylinderGeometry(5.0, 4.3, 15, 12), M4(0, 25.5, 0, 1, 1, 0.7));          // chest and belly
@@ -4913,11 +5053,20 @@ const R3D = (() => {
     } else if (u.type === 'archer') {
       if (a > 0 || u.order === 'attack') { fL = 1.55; bL = 0; fR = 1.45; bR = 1.2 - (a > 0 && a < 0.55 ? ease(a / 0.55) * 0.6 : 0); }
     } else if (u.type === 'civ') {
-      const type = (u.order === 'build' || u.order === 'craft') ? 'build' : u.task ? (u.task.type === 'wood' ? 'wood' : 'food') : (u.carry > 0 ? (u.carryType === 'wood' ? 'wood' : 'food') : null), working = u.sub === 'work' && (u.order === 'gather' || u.order === 'build' || u.order === 'craft');
-      if ((type === 'wood' || type === 'build') && working && a > 0) { fR = a < 0.5 ? lerp(0.5, -2.1, ease(a / 0.5)) : lerp(-2.1, 1.5, ease(Math.min(1, (a - 0.5) / 0.25))); bR = 0.2; }
+      const type = gearOf(u), working = u.sub === 'work' && (u.order === 'gather' || u.order === 'build' || u.order === 'craft');
+      const loaded = u.carry > 0, pushing = type === 'stone' && loaded && !working;
+      if ((type === 'wood' || type === 'build' || type === 'stone') && working && a > 0) { fR = a < 0.5 ? lerp(0.5, -2.1, ease(a / 0.5)) : lerp(-2.1, 1.5, ease(Math.min(1, (a - 0.5) / 0.25))); bR = 0.2; }
       else if (type === 'food' && working && a > 0) fR = 1.0 + Math.sin(a * Math.PI * 2) * 0.45;
-      const t = md.tools; t.axe.visible = type === 'wood'; t.hammer.visible = type === 'build'; t.basket.visible = type === 'food';
-      t.logs.visible = u.carry > 0 && u.carryType === 'wood'; t.pack.visible = u.carry > 0 && u.carryType !== 'wood'; t.berries.visible = u.carry > 0 && u.carryType === 'food';
+      else if (pushing) { fR = 0.55; bR = 0.15; fL = 0.55; bL = 0.15; }
+      else if (type === 'wood' && loaded && !working) { fR = 2.6; bR = 1.9; }   // hand steadying the logs on the shoulder
+      else if (type === 'grain' && working && a > 0) fR = 0.9 + Math.sin(a * Math.PI * 2) * 0.5;
+      const t = md.tools;
+      t.axe.visible = type === 'wood' && !(loaded && !working); t.hammer.visible = type === 'build'; t.basket.visible = type === 'food';
+      t.pick.visible = type === 'stone' && !pushing; t.sickle.visible = type === 'grain' && !(loaded && !working);
+      t.barrow.visible = type === 'stone'; t.stones.visible = loaded && (u.carryType === 'stone' || u.carryType === 'iron'); t.barrowWheel.rotation.x = (u.walkPhase || 0) * 0.8;
+      if (type === 'stone' && working) t.barrow.position.set(-9, 0, 4); else t.barrow.position.set(0, 0, 9);
+      t.logs.visible = loaded && u.carryType === 'wood'; t.sack.visible = loaded && (u.carryType === 'hops' || u.carryType === 'wheat' || u.carryType === 'flour');
+      t.pack.visible = loaded && !['wood', 'food', 'hops', 'wheat', 'flour', 'stone', 'iron'].includes(u.carryType); t.berries.visible = loaded && u.carryType === 'food';
     }
     // resting poses, blended in and out
     const k = u.poseK || 0, pose = u.pose;
@@ -4954,7 +5103,7 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && outlinesOn && behindStructure(u);
       seen.add(u.id);
       const y = heightAt(u.x, u.y);
@@ -4971,6 +5120,7 @@ const R3D = (() => {
       const sc = u.look ? u.look.h * (u.look.s || 1) : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
       if (md.ram) {
         const a = u.attackAnim;
+        if (md.oxLegs) { md.oxLegs.forEach((l, i) => l.rotation.x = u.moving ? Math.sin(u.walkPhase * 1.2 + (i % 3 ? Math.PI : 0)) * 0.45 : 0); md.load.visible = u.carry > 0; }
         if (md.arm) { const k = machineArm(u); md.arm.rotation.x = lerp(-0.32, -1.7, k); md.stone.visible = !(a > 0 && a / u.animDur >= 0.52); }
         if (md.bolt) { const fired = a > 0 && a / u.animDur >= 0.45; md.bolt.visible = !fired; const ps = md.string.attributes.position; ps.setZ(1, fired ? 9 : 2); ps.needsUpdate = true;
           if (u.target && alive(u.target)) { const tx = u.target.x, tz = u.target.y0 !== undefined ? (u.target.y0 + u.target.y1) / 2 : u.target.y; md.bow.rotation.x = -Math.min(0.25, Math.hypot(tx - u.x, tz - u.y) / 3000); } }
@@ -5043,6 +5193,7 @@ const R3D = (() => {
     for (const [id, md] of bModels) if (!seen.has(id)) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(id); }
   }
   function syncScenery() {
+    rocks.forEach((r, i) => { if (r.gone && !r.hid3) { r.hid3 = true; rockMesh.setMatrixAt(i, new T.Matrix4().makeScale(0, 0, 0)); rockMesh.instanceMatrix.needsUpdate = true; } });
     for (const tl of treeList) if (tl.t.gone && !tl.hidden) { tl.hidden = true; const z = new T.Matrix4().makeScale(0, 0, 0); tl.crown.setMatrixAt(tl.i, z); tl.trunk.setMatrixAt(tl.i, z); tl.crown.instanceMatrix.needsUpdate = tl.trunk.instanceMatrix.needsUpdate = true; }
     for (const st of stumps) if (!stumpSeen.has(st)) { stumpSeen.add(st); const s = cyl(3.2 * st.s, 3.8 * st.s, 5, woodVM(6, 5), st.x, heightAt(st.x, st.y) + 2.5, st.y + 4, 8); scene.add(s); }
     for (const b of bushes) {
@@ -5146,6 +5297,8 @@ const R3D = (() => {
     if (best) return best;
     bd = 30;
     for (const t of trees) { const p = project(t.c * TILE + 16, 40 * t.s, t.r * TILE + 16); const d = Math.hypot(p.x - sx, p.y - sy); if (d < bd * t.s) { bd = d; best = t; } }
+    if (best) return best;
+    bd = 26; for (const r of rocks) { if (r.iron || r.gone) continue; const p = project(r.x, 6 * r.s, r.y - 6); const d = Math.hypot(p.x - sx, p.y - sy); if (d < bd) { bd = d; best = r; } }
     return best;
   }
   // ---------- overlay drawn over the 3D view: rings, bars, labels ----------
@@ -5251,7 +5404,7 @@ function setRallyAt(sx, sy) { const w = toWorld(sx, sy); if (!w || w.x < 20 || w
 function rallyButtons() { document.getElementById('rallyArmy').classList.toggle('on', settingRally === 'army'); document.getElementById('rallyTown').classList.toggle('on', settingRally === 'town'); }
 document.getElementById('rallyArmy').onclick = () => startRally('army');
 document.getElementById('rallyTown').onclick = () => startRally('town');
-document.getElementById('sendRally').onclick = () => { const rp = rallyFor('sword'), sold = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'civ' && u.type !== 'ram' && !u.onWall); if (!sold.length) return; commandMove(sold, rp.x, rp.y); showBanner(`${sold.length} soldiers are marching to the rally point.`, 2.5); };
+document.getElementById('sendRally').onclick = () => { const rp = rallyFor('sword'), sold = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'civ' && !isMachine(u) && !u.onWall); if (!sold.length) return; commandMove(sold, rp.x, rp.y); showBanner(`${sold.length} soldiers are marching to the rally point.`, 2.5); };
 function goHome() { const k = playerKeep(); if (k) { if (R3D.active) R3D.resetView(); centerOn(k.x + 40, k.y - 20); } }
 (function camButtons() {
   const hold = (id, dir) => { const b = document.getElementById(id); let t0 = 0, timer = null;
