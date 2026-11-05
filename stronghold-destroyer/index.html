@@ -24,6 +24,10 @@
   #btnMenu{margin-left:6px;padding:5px 12px;font-size:15px}
   #btnPause{margin-left:auto;padding:5px 12px;font-size:15px;white-space:nowrap}
   #btnPause.on{background:linear-gradient(#bff5c4,#6fc27a);outline:3px solid #9fe8a8}
+  #leftNote{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;background:rgba(60,14,10,.92);border:1px solid #ff9d86;border-radius:12px;padding:8px 12px;font-size:16px;color:#fff0e6;max-width:86%}
+  #leftNote[hidden]{display:none}
+  #leftWhy{font-size:14px;padding:4px 12px}
+  #leftNote .why2{display:block;font-size:14px;color:#ffd9cf;margin-top:4px}
   #pauseNote{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
     background:rgba(16,11,7,.86);border:1px solid rgba(214,170,90,.8);border-radius:14px;padding:16px 26px;font-size:17px;color:#f3ead7;pointer-events:auto;max-width:80%}
   #pauseNote[hidden]{display:none}
@@ -203,6 +207,7 @@
 <div id="view">
   <canvas id="game"></canvas>
   <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
+  <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="sm" id="leftClose">&times;</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="pick"><div class="wrap">
     <h1>CHOOSE YOUR CIVILIZATION</h1>
@@ -255,6 +260,9 @@
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
     <p><b>Running a workplace:</b> click any hut, farm, mine or workshop to see its status, workers, what it makes and how fast, and what it has made so far. Add workers there (up to 2 at huts and farms, 3 at other industries); each one adds the same again to its output. Remove a worker, or put the building to sleep with Z (press Z again to wake it), to free people: they go gathering, and when your houses are full, training a soldier calls up a free civilian. Civilians without a building job gather food and wood by themselves (up to 5 at one bush or tree), and every few minutes a worker takes a 20 to 30 second break by the fire.</p>
+    <p><b>Knights and macemen:</b> the Blacksmith (click it) can make swords, maces or knight armor from iron; iron mines stand on the red-and-black iron ground. A Maceman needs a mace and 10 gold; a Knight needs a sword, armor and 20 gold (leather comes by trade). Knights are hard to hurt: only knights, kings, ballistas and trebuchets wound them fully. Up to five knights guard your King first; then knights, macemen and spearmen guard tower doors.</p>
+    <p><b>Towers and engines:</b> a Lookout Tower is tall and slim with its own stairs: three archers on top see and shoot far, and two guards hold its door. A Round Tower carries a Ballista or a Trebuchet (click it to mount one); the Trebuchet throws stones farthest of all. Click a tower engine, ballista or trebuchet to Stop or Continue its fire.</p>
+    <p><b>Your people:</b> click anyone and they tell you what they are doing. Anything waiting to be built gets builders at once. If a citizen leaves, press Why? to see the reasons; a feast, a tavern, a house of prayer or a full granary lifts spirits at once and for a while they will not fall, and when mood rises, people who left come back.</p>
     <p><b>Stores and gear:</b> click a Stockpile, Granary, Armory or your Keep to see exactly what you hold. Workers carry the right gear from the moment they are given a job: an axe, and logs on the shoulder, for wood; a basket for berries; a sickle and a sack for wheat and hops; a pickaxe and a wheelbarrow for stone. Grey rocks can be quarried by hand for stone (right-click or tap one with a civilian selected), and every Quarry gets an ox cart that hauls its cut stone to your stockpile.</p>
     <p><b>Workers:</b> every workplace (hut, farm, mine, workshop) gets a worker by itself as soon as it is built: an idle civilian, or if none is idle, a gatherer is called over. Send a second civilian to it (select, then right-click or tap the building) and it makes twice as much. Workshops grow skilled with use: every few batches they need 5% less material, down to half. Stockpiles show the wood, stone and goods you really have. Stockpiles and Granaries are closer places to carry wood and food. People with no job wait at the campfire. A direct order takes a civilian off their job.</p>
     <p><b>Industry:</b> hop farms, breweries and taverns make ale, which lifts mood. Iron mines sit beside rusty iron rocks. Bowyers, spear-makers and smithies make weapons for the armory; every soldier needs a weapon from the armory plus 10 gold to train. Make weapons in the workshops over time, or buy them in the Army tab once you have an armory (sword 40 gold, spear 20, bow 30). You start with 2 spears and 2 bows.</p>
@@ -308,21 +316,28 @@
         <button class="bb ib" data-b="highwall"><canvas data-icon="b:highwall"></canvas>High Wall<small>6 stone each</small><span class="why"></span></button>
         <button class="bb ib" data-b="stairs"><canvas data-icon="b:stairs"></canvas>Stairs<small>4 stone &middot; climb high walls</small><span class="why"></span></button>
         <button class="bb ib" data-b="stower"><canvas data-icon="b:stower"></canvas>Stone Tower<small>60 stone &middot; 20 wood</small><span class="why"></span></button>
+        <button class="bb ib" data-b="lookout"><canvas data-icon="b:lookout"></canvas>Lookout Tower<small>50 stone &middot; 40 wood &middot; stairs built in</small><span class="why"></span></button>
+        <button class="bb ib" data-b="roundtower"><canvas data-icon="b:roundtower"></canvas>Round Tower<small>160 stone &middot; 60 wood &middot; 50 gold &middot; carries an engine</small><span class="why"></span></button>
         <button class="bb ib" data-b="greattower"><canvas data-icon="b:greattower"></canvas>Great Tower<small>120 stone &middot; 40 wood &middot; 30 gold</small><span class="why"></span></button>
       </div>
       <button class="tab" data-tab="army" title="Army (key 3)" aria-expanded="false"><span class="tl">Army</span><span class="key">3</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="army">
         <button class="tb ib" data-k="sword"><canvas data-icon="u:sword"></canvas>Swordsman<small>1 sword &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="spear"><canvas data-icon="u:spear"></canvas>Spearman<small>1 spear &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="maceman"><canvas data-icon="u:maceman"></canvas>Maceman<small>1 mace &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="knight"><canvas data-icon="u:knight"></canvas>Knight<small>sword &middot; armor &middot; 20 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>1 bow &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="catapult"><canvas data-icon="u:catapult"></canvas>Catapult<small>150 wood &middot; 30 stone &middot; 40 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="tb ib" data-k="trebuchet"><canvas data-icon="u:trebuchet"></canvas>Trebuchet<small>220 wood &middot; 40 stone &middot; 80 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="ballista"><canvas data-icon="u:ballista"></canvas>Ballista<small>110 wood &middot; 50 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <span id="queue"></span>
         <div class="rally"><button id="rallyArmy" title="Choose where newly trained soldiers gather">&#9873; Army rally point</button><button id="rallyTown" title="Choose where new civilians and rams gather">&#9873; Town rally point</button></div>
         <div class="rally"><button id="sendRally" title="Send every soldier to the army rally point">Send army to rally point</button></div>
         <button class="wb ib" data-w="sword"><canvas data-icon="w:sword"></canvas>Buy Sword<small>40 gold</small><span class="why"></span></button>
         <button class="wb ib" data-w="spear"><canvas data-icon="w:spear"></canvas>Buy Spear<small>20 gold</small><span class="why"></span></button>
+        <button class="wb ib" data-w="mace"><canvas data-icon="w:sword"></canvas>Buy Mace<small>30 gold</small><span class="why"></span></button>
+        <button class="wb ib" data-w="armor"><canvas data-icon="w:sword"></canvas>Buy Armor<small>70 gold</small><span class="why"></span></button>
         <button class="wb ib" data-w="bow"><canvas data-icon="w:bow"></canvas>Buy Bow<small>30 gold</small><span class="why"></span></button>
         <span id="armoryInfo" style="font-size:14px;color:#d9c9a3;padding:2px 4px"></span>
       </div>
@@ -332,7 +347,7 @@
         <div class="grp"><span class="tl">Taxes</span><div class="row"><button class="rb" data-t="0">None</button><button class="rb" data-t="1">Low</button><button class="rb" data-t="2">High</button></div></div>
         <button class="bb ib" data-b="garden"><canvas data-icon="b:garden"></canvas>Garden<small>20 wood &middot; 10 gold &middot; happier, slower</small><span class="why"></span></button>
         <button class="bb ib" data-b="stocks"><canvas data-icon="b:stocks"></canvas>Stocks<small>15 wood &middot; harder work, unhappier</small><span class="why"></span></button>
-        <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +15 mood</small></button>
+        <button class="bb ib" id="feast"><canvas data-icon="r:feast"></canvas>Feast<small>50 gold &middot; +25 mood</small></button>
       </div>
       <button class="tab" data-tab="industry" title="Industry (key 5)" aria-expanded="false"><span class="tl">Industry</span><span class="key">5</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="industry">
@@ -343,10 +358,10 @@
         <button class="bb ib" data-b="brewery"><canvas data-icon="b:brewery"></canvas>Brewery<small>50 wood &middot; hops to ale</small><span class="why"></span></button>
         <button class="bb ib" data-b="tavern"><canvas data-icon="b:tavern"></canvas>Tavern<small>60 wood &middot; serves ale</small><span class="why"></span></button>
         <button class="bb ib" data-b="quarry"><canvas data-icon="b:quarry"></canvas>Quarry<small>40 wood &middot; by grey rock</small><span class="why"></span></button>
-        <button class="bb ib" data-b="ironmine"><canvas data-icon="b:ironmine"></canvas>Iron Mine<small>40 wood &middot; by iron rock</small><span class="why"></span></button>
+        <button class="bb ib" data-b="ironmine"><canvas data-icon="b:ironmine"></canvas>Iron Mine<small>40 wood &middot; on red iron ground</small><span class="why"></span></button>
         <button class="bb ib" data-b="bowyer"><canvas data-icon="b:bowyer"></canvas>Bowyer<small>40 wood &middot; wood to bows</small><span class="why"></span></button>
         <button class="bb ib" data-b="poleturner"><canvas data-icon="b:poleturner"></canvas>Spear-maker<small>40 wood &middot; wood to spears</small><span class="why"></span></button>
-        <button class="bb ib" data-b="smithy"><canvas data-icon="b:smithy"></canvas>Smithy<small>50 wood &middot; iron to swords</small><span class="why"></span></button>
+        <button class="bb ib" data-b="smithy"><canvas data-icon="b:smithy"></canvas>Blacksmith<small>50 wood &middot; iron to swords, maces, armor</small><span class="why"></span></button>
         <button class="bb ib" data-b="armory"><canvas data-icon="b:armory"></canvas>Armory<small>50 wood &middot; stores weapons</small><span class="why"></span></button>
       </div>
   </div>
@@ -533,6 +548,12 @@ function paintTerrain() {
     g.beginPath(); g.ellipse(x, y, SR(0.6, 2.2), SR(0.5, 1.5), 0, 0, Math.PI * 2); g.fill();
   }
   }
+  // iron ground: rusty red and black earth around every iron deposit, so you can spot it
+  for (const r of rocks.filter(q => q.iron)) {
+    const gr = g.createRadialGradient(r.x, r.y - 6, 4, r.x, r.y - 6, 70); gr.addColorStop(0, 'rgba(70,24,14,0.85)'); gr.addColorStop(0.5, 'rgba(120,48,24,0.5)'); gr.addColorStop(1, 'rgba(120,48,24,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(r.x, r.y - 6, 70, 52, 0, 0, Math.PI * 2); g.fill();
+    for (let n = 0; n < 90; n++) { const a = srand() * 6.28, d = Math.sqrt(srand()) * 60; g.fillStyle = srand() < 0.5 ? 'rgba(28,14,10,0.6)' : 'rgba(176,82,40,0.55)'; g.fillRect(r.x + Math.cos(a) * d, r.y - 6 + Math.sin(a) * d * 0.75, SR(1, 3), SR(1, 2.4)); }
+  }
   // 4. stones
   for (let i = 0; i < 320; i++) {
     const x = SR(0, MW), y = SR(0, MH), r = SR(1.2, 3);
@@ -582,7 +603,12 @@ function paintTerrain() {
 }
 
 // ---------- unit definitions ----------
-const MACHINE = { ram: 1, catapult: 1, ballista: 1, oxcart: 1 };
+const MACHINE = { ram: 1, catapult: 1, ballista: 1, oxcart: 1, trebuchet: 1 };
+const SWORDISH = { sword: 1, knight: 1, maceman: 1, king: 1 };
+const swordish = u => !!SWORDISH[u.type];
+// knights (and kings) shrug off most blows: only knights, kings, ballistas and trebuchets hurt them fully
+const HEAVY_HITTERS = { knight: 1, king: 1, ballista: 1, trebuchet: 1 };
+function armorMul(t, a) { if (!t || !(t.type === 'knight' || t.type === 'king' || t.lord)) return 1; if (!a) return 0.25; if (HEAVY_HITTERS[a.type] || a.lord || a.engine === 'ballista' || a.engine === 'trebuchet') return 1; return 0.25; }
 const isMachine = u => !!(u && MACHINE[u.type]);
 const KINDS = {
   sword: { name: 'Swordsman', hp: 110, dmg: 13, range: 5, cd: 1.0, speed: 74, anim: 0.5, hitAt: 0.62 },
@@ -591,6 +617,10 @@ const KINDS = {
   catapult: { name: 'Catapult', hp: 260, dmg: 95, range: 430, cd: 6.5, speed: 26, anim: 1.3, hitAt: 0.5 },
   oxcart: { name: 'Ox Cart', hp: 180, dmg: 0, range: 0, cd: 1, speed: 46, anim: 0.6, hitAt: 2 },
   ballista: { name: 'Ballista', hp: 210, dmg: 46, range: 340, cd: 3.4, speed: 30, anim: 0.9, hitAt: 0.45 },
+  knight: { name: 'Knight', hp: 260, dmg: 22, range: 5, cd: 1.1, speed: 62, anim: 0.5, hitAt: 0.62 },
+  maceman: { name: 'Maceman', hp: 125, dmg: 18, range: 5, cd: 1.15, speed: 72, anim: 0.5, hitAt: 0.6 },
+  king: { name: 'Your King', hp: 600, dmg: 34, range: 6, cd: 1.0, speed: 60, anim: 0.5, hitAt: 0.62 },
+  trebuchet: { name: 'Trebuchet', hp: 320, dmg: 150, range: 640, cd: 9.5, speed: 18, anim: 1.6, hitAt: 0.5 },
   archer: { name: 'Archer', hp: 70, dmg: 9, range: 170, cd: 1.6, speed: 72, anim: 0.6, hitAt: 0.55 },
   civ: { name: 'Civilian', hp: 50, dmg: 0, range: 0, cd: 1, speed: 66, anim: 0.6, hitAt: 2 }
 };
@@ -625,6 +655,9 @@ function makeUnit(team, kind, x, y) {
   };
   if (kind === 'ram') u.radius = 16;
   if (kind === 'catapult' || kind === 'ballista' || kind === 'oxcart') u.radius = 17;
+  if (kind === 'trebuchet') u.radius = 21;
+  if (kind === 'knight') { u.pal = Object.assign({}, PAL[team], { helmet: '#d6dce2', plume: team === 'player' ? '#f0e6d0' : '#d23b2f' }); u.look = { beard: Math.random() < 0.5, longHair: false, w: 1.06, h: 1.03 }; }
+  if (kind === 'king') { u.pal = Object.assign({}, PAL[team], { helmet: '#e0b84e', plume: '#f0e6d0', shieldRim: '#e0b84e' }); u.look = { beard: true, longHair: true, w: 1.08, h: 1.0, s: 1.22 }; }
   if (kind === 'civ') u.pal = team === 'enemy' ? PAL.ecv : PAL.civ;
   else if (team === 'player') { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }
   units.push(u);
@@ -669,6 +702,7 @@ function placeIron() {
     if (!best) continue;
     setBlock(best.c, best.r, 1);
     rocks.push({ kind: 'rock', iron: true, x: best.x, y: best.y + 6, s: 1.35, seed: best.c * 0.37 });
+    for (const [dc, dr] of [[2, 1], [-1, 2], [1, -2]]) { const c = best.c + dc, r = best.r + dr; if (tileBlocked(c, r)) continue; setBlock(c, r, 1); rocks.push({ kind: 'rock', iron: true, x: c * TILE + 16, y: r * TILE + 22, s: 1.0 + (dc + dr) * 0.05, seed: c * 0.41 }); }
   }
 }
 function placePond() {
@@ -852,6 +886,7 @@ const isWall = t => t.kind === 'wall' || t.kind === 'gate' || t.kind === 'highwa
 const isHiddenWork = t => t.kind === 'pit';   // spike pits are not seen or targeted by the enemy
 function doHit(u) {
   const t = u.target;
+  if (u.holdFire) return;
   if (!alive(t) || edgeDist(u, t) > rangeOf(u) + 8) return;
   if (u.type === 'archer') { // loose an arrow; it lands a moment later
     const c = hitCenter(t), x0 = u.x + u.facing * 8, y0 = u.y - 26;
@@ -859,8 +894,8 @@ function doHit(u) {
     AudioSys.play('bow', u.x, u.y); AudioSys.combat(u.x, u.y);
     return;
   }
-  if (u.type === 'catapult' || u.type === 'ballista') {
-    const c = hitCenter(t), st = u.type === 'catapult';
+  if (u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') {
+    const c = hitCenter(t), st = u.type === 'catapult' || u.type === 'trebuchet';
     const ax = c.x + (st && t.x0 === undefined ? RR(-24, 24) : 0), ay = c.y + (st && t.x0 === undefined ? RR(-14, 14) : 0);
     const x0 = u.x + u.facing * (st ? -6 : 14), y0 = u.y - (st ? 44 : 30), dist = Math.hypot(ax - x0, ay - y0);
     fire({ kind: st ? 'stone' : 'bolt', x0, y0, x1: ax, y1: ay, t: 0, dur: dist / (st ? 300 : 620) + (st ? 0.5 : 0.08), h: st ? Math.min(220, 60 + dist * 0.35) : 12, target: t, from: u, dmg: Math.round(u.dmg * RR(0.9, 1.1)) });
@@ -869,11 +904,11 @@ function doHit(u) {
     return;
   }
   if (u.type === 'ram' && t.x0 === undefined) return;
-  let dmg = Math.round(u.dmg * RR(0.85, 1.15) * (u.team === 'enemy' && lordNear(u) ? 1.2 : 1));
+  let dmg = Math.round(u.dmg * RR(0.85, 1.15) * (u.team === 'enemy' && lordNear(u) ? 1.2 : 1) * armorMul(t, u));
   if (isWall(t) && u.type !== 'ram' && t.kind !== 'moat') dmg = Math.max(1, Math.round(dmg * WALL_RESIST));
   if (t.kind === 'moat' && u.type === 'ram') return;
   t.hp -= dmg; t.flash = 1;
-  AudioSys.play(u.type === 'ram' ? 'boom' : t.x0 !== undefined ? (t.kind === 'tower' || t.kind === 'house' || t.kind === 'gate' ? 'woodHit' : 'stoneHit') : u.type === 'sword' ? 'clash' : 'stab', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
+  AudioSys.play(u.type === 'ram' ? 'boom' : t.x0 !== undefined ? (t.kind === 'tower' || t.kind === 'house' || t.kind === 'gate' ? 'woodHit' : 'stoneHit') : swordish(u) ? 'clash' : 'stab', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
   const c = hitCenter(t);
   if (t.x0 !== undefined) {
     t.wobble = 1;
@@ -924,6 +959,7 @@ function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
   AudioSys.play(t.x0 !== undefined ? 'collapse' : isMachine(t) ? 'collapse' : 'fall', t.x, t.y);
   if (t.team === 'player' && t.kind === 'unit' && !isMachine(t) && started) mood = Math.max(0, mood - 3);
+  if (t.type === 'king' && t.team === 'player') { mood = Math.max(0, mood - 25); showBanner('<b>Your King has fallen!</b> Your people are shaken (mood -25). Guard your keep.', 6); AudioSys.ui('warn'); }
   selection.delete(t);
   if (t.kind === 'moat') { for (let i = 0; i < 10; i++) spawn('dust', t.x + RR(-14, 14), t.y - 8, t.y); floatText(t.x, t.y - 30, 'Moat filled in', '#ffb38a'); }
   if (t.x0 !== undefined) {
@@ -1006,7 +1042,7 @@ function commandDeposit(list) {
 }
 // archers can climb onto your walls and towers: farther shots, half damage from arrows, out of reach of blades
 const WALL_INFO = { wall: { posts: 2, e2: 30, e3: 31.5, rng: 1.35 }, gtower: { posts: 4, e2: 92, e3: 96, rng: 1.35 }, highwall: { posts: 2, e2: 88, e3: 97, rng: 1.5 },
-  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 } };
+  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, lookout: { posts: 3, e2: 196, e3: 212, rng: 1.8 }, roundtower: { posts: 6, e2: 136, e3: 150, rng: 1.6 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 } };
 const WALL_POSTS = Object.fromEntries(Object.entries(WALL_INFO).map(([k, v]) => [k, v.posts]));
 const elev2D = u => u.onWall ? WALL_INFO[u.onWall.kind].e2 : 0;
 const elev3D = u => u.onWall ? WALL_INFO[u.onWall.kind].e3 : 0;
@@ -1039,7 +1075,7 @@ function mountOn(u, b) {
   if (!post) { let bd = 220; for (const o of structures) if (canMount(o) && postsFree(o) > 0 && wallAccess(o)) { const d = edgeDist(u, o); if (d < bd) { bd = d; post = o; } } }
   if (!post) { u.order = 'idle'; return; }
   const k = WALL_POSTS[post.kind] - postsFree(post), cx = (post.x0 + post.x1) / 2, cy = (post.y0 + post.y1) / 2;
-  const off = post.kind === 'gtower' ? [[-9, -6], [9, -6], [-9, 8], [9, 8]][k] : post.kind === 'stower' ? [Math.cos(k * 1.256 + 0.6) * 15, Math.sin(k * 1.256 + 0.6) * 9 + 2]
+  const off = post.kind === 'lookout' ? [[-8, -4], [8, -4], [0, 8]][k] : post.kind === 'roundtower' ? [Math.cos(k * 1.05) * 28, Math.sin(k * 1.05) * 18 + 2] : post.kind === 'gtower' ? [[-9, -6], [9, -6], [-9, 8], [9, 8]][k] : post.kind === 'stower' ? [Math.cos(k * 1.256 + 0.6) * 15, Math.sin(k * 1.256 + 0.6) * 9 + 2]
     : post.kind === 'greattower' ? [[-28, -22], [0, -22], [28, -22], [-28, 0], [28, 0], [-28, 22], [0, 22], [28, 22]][k] : [[-7, 2], [7, 2]][k];
   u.onWall = post; u.x = cx + off[0]; u.y = cy + off[1]; u.order = 'idle'; u.path = []; u.moving = false;
   floatText(u.x, u.y - 60, 'On the wall', '#9fd8ff');
@@ -1140,12 +1176,13 @@ function ramBrain(u) {
 }
 // catapults look for walls and buildings first; ballistas look for soldiers first
 function siegeTarget(u, reach) {
-  const wantB = u.type === 'catapult';
+  const wantB = u.type === 'catapult' || u.type === 'trebuchet';
   let b = null, bd = reach, m = null, md = reach;
-  for (const e of enemiesOf(u.team)) { if (e.onWall && u.type === 'catapult') continue; const d = edgeDist(u, e); if (e.x0 !== undefined) { if (e.done !== false && d < bd) { bd = d; b = e; } } else if (d < md) { md = d; m = e; } }
+  for (const e of enemiesOf(u.team)) { if (e.onWall && (u.type === 'catapult' || u.type === 'trebuchet')) continue; const d = edgeDist(u, e); if (e.x0 !== undefined) { if (e.done !== false && d < bd) { bd = d; b = e; } } else if (d < md) { md = d; m = e; } }
   return wantB ? (b || m) : (m || b);
 }
 function siegeBrain(u) {
+  if (u.holdFire) { if (u.order === 'attack') { u.order = 'idle'; u.target = null; } u.moving = u.order === 'move'; return true; }
   if (u.order === 'attack' && !alive(u.target)) { u.target = null; u.order = u.raider ? 'raid' : 'idle'; u.path = []; }
   if (u.order === 'idle' || (u.order === 'raid' && !(u.route && u.route.length))) {
     const t = siegeTarget(u, u.team === 'player' ? u.range + 10 : u.range + 60);
@@ -1172,7 +1209,8 @@ function cartBrain(u, dt) {
 function playerBrain(u) {
   if (u.type === 'oxcart') { cartBrain(u, frameDt); return; }
   if (u.type === 'ram') { ramBrain(u); return; }
-  if (u.type === 'catapult' || u.type === 'ballista') { siegeBrain(u); return; }
+  if (u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') { siegeBrain(u); return; }
+  if (u.type === 'king') { kingBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
@@ -1187,7 +1225,7 @@ function enemyBrain(u, dt) {
   u.think -= dt;
   if (u.type === 'civ') { enemyWorker(u, dt); return; }
   if (u.type === 'ram') { ramBrain(u); return; }
-  if ((u.type === 'catapult' || u.type === 'ballista') && !(u.order === 'raid' && u.route && u.route.length)) { siegeBrain(u); return; }
+  if ((u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') && !(u.order === 'raid' && u.route && u.route.length)) { siegeBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = aggro(u, 170);
     if (n) { u.target = n; u.repath = 0; }
@@ -1350,7 +1388,7 @@ function civBrain(u, dt) {
 function restPoseFor(u) {
   const r = (u.seed * 7.31) % 1;
   if (u.onWall) return 'crouch';
-  if (u.type === 'civ') return 'sit';
+  if (u.type === 'civ') { u.stool = ((u.seed || 0) * 11.3) % 1 < 0.35; return 'sit'; }
   if (u.type === 'archer') return r < 0.4 ? 'prone' : 'crouch';
   return r < 0.4 ? 'sit' : r < 0.75 ? 'kneel' : 'crouch';
 }
@@ -1366,6 +1404,44 @@ function updateRest(u, dt) {
     let f = null, fd = 150; for (const fi of fires) { const d = Math.hypot(fi.x - u.x, fi.y - u.y); if (d < fd) { fd = d; f = fi; } }
     u.restFace = f ? Math.atan2(f.x - u.x, f.y - u.y) : null;
   }
+}
+function kingBrain(u) {
+  const k = playerKeep();
+  if (u.order === 'attack' && !alive(u.target)) { u.order = 'idle'; u.target = null; u.path = []; }
+  if (u.order === 'idle') {
+    u.moving = false;
+    const n = nearestEnemy(u, 130); if (n && n.x0 === undefined) { u.order = 'attack'; u.target = n; u.repath = 0; return; }
+    if (k && Math.hypot(u.x - k.x, u.y - (k.y1 + 30)) > 140) commandMove([u], k.x + RR(-30, 30), k.y1 + 30);
+  }
+}
+let guardT = 0;
+const GUARD_TOWERS = { lookout: 1, roundtower: 1 };
+function updateGuards(dt) {
+  guardT -= dt; if (guardT > 0) return; guardT = 1;
+  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall;
+  const king = units.find(u => u.type === 'king' && u.team === 'player' && !u.dead);
+  // up to five knights keep close by the king
+  const knights = units.filter(u => u.type === 'knight' && u.team === 'player' && !u.dead);
+  let kg = knights.filter(u => u.guardOf === king && king).length;
+  for (const u of knights) { if (!king || kg >= 5) break; if (!u.guardOf && free(u)) { u.guardOf = king; kg++; floatText(u.x, u.y - 60, 'I guard the King!', '#9fe8a8'); } }
+  // every lookout and round tower wants two at the door: knights, macemen or spearmen
+  for (const t of structures) {
+    if (t.dead || t.team !== 'player' || !GUARD_TOWERS[t.kind] || t.done === false) continue;
+    let have = units.filter(u => !u.dead && u.guardOf === t).length;
+    for (const u of units) { if (have >= 2) break; if ((u.type === 'knight' || u.type === 'maceman' || u.type === 'spear') && !u.guardOf && free(u)) { u.guardOf = t; have++; floatText(u.x, u.y - 60, 'I will guard the tower door', '#9fe8a8'); } }
+    // and at least one archer on top
+    if (units.filter(o => o.onWall === t && !o.dead).length === 0) { const a = units.find(o => o.type === 'archer' && o.team === 'player' && free(o)); if (a) { commandMount([a], t); a.cmdT = -99; } }
+  }
+  // guards walk back to their post when idle
+  for (const u of units) {
+    if (u.dead || !u.guardOf || u.order !== 'idle') continue;
+    const g = u.guardOf; if (g.dead) { u.guardOf = null; continue; }
+    const gx = g.x0 !== undefined ? g.x + (u.id % 2 ? -14 : 14) : g.x + (u.id % 5 - 2) * 18, gy = g.x0 !== undefined ? g.y + 14 : g.y + 26;
+    if (Math.hypot(u.x - gx, u.y - gy) > 40) commandMove([u], gx, gy);
+  }
+}
+function spawnKing() {
+  const k = keep; const u = makeUnit('player', 'king', k.x + 10, k.y1 + 30); u.name = 'Your King'; return u;
 }
 function updateUnit(u, dt) {
   if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
@@ -1464,7 +1540,7 @@ function armTo(g, sx, sy, hx, hy, sleeve, skin) {
   g.fillStyle = skin; g.beginPath(); g.arc(hx, hy, 1.3, 0, Math.PI * 2); g.fill();
 }
 function drawTorso(g, u, P, hipY, sx, sy, lk) {
-  const w = lk.w, pal = u.pal, soldier = u.type === 'sword' || u.type === 'spear';
+  const w = lk.w, pal = u.pal, soldier = (swordish(u) || u.type === 'spear');
   const base = soldier ? MAIL : pal.tunic, bottom = soldier ? hipY + 1 : hipY + 3.8;
   const path = () => {
     g.beginPath(); g.moveTo(sx - 4.2 * w, sy + 0.8);
@@ -1499,7 +1575,7 @@ function drawTorso(g, u, P, hipY, sx, sy, lk) {
   g.fillStyle = P('#c9a24a'); g.fillRect(1.0, hipY - 2.9, 1.2, 1.3);
 }
 function drawHead(g, u, P, hx, hy, lk) {
-  const pal = u.pal, skin = u.skin, hair = u.hair || '#2a1a10', soldier = u.type === 'sword' || u.type === 'spear';
+  const pal = u.pal, skin = u.skin, hair = u.hair || '#2a1a10', soldier = (swordish(u) || u.type === 'spear');
   if (!soldier) { // hair behind the head
     g.fillStyle = P(hair); g.beginPath(); g.ellipse(hx - 0.5, hy - 0.4, 3.4, 3.6, 0, 0, Math.PI * 2); g.fill();
     if (lk.longHair) seg(g, hx - 2.3, hy - 0.5, hx - 2.9, hy + 4.4, 2.4, P(hair));
@@ -1592,7 +1668,7 @@ function drawPerson(g, u, time) {
   const moving = u.moving && !u.dead, ph = u.walkPhase;
   const bob = moving ? -Math.abs(Math.sin(ph)) * 0.9 : Math.sin(time * 2 + u.seed) * 0.3;
   const hipY = -12 + bob, sx = moving ? 0.7 : 0, sy = hipY - 10.2;
-  const soldier = u.type === 'sword' || u.type === 'spear';
+  const soldier = (swordish(u) || u.type === 'spear');
   const sleeve = P(soldier ? MAIL : pal.tunic), skin = P(u.skin);
   const a = u.attackAnim;
 
@@ -1621,7 +1697,7 @@ function drawPerson(g, u, time) {
   drawTorso(g, u, P, hipY, sx, sy, lk);
   seg(g, sx + 0.4, sy - 0.4, sx + 0.7, sy - 2, 2.2, skin);   // neck
   drawHead(g, u, P, sx + 0.9, sy - 4.6, lk);
-  if (u.type === 'sword') drawShield(g, u, P, sx + 4.3, sy + 7, true);
+  if (swordish(u)) drawShield(g, u, P, sx + 4.3, sy + 7, true);
   else if (u.type === 'spear') drawShield(g, u, P, sx + 4.3, sy + 6.6, false);
 
   // front arm and what it holds
@@ -1648,7 +1724,7 @@ function drawPerson(g, u, time) {
       g.fillStyle = P('#c0263a'); g.beginPath(); g.arc(-1, 0.4, 1.2, 0, Math.PI * 2); g.arc(1.4, 0.2, 1.2, 0, Math.PI * 2); g.fill();
     }
     g.restore();
-  } else if (u.type === 'sword') {
+  } else if (swordish(u)) {
     let ang;
     if (a > 0) {
       if (a < 0.42) ang = lerp(0.45, -2.35, ease(a / 0.42));
@@ -1766,7 +1842,7 @@ function drawOxCart(g, u, time) {
   g.fillStyle = P('#4a3018'); g.beginPath(); g.arc(-15, -6, 6, 0, Math.PI * 2); g.fill(); g.strokeStyle = P('#8a6a48'); g.lineWidth = 1; g.beginPath(); const an = ph * 0.6; g.moveTo(-15 + Math.cos(an) * 5, -6 + Math.sin(an) * 5); g.lineTo(-15 - Math.cos(an) * 5, -6 - Math.sin(an) * 5); g.stroke();
   g.restore();
 }
-function drawMachine(g, u, time) { if (u.type === 'oxcart') { drawOxCart(g, u, time); return; } if (u.type === 'catapult') drawCatapult(g, u, time); else if (u.type === 'ballista') drawBallista(g, u, time); else drawRam(g, u, time); }
+function drawMachine(g, u, time) { if (u.type === 'oxcart') { drawOxCart(g, u, time); return; } if (u.type === 'trebuchet') { g.save(); g.translate(u.x, u.y); g.scale(1.45, 1.45); g.translate(-u.x, -u.y); drawCatapult(g, u, time); g.restore(); return; } if (u.type === 'catapult') drawCatapult(g, u, time); else if (u.type === 'ballista') drawBallista(g, u, time); else drawRam(g, u, time); }
 function machineArm(u) {   // catapult arm angle: 0 = cocked back, 1 = thrown upright
   const a = u.attackAnim; if (!(a > 0)) return 0;
   const k = a / u.animDur; return k < 0.5 ? 0 : k < 0.58 ? ease((k - 0.5) / 0.08) : 1 - ease((k - 0.58) / 0.42);
@@ -2280,7 +2356,7 @@ let storeShown = null;
 const OUTPUT = { woodhut: 'wood', farm: 'food (crops)', wheatfarm: 'wheat', hopfarm: 'hops', quarry: 'stone' };
 function showSite(b) {
   storeShown = b; const p = document.getElementById('storePop'); if (b.dead) { p.hidden = true; storeShown = null; return; }
-  const n = staffOf(b), mx = maxStaff(b.kind), rc = CRAFT[b.kind], ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`;
+  const n = staffOf(b), mx = maxStaff(b.kind), rc = recipeOf(b), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`;
   const status = b.done === false ? 'Being built' : b.asleep ? 'Asleep (Z to wake)' : n ? `Working: ${n} ${n > 1 ? 'people' : 'person'}` : 'No workers yet';
   let html = ln('Status', status) + ln('Workers', `${n} of ${mx}`);
   if (rc) {
@@ -2292,14 +2368,16 @@ function showSite(b) {
   html += ln('Made so far', Math.floor(b.produced || 0));
   // the buttons are built once per building; only the figures above them refresh, so a click is never lost
   if (p.dataset.site !== String(b.id) || !document.getElementById('siteInfo')) {
-    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div><div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` +
+    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div><div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
       '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Workers you remove (or free by sleeping a building) go gathering, and can be called up as soldiers when your houses are full. Esc closes.</div>';
     p.dataset.site = String(b.id);
   }
+  if (b.kind === 'smithy') document.querySelectorAll('#storePop [data-site^="make:"]').forEach(x => x.classList.toggle('on', x.dataset.site === 'make:' + (b.make || 'sword')));
   document.getElementById('siteInfo').innerHTML = html; document.getElementById('siteSleep').textContent = b.asleep ? 'Wake (Z)' : 'Sleep (Z)'; p.hidden = false;
 }
 function siteAction(b, act) {
   if (!b || b.dead) return;
+  if (act.startsWith('make:')) { b.make = act.slice(5); for (const u of units) if (u.job === b) u.crafting = null; floatText(b.x, b.y - b.topH - 20, `Now making ${b.make === 'armor' ? 'knight armor' : b.make + 's'}`, '#9fe8a8'); AudioSys.ui('select'); showSite(b); return; }
   if (act === 'sleep') {
     b.asleep = !b.asleep;
     if (b.asleep) for (const u of units) if (u.job === b) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
@@ -2324,7 +2402,7 @@ function showStore(b) {
   let html = `<h3>${b.name.toUpperCase()}</h3>`;
   if (b.kind === 'stockpile' || b.kind === 'keep') html += ln('Wood', F(res.wood)) + ln('Stone', F(res.stone)) + ln('Iron', F(res.iron)) + ln('Hops', F(res.hops)) + ln('Wheat', F(res.wheat)) + ln('Flour', F(res.flour));
   if (b.kind === 'granary' || b.kind === 'keep') html += ln('Berries', F(foodKinds.berries)) + ln('Crops', F(foodKinds.crops)) + ln('Bread', F(foodKinds.bread)) + ln('Ale', F(res.ale));
-  if (b.kind === 'armory' || b.kind === 'keep') html += ln('Swords', res.sword) + ln('Spears', res.spear) + ln('Bows', res.bow);
+  if (b.kind === 'armory' || b.kind === 'keep') html += ln('Swords', res.sword) + ln('Maces', res.mace) + ln('Spears', res.spear) + ln('Bows', res.bow) + ln('Knight armor', res.armor);
   const q = structures.filter(o => o.kind === 'quarry' && o.team === 'player' && !o.dead && o.stock);
   if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));
   html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
@@ -2334,6 +2412,7 @@ function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.
 
 function issueAt(sx, sy) {
   const sel = selectedList().filter(u => u.type !== 'oxcart'); if (!sel.length) return false;
+  for (const u of sel) { u.cmdT = time; if (u.guardOf && u.type !== 'knight') u.guardOf = null; }
   AudioSys.ui('ack');
   for (const u of sel) if (u.type === 'civ') { u.job = null; u.manualT = time; }
   const w = toWorld(sx, sy), hit = pickScreen(sx, sy);
@@ -2435,10 +2514,11 @@ function touchTap(p) {
   if (isMine(hit)) {
     if (last && last.hit && now - last.t < 380 && Math.hypot(p.x - last.x, p.y - last.y) < 40 && last.hit.type === hit.type) { selectOnly(onScreenPlayers().filter(u => u.type === hit.type || (hit.type !== 'civ' && u.type !== 'civ' && !isMachine(u) && !isMachine(hit)))); return; }
     if (TOUCH.add) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); return; }
-    selectOnly([hit]); return;
+    selectOnly([hit]); talkTo(hit); return;
   }
   if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false && !selection.size) { showStore(hit); return; }
   if (hit && hit.team === 'player' && JOBS[hit.kind] && !selection.size) { showSite(hit); return; }
+  if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false && !selection.size) { showTower(hit); return; }
   if (selection.size) { issueAt(p.x, p.y); return; }
   document.getElementById('storePop').hidden = true; storeShown = null;
 }
@@ -2476,9 +2556,10 @@ function endPointer(e) {
       } else {
         const now = performance.now();
         if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
-        else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else selectOnly([hit]); }
+        else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else { selectOnly([hit]); talkTo(hit); } }
         else if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false) showStore(hit);
         else if (hit && hit.team === 'player' && JOBS[hit.kind]) showSite(hit);
+        else if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false) showTower(hit);
         else if (!hit && pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) && isField((pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) || {}).kind) && !selection.size) showSite(pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y));
         else if (!drag.shift) { selection.clear(); document.getElementById('storePop').hidden = true; storeShown = null; }
         lastClick = { t: now, x: p.x, y: p.y };
@@ -2564,7 +2645,7 @@ function updateHud() {
     moodRate: Math.round(moodRate), foes, raid: towerUp ? (raidCount === 0 ? 'Peace ' : '') + `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
   document.querySelectorAll('.tb').forEach(b => { const w = whyNotTrain(b.dataset.k); b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
   document.querySelectorAll('.wb').forEach(b => { const w = !hasArmory() ? 'build an armory' : res.gold < BUY[b.dataset.w] ? `need ${BUY[b.dataset.w] - Math.floor(res.gold)} more gold` : ''; b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
-  const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}` + (hasArmory() ? '' : ' · build an Armory to buy more');
+  const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.mace, 'mace')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}, ${res.armor} armor` + (hasArmory() ? '' : ' · build an Armory to buy more');
   document.querySelectorAll('.rb').forEach(b => b.classList.toggle('on', b.dataset.r !== undefined ? +b.dataset.r === ration : +b.dataset.t === tax));
   document.getElementById('feast').classList.toggle('off', res.gold < 50);
   document.querySelectorAll('.bb[data-b]').forEach(b => { const kb = b.dataset.b, d = BUILD[kb], lim = (kb === 'garden' || kb === 'stocks') && countOf(kb) >= 3; b.classList.toggle('off', !afford(d) || lim); const why = b.querySelector('.why'); if (why) { const l = lacking(d), need = l === 'wood' ? d.wood - Math.floor(res.wood) : l === 'stone' ? d.stone - Math.floor(res.stone) : (d.gold || 0) - Math.floor(res.gold); why.textContent = lim ? 'limit of 3 reached' : afford(d) ? '' : `need ${need} more ${l}`; } b.classList.toggle('on', !!placing && placing.kind === b.dataset.b); });
@@ -2731,7 +2812,7 @@ function spawnRaid() {
   for (let i = 0; i < n; i++) {
     const f = nearestFree(Math.floor((route.start[0] + RR(-30, 30)) / TILE), Math.floor((route.start[1] + RR(-30, 30)) / TILE));
     if (!f) continue;
-    const kind = raidCount >= 4 && i % 4 === 3 ? 'archer' : i % 2 ? 'spear' : 'sword';
+    const kind = raidCount >= 6 && i === 0 ? 'knight' : raidCount >= 4 && i % 4 === 3 ? 'archer' : raidCount >= 5 && i % 5 === 2 ? 'maceman' : i % 2 ? 'spear' : 'sword';
     const u = makeUnit('enemy', kind, f.c * TILE + 16 + RR(-6, 6), f.r * TILE + 16);
     u.raider = true; u.order = 'raid'; u.repath = 0; u.route = route.way.map(([x, y]) => ({ x: x + RR(-30, 30), y: y + RR(-30, 30) }));
   }
@@ -2777,7 +2858,7 @@ function updateTraps(dt) {
   }
 }
 function updateWar(dt) {
-  updateTraps(dt); updateLord();
+  updateTraps(dt); updateLord(); updateGuards(dt);
   alertCooldown -= dt;
   for (const s of structures) {
     if (s.dead || s.done === false || !s.range) continue;
@@ -2800,6 +2881,16 @@ function updateWar(dt) {
       } else s.archerT = 0.4;
     }
   }
+  for (const s of structures) {
+    if (s.dead || s.done === false || !s.engine || s.engineHold || s.team !== 'player') continue;
+    s.engineT = (s.engineT === undefined ? 2 : s.engineT) - dt; if (s.engineT > 0) continue;
+    const treb = s.engine === 'trebuchet', reach = (treb ? 720 : 460) * weatherRange(); let tgt = null, bd = reach;
+    for (const e of enemiesOf(s.team)) { if (treb ? false : e.x0 !== undefined) continue; if (e.kind === 'unit' && e.type === 'civ') continue; const d = Math.hypot(e.x - s.x, e.y - s.y) + (treb && e.x0 !== undefined ? -120 : 0); if (d < bd) { bd = d; tgt = e; } }
+    if (!tgt) { s.engineT = 0.6; continue; }
+    const c = hitCenter(tgt), x0 = s.x, y0 = s.y - s.topH - 10, dist = Math.hypot(c.x - x0, c.y - y0);
+    fire({ kind: treb ? 'stone' : 'bolt', x0, y0, x1: c.x + (treb && tgt.x0 === undefined ? RR(-20, 20) : 0), y1: c.y, t: 0, dur: dist / (treb ? 300 : 620) + (treb ? 0.6 : 0.08), h: treb ? Math.min(260, 80 + dist * 0.35) : 14, target: tgt, from: s, dmg: treb ? 150 : 46 });
+    AudioSys.play(treb ? 'boom' : 'bow', s.x, s.y - 100); s.engineT = treb ? 9 : 3.4;
+  }
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i]; a.t += dt;
     if (a.t < a.dur) continue;
@@ -2808,7 +2899,7 @@ function updateWar(dt) {
     if (a.kind === 'stone') {   // a catapult stone: crushes what it lands on and everyone close by
       const gy = t && t.x0 !== undefined ? t.y : a.y1 + 21;
       if (alive(t) && t.x0 !== undefined) { t.hp -= isWall(t) ? Math.round(a.dmg * 0.8) : a.dmg; t.flash = 1; t.wobble = 1; if (t.hp <= 0) kill(t); else reactToHit(t, a.from); }
-      for (const o of units) { if (o.dead || o.team === (a.from && a.from.team) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= Math.round(a.dmg * 0.55 * (1 - d / 46)); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
+      for (const o of units) { if (o.dead || o.team === (a.from && a.from.team) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= Math.round(a.dmg * 0.55 * (1 - d / 46) * armorMul(o, a.from)); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
       for (let k = 0; k < 10; k++) spawn('chip', a.x1, a.y1, gy); for (let k = 0; k < 6; k++) spawn('dust', a.x1 + RR(-16, 16), gy - 4, gy);
       AudioSys.play('stoneHit', a.x1, a.y1); AudioSys.play('boom', a.x1, a.y1); stuckStones.push({ x: a.x1 + RR(-6, 6), y: gy + 2, t: 0 });
       continue;
@@ -2823,7 +2914,7 @@ function updateWar(dt) {
     if (a.kind === 'bolt') { stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0, bolt: true }); continue; }
     if (alive(t) && t.kind === 'moat') continue;
     if (alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18)) {
-      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : t.onWall ? Math.round(a.dmg * 0.5) : a.dmg; t.flash = 1; t.lastHurt = time;
+      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : Math.round((t.onWall ? a.dmg * 0.5 : a.dmg) * armorMul(t, a.from)); t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
       if (t.x0 !== undefined) for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
       else for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18, t.y);
@@ -2839,6 +2930,8 @@ function updateWar(dt) {
 const RATIONS = [ { name: 'Lean', eat: 0.5, mood: -8 }, { name: 'Normal', eat: 1, mood: 0 }, { name: 'Generous', eat: 1.5, mood: 8 } ];
 const TAXES = [ { name: 'None', gold: 0, mood: 3 }, { name: 'Low', gold: 1, mood: -4 }, { name: 'High', gold: 2.5, mood: -12 } ];
 let aleBonus = 0, aleCover = 0, aleT = 0, varietyBonus = 0, relCover = 0, relBonus = 0, crowdPen = 0, fearGood = 0, fearHard = 0;
+let contentUntil = 0, leftCount = 0, returnT = 20, fullGranary = 0;
+function cheer(n, secs, msg) { mood = Math.min(100, mood + n); contentUntil = Math.max(contentUntil, time + secs); if (msg) { const k = playerKeep(); if (k) floatText(k.x, k.y - 160, msg, '#ffd27a'); } }
 let mood = 60, ration = 1, tax = 1, goldT = 0, settleT = 30, leaveT = 25, moodRate = 0;
 const moodName = () => mood >= 70 ? 'Happy' : mood >= 40 ? 'Steady' : mood >= 20 ? 'Unhappy' : 'Rebellious';
 const countOf = k => structures.filter(b => b.kind === k && b.done && !b.dead && b.team === 'player').length;
@@ -2847,6 +2940,20 @@ function moodHtml() {
   const col = mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a';
   const r = Math.round(moodRate);
   return `Mood: <b style="color:${col}">${Math.round(mood)} ${moodName()}</b> (${r > 0 ? '+' : ''}${r}/min)`;
+}
+const k0 = () => playerKeep();
+function moodReasons() {
+  const r = [];
+  if (starving) r.push('there is no food: they are starving');
+  if (ration === 0) r.push('rations are lean');
+  if (tax === 2) r.push('taxes are high');
+  else if (tax === 1) r.push('they pay taxes');
+  if (crowdPen) r.push('the houses are crowded');
+  if (fearHard) r.push('the stocks frighten them');
+  if (!varietyBonus && !starving) r.push('they eat only one kind of food');
+  if (!aleBonus) r.push('there is no ale');
+  if (!relBonus) r.push('there is no house of prayer');
+  return r;
 }
 function updateMood(dt, people) {
   const taverns = structures.filter(b => b.kind === 'tavern' && b.done && !b.dead && b.team === 'player').length;
@@ -2859,8 +2966,12 @@ function updateMood(dt, people) {
   relCover = people.length ? Math.min(1, countOf('chapel') * 20 / people.length) : 0; relBonus = Math.round(5 * relCover);
   crowdPen = people.length >= popCap() * 0.9 ? -4 : 0;
   fearGood = 2 * countOf('garden'); fearHard = -2 * countOf('stocks');
-  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard;
-  mood = clamp(mood + moodRate * dt / 60, 0, 100);
+  fullGranary = !starving && res.food > 300 ? 4 : 0;
+  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard + fullGranary;
+  const holdsUp = time < contentUntil && moodRate < 0;   // after a feast or a new comfort, spirits stay up for a while
+  mood = clamp(mood + (holdsUp ? 0 : moodRate) * dt / 60, 0, 100);
+  // people who left come back when the town is happy again
+  if (leftCount > 0 && mood >= 55 && k0()) { returnT -= dt; if (returnT <= 0) { returnT = 20; if (people.length + trainQueue.length < popCap()) { leftCount--; const u = makeUnit('player', 'civ', 20, 1168); const kk = k0(); commandMove([u], kk.x1 + 40, kk.y1 + 30); showBanner('A citizen who left has come back to your town!', 3.5); AudioSys.ui('bell'); } } }
   // taxes: gold per person every 20 seconds
   goldT += people.length * TAXES[tax].gold * dt / 20;
   while (goldT >= 1) { goldT -= 1; res.gold += 1; }
@@ -2885,23 +2996,22 @@ function updateMood(dt, people) {
       const civs = people.filter(u => u.type === 'civ' && u.order !== 'leave');
       if (civs.length) {
         const u = civs[Math.floor(Math.random() * civs.length)];
-        u.order = 'leave'; u.task = null; u.carry = 0; u.path = findPath(u.x, u.y, 24, clamp(u.y, 200, 1250));
-        showBanner('An unhappy civilian has left your town!', 3.5); AudioSys.ui('warn');
+        u.order = 'leave'; u.task = null; u.carry = 0; u.path = findPath(u.x, u.y, 24, clamp(u.y, 200, 1250)); leftCount++;
+        showLeftNote(moodReasons()); AudioSys.ui('warn');
       }
     }
   } else leaveT = 25;
 }
-document.querySelectorAll('.rb').forEach(b => b.onclick = () => { if (b.dataset.r !== undefined) ration = +b.dataset.r; else tax = +b.dataset.t; updateHud(); });
+document.querySelectorAll('.rb').forEach(b => b.onclick = () => { const r0 = ration, t0 = tax; if (b.dataset.r !== undefined) ration = +b.dataset.r; else tax = +b.dataset.t; if (ration > r0) cheer(6, 60, 'More food! Your people are glad'); if (tax < t0) cheer(6, 60, 'Lower taxes! Your people are glad'); updateHud(); });
 document.getElementById('feast').onclick = () => {
   if (!started || won) return;
   if (res.gold < 50) { showBanner('A feast costs 50 gold.', 2.5); return; }
-  res.gold -= 50; mood = Math.min(100, mood + 15);
-  const k = playerKeep(); if (k) floatText(k.x, k.y - 140, 'Feast! +15 mood', '#ffd27a');
+  res.gold -= 50; cheer(25, 180, 'Feast! +25 mood');
   AudioSys.ui('cheer'); showBanner('You hold a feast. Your people rejoice!', 3); updateHud();
 };
 
 // ---------- economy: stores, upkeep, training ----------
-const res = { food: 100, wood: 80, gold: 0, stone: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0 };
+const res = { food: 100, wood: 80, gold: 0, stone: 0, mace: 0, armor: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0 };
 const foodKinds = { berries: 0, crops: 100, bread: 0 };
 const FOOD_NAME = { berries: 'berries', crops: 'crops', bread: 'bread' };
 function addFood(kind, n) { foodKinds[kind] = (foodKinds[kind] || 0) + n; res.food += n; }
@@ -2914,7 +3024,7 @@ function spendFood(n) {
   else if (sum < res.food - 1) foodKinds.crops += res.food - sum;
 }
 const foodVariety = () => res.food > 0 ? Object.values(foodKinds).filter(v => v >= 1).length : 0;
-const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 0, wood: 0, gold: 10, time: 15 }, spear: { food: 0, wood: 0, gold: 10, time: 15 }, archer: { food: 0, wood: 0, gold: 10, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 }, catapult: { food: 0, wood: 150, stone: 30, gold: 40, time: 30 }, ballista: { food: 0, wood: 110, gold: 50, time: 24 } };
+const COSTS = { civ: { food: 40, wood: 0, time: 12 }, sword: { food: 0, wood: 0, gold: 10, time: 15 }, spear: { food: 0, wood: 0, gold: 10, time: 15 }, archer: { food: 0, wood: 0, gold: 10, time: 14 }, ram: { food: 0, wood: 80, gold: 20, time: 20 }, catapult: { food: 0, wood: 150, stone: 30, gold: 40, time: 30 }, ballista: { food: 0, wood: 110, gold: 50, time: 24 }, trebuchet: { food: 0, wood: 220, stone: 40, gold: 80, time: 40 }, maceman: { food: 0, wood: 0, gold: 10, time: 15 }, knight: { food: 0, wood: 0, gold: 20, time: 22 } };
 const trainQueue = [];
 const QUEUE_MAX = 10;   // up to ten of each kind waiting; each kind trains side by side
 const queuedOf = kind => trainQueue.filter(q => q.kind === kind).length;
@@ -2922,8 +3032,8 @@ function whyNotTrain(kind) {
   const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
   if (!playerKeep()) return 'keep lost';
   if (queuedOf(kind) >= QUEUE_MAX) return 'queue full (10)';
-  if (WEAPON[kind] && res[WEAPON[kind]] < 1) return 'need a ' + WEAPON[kind];
-  if (WEAPON[kind] && res.gold < 10) return 'need 10 gold';
+  if (WEAPON[kind]) { const miss = NEEDS[kind].filter(w => res[w] < 1); if (miss.length) return 'need ' + miss.map(w => w === 'armor' ? 'armor' : 'a ' + w).join(' and '); }
+  if (WEAPON[kind] && res.gold < feeOf(kind)) return `need ${feeOf(kind)} gold`;
   if (!WEAPON[kind]) { if (res.food < c.food) return `need ${c.food - Math.floor(res.food)} more food`; if (res.wood < c.wood) return `need ${c.wood - Math.floor(res.wood)} more wood`; if (res.stone < (c.stone || 0)) return `need ${c.stone - Math.floor(res.stone)} more stone`; if (res.gold < (c.gold || 0)) return `need ${c.gold - Math.floor(res.gold)} more gold`; }
   if (!MACHINE[kind] && pop >= popCap() && !(kind !== 'civ' && draftable())) return kind === 'civ' ? 'houses full: build a house' : 'houses full and no free civilian to call up';
   return '';
@@ -2931,14 +3041,16 @@ function whyNotTrain(kind) {
 function cancelTrain(kind) {   // right-click a training button: take back the last one queued, with its cost
   for (let i = trainQueue.length - 1; i >= 0; i--) if (trainQueue[i].kind === kind) {
     const q = trainQueue.splice(i, 1)[0], c = COSTS[kind];
-    if (WEAPON[kind]) { res[WEAPON[kind]] += 1; res.gold += 10; } else { if (c.food) addFood('crops', c.food); res.wood += c.wood; res.gold += (c.gold || 0); res.stone += (c.stone || 0); }
+    if (WEAPON[kind]) { for (const w of NEEDS[kind]) res[w] += 1; res.gold += feeOf(kind); } else { if (c.food) addFood('crops', c.food); res.wood += c.wood; res.gold += (c.gold || 0); res.stone += (c.stone || 0); }
     floatText(keep.x, keep.y - 140, `${KINDS[kind].name} cancelled`, '#ffd98a'); updateHud(); return;
   }
 }
 let starving = false, hungerT = 0, starveMsgT = 0;
-const WEAPON = { sword: 'sword', spear: 'spear', archer: 'bow' };
-const weaponRoute = kind => WEAPON[kind] && res[WEAPON[kind]] >= 1 && res.gold >= 10;
-const BUY = { sword: 40, spear: 20, bow: 30 };
+const WEAPON = { sword: 'sword', spear: 'spear', archer: 'bow', maceman: 'mace', knight: 'sword' };
+const NEEDS = { sword: ['sword'], spear: ['spear'], archer: ['bow'], maceman: ['mace'], knight: ['sword', 'armor'] };
+const feeOf = k => k === 'knight' ? 20 : 10;
+const weaponRoute = kind => WEAPON[kind] && NEEDS[kind].every(w => res[w] >= 1) && res.gold >= feeOf(kind);
+const BUY = { sword: 40, spear: 20, bow: 30, mace: 30, armor: 70 };
 const hasArmory = () => countOf('armory') > 0;
 function buyWeapon(w) {
   if (!started || won) return;
@@ -2955,14 +3067,14 @@ function canTrain(kind) {
 function trainUnit(kind) {
   if (!canTrain(kind)) {
     const c = COSTS[kind];
-    if (WEAPON[kind] && res[WEAPON[kind]] < 1) showBanner(`You need a ${WEAPON[kind]} to train ${/^[AEIOU]/.test(KINDS[kind].name) ? 'an' : 'a'} ${KINDS[kind].name}. Make one in a workshop or buy one at the armory.`, 3.5);
-    else if (WEAPON[kind] && res.gold < 10) showBanner(`Training a ${KINDS[kind].name} also costs 10 gold.`, 2.5);
+    if (WEAPON[kind] && NEEDS[kind].some(w => res[w] < 1)) showBanner(`You need ${NEEDS[kind].map(w => w === 'armor' ? 'armor' : 'a ' + w).join(' and ')} to train ${/^[AEIOU]/.test(KINDS[kind].name) ? 'an' : 'a'} ${KINDS[kind].name}. Make one in a workshop or buy one at the armory.`, 3.5);
+    else if (WEAPON[kind] && res.gold < feeOf(kind)) showBanner(`Training a ${KINDS[kind].name} also costs ${feeOf(kind)} gold.`, 2.5);
     else if (res.food < c.food || res.wood < c.wood || res.gold < (c.gold || 0)) showBanner(`Not enough ${res.food < c.food ? 'food' : res.wood < c.wood ? 'wood' : 'gold'} to train an ${KINDS[kind].name}.`.replace('an S', 'a S').replace('an C', 'a C').replace('an B', 'a B'), 2.5);
     else showBanner(queuedOf(kind) >= QUEUE_MAX ? `Ten ${KINDS[kind].name}s are already waiting.` : 'Your houses are full. Build a house for more people.', 2.5);
     return;
   }
   const c = COSTS[kind];
-  if (WEAPON[kind]) { res[WEAPON[kind]] -= 1; res.gold -= 10; }   // every soldier takes a weapon from the armory
+  if (WEAPON[kind]) { for (const w of NEEDS[kind]) res[w] -= 1; res.gold -= feeOf(kind); }   // every soldier takes a weapon from the armory
   else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); res.stone -= (c.stone || 0); }
   { const pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length, d = draftable();
     if (!MACHINE[kind] && kind !== 'civ' && pop >= popCap() && d) { units.splice(units.indexOf(d), 1); selection.delete(d); floatText(d.x, d.y - 50, `Called up to be a ${KINDS[kind].name}`, '#9fe8a8'); } }
@@ -2972,9 +3084,9 @@ function trainUnit(kind) {
 // ---------- self-running workers ----------
 const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
 const JOB_MAX = 3;
-const maxStaff = k => (k === 'woodhut' || isField(k)) ? 2 : 3;   // huts and farms hold 2, other industries 3; each worker adds full output
+const maxStaff = k => (k === 'woodhut' || isField(k)) ? 2 : 3;   // blacksmith: 3   // huts and farms hold 2, other industries 3; each worker adds full output
 const staffOf = site => units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.job === site).length;
-const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], woodhut: ['wood'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword'] };
+const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], woodhut: ['wood'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword', 'mace', 'armor'] };
 const CRAFT = {
   brewery: { inp: { hops: 2 }, out: 'ale', time: 7, batch: 2 },
   mill: { inp: { wheat: 2 }, out: 'flour', time: 6, batch: 3 },
@@ -2985,12 +3097,15 @@ const CRAFT = {
   poleturner: { inp: { wood: 3 }, out: 'spear', time: 8, batch: 1 },
   smithy: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }
 };
+const SMITH = { sword: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }, mace: { inp: { iron: 2 }, out: 'mace', time: 9, batch: 1 }, armor: { inp: { iron: 3 }, out: 'armor', time: 14, batch: 1 } };
+const recipeOf = site => site.kind === 'smithy' ? SMITH[site.make || 'sword'] : CRAFT[site.kind];
+
 const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1 };
-const JOB_NAME = { quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
+const JOB_NAME = { smithy: 'Blacksmith', quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
 const craftCost = site => Math.max(0.5, 1 - 0.05 * Math.floor((site.made || 0) / 4));   // every 4 made: 5% less material, down to half
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
-  const rc = CRAFT[site.kind];
+  const rc = recipeOf(site);
   if (u.sub === 'toDrop') {
     const drop = nearestDrop(u, u.carryType);
     if (!drop) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - site.topH - 8, `Build an ${u.carryType === 'bow' || u.carryType === 'spear' || u.carryType === 'sword' ? 'armory' : 'store'} for the ${u.carryType}`, '#ffb38a'); u.waitMsgT = 10; } u.path = []; u.moving = false; return; }
@@ -3056,7 +3171,7 @@ function updateJobs(dt) {
       if (!free.length) { if (!site.noStaffMsg) { site.noStaffMsg = true; floatText(site.x, site.y - site.topH - 10, `${site.name}: no free civilian. Train one at the keep (Town list).`, '#ffb38a'); } break; }
       site.noStaffMsg = false;
       free.sort((a, b) => Math.hypot(a.x - site.x, a.y - site.y) - Math.hypot(b.x - site.x, b.y - site.y));
-      free[0].job = site; staff++;
+      free[0].job = site; staff++; if (free[0].order !== 'build') { free[0].order = 'idle'; free[0].task = null; free[0].carry = 0; startJob(free[0]); }
       floatText(free[0].x, free[0].y - 50, JOB_NAME[site.kind] || 'Worker', '#ffe9a8');
     }
   }
@@ -3067,10 +3182,20 @@ function updateJobs(dt) {
     if (busy) u.workedT = (u.workedT || 0) + 1;
     if (busy && playerFire && u.carry === 0 && u.workedT > 170 + (u.seed * 37 % 70) && (u.sub === 'toNode' || u.sub === 'toSite')) {
       u.breakNode = u.task && u.task.node; u.breakType = u.task && u.task.type; u.breakUntil = time + 20 + Math.random() * 10;
-      const a = Math.random() * Math.PI * 2, d = { x: playerFire.x + Math.cos(a) * 46, y: playerFire.y + Math.sin(a) * 32 };
+      const homes = structures.filter(h => h.kind === 'house' && h.team === 'player' && h.done && !h.dead), home = homes.length && Math.random() < 0.4 ? homes[Math.floor(Math.random() * homes.length)] : null;
+      const a = Math.random() * Math.PI * 2, d = home ? { x: home.x + RR(-10, 10), y: home.y + 10 } : { x: playerFire.x + Math.cos(a) * 46, y: playerFire.y + Math.sin(a) * 32 };
       u.order = 'move'; u.dest = d; u.stuckT = 0; u.path = findPath(u.x, u.y, d.x, d.y); u.task = null; u.crafting = null;
       floatText(u.x, u.y - 50, 'Taking a short break', '#e9dcbc');
     }
+  }
+  // anything waiting to be built gets builders at once: idle people first, then gatherers, then (if no one else) workers
+  for (const b of structures.concat(farms)) {
+    if (b.team !== 'player' || b.dead || b.done !== false) continue;
+    const on = civs.filter(u => u.order === 'build' && u.buildTarget === b).length; if (on >= 2) continue;
+    const near = (a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y);
+    let pool = civs.filter(u => !u.job && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0 && u.sub === 'toKeep'));
+    if (!pool.length && !on) pool = civs.filter(u => u.job && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0));
+    pool.sort(near).slice(0, 2 - on).forEach(u => { u.breakUntil = 0; commandBuild([u], b); floatText(u.x, u.y - 50, `Off to build the ${b.name}`, '#ffe9a8'); });
   }
   for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time)) startJob(u);
   // anyone with no building job gathers by themselves: food when stores are low, otherwise wood; at most 5 to a bush, tree or rock
@@ -3138,6 +3263,8 @@ const BUILD = {
   greattower: { name: 'Great Tower', w: 3, h: 3, wood: 40, stone: 120, gold: 30, time: 42, hp: 2800, topH: 186 },
   moat: { name: 'Moat', w: 1, h: 1, wood: 0, time: 5, hp: 160, topH: 4 },
   pit: { name: 'Spike Pit', w: 1, h: 1, wood: 10, time: 4, hp: 60, topH: 4 },
+  lookout: { name: 'Lookout Tower', w: 2, h: 2, wood: 40, stone: 50, time: 26, hp: 1100, topH: 218 },
+  roundtower: { name: 'Round Tower', w: 3, h: 3, wood: 60, stone: 160, gold: 50, time: 40, hp: 3200, topH: 150 },
   quarry: { name: 'Quarry', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 50 },
   woodhut: { name: "Woodcutter's Hut", w: 2, h: 2, wood: 30, time: 8, hp: 250, topH: 56 },
   stockpile: { name: 'Stockpile', w: 2, h: 2, wood: 20, time: 6, hp: 200, topH: 22 },
@@ -3154,7 +3281,7 @@ const BUILD = {
   ironmine: { name: 'Iron Mine', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 58 },
   bowyer: { name: 'Bowyer', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 60 },
   poleturner: { name: 'Spear-maker', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 60 },
-  smithy: { name: 'Smithy', w: 2, h: 2, wood: 50, time: 12, hp: 380, topH: 64 },
+  smithy: { name: 'Blacksmith', w: 2, h: 2, wood: 50, time: 12, hp: 380, topH: 64 },
   armory: { name: 'Armory', w: 2, h: 2, wood: 50, time: 12, hp: 450, topH: 66 }
 };
 const TERRITORY = 560;
@@ -3182,9 +3309,11 @@ function makeBuildingObj(kind, c, r) {
   const d = BUILD[kind];
   const b = { id: nextId++, kind, team: 'player', name: d.name, c, r, w: d.w, h: d.h,
     x0: c * TILE, y0: r * TILE, x1: (c + d.w) * TILE, y1: (r + d.h) * TILE, x: (c + d.w / 2) * TILE, y: (r + d.h) * TILE,
-    maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
+    maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower', 'lookout', 'roundtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
   if (kind === 'gtower') Object.assign(b, { range: 230, fireRate: 2.0, arrowDmg: 7, archerY: 112 });
   if (kind === 'stower') Object.assign(b, { range: 265, fireRate: 1.6, arrowDmg: 8, archerY: 146 });
+  if (kind === 'lookout') Object.assign(b, { range: 320, fireRate: 1.7, arrowDmg: 8, archerY: 212 });
+  if (kind === 'roundtower') Object.assign(b, { range: 290, fireRate: 1.5, arrowDmg: 8, archerY: 150, shots: 2 });
   if (kind === 'greattower') Object.assign(b, { range: 290, fireRate: 1.4, arrowDmg: 9, archerY: 170, shots: 2 });
   if (isField(kind)) Object.assign(b, { amount: 0, max: 40 });
   return b;
@@ -3201,8 +3330,10 @@ function createBuilding(kind, c, r) {
   structures.push(b);
   return b;
 }
+const COMFORT = { tavern: [10, 120], chapel: [12, 150], granary: [8, 90], garden: [6, 60], house: [4, 45], bakery: [6, 60] };
 function finishBuilding(b) {
   b.done = true; b.progress = 1;
+  if (b.team === 'player' && COMFORT[b.kind]) cheer(COMFORT[b.kind][0], COMFORT[b.kind][1], `${b.name}: your people cheer! +${COMFORT[b.kind][0]} mood`);
   if (isField(b.kind)) b.amount = 10;
   floatText(b.x, b.y - b.topH - 10, `${b.name} built`, '#9fe8a8');
   if (b.team === 'player') AudioSys.play('built', b.x, b.y);
@@ -3307,6 +3438,8 @@ function drawBuilding(g, b, t) {
   else if (b.kind === 'stairs') drawStairs(g, b, P);
   else if (b.kind === 'stower') drawStoneTower(g, b, P, t);
   else if (b.kind === 'greattower') drawGreatTower(g, b, P, t);
+  else if (b.kind === 'lookout') drawLookout(g, b, P, t);
+  else if (b.kind === 'roundtower') drawRoundTower(g, b, P, t);
   else if (b.kind === 'quarry') drawQuarry(g, b, P);
   else if (b.kind === 'moat') drawMoat(g, b, P, t);
   else if (b.kind === 'pit') drawPit(g, b, P);
@@ -3636,6 +3769,32 @@ function drawPit(g, b, P) {
   }
   for (let i = 0; i < (b.charges || 0); i++) { g.fillStyle = 'rgba(255,230,150,0.7)'; g.fillRect(x + 6 + i * 5, y + 2, 3, 3); }
 }
+function drawLookout(g, b, P, t) {
+  const M = mats(), cx = b.x, gy = b.y - 6, R = 13, H = 196, top = gy - H;
+  softShadow(g, cx + 30, gy + 4, 40, 10, 0.4);
+  g.fillStyle = M.stone; g.fillRect(cx - R, top, R * 2, H); lightFace(g, cx - R, top, R * 2, H);
+  g.fillStyle = 'rgba(0,0,0,0.13)'; for (let yy = top + 12; yy < gy; yy += 12) g.fillRect(cx - R, yy, R * 2, 1);
+  // the stair climbing round the shaft
+  g.strokeStyle = '#6b4a28'; g.lineWidth = 3; g.beginPath(); for (let k = 0; k <= 40; k++) { const yy = gy - k / 40 * (H - 10), xx = cx + Math.sin(k * 0.62) * (R + 3); k ? g.lineTo(xx, yy) : g.moveTo(xx, yy); } g.stroke();
+  g.fillStyle = '#5a3c20'; g.fillRect(cx - R - 9, top - 6, R * 2 + 18, 7);
+  g.fillStyle = '#6b4a28'; for (let k = 0; k < 6; k++) g.fillRect(cx - R - 8 + k * ((R * 2 + 12) / 5), top - 18, 3, 12);
+  const roof = () => { g.beginPath(); g.moveTo(cx - R - 12, top - 18); g.lineTo(cx, top - 44); g.lineTo(cx + R + 12, top - 18); g.closePath(); }; fillPath(g, roof, M.thatch); roof(); g.strokeStyle = 'rgba(30,18,8,0.6)'; g.lineWidth = 1; g.stroke();
+  if (b.done) drawLookoutArcher(g, P, cx + 2, top - 5, b.aim || 1, b.drawT, (b.team === 'enemy' ? '#ac3430' : PAL.player.tunic), '#c3cad1', null, '#c98d5e');
+  drawArchDoor(g, M, P, cx, gy + 4, 7, 15);
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - R - 12, top - 44, R * 2 + 24, H + 44);
+}
+function drawRoundTower(g, b, P, t) {
+  const M = mats(), cx = b.x, gy = b.y - 6, R = 46, H = 134, top = gy - H;
+  softShadow(g, cx + 34, gy + 4, 70, 18, 0.48);
+  const body = () => { g.beginPath(); g.moveTo(cx - R, top); g.lineTo(cx - R, gy); g.ellipse(cx, gy, R, 12, 0, Math.PI, 0, true); g.lineTo(cx + R, top); g.closePath(); };
+  fillPath(g, body, M.stone); const sg = g.createLinearGradient(cx - R, 0, cx + R, 0); sg.addColorStop(0, 'rgba(0,0,0,0.2)'); sg.addColorStop(0.35, 'rgba(255,240,210,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0.55)'); fillPath(g, body, sg);
+  g.fillStyle = M.stoneDark; g.beginPath(); g.ellipse(cx, top, R + 5, 14, 0, 0, Math.PI * 2); g.fill();
+  for (let k = 0; k < 11; k++) { const a = Math.PI * (0.02 + k * 0.096); towerMerlon(g, M, cx + Math.cos(a) * (R + 2) - 4, top + Math.sin(a) * 13 - 9); }
+  if (b.engine) { g.fillStyle = '#6b4a28'; g.fillRect(cx - 14, top - 22, 28, 8); g.strokeStyle = '#4a3018'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx - 10, top - 18); g.lineTo(cx + (b.engine === 'trebuchet' ? 0 : 22), top - (b.engine === 'trebuchet' ? 52 : 26)); g.stroke(); }
+  drawArchDoor(g, M, P, cx, gy + 10, 11, 20);
+  drawBanner(g, P, cx + R + 4, top - 10, 34, 12, (b.team === 'enemy' ? '#ac3430' : PAL.player.tunic), t, null);
+  flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - R - 5, top - 24, R * 2 + 10, H + 34);
+}
 function drawQuarry(g, b, P) {
   const M = mats(), cx = b.x, gy = b.y - 6;
   softShadow(g, cx + 6, gy + 2, 34, 9, 0.35);
@@ -3908,7 +4067,7 @@ const UI = (() => {
   }
   function iconBuilding(g, name, w, h) {
     const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (isField(name)) b.amount = b.max;
-    const vis = { moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
+    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -3965,11 +4124,18 @@ const UI = (() => {
     } else if (name === 'people') {
       for (const [x, c] of [[7.5, '#c9b38a'], [14.5, '#efe0bd']]) { g.fillStyle = c; g.beginPath(); g.arc(x, 7, 3.3, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 0.9; g.stroke();
         g.beginPath(); g.moveTo(x - 5, 19); g.quadraticCurveTo(x - 5, 11, x, 11); g.quadraticCurveTo(x + 5, 11, x + 5, 19); g.closePath(); g.fill(); g.stroke(); }
-    } else if (name === 'mood') {
-      const gr = g.createRadialGradient(8, 8, 1, 11, 11, 9); gr.addColorStop(0, '#fff3c0'); gr.addColorStop(1, '#d9a63a');
+    } else if (name === 'mood') {   // the face shows how your people feel
+      const m = mood, band = m >= 70 ? 4 : m >= 50 ? 3 : m >= 35 ? 2 : m >= 20 ? 1 : 0;
+      const cols = [['#ffb0a0', '#c0281e'], ['#ffd0a0', '#d9702e'], ['#fff0c0', '#cfa040'], ['#fff3c0', '#d9a63a'], ['#f4ffc0', '#8cc63a']][band];
+      const gr = g.createRadialGradient(8, 8, 1, 11, 11, 9); gr.addColorStop(0, cols[0]); gr.addColorStop(1, cols[1]);
       g.fillStyle = gr; g.beginPath(); g.arc(11, 11, 8.5, 0, Math.PI * 2); g.fill(); g.strokeStyle = ol; g.lineWidth = 1; g.stroke();
       g.fillStyle = ol; g.beginPath(); g.arc(8, 9, 1.2, 0, Math.PI * 2); g.arc(14, 9, 1.2, 0, Math.PI * 2); g.fill();
-      g.lineWidth = 1.3; g.beginPath(); g.arc(11, 11.5, 4.2, 0.25, Math.PI - 0.25); g.stroke();
+      g.lineWidth = 1.3; g.beginPath();
+      if (band === 4) { g.arc(11, 11, 4.8, 0.15, Math.PI - 0.15); g.closePath(); g.fillStyle = '#7a2a1a'; g.fill(); g.stroke(); }
+      else if (band === 3) { g.arc(11, 11.5, 4.2, 0.25, Math.PI - 0.25); g.stroke(); }
+      else if (band === 2) { g.moveTo(7.4, 14.6); g.lineTo(14.6, 14.6); g.stroke(); }
+      else if (band === 1) { g.arc(11, 18.2, 4.2, Math.PI + 0.5, -0.5); g.stroke(); }
+      else { g.arc(11, 18.6, 4.4, Math.PI + 0.35, -0.35); g.stroke(); g.lineWidth = 1.6; g.beginPath(); g.moveTo(5.6, 5.8); g.lineTo(9.6, 7.8); g.moveTo(16.4, 5.8); g.lineTo(12.4, 7.8); g.stroke(); }
     } else if (name === 'foes') {
       for (const d of [1, -1]) { g.strokeStyle = '#d8dde2'; g.lineWidth = 2; g.beginPath(); g.moveTo(11 - d * 7, 4); g.lineTo(11 + d * 5, 16); g.stroke();
         g.strokeStyle = '#a8322f'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(11 + d * 3.5, 17.5); g.lineTo(11 + d * 7.5, 13.5); g.stroke(); }
@@ -4014,16 +4180,18 @@ const UI = (() => {
     $('cMood').onclick = () => toggle('moodPop');
     $('cGoods').onclick = () => { const p = $('goodsPop'); p.hidden = !p.hidden; if (!p.hidden) p.innerHTML = goodsReport(); };
   }
+  let moodBand = -1;
   function setStatus(d) {
     if (!built) buildStatus();
     const civB = $('cCiv').firstElementChild; civB.textContent = d.civ; civB.style.color = d.civColor;
     $('vFood').textContent = d.food; $('vEat').textContent = `eating ${d.eat}/min`; $('vWood').textContent = d.wood; $('vStone').textContent = d.stone; $('vGold').textContent = d.gold;
     $('vPeople').textContent = `${d.pop} of ${d.cap}`; $('vIdle').textContent = d.idle ? `${d.idle} idle` : '';
     const mv = $('vMood'); mv.textContent = `${d.mood} ${d.moodName}`; mv.style.color = d.moodColor;
+    { const band = d.mood >= 70 ? 4 : d.mood >= 50 ? 3 : d.mood >= 35 ? 2 : d.mood >= 20 ? 1 : 0; if (band !== moodBand) { moodBand = band; const c = document.querySelector('#cMood canvas'); if (c) paintIcon(c); } }
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
     if (!$('goodsPop').hidden) $('goodsPop').innerHTML = goodsReport();
-    if (storeShown && !$('storePop').hidden) (JOBS[storeShown.kind] ? showSite : showStore)(storeShown);
+    if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
     if (!$('moodPop').hidden) $('moodPop').innerHTML = moodReport();
   }
   function moodReport() {
@@ -4036,10 +4204,11 @@ const UI = (() => {
       ln(`Taxes: ${t.name}`, t.mood) +
       ln(relBonus ? `Faith: houses of prayer serve ${Math.round(relCover * 100)}% of your people` : 'Faith: no house of prayer (build one in the Town list)', relBonus) +
       ln(crowdPen ? 'Crowding: houses are nearly full' : 'Crowding: room to spare', crowdPen) +
+      (fullGranary ? ln('Full granary: plenty in store', fullGranary) : '') + (time < contentUntil ? ln(`Content after a feast or new comfort: mood will not fall for ${Math.ceil(contentUntil - time)}s`, 0) : '') +
       ln(`Gardens: ${countOf('garden')} (people work ${countOf('garden') * 5}% slower)`, fearGood) +
       ln(`Stocks: ${countOf('stocks')} (people work ${countOf('stocks') * 8}% harder)`, fearHard) + ln(aleBonus ? `Ale: taverns serve ${Math.round(aleCover * 100)}% of your people` : 'Ale: none served (build a tavern and brewery)', aleBonus) +
       `<div class="ln" style="border-top:1px solid #6e5128;margin-top:4px;padding-top:4px"><span>Total</span><b class="${total > 0 ? 'plus' : total < 0 ? 'minus' : ''}">${total > 0 ? '+' : ''}${total}/min</b></div>` +
-      `<p style="margin:8px 0 0;font-size:15px">Each of your people who dies costs 3 mood. A feast adds 15.</p>` +
+      `<p style="margin:8px 0 0;font-size:15px">Each of your people who dies costs 3 mood. A feast adds 25 and keeps spirits up for 3 minutes.</p>` +
       `<p style="margin:6px 0 0;font-size:15px"><b>Happy</b> (70 and up): work 15% faster, settlers arrive.<br><b>Unhappy</b> (below 40): work 20% slower.<br><b>Rebellious</b> (below 20): people leave.</p>` +
       `<p style="margin:6px 0 0;font-size:14px;color:#d9c9a3">Change rations and taxes in the Rule tab.</p>`;
   }
@@ -4636,6 +4805,26 @@ const R3D = (() => {
       for (const [a, y] of [[0.3, 60], [2.4, 80], [4.2, 100], [-0.4, 118]]) { const sl = box(3, 15, 1.5, std('#16110c'), Math.sin(a) * 31, y, Math.cos(a) * 31); sl.rotation.y = a; add(sl); }
       info.flags.push(pole(inner, -18, 151, -18, 32, teamCol));
       info.archer = towerArcher(teamSide, 0.9); info.archer.root.position.set(6, 151, 14); add(info.archer.root);
+    } else if (b.kind === 'lookout') {
+      // a tall slim stone shaft, a timber stair winding round it, and a roofed platform at the top
+      add(cyl(15, 17, 12, texMat('stoneDark', 1, 1), 0, 6, 0, 14));
+      add(cyl(12, 14, 200, stoneM(80, 200), 0, 106, 0, 16));
+      const sm = woodHM(10, 2);
+      for (let k = 0; k < 44; k++) { const a = k * 0.62, y = 6 + k * 4.4, st = box(9, 1.4, 4, sm, Math.sin(a) * 16, y, Math.cos(a) * 16); st.rotation.y = a; add(st); }
+      add(cyl(24, 24, 3, woodHM(40, 3), 0, 207, 0, 16));
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; add(cyl(0.9, 0.9, 12, woodVM(2, 12), Math.sin(a) * 22, 214, Math.cos(a) * 22, 5)); }
+      add(mesh(new T.ConeGeometry(28, 22, 12), thatchM(60, 24), 0, 231, 0));
+      door(inner, 0, 0, 13, 10, 16);
+      info.archer = towerArcher(teamSide, 0.9); info.archer.root.position.set(6, 208, 10); add(info.archer.root);
+    } else if (b.kind === 'roundtower') {
+      add(cyl(46, 50, 16, texMat('stoneDark', 2, 1), 0, 8, 0, 28));
+      add(cyl(42, 44, 132, stoneM(260, 132), 0, 82, 0, 28));
+      add(cyl(47, 42, 8, texMat('stoneDark', 2, 1), 0, 150, 0, 28));
+      const mm = stoneM(8, 10); for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2, mb = box(9, 10, 6, mm, Math.sin(a) * 45, 159, Math.cos(a) * 45); mb.rotation.y = a; add(mb); }
+      door(inner, 0, 0, 44, 20, 28);
+      for (const [a, y] of [[0.4, 60], [2.5, 90], [4.4, 110], [-0.6, 128]]) { const sl = box(3.4, 16, 1.5, std('#16110c'), Math.sin(a) * 43, y, Math.cos(a) * 43); sl.rotation.y = a; add(sl); }
+      info.flags.push(pole(inner, -30, 154, -30, 36, teamCol));
+      if (b.engine) { const em = (b.engine === 'trebuchet' ? trebuchetModel : ballistaModel)({ team: b.team, facing: 1, type: b.engine, pal: PAL[b.team] }); em.root.position.set(0, 154, 0); em.root.scale.multiplyScalar(b.engine === 'trebuchet' ? 0.8 : 1.1); add(em.root); info.engineModel = em; }
     } else if (b.kind === 'greattower') {
       // great tower: taller than the keep, with four corner turrets
       add(box(96, 14, 96, texMat('stoneDark', 2, 1), 0, 7, 0));
@@ -4829,7 +5018,7 @@ const R3D = (() => {
     }
   }
   function personModel(u) {
-    const P = u.pal, soldier = u.type === 'sword' || u.type === 'spear', lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
+    const P = u.pal, soldier = (swordish(u) || u.type === 'spear'), lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
     const m = {
       skin: std(u.skin, { roughness: 0.62 }), pants: std(P.pants, { map: fabricTex() }), boot: std(P.boot, { roughness: 0.55 }),
       cloth: std(P.tunic, { map: fabricTex(), bumpMap: fabricTex(), bumpScale: 0.25 }), dark: std(P.tunicDark, { map: fabricTex() }),
@@ -4928,7 +5117,7 @@ const R3D = (() => {
     const R = arms[1], L = arms[0], tools = {};
     // a grip keeps a held item level with the body whatever the arm is doing (set each frame)
     const grip = (arm) => { const g = new T.Group(); g.position.set(0, -0.6, 0.3); arm.hand.add(g); return g; };
-    if (u.type === 'sword') {
+    if (swordish(u)) {
       // sword in the right fist, pointing forward from the knuckles
       const sw = new T.Group(); sw.rotation.x = Math.PI / 2 - 0.25; sw.position.set(0, -0.6, 0.3); R.hand.add(sw);
       const bs = new T.Shape(); bs.moveTo(-0.7, 0); bs.lineTo(0.7, 0); bs.lineTo(0.55, 13.5); bs.lineTo(0, 15.5); bs.lineTo(-0.55, 13.5); bs.closePath();
@@ -4936,6 +5125,21 @@ const R3D = (() => {
       sw.add(box(5.2, 0.7, 0.9, m.gold, 0, 1.3, 0));
       sw.add(cyl(0.42, 0.42, 2.6, m.belt, 0, -0.2, 0, 8)); sw.add(sph(0.75, m.gold, 0, -1.7, 0, 8));
       tools.sword = sw;
+      if (u.type === 'maceman') {   // a mace: a short haft and a flanged iron head
+        sw.clear(); sw.add(cyl(0.5, 0.55, 9, m.wood, 0, 3, 0, 7)); const hd = sph(1.9, std('#4d5359', { metalness: 0.7, roughness: 0.4 }), 0, 8.4, 0, 10); sw.add(hd);
+        for (let f = 0; f < 6; f++) { const fl = box(0.5, 2.6, 1.4, std('#5d636a', { metalness: 0.7, roughness: 0.4 }), Math.cos(f) * 1.7, 8.4, Math.sin(f) * 1.7); fl.rotation.y = -f; sw.add(fl); }
+      }
+      if (u.type === 'knight') {   // plate: a closed great helm, a breastplate, steel arms
+        const plate = std('#cfd6dc', { metalness: 0.85, roughness: 0.28 });
+        const gh = cyl(3.25, 3.1, 6.4, plate, 0, 0.6, 0.1, 18); head.add(gh); head.add(box(4.2, 0.5, 0.6, std('#16110c'), 0, 0.8, 3.15));
+        const bp = lathe([[4.9, 30.8], [5.5, 28], [5.1, 24], [4.6, 21]], plate, 22, true); bp.scale.set(1.02, 1, 0.78); body.add(bp);
+      }
+      if (u.type === 'king') {   // a gold crown and a fur-trimmed royal cloak
+        const crown = cyl(3.1, 3.0, 1.6, m.gold, 0, 3.2, 0, 16); head.add(crown);
+        for (let f = 0; f < 6; f++) { const a = f / 6 * Math.PI * 2; head.add(mesh(new T.ConeGeometry(0.55, 1.8, 5), m.gold, Math.sin(a) * 3, 4.8, Math.cos(a) * 3)); }
+        const cape = mesh(new T.PlaneGeometry(11, 24, 1, 4), new T.MeshStandardMaterial({ color: C('#6a1e7a'), side: T.DoubleSide, roughness: 0.8, map: fabricTex() }), 0, 21, -5); body.add(cape); m.cloak = cape;
+        body.add(cyl(5.4, 5.4, 1.6, std('#efe6d8', { roughness: 1 }), 0, 32, -1, 14));
+      }
       // kite shield on the left arm, painted in the team colour with a rim and a stripe
       const sg = grip(L); tools.shieldGrip = sg;
       const ks = (s) => { const sh = new T.Shape(); sh.moveTo(-4.8 * s, 6.2 * s); sh.quadraticCurveTo(0, 7.6 * s, 4.8 * s, 6.2 * s); sh.quadraticCurveTo(5 * s, 0, 0, -10 * s); sh.quadraticCurveTo(-5 * s, 0, -4.8 * s, 6.2 * s); return sh; };
@@ -4992,7 +5196,11 @@ const R3D = (() => {
       body.add(barrow); tools.barrow = barrow;
     }
     root.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingSphere(); o.castShadow = o.geometry.boundingSphere.radius > 1.9; } });
-    for (const k of ['basket', 'pack', 'berries', 'sack', 'logs', 'pick', 'sickle', 'barrow']) if (tools[k]) { tools[k].userData.keep = true; tools[k].traverse(o => o.userData.keep = true); }
+    if (u.type === 'civ' || u.type === 'archer') {   // a little stool that appears when they sit
+      const stool = new T.Group(), sm = std('#7a5634', { roughness: 0.9 }); stool.add(cyl(4.2, 4.2, 1.2, sm, 0, 9.4, -2.4, 12)); for (const [x, z] of [[-2.6, -4.6], [2.6, -4.6], [0, 0.2]]) stool.add(cyl(0.5, 0.5, 9, sm, x, 4.6, z, 5));
+      stool.visible = false; root.add(stool); tools.stool = stool;
+    }
+    for (const k of ['basket', 'pack', 'berries', 'sack', 'logs', 'pick', 'sickle', 'barrow', 'stool']) if (tools[k]) { tools[k].userData.keep = true; tools[k].traverse(o => o.userData.keep = true); }
     if (m.cloak) m.cloak.userData.keep = true;
     compact(root);
     const allMats = []; root.traverse(o => { if (o.isMesh && o.material && o.material.emissive && !allMats.includes(o.material)) allMats.push(o.material); });
@@ -5037,6 +5245,13 @@ const R3D = (() => {
     root.traverse(o => { if (o.isMesh) o.castShadow = true; });
     const mats = []; root.traverse(o => { if (o.isMesh && o.material.emissive && !mats.includes(o.material)) mats.push(o.material); });
     return { root, body, wheels, crew: [driver], oxLegs: legs, load, mats, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2, ram: true, machine: 'oxcart' };
+  }
+  function trebuchetModel(u) {   // a counterweight engine: a tall A-frame, a long arm and a heavy box of stones
+    const md = catapultModel(u); md.root.scale.setScalar(1.5);
+    const cw = box(10, 9, 10, woodHM(10, 9), 0, -4, -6); md.arm.add(cw);
+    for (const x of [-12, 12]) { const up = box(3, 52, 3, woodVM(3, 52), x, 30, -4); md.body.add(up); }
+    md.body.add(box(28, 3, 3, woodHM(28, 3), 0, 55, -4));
+    md.machine = 'trebuchet'; return md;
   }
   function catapultModel(u) {
     // a wheeled throwing engine: timber bed, two uprights with a padded crossbar, twisted-rope bundle and a long arm with a sling bowl
@@ -5148,7 +5363,7 @@ const R3D = (() => {
     if (ghostGeos[type]) return ghostGeos[type];
     const W = new T.Color(1, 1, 1), parts = [], P = (geo, m) => parts.push({ geo, m, color: W });
     const rot = (rx, rz, x, y, z) => new T.Matrix4().makeRotationFromEuler(new T.Euler(rx, 0, rz)).setPosition(x, y, z);
-    if (type === 'catapult' || type === 'ballista' || type === 'oxcart') { P(new T.BoxGeometry(28, 16, 50), M4(0, 10, 0)); P(new T.BoxGeometry(22, 30, 6), M4(0, 26, 6)); }
+    if (type === 'catapult' || type === 'ballista' || type === 'oxcart' || type === 'trebuchet') { P(new T.BoxGeometry(28, 16, 50), M4(0, 10, 0)); P(new T.BoxGeometry(22, 30, 6), M4(0, 26, 6)); }
     else if (type === 'ram') { P(new T.BoxGeometry(30, 32, 52), M4(0, 22, 0)); P(new T.CylinderGeometry(2, 22, 16, 4), M4(0, 46, 0, 1, 1, 1.7, Math.PI / 4)); P(new T.CylinderGeometry(3.6, 3.6, 18, 8), rot(Math.PI / 2, 0, 0, 22, 32)); }
     else {
       P(new T.CylinderGeometry(5.0, 4.3, 15, 12), M4(0, 25.5, 0, 1, 1, 0.7));          // chest and belly
@@ -5225,7 +5440,7 @@ const R3D = (() => {
     // arm angles: positive swings the arm forward and up; elbows bend forward
     const L = md.arms[0], R = md.arms[1];
     let fR = 0.1 - (moving ? Math.sin(ph) * 0.4 : 0), bR = 0.2, fL = 0.1 + (moving ? Math.sin(ph) * 0.4 : 0), bL = 0.2;
-    if (u.type === 'sword') {
+    if (swordish(u)) {
       fL = 0.8; bL = 1.0;
       if (a > 0) fR = a < 0.42 ? lerp(0.45, -2.35, ease(a / 0.42)) : a < 0.68 ? lerp(-2.35, 1.6, ease((a - 0.42) / 0.26)) : lerp(1.6, 0.45, ease((a - 0.68) / 0.32));
       else fR = 0.35 + (moving ? -Math.sin(ph) * 0.25 : 0);
@@ -5261,7 +5476,9 @@ const R3D = (() => {
     if (k > 0 && pose) {
       const legs = md.legs, Lg = legs[0], Rg = legs[1], kk = ease(k);
       const mixL = (o, v) => o + (v - o) * kk;
-      if (pose === 'sit') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.75); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.05); g.hip.rotation.z = mixL(0, g.side * 0.32); } drop = 14.5; lean = -0.08; fR = mixL(fR, 0.75); bR = mixL(bR, 0.9); fL = mixL(fL, 0.75); bL = mixL(bL, 0.9); }
+      if (pose === 'sit' && u.stool) { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.6); g.knee.rotation.x = mixL(g.knee.rotation.x, 1.6); g.hip.rotation.z = mixL(0, g.side * 0.18); } drop = 10; lean = -0.05;
+        fR = mixL(fR, 0.3); bR = mixL(bR, 1.35); fL = mixL(fL, 0.3); bL = mixL(bL, 1.35); }
+      else if (pose === 'sit') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.5); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.65); g.hip.rotation.z = mixL(0, g.side * 1.05); } drop = 17.6; lean = 0.06; fR = mixL(fR, 0.42); bR = mixL(bR, 1.2); fL = mixL(fL, 0.42); bL = mixL(bL, 1.2); }
       else if (pose === 'kneel') { Lg.hip.rotation.x = mixL(Lg.hip.rotation.x, -1.5); Lg.knee.rotation.x = mixL(Lg.knee.rotation.x, 1.55); Rg.hip.rotation.x = mixL(Rg.hip.rotation.x, 0.15); Rg.knee.rotation.x = mixL(Rg.knee.rotation.x, 1.6); drop = 8.6; lean = 0.08; fL = mixL(fL, 0.9); bL = mixL(bL, 0.7); }
       else if (pose === 'crouch') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.25); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.2); g.hip.rotation.z = mixL(0, g.side * 0.2); } drop = 9.5; lean = 0.32; fL = mixL(fL, 0.9); bL = mixL(bL, 0.8); fR = mixL(fR, 0.6); bR = mixL(bR, 0.9); }
       else if (pose === 'prone') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, 0); g.knee.rotation.x = mixL(g.knee.rotation.x, 0.15); } fL = mixL(fL, 2.7); bL = mixL(bL, 0.3); fR = mixL(fR, 2.5); bR = mixL(bR, 0.5); }
@@ -5272,6 +5489,7 @@ const R3D = (() => {
       md.head.rotation.y = Math.sin(time * 0.45 + (u.seed || 0) * 3) * 0.55 * kk;   // looking out over the land, or chatting to the next man
       md.head.rotation.x = pose === 'prone' ? -1.2 * kk : 0;
     } else { md.body.rotation.x = 0; md.body.position.z = 0; md.head.rotation.y = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
+    if (md.tools.stool) md.tools.stool.visible = pose === 'sit' && !!u.stool && k > 0.5;
     R.sh.rotation.x = -fR; R.el.rotation.x = -bR; L.sh.rotation.x = -fL; L.el.rotation.x = -bL;
     // clothing moves: the skirt and surcoat swing with each step and stir in the wind, even when seated
     const wind = (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2), sway = Math.sin(time * 2.3 + (u.seed || 0) * 5) * (0.02 + wind * 0.05);
@@ -5290,7 +5508,7 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && outlinesOn && behindStructure(u);
       seen.add(u.id);
       const y = heightAt(u.x, u.y);
@@ -5333,9 +5551,10 @@ const R3D = (() => {
     for (const b of all) {
       seen.add(b.id);
       let md = bModels.get(b.id);
+      if (md && (md.engine || null) !== (b.engine || null) && !b.dead) { scene.remove(md.g); bModels.delete(b.id); md = null; }
       if (md && md.palVer !== palVer && !b.dead) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(b.id); md = null; }
       if (!md) {
-        md = buildingModel(b); md.palVer = palVer; bModels.set(b.id, md);
+        md = buildingModel(b); md.palVer = palVer; md.engine = b.engine || null; bModels.set(b.id, md);
         if (['wall', 'gate', 'highwall', 'stairs', 'moat'].includes(b.kind) && !joined.has(b.id) && joined.add(b.id)) for (const o of structures) if (o !== b && (o.kind === 'wall' || o.kind === 'highwall' || o.kind === 'stairs' || o.kind === 'moat') && Math.abs(o.c - b.c) + Math.abs(o.r - b.r) === 1) { const om = bModels.get(o.id); if (om && !om.rubble) { scene.remove(om.g); bModels.delete(o.id); } }
         if (isField(b.kind) || b.kind === 'house') hideGrass(b.x0, b.y0, b.x1, b.y1);
       }
@@ -5521,6 +5740,7 @@ const R3D = (() => {
     for (const s of structures.concat(farms)) if (s.asleep && !s.dead) { const q = project(s.x, (s.topH || 20) + 30, (s.y0 + s.y1) / 2); if (q.ok) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', q.x, q.y); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', q.x, q.y); g.restore(); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
+    for (const sp of speeches) { const q = project(sp.u.x, (sp.u.type === 'king' ? 84 : 66) + elev3D(sp.u), sp.u.y); if (q.ok) drawSpeech(g, q.x, q.y, sp.text); }
     for (const fl of floats) { const gz = fl.y + 50, p = project(fl.x, 50 + fl.t * 22, gz); g.globalAlpha = 1 - fl.t / 1.6; g.strokeText(fl.text, p.x, p.y); g.fillStyle = fl.col; g.fillText(fl.text, p.x, p.y); }
     g.globalAlpha = 1;
     // soft edges
@@ -5565,7 +5785,72 @@ const R3D = (() => {
   return { treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
-let paused = false;
+const speeches = [];
+function sayLine(u) {
+  const t = u.type, b = u.buildTarget, j = u.job;
+  if (t === 'civ') {
+    if (u.breakUntil > time) return 'Just a short rest, sir. Back to it soon.';
+    if (u.order === 'build' && b) return `I'm building the ${b.name}.`;
+    if (u.order === 'craft' && j) return `I am busy at the ${j.name}.`;
+    if (u.carry > 0 && u.sub === 'toKeep') return `Taking ${u.carry} ${u.carryType} to the store.`;
+    if (u.order === 'gather' && u.task) return { wood: "I'm cutting wood.", food: "I'm gathering food.", stone: "I'm quarrying stone.", wheat: "I'm harvesting wheat.", hops: "I'm picking hops." }[u.task.type] || "I'm gathering.";
+    return 'How can I help, sir?';
+  }
+  if (isMachine(u)) return u.holdFire ? 'Holding fire, my lord.' : u.order === 'attack' ? 'Loosing at the enemy!' : 'Loaded and ready to fire.';
+  if (t === 'king') return 'My people need walls, bread and brave men.';
+  if (u.guardOf && u.guardOf.type === 'king') return 'I guard the King with my life.';
+  if (u.guardOf) return `Guarding the door of the ${u.guardOf.name}.`;
+  if (t === 'archer') return u.onWall ? 'Watching from up here. Arrows ready!' : u.order === 'attack' ? 'Loosing arrows!' : 'Arrows ready, waiting on them.';
+  if (u.order === 'attack') return t === 'knight' ? 'For the King!' : 'Into them!';
+  if (u.order === 'move') return 'On my way!';
+  return t === 'knight' ? 'Ready, my lord.' : 'Awaiting orders, sir.';
+}
+function talkTo(u) {
+  if (!u || u.team !== 'player') return;
+  for (let i = speeches.length - 1; i >= 0; i--) if (speeches[i].u === u) speeches.splice(i, 1);
+  speeches.push({ u, text: sayLine(u), t: 0 });
+  if (u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') showMachine(u);
+}
+function drawSpeech(g, x, y, text) {
+  g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; const w = g.measureText(text).width + 16;
+  g.fillStyle = 'rgba(255,250,236,0.95)'; g.strokeStyle = 'rgba(60,40,20,0.8)'; g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(x - w / 2 + 8, y - 30); g.lineTo(x + w / 2 - 8, y - 30); g.quadraticCurveTo(x + w / 2, y - 30, x + w / 2, y - 22); g.lineTo(x + w / 2, y - 14); g.quadraticCurveTo(x + w / 2, y - 6, x + w / 2 - 8, y - 6); g.lineTo(x + 6, y - 6); g.lineTo(x, y); g.lineTo(x - 2, y - 6); g.lineTo(x - w / 2 + 8, y - 6); g.quadraticCurveTo(x - w / 2, y - 6, x - w / 2, y - 14); g.lineTo(x - w / 2, y - 22); g.quadraticCurveTo(x - w / 2, y - 30, x - w / 2 + 8, y - 30); g.closePath();
+  g.fill(); g.stroke(); g.fillStyle = '#2a1a0c'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, x, y - 18); g.restore();
+}
+function showMachine(u) {
+  storeShown = u; const p = document.getElementById('storePop');
+  const key = 'm' + u.id + (u.holdFire ? 'h' : '');
+  if (p.dataset.site !== key) { p.innerHTML = `<h3>${u.name.toUpperCase()}</h3><div class="ln"><span>Status</span><b>${u.holdFire ? 'Holding fire' : 'Firing at will'}</b></div><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="sm" data-mach="stop">Stop</button><button class="sm" data-mach="go">Continue</button></div>`; p.dataset.site = key; }
+  p.hidden = false;
+}
+function showTower(b) {
+  storeShown = b; const p = document.getElementById('storePop'), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`;
+  const top = units.filter(o => o.onWall === b && !o.dead).length, door = units.filter(o => o.guardOf === b && !o.dead).length;
+  let html = `<h3>${b.name.toUpperCase()}</h3>` + ln('Archers on top', `${top} of ${WALL_POSTS[b.kind]}`) + ln('Guards at the door', `${door} of 2`);
+  if (b.kind === 'roundtower') {
+    html += ln('Engine', b.engine ? (b.engine === 'trebuchet' ? 'Trebuchet' : 'Ballista') + (b.engineHold ? ' (holding fire)' : ' (firing)') : 'none');
+    html += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` + (b.engine ? `<button class="sm" data-tw="stop">Stop</button><button class="sm" data-tw="go">Continue</button>` : `<button class="sm" data-tw="ballista">Mount Ballista (110 wood, 50 gold)</button><button class="sm" data-tw="trebuchet">Mount Trebuchet (200 wood, 40 stone, 80 gold)</button>`) + `</div>`;
+  }
+  html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Idle archers climb up by themselves; idle knights, macemen and spearmen guard the door. Esc closes.</div>';
+  const key = 'tw' + b.id + (b.engine || '') + (b.engineHold ? 'h' : '') + top + '/' + door;
+  if (p.dataset.site !== key) { p.innerHTML = html; p.dataset.site = key; } p.hidden = false;
+}
+document.getElementById('storePop').addEventListener('click', e => {
+  const m = e.target.closest('[data-mach]'); if (m && storeShown && storeShown.kind === 'unit') { storeShown.holdFire = m.dataset.mach === 'stop'; if (storeShown.holdFire) { storeShown.order = 'idle'; storeShown.target = null; } talkTo(storeShown); AudioSys.ui('select'); return; }
+  const t = e.target.closest('[data-tw]'); if (!t || !storeShown || storeShown.kind !== 'roundtower') return;
+  const b = storeShown, a = t.dataset.tw;
+  if (a === 'stop' || a === 'go') b.engineHold = a === 'stop';
+  else { const cost = a === 'ballista' ? { wood: 110, gold: 50 } : { wood: 200, stone: 40, gold: 80 }; if (!afford(cost)) { showBanner(`Not enough ${lacking(cost)} to mount a ${a}.`, 2.5); return; } pay(cost); b.engine = a; b.engineHold = false; floatText(b.x, b.y - b.topH - 20, `${a === 'ballista' ? 'Ballista' : 'Trebuchet'} mounted`, '#9fe8a8'); }
+  AudioSys.ui('select'); showTower(b); updateHud();
+});
+let paused = false, leftNoteT = 0;
+function showLeftNote(reasons) {
+  const el = document.getElementById('leftNote'); el.hidden = false; leftNoteT = 14;
+  el.dataset.why = reasons.length ? 'They left because ' + reasons.slice(0, 4).join(', ') + '. Fix these to win them back; when mood rises, people who left return.' : 'Mood is very low. Open the mood report to see why.';
+  document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b>';
+}
+document.getElementById('leftWhy').onclick = () => { const el = document.getElementById('leftNote'); document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b><span class="why2">' + el.dataset.why + '</span>'; leftNoteT = 20; const mp = document.getElementById('moodPop'); if (mp.hidden) document.getElementById('cMood').click(); };
+document.getElementById('leftClose').onclick = () => { document.getElementById('leftNote').hidden = true; };
 function enemiesClose() {
   const k = playerKeep(), mine = units.filter(u => u.team === 'player' && !u.dead);
   return units.some(e => !e.dead && e.team === 'enemy' && e.type !== 'civ' && ((k && Math.hypot(e.x - k.x, e.y - k.y) < 760) || mine.some(m => Math.hypot(e.x - m.x, e.y - m.y) < 380) || structures.some(b => b.team === 'player' && !b.dead && Math.hypot(e.x - b.x, e.y - b.y) < 420)));
@@ -5769,7 +6054,9 @@ function frame(now) {
   }
 
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
-  updateTrainButtons(); if (!paused) updateWeather(dt); AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
+  updateTrainButtons(); if (!paused) updateWeather(dt);
+  if (leftNoteT > 0) { leftNoteT -= dt; if (leftNoteT <= 0) document.getElementById('leftNote').hidden = true; }
+  for (let i = speeches.length - 1; i >= 0; i--) { speeches[i].t += dt; if (speeches[i].t > 3.6 || speeches[i].u.dead) speeches.splice(i, 1); } AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
   const civSel = [...selection].some(u => u.type === 'civ');
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
@@ -5885,6 +6172,7 @@ function render() {
   for (const s of structures.concat(farms)) if (s.asleep && !s.dead && visible(s)) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', s.x, s.y - (s.topH || 20) - 30); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', s.x, s.y - (s.topH || 20) - 30); g.restore(); }
   for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) drawHealthBar(g, s.x, s.y - s.topH - 24, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp);
   g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
+  for (const sp of speeches) drawSpeech(g, sp.u.x, sp.u.y - (sp.u.lord || sp.u.type === 'king' ? 92 : 66) - elev2D(sp.u), sp.text);
   for (const fl of floats) { const a = 1 - fl.t / 1.6; g.globalAlpha = a; g.strokeText(fl.text, fl.x, fl.y - fl.t * 22); g.fillStyle = fl.col; g.fillText(fl.text, fl.x, fl.y - fl.t * 22); }
   g.globalAlpha = 1;
 
@@ -5915,7 +6203,7 @@ function startGame(key) {
   PAL.civ.trim = CIV.color;
   res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 30;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
-  spawnPlayerPeople();
+  spawnPlayerPeople(); spawnKing();
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
@@ -5950,7 +6238,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { showSite, siteAction, staffOf, maxStaff, LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+window.SD = { sayLine, talkTo, speeches, cheer, moodReasons, showTower, updateGuards, armorMul, recipeOf, leftCountOf: () => leftCount, showSite, siteAction, staffOf, maxStaff, LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
 </script>
 </body>
 </html>
