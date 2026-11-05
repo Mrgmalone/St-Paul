@@ -2252,9 +2252,16 @@ function drawFire(g, f, t) {
   g.fillStyle = grd; g.beginPath(); g.arc(x, y - 6, 80 * fl, 0, Math.PI * 2); g.fill(); g.restore();
   for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; g.fillStyle = i % 2 ? '#77736c' : '#8c8880'; g.beginPath(); g.ellipse(x + Math.cos(a) * 11, y + Math.sin(a) * 5, 3.6, 2.6, 0, 0, Math.PI * 2); g.fill(); }
   g.fillStyle = '#4b311b'; g.save(); g.translate(x, y - 1); g.rotate(0.4); g.fillRect(-9, -1.6, 18, 3.2); g.rotate(-0.8); g.fillRect(-9, -1.6, 18, 3.2); g.restore();
-  flame(g, x, y - 1, 7 * fl, 20 * fl, '#e2541b');
-  flame(g, x - 1, y - 1, 5 * fl, 15 * fl * (0.9 + 0.1 * Math.sin(t * 17)), '#f59a24');
-  flame(g, x, y - 1, 2.6, 9 * fl, '#ffe27a');
+  g.fillStyle = '#ff6a1a'; for (let i = 0; i < 7; i++) { const a = i * 2.4; g.globalAlpha = 0.6 + 0.4 * Math.sin(t * 7 + i); g.beginPath(); g.arc(x + Math.cos(a) * 4, y - 1 + Math.sin(a) * 1.8, 1.4, 0, Math.PI * 2); g.fill(); } g.globalAlpha = 1;
+  for (let i = 0; i < 5; i++) {   // separate tongues that lick up and sway at their own speed
+    const ph = t * (6 + i * 1.7) + i * 1.9, ox = (i - 2) * 2.4 + Math.sin(ph * 0.7) * 1.4, hh = (14 + (i === 2 ? 9 : 0) + Math.sin(ph) * 4) * fl;
+    flame(g, x + ox, y - 1, (4.2 - Math.abs(i - 2) * 0.6) * fl, hh, i % 2 ? '#e2541b' : '#f07a20');
+  }
+  flame(g, x - 1, y - 1, 4.6 * fl, 13 * fl * (0.9 + 0.1 * Math.sin(t * 17)), '#f59a24');
+  flame(g, x, y - 1, 2.4, 8 * fl, '#fff0a0');
+  g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = '#ffcf7a';
+  for (let i = 0; i < 6; i++) { const k = ((t * 0.55 + i / 6) % 1), sx = x + Math.sin(i * 3.1 + t * 2) * (3 + k * 6), sy = y - 8 - k * 40; g.globalAlpha = 1 - k; g.fillRect(sx, sy, 1.3, 1.3); }
+  g.restore();
 }
 function drawTower(g, s, t) {
   const M = mats(), cx = s.x, gy = s.y - 4;
@@ -4658,15 +4665,53 @@ const R3D = (() => {
     for (const f of fires) {
       const g = new T.Group(), y = heightAt(f.x, f.y); g.position.set(f.x, y, f.y);
       const stone = std('#7c776f', { flatShading: true });
-      for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const st = mesh(new T.IcosahedronGeometry(3.2, 0), stone, Math.cos(a) * 11, 1.5, Math.sin(a) * 11); g.add(st); }
+      const stoneR = std('#8a847a', { roughness: 0.95 }), soot = std('#3a332c', { roughness: 1 });
+      for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2 + (i % 3) * 0.05, sg = new T.IcosahedronGeometry(3, 2), pp = sg.attributes.position; for (let v = 0; v < pp.count; v++) { const k = 0.85 + Math.sin(pp.getX(v) * 2.1 + i) * 0.08 + Math.cos(pp.getZ(v) * 1.7 + i * 2) * 0.07; pp.setXYZ(v, pp.getX(v) * k, pp.getY(v) * k * 0.7, pp.getZ(v) * k); } sg.computeVertexNormals();
+        const st = mesh(sg, i % 2 ? stoneR : stone, Math.cos(a) * 11.5, 1.6, Math.sin(a) * 11.5); st.rotation.set(i, i * 2, 0); st.scale.setScalar(0.9 + (i % 4) * 0.08); g.add(st); }
+      { const ash = mesh(new T.CircleGeometry(9, 20), soot, 0, 0.3, 0, false); ash.rotation.x = -Math.PI / 2; g.add(ash); }
       const logM = woodHM(10, 4);
-      for (const a of [0.4, -0.4, 1.9]) { const l = cyl(1.6, 1.6, 20, logM, 0, 2.5, 0); l.rotation.set(Math.PI / 2, 0, a); g.add(l); }
-      const flameM = new T.MeshBasicMaterial({ color: C('#ff9a2e'), transparent: true, opacity: 0.85, blending: T.AdditiveBlending, depthWrite: false });
-      const coreM = new T.MeshBasicMaterial({ color: C('#ffe27a'), transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false });
-      const f1 = mesh(new T.ConeGeometry(6, 20, 8), flameM, 0, 12, 0, false), f2 = mesh(new T.ConeGeometry(3, 12, 8), coreM, 0, 8, 0, false);
-      g.add(f1, f2);
-      const light = new T.PointLight(C('#ff9a48'), 1.4, 220, 2); light.position.set(0, 18, 0); g.add(light);
-      f.m3 = { g, f1, f2, light }; scene.add(g);
+      const char = std('#140d08', { roughness: 1, emissive: C('#ff3a08'), emissiveIntensity: 0.12 });
+      for (const a of [0, 1.25, 2.5, 3.75, 5.0]) { const l = new T.Group(); l.add(cyl(1.4, 1.7, 16, logM, 0, 0, 0, 8)); l.add(cyl(1.42, 1.42, 4, char, 0, 6.5, 0, 8)); l.position.set(Math.cos(a) * 4.6, 5.2, Math.sin(a) * 4.6); l.rotation.set(-Math.sin(a) * 0.62, 0, Math.cos(a) * 0.62); g.add(l); }   // a tipi of logs, burnt at the top
+      // living flames: crossed sheets drawn by a shader with rising, swirling noise; white-hot at the base, orange, then deep red at the licking tips
+      const flameU = { uT: { value: 0 }, uSeed: { value: Math.random() * 50 }, uWind: { value: 0 } };
+      const flameM = new T.ShaderMaterial({ uniforms: flameU, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
+        vertexShader: 'varying vec2 vUv; uniform float uT; uniform float uWind; void main(){ vUv = uv; vec3 p = position; p.x += sin(uT * 3.0 + p.y * 0.25) * p.y * 0.05 + uWind * p.y * p.y * 0.004; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
+        fragmentShader: [
+          'varying vec2 vUv; uniform float uT; uniform float uSeed;',
+          'float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+          'float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }',
+          'float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * n(p); p *= 2.03; a *= 0.5; } return v; }',
+          'void main(){',
+          '  vec2 uv = vUv; float y = uv.y;',
+          '  vec2 q = vec2(uv.x * 3.0 + uSeed, y * 2.2 - uT * 2.6);',
+          '  float turb = fbm(q) * 0.9 + fbm(q * 2.3 + vec2(uT * 0.7, -uT * 1.3)) * 0.5;',
+          '  float x = (uv.x - 0.5) * 2.0 + (turb - 0.6) * 0.55 * y;',
+          '  float width = mix(0.95, 0.0, pow(y, 0.85));',
+          '  float body = smoothstep(width, width * 0.25, abs(x)) * smoothstep(0.0, 0.08, y);',
+          '  float flick = smoothstep(0.15, 0.85, turb + (1.0 - y) * 0.75 - 0.35);',
+          '  float a = body * flick;',
+          '  vec3 hot = vec3(1.0, 0.95, 0.75), mid = vec3(1.0, 0.55, 0.12), tip = vec3(0.75, 0.12, 0.03);',
+          '  vec3 col = mix(hot, mid, smoothstep(0.05, 0.45, y + abs(x) * 0.4));',
+          '  col = mix(col, tip, smoothstep(0.45, 0.95, y + (1.0 - flick) * 0.3));',
+          '  gl_FragColor = vec4(col * a * 1.6, a);',
+          '}'].join('\n') });
+      const flames = new T.Group(); flames.position.y = 2.5;
+      for (let k = 0; k < 4; k++) { const pl = new T.Mesh(new T.PlaneGeometry(17, 30, 1, 6), flameM); pl.geometry.translate(0, 15, 0); pl.rotation.y = k * Math.PI / 4; flames.add(pl); }
+      const small = flames.clone(); small.scale.set(0.55, 0.62, 0.55); small.position.set(4, 2, 3); small.rotation.y = 0.4; g.add(small);
+      g.add(flames);
+      // glowing embers under the flames, and charred ends on the logs
+      const emberM = new T.MeshStandardMaterial({ color: C('#2a1208'), emissive: C('#ff5a10'), emissiveIntensity: 1.4, roughness: 1 });
+      for (let i = 0; i < 14; i++) { const a = i * 2.39, r = 2 + (i % 4) * 1.6; g.add(mesh(new T.DodecahedronGeometry(1.1 + (i % 3) * 0.4, 0), emberM, Math.cos(a) * r, 1.2, Math.sin(a) * r, false)); }
+      // sparks that drift up on the heat
+      const NS = 26, sGeo = new T.BufferGeometry(), sp = new Float32Array(NS * 3), life = [];
+      for (let i = 0; i < NS; i++) life.push({ t: Math.random() * 2, x: 0, y: 0, z: 0, vx: 0, vz: 0 });
+      sGeo.setAttribute('position', new T.BufferAttribute(sp, 3));
+      const sparks = new T.Points(sGeo, new T.PointsMaterial({ color: C('#ffcf7a'), size: 1.7, transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false })); sparks.frustumCulled = false; g.add(sparks);
+      const light = new T.PointLight(C('#ff9a48'), 1.6, 260, 2); light.position.set(0, 16, 0); g.add(light);
+      // a warm glow on the ground
+      const gc = document.createElement('canvas'); gc.width = gc.height = 128; { const gg = gc.getContext('2d'), gr = gg.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(255,160,70,1)'); gr.addColorStop(0.35, 'rgba(255,110,40,0.45)'); gr.addColorStop(1, 'rgba(255,90,30,0)'); gg.fillStyle = gr; gg.fillRect(0, 0, 128, 128); }
+      const glow = mesh(new T.PlaneGeometry(110, 110), new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), color: C('#ffffff'), transparent: true, opacity: 0.16, blending: T.AdditiveBlending, depthWrite: false }), 0, 0.6, 0, false); glow.rotation.x = -Math.PI / 2; g.add(glow);
+      f.m3 = { g, flameU, flames, small, light, sparks, life, glow }; scene.add(g);
     }
   }
   function bushModel(b) {
@@ -5610,7 +5655,15 @@ const R3D = (() => {
       let md = bushModels.get(b); if (!md) { md = bushModel(b); bushModels.set(b, md); }
       const n = Math.ceil(b.amount / 11); if (n !== md.shown) { md.shown = n; md.berries.count = Math.min(14, n); }
     }
-    for (const f of fires) if (f.m3) { const fl = 0.85 + 0.12 * Math.sin(time * 13) + 0.07 * Math.sin(time * 31); f.m3.f1.scale.set(fl, fl * (0.9 + 0.15 * Math.sin(time * 17)), fl); f.m3.f2.scale.set(fl, fl, fl); f.m3.light.intensity = 1.1 + 0.4 * fl; }
+    for (const f of fires) if (f.m3) {
+      const m = f.m3, fl = 0.85 + 0.12 * Math.sin(time * 13) + 0.07 * Math.sin(time * 31) + 0.05 * Math.sin(time * 4.7);
+      m.flameU.uT.value = time; m.flameU.uWind.value = Math.cos(WEATHER.ang) * WEATHER.wind * (1 - 0.6 * WEATHER.rain);
+      m.flames.scale.set(1, 0.9 + 0.18 * Math.sin(time * 9.1) * Math.sin(time * 3.3), 1); m.light.intensity = (1.25 + 0.55 * fl) * (1 - 0.35 * WEATHER.rain); m.glow.material.opacity = 0.12 + 0.06 * fl;
+      const P = m.sparks.geometry.attributes.position, dt3 = 1 / 60;
+      m.life.forEach((q, i) => { q.t -= dt3; if (q.t <= 0) { q.t = 0.9 + Math.random() * 1.6; q.x = (Math.random() - 0.5) * 6; q.y = 4; q.z = (Math.random() - 0.5) * 6; q.vx = (Math.random() - 0.5) * 6 + Math.cos(WEATHER.ang) * WEATHER.wind * 10; q.vz = (Math.random() - 0.5) * 6; }
+        q.x += q.vx * dt3 + Math.sin(time * 6 + i) * 0.08; q.z += q.vz * dt3; q.y += (22 + i % 5 * 3) * dt3; P.setXYZ(i, q.x, q.y, q.z); });
+      P.needsUpdate = true;
+    }
   }
   // ---------- arrows and particles ----------
   let arrowPool = [], pts = [], stonePool = [];
