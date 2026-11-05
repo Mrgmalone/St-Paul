@@ -263,7 +263,7 @@
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
     <p><b>Running a workplace:</b> click any hut, farm, mine or workshop to see its status, workers, what it makes and how fast, and what it has made so far. Add workers there (up to 2 at huts and farms, 3 at other industries); each one adds the same again to its output. Remove a worker, or put the building to sleep with Z (press Z again to wake it), to free people: they go gathering, and when your houses are full, training a soldier calls up a free civilian. Civilians without a building job gather food and wood by themselves (up to 5 at one bush or tree), and every few minutes a worker takes a 20 to 30 second break by the fire.</p>
-    <p><b>Knights and macemen:</b> the Blacksmith (click it) can make swords, maces or knight armor from iron; iron mines stand on the red-and-black iron ground. A Maceman needs a mace and 10 gold; a Knight needs a sword, armor and 20 gold (leather comes by trade). Knights are hard to hurt: only knights, kings, ballistas and trebuchets wound them fully. Up to five knights guard your King first; then knights, macemen and spearmen guard tower doors.</p>
+    <p><b>Knights and macemen:</b> the Blacksmith (click it) can make swords, maces or knight armor from iron; iron mines stand on the red-and-black iron ground. A Maceman needs a mace and 10 gold; a Knight needs a sword, armor and 20 gold (leather comes by trade). Knights are hard to hurt: only knights, kings, ballistas and trebuchets wound them fully. Up to five knights guard your King first; then knights, macemen and spearmen guard tower doors. Every tower, big or small, and the keep come with one free knight at the door; he does not count against your people and charges anyone who comes near.</p>
     <p><b>Towers and engines:</b> a Lookout Tower is tall and slim with its own stairs: three archers on top see and shoot far, and two guards hold its door. A Round Tower carries a Ballista or a Trebuchet (click it to mount one); the Trebuchet throws stones farthest of all. Click a tower engine, ballista or trebuchet to Stop or Continue its fire.</p>
     <p><b>Your people:</b> click anyone and they tell you what they are doing. Anything waiting to be built gets builders at once. If a citizen leaves, press Why? to see the reasons; a feast, a tavern, a house of prayer or a full granary lifts spirits at once and for a while they will not fall, and when mood rises, people who left come back.</p>
     <p><b>Stores and gear:</b> click a Stockpile, Granary, Armory or your Keep to see exactly what you hold. Workers carry the right gear from the moment they are given a job: an axe, and logs on the shoulder, for wood; a basket for berries; a sickle and a sack for wheat and hops; a pickaxe and a wheelbarrow for stone. Grey rocks can be quarried by hand for stone (right-click or tap one with a civilian selected), and every Quarry gets an ox cart that hauls its cut stone to your stockpile.</p>
@@ -1221,6 +1221,7 @@ function playerBrain(u) {
   if (u.type === 'ram') { ramBrain(u); return; }
   if (u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') { siegeBrain(u); return; }
   if (u.type === 'king') { kingBrain(u); return; }
+  if (u.guardOf && time - (u.cmdT || -99) >= 30 && guardPost(u)) return;
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
@@ -1469,7 +1470,7 @@ function updateGuards(dt) {
   for (const u of units) {
     if (u.dead || !u.guardOf || u.order !== 'idle') continue;
     const g = u.guardOf; if (g.dead) { u.guardOf = null; continue; }
-    const gx = g.x0 !== undefined ? g.x + (u.id % 2 ? -14 : 14) : g.x + (u.id % 5 - 2) * 18, gy = g.x0 !== undefined ? g.y + 14 : g.y + 26;
+    const gx = g.x0 !== undefined ? g.x + (u.id % 2 ? -14 : 14) : g.x + (u.id % 5 - 2) * 18, gy = g.kind === 'keep' ? g.y1 + 16 : g.x0 !== undefined ? g.y + 14 : g.y + 26;
     if (Math.hypot(u.x - gx, u.y - gy) > 40) commandMove([u], gx, gy);
   }
 }
@@ -2680,7 +2681,7 @@ function endGame(title, text) {
 }
 function updateHud() {
   if (!started) return;
-  const mine = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length;
+  const mine = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length;
   const pop = mine + trainQueue.filter(q => !MACHINE[q.kind]).length;
   const foes = enemiesOf('player').filter(e => !isWall(e)).length;
   const towerUp = structures.some(s => !s.dead);
@@ -3077,7 +3078,7 @@ const trainQueue = [];
 const QUEUE_MAX = 10;   // up to ten of each kind waiting; each kind trains side by side
 const queuedOf = kind => trainQueue.filter(q => q.kind === kind).length;
 function whyNotTrain(kind) {
-  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
   if (!playerKeep()) return 'keep lost';
   if (queuedOf(kind) >= QUEUE_MAX) return 'queue full (10)';
   if (WEAPON[kind]) { const miss = NEEDS[kind].filter(w => res[w] < 1); if (miss.length) return 'need ' + miss.map(w => w === 'armor' ? 'armor' : 'a ' + w).join(' and '); }
@@ -3109,7 +3110,7 @@ function buyWeapon(w) {
 // a free civilian (no building job) who can be called up to become a soldier
 const draftable = () => units.find(u => u.team === 'player' && !u.dead && u.type === 'civ' && !u.job);
 function canTrain(kind) {
-  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
+  const c = COSTS[kind], pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
   return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap() || (kind !== 'civ' && draftable())) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
@@ -3124,7 +3125,7 @@ function trainUnit(kind) {
   const c = COSTS[kind];
   if (WEAPON[kind]) { for (const w of NEEDS[kind]) res[w] -= 1; res.gold -= feeOf(kind); }   // every soldier takes a weapon from the armory
   else { spendFood(c.food); res.wood -= c.wood; res.gold -= (c.gold || 0); res.stone -= (c.stone || 0); }
-  { const pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length + trainQueue.filter(q => !MACHINE[q.kind]).length, d = draftable();
+  { const pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length + trainQueue.filter(q => !MACHINE[q.kind]).length, d = draftable();
     if (!MACHINE[kind] && kind !== 'civ' && pop >= popCap() && d) { units.splice(units.indexOf(d), 1); selection.delete(d); floatText(d.x, d.y - 50, `Called up to be a ${KINDS[kind].name}`, '#9fe8a8'); } }
   trainQueue.push({ kind, t: 0, dur: c.time * CIV.train });
   updateHud();
@@ -3385,6 +3386,30 @@ function finishBuilding(b) {
   if (isField(b.kind)) b.amount = 10;
   floatText(b.x, b.y - b.topH - 10, `${b.name} built`, '#9fe8a8');
   if (b.team === 'player') AudioSys.play('built', b.x, b.y);
+  if (b.team === 'player' && GIFT_TOWERS[b.kind]) giftKnight(b, 'A knight comes with the tower to guard its door.');
+}
+// every tower, big or small, and the keep come with one free knight who guards the door
+const GIFT_TOWERS = { gtower: 1, stower: 1, greattower: 1, lookout: 1, roundtower: 1 };
+function giftKnight(b, msg) {
+  const u = makeUnit('player', 'knight', b.x, (b.y1 !== undefined ? b.y1 : b.y) + 14);
+  u.gift = true; u.guardOf = b; u.cmdT = -99;
+  if (msg) floatText(b.x, (b.y1 !== undefined ? b.y1 : b.y) - 30, msg, '#9fe8a8');
+  return u;
+}
+// a door guard throws itself at anyone who comes within reach of its tower or keep
+const GUARD_R = { keep: 260 };
+function guardPost(u) {
+  const g = u.guardOf; if (!g || g.dead || g.x0 === undefined) return false;
+  const R = GUARD_R[g.kind] || 230;
+  if (u.order === 'attack' && alive(u.target) && u.target.team !== 'player' && u.target.x0 === undefined) {
+    if (edgeDist(g, u.target) > R + 90) { u.order = 'idle'; u.target = null; u.path = []; return true; }   // gone: back to the door
+    return false;
+  }
+  if (u.order !== 'idle' && u.order !== 'attack') return false;
+  let best = null, bd = R;
+  for (const e of units) if (!e.dead && e.team !== 'player') { const d = edgeDist(g, e); if (d < bd) { bd = d; best = e; } }
+  if (best) { u.order = 'attack'; u.target = best; u.repath = 0; u.cmdT = -99; return true; }
+  return false;
 }
 function nearestFoundation(u, maxD) {
   let best = null, bd = maxD;
@@ -5949,6 +5974,7 @@ function sayLine(u) {
   if (isMachine(u)) return u.holdFire ? 'Holding fire, my lord.' : u.order === 'attack' ? 'Loosing at the enemy!' : 'Loaded and ready to fire.';
   if (t === 'king') return 'My people need walls, bread and brave men.';
   if (u.guardOf && u.guardOf.type === 'king') return 'I guard the King with my life.';
+  if (u.gift && u.guardOf) return `I came with the ${u.guardOf.kind === 'keep' ? 'keep' : u.guardOf.name}. No one gets past this door.`;
   if (u.guardOf) return `Guarding the door of the ${u.guardOf.name}.`;
   if (t === 'archer') return u.onWall ? 'Watching from up here. Arrows ready!' : u.order === 'attack' ? 'Loosing arrows!' : 'Arrows ready, waiting on them.';
   if (u.order === 'attack') return t === 'knight' ? 'For the King!' : 'Into them!';
@@ -6360,7 +6386,7 @@ function startGame(key) {
   PAL.civ.trim = CIV.color;
   res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 30;
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
-  spawnPlayerPeople(); spawnKing();
+  spawnPlayerPeople(); spawnKing(); if (keep) giftKnight(keep, '');
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
