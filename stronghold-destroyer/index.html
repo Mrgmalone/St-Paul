@@ -265,6 +265,7 @@
     <button id="btnHelp">Help and controls (H)</button>
     <div class="row"><button id="btnTrees">Trees: Detailed</button><span style="font-size:14px;color:#d9c9a3">Simple runs faster on slower computers</span></div>
     <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
+    <div class="row"><button id="btnArt3d">Soldiers in 3D: Models</button><span style="font-size:14px;color:#d9c9a3">or your pictures from the design sheet</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
     <div class="row"><button id="btnView">View: 3D</button><span style="font-size:14px;color:#d9c9a3">V switches &middot; Q and E turn the camera</span></div>
     <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
@@ -429,6 +430,7 @@ function loadSprites() {
     for (const [name, d] of Object.entries(list.units)) { const img = new Image(); img.onload = () => { ART[name] = Object.assign({ img, n: d.views.length }, d); ART.ver = (ART.ver || 0) + 1; }; img.src = 'sprites/' + d.file; }
   }).catch(() => {});
 }
+let art3d = false; try { art3d = localStorage.getItem('sd-art3d') === 'pictures'; } catch (e) {}
 loadSprites();
 const spriteOf = u => (u.team === 'player' && !u.lord && ART[ART_UNIT[u.type]]) || null;
 // which picture to show: the unit's facing compared with the direction to the viewer (0 = looking at us)
@@ -4793,9 +4795,19 @@ const R3D = (() => {
   // heraldry from Gerald's sheets: a gold lion rampant on crimson for his army; an ember tower on charcoal for the Black Stone foe
   const emblemTex = (team, bg) => genTex('emblem-' + team + (bg || ''), 128, (g, n) => {
     g.fillStyle = bg || (team === 'enemy' ? ENEMY_COL : ARMY.crimson); g.fillRect(0, 0, n, n);
+    for (let x = 0; x < n; x++) { const f = Math.sin(x / n * Math.PI * 7) * 0.5 + Math.sin(x / n * Math.PI * 17 + 1) * 0.2; g.fillStyle = f > 0 ? `rgba(255,220,200,${f * 0.09})` : `rgba(0,0,0,${-f * 0.22})`; g.fillRect(x, 0, 1, n); }   // folds
+    for (let y = 0; y < n; y += 2) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, y, n, 1); } for (let x = 0; x < n; x += 2) { g.fillStyle = 'rgba(255,255,255,0.03)'; g.fillRect(x, 0, 1, n); }   // weave
     for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; g.fillRect(Math.random() * n, Math.random() * n, 2, 1); }
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, n - 5, n, 5); g.fillStyle = 'rgba(217,169,58,0.8)'; g.fillRect(0, n - 9, n, 2);   // a dark hem with a gold stripe
     if (team === 'enemy') drawTowerEmblem(g, n / 2, n / 2, n * 0.8, ENEMY_TRIM); else drawLion(g, n / 2, n * 0.52, n * 0.86, ARMY.gold);
   }, 1);
+  // brushed, scratched steel; a crimson weave with soft fold shading; grained leather - painted here, no files needed
+  const steelTex = () => genTex('steel', 256, (g, n, R) => { const gr = g.createLinearGradient(0, 0, 0, n); gr.addColorStop(0, '#f4f6f8'); gr.addColorStop(0.5, '#d8dde2'); gr.addColorStop(1, '#eef1f4'); g.fillStyle = gr; g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 900; i++) { const y = R() * n, l = 20 + R() * 90, x = R() * n; g.strokeStyle = `rgba(${R() < 0.5 ? '255,255,255' : '90,96,104'},${0.05 + R() * 0.1})`; g.lineWidth = 0.6 + R() * 0.8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + (R() - 0.5) * 3); g.stroke(); }
+    for (let i = 0; i < 70; i++) { const x = R() * n, y = R() * n, a = R() * 6.28, l = 4 + R() * 16; g.strokeStyle = `rgba(60,64,70,${0.25 + R() * 0.3})`; g.lineWidth = 0.7; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
+    for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(80,70,60,${0.05 + R() * 0.08})`; g.beginPath(); g.arc(R() * n, R() * n, 3 + R() * 10, 0, 6.28); g.fill(); } }, 1);
+  const leatherTex = () => genTex('leather', 128, (g, n, R) => { g.fillStyle = '#d9d0c4'; g.fillRect(0, 0, n, n); for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${R() < 0.5 ? '0,0,0' : '255,255,255'},${R() * 0.12})`; g.fillRect(R() * n, R() * n, 1 + R() * 2, 1); }
+    for (let i = 0; i < 30; i++) { g.strokeStyle = `rgba(60,40,20,${0.12 + R() * 0.15})`; g.lineWidth = 0.8; g.beginPath(); const x = R() * n, y = R() * n; g.moveTo(x, y); g.quadraticCurveTo(x + R() * 20 - 10, y + R() * 20 - 10, x + R() * 30 - 15, y + R() * 30 - 15); g.stroke(); } }, 2);
   const fabricTex = () => genTex('fabric', 64, (g, n, R) => { g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, n, n);
     for (let y = 0; y < n; y += 2) { g.fillStyle = `rgba(0,0,0,${0.05 + R() * 0.05})`; g.fillRect(0, y, n, 1); }
     for (let x = 0; x < n; x += 2) { g.fillStyle = `rgba(0,0,0,${0.04 + R() * 0.04})`; g.fillRect(x, 0, 1, n); }
@@ -5665,7 +5677,9 @@ const R3D = (() => {
     m.lion = new T.MeshStandardMaterial({ map: emblemTex(team), roughness: 0.88, side: T.DoubleSide });
     m.trimG = std(team === 'enemy' ? ENEMY_TRIM : ARMY.gold, { metalness: 0.75, roughness: 0.32 });
     if (soldier) {
-      m.plate = std(team === 'enemy' ? '#5d6168' : '#d5dbe1', { metalness: 0.92, roughness: team === 'enemy' ? 0.36 : 0.2 });
+      m.plate = std(team === 'enemy' ? '#5d6168' : '#d5dbe1', { metalness: 0.92, roughness: team === 'enemy' ? 0.36 : 0.24, map: steelTex(), bumpMap: steelTex(), bumpScale: 0.12 });
+      m.mail = std('#8b9197', { metalness: 0.6, roughness: 0.4, map: mailTex(), bumpMap: mailTex(), bumpScale: 0.35 }); m.mail.map = mailTex().clone(); m.mail.map.needsUpdate = true; m.mail.map.repeat.set(3, 3); m.mail.bumpMap = m.mail.map;
+      m.belt = std('#5a3a20', { roughness: 0.6, map: leatherTex() });
       m.pants = m.plate; m.boot = m.plate; m.glove = m.plate;
       if (u.type === 'sword' && team === 'player') lk.beard = true;   // the swordsman: bare-headed and bearded
     }
@@ -5733,7 +5747,8 @@ const R3D = (() => {
       if (u.type === 'civ' || u.type === 'archer') { const tm = box(0.55, 1.6, 1.2, m.hair, side * 2.62, 0.4, 0.5); head.add(tm); }
     }
     const chin = sph(0.8, m.skin, 0, -2.45, 1.65, 8); chin.scale.set(1.15, 0.7, 0.8); head.add(chin);
-    if (lk.beard && !lk.female) { const bd = sph(2.35, m.hair, 0, -1.65, 0.85, 12); bd.scale.set(0.96, 0.85, 1.0); head.add(bd); head.add(box(1.6, 0.4, 0.4, m.hair, 0, -1.0, 2.65)); }
+    if (lk.beard && !lk.female) { const bd = mesh(new T.SphereGeometry(2.42, 16, 10, -Math.PI * 0.62, Math.PI * 1.24, Math.PI * 0.42, Math.PI * 0.5), m.hair, 0, -0.9, 0.35); bd.scale.set(0.98, 1.05, 1.06); head.add(bd); const ch2 = sph(1.05, m.hair, 0, -2.85, 1.85, 10); ch2.scale.set(1.2, 1.15, 0.8); head.add(ch2);
+      for (const sd of [-1, 1]) { const ms = capsule(0.32, 0.26, 1.3, m.hair, 6); ms.position.set(sd * 0.75, -1.05, 2.55); ms.rotation.z = sd * 1.25; head.add(ms); const sb = sph(0.9, m.hair, sd * 2.0, -0.9, 0.9, 8); sb.scale.set(0.6, 1.2, 0.9); head.add(sb); } }
     if (soldier) {
       const t = u.type, bare = (t === 'sword' && team === 'player') || t === 'king' || t === 'knight';
       if (t === 'spear') {   // a rounded open-faced kettle helm with a flared brim and a gold band
@@ -5746,9 +5761,9 @@ const R3D = (() => {
         const crest = mesh(new T.TorusGeometry(3.3, 0.3, 6, 16, Math.PI), m.trimG, 0, 0.6, 0); crest.rotation.y = Math.PI / 2; head.add(crest);
       }
       if (P.plume && !bare) { const pl = sph(1.0, std(P.plume), 0, 5.2, -1.2, 8); pl.scale.set(0.8, 1.4, 3.2); head.add(pl); }
-      const gorget = lathe([[2.0, 37.0], [2.9, 35.6], [4.2, 34.2], [4.9, 33.2]], m.mailSkirt, 18, true); gorget.scale.set(1, 1, 0.82); body.add(gorget);
+      const gorget = lathe([[1.75, 36.3], [2.05, 35.6], [2.9, 34.6], [3.7, 33.9]], m.mailSkirt, 18, true); gorget.scale.set(1, 1, 0.85); body.add(gorget);
       // the great cape, crimson with the gold lion, hanging from the shoulders so it swings and blows from the top
-      if (t !== 'king') { const cg = new T.PlaneGeometry(10.8, 22, 2, 6); cg.translate(0, -11, 0); const cloak = mesh(cg, m.lion, 0, 33.2, -4.4); body.add(cloak); m.cloak = cloak; m.cloakM = cloak.material; }
+      if (t !== 'king') { const cg = new T.PlaneGeometry(12.4, 23.5, 12, 12); cg.translate(0, -11.75, 0); { const ps = cg.attributes.position; for (let i = 0; i < ps.count; i++) { const x = ps.getX(i), y = ps.getY(i), dn = -y / 23.5; ps.setZ(i, Math.sin(x * 1.15 + 0.4) * 0.55 * dn + (1 - Math.cos(x / 6.2 * Math.PI / 2)) * 1.6 + (dn < 0.12 ? (0.12 - dn) * 22 * (1 - Math.abs(x) / 6.2 * 0.4) : 0)); ps.setX(i, x * (1 + dn * 0.22)); } cg.computeVertexNormals(); } const cloak = mesh(cg, m.lion, 0, 34.0, -3.6); body.add(cloak); m.cloak = cloak; m.cloakM = cloak.material; }
     } else if (u.type === 'archer') {
       // hood falling to the shoulders
       const hood = lathe([[3.2, -1.0], [3.3, 1.0], [2.9, 2.8], [1.8, 4.0], [0, 4.4]], std('#5e4a2c', { roughness: 0.95, side: T.DoubleSide }), 16); hood.scale.set(1, 1, 1.05); hood.position.z = -0.3; head.add(hood); m.hood = hood.material;
@@ -5767,7 +5782,7 @@ const R3D = (() => {
     if (lk.longHair && u.type !== 'knight') { tail = new T.Group(); tail.position.set(0, -0.6, -2.7); head.add(tail); const tl = capsule(1.0, 0.55, lk.female ? 6.5 : 3.6, m.hair, 8); tail.add(tl); tl.userData.keep = true; tail.userData.keep = true; }
     const arms = [];
     for (const side of [-1, 1]) {
-      const sh = new T.Group(); sh.position.set(side * (lk.female ? 4.75 : 5.15), 31.2, 0); body.add(sh);
+      const sh = new T.Group(); sh.position.set(side * (lk.female ? 4.75 : soldier ? 5.55 : 5.15), 31.2, 0); body.add(sh);
       sh.add(sph(1.95, sleeve, 0, 0, 0, 12));
       sh.add(capsule(1.75, 1.4, 6.9, sleeve, 12));
       if (soldier) { for (let k = 0; k < 3; k++) { const pd = mesh(new T.SphereGeometry(2.6 - k * 0.22, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), m.plate, side * 0.3, 0.6 - k * 1.15, 0); pd.scale.set(1.05, 0.72, 1.12); sh.add(pd); }
@@ -5858,6 +5873,29 @@ const R3D = (() => {
         for (const sx of [-3.5, 3.5]) { const h = box(0.8, 0.8, 11, m.wood, sx, 12.5, -5); h.rotation.x = -0.25; barrow.add(h); const leg = box(0.7, 6, 0.7, m.wood, sx, 6.5, -1); barrow.add(leg); }
         const load = new T.Group(); for (const [x, z] of [[-2, 0.5], [2, 1], [0, 3.4], [-1.6, 4], [1.8, 4.2], [0, 1.6]]) load.add(box(2.6 + (x * 7 % 1), 2.2, 2.6, stoneM(3, 3), x, 13.4 + (z % 1), z)); barrow.add(load); tools.stones = load; }
       body.add(barrow); tools.barrow = barrow;
+    }
+    if (soldier) {   // the plate details of Gerald's sheets: faulds, tassets, cuisses, knee fans, ridged greaves, sabatons, rerebraces, couters, flared gauntlets
+      const P2 = m.plate, G2 = m.trimG;
+      for (let k = 0; k < 3; k++) { const fd = lathe([[5.02 + k * 0.14, 22.1 - k * 1.2], [5.2 + k * 0.14, 20.95 - k * 1.2]], P2, 26, true); fd.scale.set(1.04, 1, 0.8); body.add(fd); }
+      { const fg = mesh(new T.TorusGeometry(5.5, 0.16, 5, 26), G2, 0, 18.55, 0); fg.rotation.x = Math.PI / 2; fg.scale.set(1.04, 0.8, 1); body.add(fg); }
+      for (const sd of [-1, 1]) {
+        const ts = mesh(new T.CylinderGeometry(5.75, 6.35, 5.4, 8, 1, true, sd > 0 ? 0.3 : -1.1, 0.8), P2, 0, 15.9, 0); ts.scale.set(1.03, 1, 0.84); body.add(ts);
+        const tg = mesh(new T.CylinderGeometry(6.38, 6.38, 0.4, 8, 1, true, sd > 0 ? 0.3 : -1.1, 0.8), G2, 0, 13.3, 0); tg.scale.set(1.03, 1, 0.84); body.add(tg);
+      }
+      for (const { hip, knee, side } of legs) {
+        hip.add(lathe([[2.6, 0.2], [2.62, -2.6], [2.42, -6.0], [2.2, -8.3]], P2, 16, true));
+        const ce = mesh(new T.TorusGeometry(2.22, 0.13, 5, 16), G2, 0, -8.2, 0); ce.rotation.x = Math.PI / 2; hip.add(ce);
+        const fan = sph(1.3, P2, side * 1.3, 0.15, 0.45, 10); fan.scale.set(0.42, 0.95, 0.85); knee.add(fan);
+        knee.add(box(0.32, 6.0, 0.45, P2, 0, -4.4, 1.72));
+        for (let k = 0; k < 3; k++) { const lm = sph(1.12 - k * 0.1, P2, 0, -8.5 + k * 0.08, 1.15 + k * 0.85, 10); lm.scale.set(1.0, 0.45, 0.62); knee.add(lm); }
+      }
+      for (const { sh, el, side } of arms) {
+        const rb = capsule(1.98, 1.78, 2.8, P2, 12); rb.position.y = -4.6; sh.add(rb);
+        const cf = sph(1.2, P2, side * 1.0, 0.15, -0.35, 10); cf.scale.set(0.38, 1.0, 1.1); el.add(cf);
+        el.add(mesh(new T.CylinderGeometry(1.6, 1.22, 2.0, 14, 1, true), P2, 0, -5.4, 0));
+        const gr = mesh(new T.TorusGeometry(1.56, 0.12, 4, 14), G2, 0, -4.45, 0); gr.rotation.x = Math.PI / 2; el.add(gr);
+      }
+      if (u.look && u.look.s === undefined) u.look.s = 1.05;   // a taller, heroic build
     }
     root.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingSphere(); o.castShadow = o.geometry.boundingSphere.radius > 1.9; } });
     if (u.type === 'civ' || u.type === 'archer') {   // a little stool that appears when they sit
@@ -6204,8 +6242,8 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); const sp = spriteOf(u); return sp ? spriteUnitModel(u, sp) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
-      else if (!md.sprite && !md.glb && !md.machine && !md.ram && md.spVer !== ART.ver && spriteOf(u)) { scene.remove(md.root); unitModels.delete(u.id); continue; }
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); const sp = art3d ? spriteOf(u) : null; return sp ? spriteUnitModel(u, sp) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      else if (!u.dead && (md.sprite ? !art3d : (!md.glb && !md.machine && !md.ram && art3d && md.spVer !== ART.ver && spriteOf(u)))) { scene.remove(md.root); unitModels.delete(u.id); continue; }
       else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
       seen.add(u.id);
@@ -6577,6 +6615,8 @@ function showLeftNote(reasons) {
   document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b>';
 }
 document.getElementById('leftWhy').onclick = () => { const el = document.getElementById('leftNote'); document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b><span class="why2">' + el.dataset.why + '</span>'; leftNoteT = 20; const mp = document.getElementById('moodPop'); if (mp.hidden) document.getElementById('cMood').click(); };
+document.getElementById('btnArt3d').onclick = () => { art3d = !art3d; try { localStorage.setItem('sd-art3d', art3d ? 'pictures' : 'models'); } catch (e) {} document.getElementById('btnArt3d').textContent = 'Soldiers in 3D: ' + (art3d ? 'Pictures' : 'Models'); };
+document.getElementById('btnArt3d').textContent = 'Soldiers in 3D: ' + (art3d ? 'Pictures' : 'Models');
 document.getElementById('leftClose').onclick = () => { document.getElementById('leftNote').hidden = true; };
 // every box that pops up gets a big X to close it, and keeps it even when its contents are redrawn
 (function closeButtons() {
