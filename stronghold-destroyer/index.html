@@ -875,7 +875,15 @@ function edgeDist(u, t) {
   return Math.hypot(t.x - u.x, t.y - u.y) - u.radius - t.radius;
 }
 function approachPoint(u, t) {
-  if (t.x0 !== undefined) return { x: clamp(u.x, t.x0 - 13, t.x1 + 13), y: clamp(u.y, t.y0 - 13, t.y1 + 13) };
+  if (t.x0 !== undefined) {
+    const p = { x: clamp(u.x, t.x0 - 13, t.x1 + 13), y: clamp(u.y, t.y0 - 13, t.y1 + 13) };
+    if (!circleBlocked(p.x, p.y, 7)) return p;
+    // that side is walled in by a neighbour: take the nearest open spot all the way round
+    let best = p, bd = 1e9;
+    for (let x = t.x0 - 13; x <= t.x1 + 13; x += 8) for (const y of [t.y0 - 13, t.y1 + 13]) if (!circleBlocked(x, y, 7)) { const d = Math.hypot(x - u.x, y - u.y); if (d < bd) { bd = d; best = { x, y }; } }
+    for (let y = t.y0 - 13; y <= t.y1 + 13; y += 8) for (const x of [t.x0 - 13, t.x1 + 13]) if (!circleBlocked(x, y, 7)) { const d = Math.hypot(x - u.x, y - u.y); if (d < bd) { bd = d; best = { x, y }; } }
+    return best;
+  }
   const a = Math.atan2(u.y - t.y, u.x - t.x), d = t.radius + u.radius + u.range * 0.5;
   return { x: t.x + Math.cos(a) * d, y: t.y + Math.sin(a) * d };
 }
@@ -1110,7 +1118,10 @@ function commandAttack(list, t) {
 function commandStop(list) { for (const u of list) { if (u.type === 'civ') { u.job = null; u.manualT = time; } u.order = 'idle'; u.target = null; u.path = []; u.moving = false; } }
 
 // ---------- unit update ----------
+// blocked by the crowd for a while: callers then accept 'close enough' to where they were going
+const stalled = u => u.stT !== undefined && time - u.stT > 1.5;
 function followPath(u, dt) {
+  if (u.stT === undefined || Math.hypot(u.x - u.stX, u.y - u.stY) > 4) { u.stX = u.x; u.stY = u.y; u.stT = time; }
   if (!u.path.length) { u.moving = false; return; }
   const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
   if (d <= Math.max(step, 2.5)) {
@@ -1120,6 +1131,16 @@ function followPath(u, dt) {
   } else {
     moveBy(u, dx / d * step, dy / d * step);
     if (Math.abs(dx) > 0.6) u.facing = dx > 0 ? 1 : -1;
+    // pressed against a building (one put up after the way was planned, or a waypoint hard by a wall): find another way, or call it arrived
+    if (u.fpT === undefined || u.fpW !== wp || d < u.fpD - 2) { if (u.fpW !== wp) u.fpN = 0; u.fpW = wp; u.fpD = d; u.fpT = time; }
+    else if (time - u.fpT > 1.2) {
+      u.fpT = time; u.fpN = (u.fpN || 0) + 1;
+      const end = u.path[u.path.length - 1];
+      if (u.path.length === 1 && d < 26) { u.path.shift(); u.moving = false; return; }
+      if (u.fpN >= 3) u.path.shift();   // that point cannot be reached: skip it
+      else { const np = findPath(u.x, u.y, end.x, end.y); if (np && np.length) u.path = np; else u.path.shift(); }
+      if (!u.path.length) { u.moving = false; return; }
+    }
   }
   u.moving = true;
   u.walkPhase += dt * u.speed * 0.17;
@@ -1333,7 +1354,7 @@ function civBrain(u, dt) {
   if (u.order === 'build') {
     let b = u.buildTarget;
     if (!b || b.dead || b.done) { b = u.buildTarget = nearestFoundation(u, 700); u.path = []; if (!b) { u.order = 'idle'; u.sub = null; u.moving = false; return; } }
-    if (edgeDist(u, b) <= 12) {
+    if (edgeDist(u, b) <= 12 || stalled(u) && edgeDist(u, b) <= 32) {
       u.sub = 'work'; u.path = []; u.moving = false; u.facing = b.x >= u.x ? 1 : -1;
       if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play('hammer', u.x, u.y); }
       const dp = dt * workMul() * fatWork(u) / b.buildTime; b.progress = Math.min(1, b.progress + dp); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dp);
@@ -1357,7 +1378,7 @@ function civBrain(u, dt) {
   }
   if (u.sub === 'toNode') {
     const c = nodeCenter(task.node), d = Math.hypot(c.x - u.x, c.y - u.y), reach = nodeReach(task.node);
-    if (d <= reach) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
+    if (d <= reach || stalled(u) && d <= reach + 22) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
     if (!u.path.length || u.repath <= 0) {
       const a = Math.atan2(u.y - c.y, u.x - c.x), r = reach - 7;
       u.path = findPath(u.x, u.y, c.x + Math.cos(a) * r, c.y + Math.sin(a) * r); u.repath = 3;
@@ -1386,7 +1407,7 @@ function civBrain(u, dt) {
   } else if (u.sub === 'toKeep') {
     const drop = nearestDrop(u, u.carryType || task.type);
     if (!drop) { u.order = 'idle'; u.task = null; return; }
-    if (edgeDist(u, drop) <= 10) {
+    if (edgeDist(u, drop) <= 10 || stalled(u) && edgeDist(u, drop) <= 30) {
       if (u.carry > 0) { if (u.job) u.job.produced = (u.job.produced || 0) + u.carry; if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
       u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
       return;
@@ -1442,17 +1463,22 @@ function updateHealth(dt) {
       continue;
     }
     if (Math.random() < 0.08) floatText(u.x, u.y - 50, '*cough*', '#c8e0a0');
+    u.sickT = (u.sickT || 0) + 1;
+    // with no keep left to care for them, the sick get over it slowly on their own
+    if (!k) { if (u.sickT >= 60) { u.sick = 0; u.sickT = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } continue; }
+    // if nobody notices for a while, they take themselves to the keep
+    if (!u.toHeal && u.sickT >= 20) { u.toHeal = true; floatText(u.x, u.y - 55, 'I should go to the keep...', '#c8e0a0'); }
     // someone notices and sends them to the keep to be cared for
     if (k && !u.toHeal) { const helper = people.find(o => o !== u && !o.sick && Math.hypot(o.x - u.x, o.y - u.y) < 90); if (helper) { u.toHeal = true; speeches.push({ u: helper, text: 'You look ill! Go to the keep to be cared for.', t: 0 }); } }
     if (u.toHeal && k) {
-      if (edgeDist(u, k) < 40) { u.healT = (u.healT || 0) + 1; u.order = 'idle'; if (u.healT >= 18) { u.sick = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } }
-      else if (u.order !== 'move') { const ap = approachPoint(u, k); u.job = u.job; u.task = null; commandMove([u], ap.x, ap.y); u.cmdT = time; }
+      if (edgeDist(u, k) < 40) { u.healT = (u.healT || 0) + 1; u.order = 'idle'; if (u.healT >= 18) { u.sick = 0; u.sickT = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } }
+      else if (u.order !== 'move') { const ap = approachPoint(u, k); u.task = null; commandMove([u], ap.x, ap.y); u.cmdT = time; }
     }
   }
 }
 function updateGuards(dt) {
   guardT -= dt; if (guardT > 0) return; guardT = 1;
-  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall;
+  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal;
   const king = units.find(u => u.type === 'king' && u.team === 'player' && !u.dead);
   // up to five knights keep close by the king
   const knights = units.filter(u => u.type === 'knight' && u.team === 'player' && !u.dead);
@@ -1468,9 +1494,9 @@ function updateGuards(dt) {
   }
   // guards walk back to their post when idle
   for (const u of units) {
-    if (u.dead || !u.guardOf || u.order !== 'idle') continue;
+    if (u.dead || !u.guardOf || u.order !== 'idle' || u.toHeal) continue;
     const g = u.guardOf; if (g.dead) { u.guardOf = null; continue; }
-    const gx = g.x0 !== undefined ? g.x + (u.id % 2 ? -14 : 14) : g.x + (u.id % 5 - 2) * 18, gy = g.kind === 'keep' ? g.y1 + 16 : g.x0 !== undefined ? g.y + 14 : g.y + 26;
+    const gx = u.guardSpot ? u.guardSpot.x : g.x0 !== undefined ? g.x + (u.id % 2 ? -14 : 14) : g.x + (u.id % 5 - 2) * 18, gy = u.guardSpot ? u.guardSpot.y : g.kind === 'keep' ? g.y1 + 16 : g.x0 !== undefined ? g.y + 14 : g.y + 26;
     if (Math.hypot(u.x - gx, u.y - gy) > 40) commandMove([u], gx, gy);
   }
 }
@@ -1527,12 +1553,22 @@ function separate() {
     if (d >= min) continue;
     if (d < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d = Math.hypot(dx, dy); }
     const push = (min - d), nx = dx / d, ny = dy / d;
-    const aFixed = a.team !== 'player' && a.order === 'idle', bFixed = b.team !== 'player' && b.order === 'idle';
+    const aFixed = a.team !== 'player' && a.order === 'idle' && b.team !== a.team, bFixed = b.team !== 'player' && b.order === 'idle' && a.team !== b.team;   // guards hold their ground against foes, but make way for their own
     if (aFixed && bFixed) continue;
     const wa = aFixed ? 0 : bFixed ? 1 : 0.5, wb = 1 - wa;
     moveBy(a, -nx * push * wa, -ny * push * wa);
     moveBy(b, nx * push * wb, ny * push * wb);
+    // someone walking into a person who stands still steps around them, instead of being pushed straight back forever
+    slideAround(a, -nx, -ny, push, true); slideAround(b, nx, ny, push, true);
   }
+}
+function slideAround(u, nx, ny, push, other) {
+  if (!other || !u.moving || !u.path || !u.path.length || isMachine(u)) return;
+  const wp = u.path[0], gx = wp.x - u.x, gy = wp.y - u.y, gl = Math.hypot(gx, gy); if (gl < 1) return;
+  if ((gx * -nx + gy * -ny) / gl < 0.3) return;   // only when the other one is in the way ahead
+  let tx = -ny, ty = nx; const side = tx * gx + ty * gy;
+  if (Math.abs(side) < gl * 0.05 ? u.id % 2 : side < 0) { tx = -tx; ty = -ty; }
+  const k = Math.min(1.6, push * 0.9 + 0.4); moveBy(u, tx * k, ty * k);
 }
 
 // ---------- drawing: people ----------
@@ -1776,12 +1812,21 @@ function drawPerson(g, u, time) {
       g.beginPath(); g.arc(shX, shY, 20, -Math.PI / 2 - 0.9, 0.2); g.stroke();
     }
     g.save(); armFrame(g, shX, shY, ang, a > 0 ? 0.12 : 0.4, sleeve, skin); g.rotate(-0.1);
+    if (u.type === 'maceman') {   // a wooden haft with a flanged iron head, not a blade
+      g.fillStyle = P('#6a4524'); g.fillRect(-0.75, -2.5, 1.5, 14.5);
+      g.fillStyle = P('#3e2a16'); g.fillRect(-0.9, -2.5, 1.8, 2.2);
+      const mg = g.createRadialGradient(-0.8, 12, 0.3, 0, 13, 3.2); mg.addColorStop(0, P('#e4e8eb')); mg.addColorStop(0.55, P('#8f979e')); mg.addColorStop(1, P('#4c535a'));
+      g.fillStyle = mg; g.beginPath(); g.arc(0, 13, 2.7, 0, Math.PI * 2); g.fill(); g.strokeStyle = OUTLINE; g.lineWidth = 0.5; g.stroke();
+      g.fillStyle = P('#6f777e'); for (let k = 0; k < 4; k++) { const fa = k * Math.PI / 2 + 0.4; g.beginPath(); g.moveTo(Math.cos(fa) * 2.2, 13 + Math.sin(fa) * 2.2); g.lineTo(Math.cos(fa) * 4, 13 + Math.sin(fa) * 4); g.lineTo(Math.cos(fa + 0.5) * 2.4, 13 + Math.sin(fa + 0.5) * 2.4); g.closePath(); g.fill(); }
+      g.restore();
+    } else {
     g.fillStyle = P('#5a3a1e'); g.fillRect(-0.8, -2.5, 1.6, 2.6);
     g.fillStyle = P('#c9a24a'); g.fillRect(-3.2, 0, 6.4, 1.5);
     const bg = g.createLinearGradient(-1.1, 0, 1.1, 0); bg.addColorStop(0, P('#9aa3ab')); bg.addColorStop(0.5, P('#f2f5f7')); bg.addColorStop(1, P('#8a939b'));
     g.fillStyle = bg; g.beginPath(); g.moveTo(-1.1, 1.5); g.lineTo(1.1, 1.5); g.lineTo(0.7, 13.5); g.lineTo(0, 15.2); g.lineTo(-0.7, 13.5); g.closePath(); g.fill();
     g.strokeStyle = OUTLINE; g.lineWidth = 0.5; g.stroke();
     g.restore();
+    }
   } else if (u.type === 'spear') {
     let thrust = 0;
     if (a > 0) thrust = a < 0.35 ? lerp(0, -5, ease(a / 0.35)) : a < 0.58 ? lerp(-5, 10, ease((a - 0.35) / 0.23)) : lerp(10, 0, ease((a - 0.58) / 0.42));
@@ -2792,7 +2837,7 @@ function enemyWorker(u, dt) {
   }
   if (u.sub === 'toSite') {
     const b = u.ejob; if (!b || b.dead || b.done) { u.sub = null; u.ejob = null; return; }
-    if (edgeDist(u, b) <= 12) { u.sub = 'work'; u.path = []; u.moving = false; } else { const ap = approachPoint(u, b); walk(ap.x, ap.y); }
+    if (edgeDist(u, b) <= 12 || stalled(u) && edgeDist(u, b) <= 32) { u.sub = 'work'; u.path = []; u.moving = false; } else { const ap = approachPoint(u, b); walk(ap.x, ap.y); }
     return;
   }
   if (u.sub === 'work' && u.order === 'build') {
@@ -2806,7 +2851,7 @@ function enemyWorker(u, dt) {
   if (u.sub === 'toNode') {
     const n = u.enode; if (!n || n.gone || n.amount <= 0) { u.sub = null; return; }
     const c = nodeCenter(n);
-    if (Math.hypot(c.x - u.x, c.y - u.y) <= nodeReach(n) + 6) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.path = []; u.moving = false; } else walk(c.x, c.y);
+    if (Math.hypot(c.x - u.x, c.y - u.y) <= nodeReach(n) + 6 || stalled(u) && Math.hypot(c.x - u.x, c.y - u.y) <= nodeReach(n) + 28) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.path = []; u.moving = false; } else walk(c.x, c.y);
     return;
   }
   if (u.sub === 'work') {
@@ -2821,7 +2866,7 @@ function enemyWorker(u, dt) {
   }
   if (u.sub === 'toCamp') {
     const ap = approachPoint(u, camp);
-    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14) { ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
+    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || stalled(u) && edgeDist(u, camp) <= 36) { ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
     else walk(ap.x, ap.y);
   }
 }
@@ -3391,15 +3436,19 @@ function finishBuilding(b) {
 // every tower, big or small, and the keep come with one free knight who guards the door
 const GIFT_TOWERS = { gtower: 1, stower: 1, greattower: 1, lookout: 1, roundtower: 1 };
 function giftKnight(b, msg) {
-  const u = makeUnit('player', 'knight', b.x, (b.y1 !== undefined ? b.y1 : b.y) + 14);
-  u.gift = true; u.guardOf = b; u.cmdT = -99;
+  // he stands on the open side that faces home, so he never ends up outside the wall
+  const home = keep && keep !== b ? keep : { x: b.x, y: b.y + 999 }, mx = (b.x0 + b.x1) / 2, my = (b.y0 + b.y1) / 2;
+  const spots = [[mx, b.y1 + 14], [mx, b.y0 - 14], [b.x0 - 14, my], [b.x1 + 14, my]].filter(([x, y]) => !circleBlocked(x, y, 6)).sort((p, q) => Math.hypot(p[0] - home.x, p[1] - home.y) - Math.hypot(q[0] - home.x, q[1] - home.y));
+  const sp = spots[0] || [mx, b.y1 + 14];
+  const u = makeUnit('player', 'knight', sp[0], sp[1]);
+  u.gift = true; u.guardOf = b; u.cmdT = -99; u.guardSpot = { x: sp[0], y: sp[1] };
   if (msg) floatText(b.x, (b.y1 !== undefined ? b.y1 : b.y) - 30, msg, '#9fe8a8');
   return u;
 }
 // a door guard throws itself at anyone who comes within reach of its tower or keep
 const GUARD_R = { keep: 260 };
 function guardPost(u) {
-  const g = u.guardOf; if (!g || g.dead || g.x0 === undefined) return false;
+  const g = u.guardOf; if (!g || g.dead || g.x0 === undefined || u.toHeal) return false;
   const R = GUARD_R[g.kind] || 230;
   if (u.order === 'attack' && alive(u.target) && u.target.team !== 'player' && u.target.x0 === undefined) {
     if (edgeDist(g, u.target) > R + 90) { u.order = 'idle'; u.target = null; u.path = []; return true; }   // gone: back to the door
