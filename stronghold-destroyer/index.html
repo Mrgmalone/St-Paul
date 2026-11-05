@@ -658,6 +658,12 @@ function makeUnit(team, kind, x, y) {
     carry: 0, carryType: null, task: null, sub: null, workT: 0, bad: new Set(), hair: HAIRS[Math.floor(Math.random() * HAIRS.length)]
   };
   if (kind === 'ram') u.radius = 16;
+  if (!MACHINE[kind] && !u.look) {
+    const fem = kind === 'civ' ? Math.random() < 0.45 : kind === 'archer' ? Math.random() < 0.25 : false;
+    u.look = { female: fem, beard: !fem && Math.random() < 0.45, longHair: fem || Math.random() < 0.2, w: 0.93 + Math.random() * 0.12, h: (fem ? 0.94 : 0.97) + Math.random() * 0.07, hairStyle: Math.floor(Math.random() * 3) };
+  }
+  u.fat = kind === 'civ' ? (Math.random() < 0.3 ? 0.2 + Math.random() * 0.5 : Math.random() * 0.15) : Math.random() * 0.12;
+  u.sick = 0;
   if (kind === 'catapult' || kind === 'ballista' || kind === 'oxcart') u.radius = 17;
   if (kind === 'trebuchet') u.radius = 21;
   if (kind === 'knight') { u.pal = Object.assign({}, PAL[team], { helmet: '#d6dce2', plume: team === 'player' ? '#f0e6d0' : '#d23b2f' }); u.look = { beard: Math.random() < 0.5, longHair: false, w: 1.06, h: 1.03 }; }
@@ -1106,7 +1112,7 @@ function commandStop(list) { for (const u of list) { if (u.type === 'civ') { u.j
 // ---------- unit update ----------
 function followPath(u, dt) {
   if (!u.path.length) { u.moving = false; return; }
-  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt * weatherSpeed();
+  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
   if (d <= Math.max(step, 2.5)) {
     if (!circleBlocked(wp.x, wp.y, u.radius * 0.8)) { u.x = wp.x; u.y = wp.y; }
     u.path.shift();
@@ -1329,7 +1335,7 @@ function civBrain(u, dt) {
     if (edgeDist(u, b) <= 12) {
       u.sub = 'work'; u.path = []; u.moving = false; u.facing = b.x >= u.x ? 1 : -1;
       if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play('hammer', u.x, u.y); }
-      const dp = dt * workMul() / b.buildTime; b.progress = Math.min(1, b.progress + dp); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dp);
+      const dp = dt * workMul() * fatWork(u) / b.buildTime; b.progress = Math.min(1, b.progress + dp); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dp);
       if (b.progress >= 1) finishBuilding(b);
     } else {
       u.sub = 'go';
@@ -1368,7 +1374,7 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); else if (task.type === 'stone') AudioSys.play('stoneHit', u.x, u.y); }
     u.workT += dt;
-    const rate = (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
+    const rate = 1 / fatWork(u) * (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
     if (u.workT >= rate) {
       u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = task.node.kind === 'bush' ? 'berries' : 'crops';
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
@@ -1420,6 +1426,29 @@ function kingBrain(u) {
 }
 let guardT = 0;
 const GUARD_TOWERS = { lookout: 1, roundtower: 1 };
+let healthT = 0;
+function updateHealth(dt) {
+  healthT -= dt; if (healthT > 0) return; healthT = 1;
+  const k = playerKeep(), people = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && u.type !== 'king');
+  const crowd = people.length >= popCap() * 0.9, winter = WEATHER.season === 3;
+  for (const u of people) {
+    // weight follows the rations: generous rations fatten, lean ones slim
+    u.fat = clamp((u.fat || 0) + (ration - 1) * (u.type === 'civ' ? 1 : 0.5) / 300 + (starving ? -1 / 150 : 0), 0, 1);
+    if (!u.sick) {
+      const risk = 0.00035 + (starving ? 0.004 : 0) + (crowd ? 0.0012 : 0) + (winter ? 0.0008 : 0) + WEATHER.rain * 0.0005 - (u.fat > 0.2 && u.fat < 0.6 ? 0.0002 : 0);
+      const near = people.some(o => o !== u && o.sick && Math.hypot(o.x - u.x, o.y - u.y) < 34);
+      if (Math.random() < risk + (near ? 0.003 : 0)) { u.sick = 1; u.healT = 0; floatText(u.x, u.y - 55, 'Feeling ill...', '#c8e0a0'); }
+      continue;
+    }
+    if (Math.random() < 0.08) floatText(u.x, u.y - 50, '*cough*', '#c8e0a0');
+    // someone notices and sends them to the keep to be cared for
+    if (k && !u.toHeal) { const helper = people.find(o => o !== u && !o.sick && Math.hypot(o.x - u.x, o.y - u.y) < 90); if (helper) { u.toHeal = true; speeches.push({ u: helper, text: 'You look ill! Go to the keep to be cared for.', t: 0 }); } }
+    if (u.toHeal && k) {
+      if (edgeDist(u, k) < 40) { u.healT = (u.healT || 0) + 1; u.order = 'idle'; if (u.healT >= 18) { u.sick = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } }
+      else if (u.order !== 'move') { const ap = approachPoint(u, k); u.job = u.job; u.task = null; commandMove([u], ap.x, ap.y); u.cmdT = time; }
+    }
+  }
+}
 function updateGuards(dt) {
   guardT -= dt; if (guardT > 0) return; guardT = 1;
   const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall;
@@ -1447,9 +1476,15 @@ function updateGuards(dt) {
 function spawnKing() {
   const k = keep; const u = makeUnit('player', 'king', k.x + 10, k.y1 + 30); u.name = 'Your King'; return u;
 }
+const prints = [];
+function stepPrint(u) {
+  if (isMachine(u) || u.onWall) return; const st = Math.floor(u.walkPhase / Math.PI); if (st === u.lastStep) return; u.lastStep = st;
+  const a = Math.atan2((u.path[0] ? u.path[0].y : u.y) - u.y, (u.path[0] ? u.path[0].x : u.x) - u.x), side = st % 2 ? 1 : -1;
+  prints.push({ x: u.x - Math.sin(a) * side * 2.4, y: u.y + Math.cos(a) * side * 2.4, a, t: 0 }); if (prints.length > 600) prints.shift();
+}
 function updateUnit(u, dt) {
   if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
-  updateRest(u, dt);
+  updateRest(u, dt); if (u.moving) stepPrint(u);
   curTeam = u.team;
   u.flash = Math.max(0, u.flash - dt * 5);
   u.atkTimer -= dt; u.combatT -= dt; u.repath -= dt;
@@ -1544,7 +1579,7 @@ function armTo(g, sx, sy, hx, hy, sleeve, skin) {
   g.fillStyle = skin; g.beginPath(); g.arc(hx, hy, 1.3, 0, Math.PI * 2); g.fill();
 }
 function drawTorso(g, u, P, hipY, sx, sy, lk) {
-  const w = lk.w, pal = u.pal, soldier = (swordish(u) || u.type === 'spear');
+  const w = lk.w * (1 + (u.fat || 0) * 0.38), pal = u.pal, soldier = (swordish(u) || u.type === 'spear');
   const base = soldier ? MAIL : pal.tunic, bottom = soldier ? hipY + 1 : hipY + 3.8;
   const path = () => {
     g.beginPath(); g.moveTo(sx - 4.2 * w, sy + 0.8);
@@ -2869,7 +2904,7 @@ function updateTraps(dt) {
   }
 }
 function updateWar(dt) {
-  updateTraps(dt); updateLord(); updateGuards(dt);
+  updateTraps(dt); updateLord(); updateGuards(dt); updateHealth(dt);
   alertCooldown -= dt;
   for (const s of structures) {
     if (s.dead || s.done === false || !s.range) continue;
@@ -2941,10 +2976,11 @@ function updateWar(dt) {
 const RATIONS = [ { name: 'Lean', eat: 0.5, mood: -8 }, { name: 'Normal', eat: 1, mood: 0 }, { name: 'Generous', eat: 1.5, mood: 8 } ];
 const TAXES = [ { name: 'None', gold: 0, mood: 3 }, { name: 'Low', gold: 1, mood: -4 }, { name: 'High', gold: 2.5, mood: -12 } ];
 let aleBonus = 0, aleCover = 0, aleT = 0, varietyBonus = 0, relCover = 0, relBonus = 0, crowdPen = 0, fearGood = 0, fearHard = 0;
-let contentUntil = 0, leftCount = 0, returnT = 20, fullGranary = 0;
+let fatBonus = 0, sickPen = 0, contentUntil = 0, leftCount = 0, returnT = 20, fullGranary = 0;
 function cheer(n, secs, msg) { mood = Math.min(100, mood + n); contentUntil = Math.max(contentUntil, time + secs); if (msg) { const k = playerKeep(); if (k) floatText(k.x, k.y - 160, msg, '#ffd27a'); } }
 let mood = 60, ration = 1, tax = 1, goldT = 0, settleT = 30, leaveT = 25, moodRate = 0;
 const moodName = () => mood >= 70 ? 'Happy' : mood >= 40 ? 'Steady' : mood >= 20 ? 'Unhappy' : 'Rebellious';
+const fatWork = u => (1 - 0.35 * (u.fat || 0)) * (u.sick > 0 ? 0.4 : 1);   // the well-fed are lazy; the sick hardly work
 const countOf = k => structures.filter(b => b.kind === k && b.done && !b.dead && b.team === 'player').length;
 const workMul = () => (mood >= 70 ? 1.15 : mood >= 40 ? 1 : 0.8) * (1 + 0.08 * countOf('stocks') - 0.05 * countOf('garden'));
 function moodHtml() {
@@ -2978,7 +3014,8 @@ function updateMood(dt, people) {
   crowdPen = people.length >= popCap() * 0.9 ? -4 : 0;
   fearGood = 2 * countOf('garden'); fearHard = -2 * countOf('stocks');
   fullGranary = !starving && res.food > 300 ? 4 : 0;
-  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard + fullGranary;
+  { const fats = people.filter(u => u.fat > 0.45).length, sick = people.filter(u => u.sick).length; fatBonus = people.length && fats / people.length > 0.3 ? 3 : 0; sickPen = -Math.min(8, sick * 2); }
+  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard + fullGranary + fatBonus + sickPen;
   const holdsUp = time < contentUntil && moodRate < 0;   // after a feast or a new comfort, spirits stay up for a while
   mood = clamp(mood + (holdsUp ? 0 : moodRate) * dt / 60, 0, 100);
   // people who left come back when the town is happy again
@@ -3137,7 +3174,7 @@ function craftBrain(u, dt) {
     u.crafting = 0;
   }
   if (u.attackAnim === 0) { u.attackAnim = 0.001; AudioSys.play(site.kind === 'ironmine' || site.kind === 'quarry' ? 'chop' : 'hammer', u.x, u.y); }
-  u.crafting += dt * workMul();
+  u.crafting += dt * workMul() * fatWork(u);
   if (u.crafting >= rc.time) {
     u.crafting = null; site.made = (site.made || 0) + 1;
     if (Object.keys(rc.inp).length && site.made % 4 === 0 && craftCost(site) > 0.55) floatText(site.x, site.y - site.topH - 14, `${site.name} is getting skilled: now uses ${Math.round((1 - craftCost(site)) * 100)}% less material`, '#9fe8a8');
@@ -3204,15 +3241,15 @@ function updateJobs(dt) {
     if (b.team !== 'player' || b.dead || b.done !== false) continue;
     const on = civs.filter(u => u.order === 'build' && u.buildTarget === b).length; if (on >= 2) continue;
     const near = (a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y);
-    let pool = civs.filter(u => !u.job && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0 && u.sub === 'toKeep'));
+    let pool = civs.filter(u => !u.job && !u.toHeal && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0 && u.sub === 'toKeep'));
     if (!pool.length && !on) pool = civs.filter(u => u.job && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0));
     pool.sort(near).slice(0, 2 - on).forEach(u => { u.breakUntil = 0; commandBuild([u], b); floatText(u.x, u.y - 50, `Off to build the ${b.name}`, '#ffe9a8'); });
   }
-  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time)) startJob(u);
+  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time) && !u.toHeal) startJob(u);
   // anyone with no building job gathers by themselves: food when stores are low, otherwise wood; at most 5 to a bush, tree or rock
   const onNode = n => civs.filter(o => o.task && o.task.node === n && o.order === 'gather').length;
   for (const u of civs) {
-    if (u.job || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
+    if (u.job || u.toHeal || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
     const want = res.food < 120 || foodKinds.berries + foodKinds.crops < res.wood * 0.6 ? 'food' : 'wood';
     for (const type of [want, want === 'food' ? 'wood' : 'food']) {
       const list = type === 'wood' ? trees : bushes; let best = null, bd = 1100;
@@ -4215,7 +4252,7 @@ const UI = (() => {
       ln(`Taxes: ${t.name}`, t.mood) +
       ln(relBonus ? `Faith: houses of prayer serve ${Math.round(relCover * 100)}% of your people` : 'Faith: no house of prayer (build one in the Town list)', relBonus) +
       ln(crowdPen ? 'Crowding: houses are nearly full' : 'Crowding: room to spare', crowdPen) +
-      (fullGranary ? ln('Full granary: plenty in store', fullGranary) : '') + (time < contentUntil ? ln(`Content after a feast or new comfort: mood will not fall for ${Math.ceil(contentUntil - time)}s`, 0) : '') +
+      (fullGranary ? ln('Full granary: plenty in store', fullGranary) : '') + (fatBonus ? ln('Well-fed and content (but the fat work slower)', fatBonus) : '') + (sickPen ? ln(`Sickness in town: ${-sickPen / 2} ill (they rest at the keep)`, sickPen) : '') + (time < contentUntil ? ln(`Content after a feast or new comfort: mood will not fall for ${Math.ceil(contentUntil - time)}s`, 0) : '') +
       ln(`Gardens: ${countOf('garden')} (people work ${countOf('garden') * 5}% slower)`, fearGood) +
       ln(`Stocks: ${countOf('stocks')} (people work ${countOf('stocks') * 8}% harder)`, fearHard) + ln(aleBonus ? `Ale: taverns serve ${Math.round(aleCover * 100)}% of your people` : 'Ale: none served (build a tavern and brewery)', aleBonus) +
       `<div class="ln" style="border-top:1px solid #6e5128;margin-top:4px;padding-top:4px"><span>Total</span><b class="${total > 0 ? 'plus' : total < 0 ? 'minus' : ''}">${total > 0 ? '+' : ''}${total}/min</b></div>` +
@@ -5095,9 +5132,14 @@ const R3D = (() => {
     }
     // torso: hips, waist, chest and sloping shoulders in one smooth shape, deeper at the chest than the back
     const torso = lathe([[0, 15.6], [4.3, 16.2], [4.6, 18], [4.15, 20.5], [4.5, 23.5], [5.2, 27], [5.35, 29.6], [4.9, 31.3], [3.4, 32.6], [1.7, 33.4], [0, 33.6]], soldier ? m.mail : m.cloth, 24);
-    torso.scale.set(1, 1, 0.7); body.add(torso);
+    torso.scale.set(1, 1, 0.7); body.add(torso); torso.userData.keep = true;
+    // rounded shoulders: a sloping trapezius from the neck to each shoulder, so the outline is never square
+    for (const side of [-1, 1]) { const tr = capsule(1.7, 1.5, 3.6, soldier ? m.mail : m.cloth, 12); tr.position.set(side * 1.7, 33.4, -0.3); tr.rotation.z = side * 1.25; body.add(tr); }
+    // a belly that grows when they eat well
+    const belly = sph(4.3, soldier ? m.mail : m.cloth, 0, 21.8, 1.6, 16); belly.scale.set(1, 0.9, 0.9); body.add(belly); belly.userData.keep = true;
+    if (lk.female) for (const side of [-1, 1]) { const ch = sph(1.55, m.cloth, side * 1.75, 27.6, 3.1, 10); ch.scale.set(1, 0.9, 0.75); body.add(ch); }
     // tunic skirt or mail skirt flaring over the thighs
-    const sk = lathe([[4.75, 20.2], [5.0, 18], [5.5, 15], [5.9, 12.2]], soldier ? m.mailSkirt : m.skirt, 22, true); sk.scale.set(1, 1, 0.78); sk.geometry.translate(0, -20.2, 0); sk.position.y = 20.2; body.add(sk); sk.userData.keep = true; const cloth = [sk];
+    const sk = lathe(lk.female && !soldier ? [[4.75, 20.2], [5.1, 17], [5.8, 11], [6.6, 4.5], [6.9, 2.6]] : [[4.75, 20.2], [5.0, 18], [5.5, 15], [5.9, 12.2]], soldier ? m.mailSkirt : m.skirt, 22, true); sk.scale.set(1, 1, 0.78); sk.geometry.translate(0, -20.2, 0); sk.position.y = 20.2; body.add(sk); sk.userData.keep = true; const cloth = [sk];
     if (soldier) {
       // surcoat in the team colour, front and back, with a belt and a gold badge
       const sc = lathe([[4.95, 30.6], [5.45, 28], [4.75, 23.5], [4.75, 20.4], [5.6, 16.5], [6.0, 13.4]], m.skirt, 22, true); sc.scale.set(1.01, 1, 0.73); body.add(sc);
@@ -5116,10 +5158,14 @@ const R3D = (() => {
     for (const side of [-1, 1]) {
       const ew = sph(0.36, std('#cfc6b6', { roughness: 0.5 }), side * 0.95, 0.55, 2.4, 8); ew.scale.set(1, 0.6, 0.45); head.add(ew);
       head.add(sph(0.22, m.eye, side * 0.95, 0.55, 2.56, 6));
-      const brow = box(1.3, 0.32, 0.45, m.hair, side * 1.0, 1.25, 2.5); brow.rotation.z = -side * 0.14; head.add(brow);
+      const brow = box(1.3, 0.32, 0.45, m.hair, side * 1.0, 1.25, 2.5); brow.rotation.z = -side * 0.14; head.add(brow); brow.userData.keep = true; (m.brows = m.brows || []).push({ brow, side });
       const ear = sph(0.75, m.skin, side * 2.6, 0.1, 0.1, 8); ear.scale.set(0.45, 1, 0.75); head.add(ear);
     }
-    const mouth = box(1.25, 0.25, 0.3, m.lip, 0, -1.55, 2.55); head.add(mouth);
+    const mouth = box(1.25, 0.25, 0.3, m.lip, 0, -1.55, 2.55); head.add(mouth); mouth.userData.keep = true;
+    // faces show feeling: a smile when content, a frown when unhappy
+    const smile = mesh(new T.TorusGeometry(0.72, 0.15, 4, 10, Math.PI), m.lip, 0, -1.2, 2.55); smile.rotation.z = Math.PI; head.add(smile); smile.userData.keep = true;
+    const frown = mesh(new T.TorusGeometry(0.72, 0.15, 4, 10, Math.PI), m.lip, 0, -1.95, 2.55); head.add(frown); frown.userData.keep = true;
+    m.mouths = { mouth, smile, frown };
     const lower = sph(0.55, m.lip, 0, -1.72, 2.4, 8); lower.scale.set(1.1, 0.4, 0.45); head.add(lower);
     for (const side of [-1, 1]) {
       const lid = sph(0.56, m.skin, side * 0.95, 0.78, 2.32, 8); lid.scale.set(1.05, 0.42, 0.55); head.add(lid);
@@ -5127,7 +5173,7 @@ const R3D = (() => {
       if (u.type === 'civ' || u.type === 'archer') { const tm = box(0.55, 1.6, 1.2, m.hair, side * 2.62, 0.4, 0.5); head.add(tm); }
     }
     const chin = sph(0.8, m.skin, 0, -2.45, 1.65, 8); chin.scale.set(1.15, 0.7, 0.8); head.add(chin);
-    if (lk.beard) { const bd = sph(2.35, m.hair, 0, -1.65, 0.85, 12); bd.scale.set(0.96, 0.85, 1.0); head.add(bd); head.add(box(1.6, 0.4, 0.4, m.hair, 0, -1.0, 2.65)); }
+    if (lk.beard && !lk.female) { const bd = sph(2.35, m.hair, 0, -1.65, 0.85, 12); bd.scale.set(0.96, 0.85, 1.0); head.add(bd); head.add(box(1.6, 0.4, 0.4, m.hair, 0, -1.0, 2.65)); }
     if (soldier) {
       // pointed steel helmet with a nose guard and a mail hood over neck and shoulders
       head.add(lathe([[3.15, 0.9], [3.1, 2.0], [2.6, 3.4], [1.5, 4.6], [0.4, 5.4], [0, 5.6]], m.helm, 16));
@@ -5146,11 +5192,15 @@ const R3D = (() => {
       const hairCap = mesh(new T.SphereGeometry(3.0, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.75), m.hair, 0, 0.5, -0.25); hairCap.scale.set(0.95, 1.05, 1.05); head.add(hairCap);
       const cap = mesh(new T.SphereGeometry(3.15, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2.7), std(u.team === 'enemy' ? '#ac3430' : PAL.player.tunic), 0, 1.25, -0.1); head.add(cap); m.cap = cap.material;
       if (lk.longHair) { const lh = sph(2.6, m.hair, 0, -1.6, -1.9, 10); lh.scale.set(1.05, 1.3, 0.6); head.add(lh); }
+      if (lk.female) { cap.visible = false; const scarf = mesh(new T.SphereGeometry(3.2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.9), std(['#c8b68a', '#8a3a30', '#5a6a8a'][lk.hairStyle || 0], { map: fabricTex() }), 0, 0.6, -0.3); head.add(scarf); }
     }
     // arms: shoulder ball, upper arm, elbow, forearm, and a hand with a thumb
+    // a lock of hair or a braid that swings and blows in the wind
+    let tail = null;
+    if (lk.longHair && u.type !== 'knight') { tail = new T.Group(); tail.position.set(0, -0.6, -2.7); head.add(tail); const tl = capsule(1.0, 0.55, lk.female ? 6.5 : 3.6, m.hair, 8); tail.add(tl); tl.userData.keep = true; tail.userData.keep = true; }
     const arms = [];
     for (const side of [-1, 1]) {
-      const sh = new T.Group(); sh.position.set(side * 5.15, 31.2, 0); body.add(sh);
+      const sh = new T.Group(); sh.position.set(side * (lk.female ? 4.75 : 5.15), 31.2, 0); body.add(sh);
       sh.add(sph(1.95, sleeve, 0, 0, 0, 12));
       sh.add(capsule(1.75, 1.4, 6.9, sleeve, 12));
       if (soldier) { const pd = mesh(new T.SphereGeometry(2.4, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), m.helm, side * 0.2, 0.3, 0); pd.scale.set(1, 0.75, 1.05); sh.add(pd); }
@@ -5253,7 +5303,7 @@ const R3D = (() => {
     if (m.cloak) m.cloak.userData.keep = true;
     compact(root);
     const allMats = []; root.traverse(o => { if (o.isMesh && o.material && o.material.emissive && !allMats.includes(o.material)) allMats.push(o.material); });
-    return { root, body, legs, arms, tools, head, mats: allMats, m, cloth, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
+    return { root, body, legs, arms, tools, head, mats: allMats, m, cloth, torso, belly, tail, sm: { fR: 0, bR: 0.2, fL: 0, bL: 0.2, tw: 0 }, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 
   function machineCrew(u, spots, body) {
@@ -5480,15 +5530,27 @@ const R3D = (() => {
   const angLerp = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * t; };
   function animatePerson(u, md, dt) {
     const moving = u.moving && !u.dead, ph = u.walkPhase, a = u.attackAnim;
+    const sd = u.seed || 0, run = moving && (u.order === 'attack' || u.order === 'raid') ? 1.25 : 1;
     for (const l of md.legs) {
-      const p = ph + (l.side > 0 ? 0 : Math.PI);
-      l.hip.rotation.x = moving ? -Math.sin(p) * 0.6 : 0;
-      l.knee.rotation.x = moving ? Math.max(0, Math.cos(p)) * 0.85 : 0.02;
+      const p = ph + (l.side > 0 ? 0 : Math.PI), sw = Math.sin(p);
+      // thigh swings through; the knee bends hard as the foot passes under, and stays a little soft on landing
+      l.hip.rotation.x = moving ? -sw * 0.58 * run : (l.side > 0 ? 0.04 : -0.03) * Math.sin(time * 0.4 + sd);
+      l.knee.rotation.x = moving ? Math.max(0, Math.cos(p) + 0.25) * 0.95 * run + 0.06 : 0.05 + (l.side > 0 ? 0.06 : 0) * (0.5 + 0.5 * Math.sin(time * 0.4 + sd));
+      l.hip.rotation.z = 0;
     }
-    md.body.position.y = moving ? Math.abs(Math.sin(ph)) * 1.1 : Math.sin(time * 2 + u.seed) * 0.25;
+    // the body rises and falls with each step, sways over the planted foot, and the chest turns against the hips
+    const breath = Math.sin(time * 1.6 + sd * 3);
+    md.body.position.y = moving ? Math.abs(Math.sin(ph)) * 1.25 * run - 0.3 : breath * 0.18;
+    md.body.position.x = moving ? Math.sin(ph) * 0.45 : Math.sin(time * 0.4 + sd) * 0.35;
+    md.body.rotation.z = moving ? Math.sin(ph) * 0.035 : Math.sin(time * 0.4 + sd) * 0.02;
+    if (md.torso) md.torso.scale.y = 1 + breath * 0.012;
+    md.head.rotation.z = moving ? -Math.sin(ph) * 0.03 : 0;
     // arm angles: positive swings the arm forward and up; elbows bend forward
     const L = md.arms[0], R = md.arms[1];
-    let fR = 0.1 - (moving ? Math.sin(ph) * 0.4 : 0), bR = 0.2, fL = 0.1 + (moving ? Math.sin(ph) * 0.4 : 0), bL = 0.2;
+    // arms swing against the legs; the elbow bends more as the arm comes forward and opens as it swings back
+    const swing = moving ? Math.sin(ph) * 0.48 * run : 0;
+    let fR = 0.08 - swing, bR = 0.22 + (moving ? Math.max(0, -Math.sin(ph)) * 0.55 : 0.08 + 0.04 * breath), fL = 0.08 + swing, bL = 0.22 + (moving ? Math.max(0, Math.sin(ph)) * 0.55 : 0.08 + 0.04 * breath);
+    if (!moving && !(a > 0) && u.type === 'civ' && !u.pose) { const g2 = (time * 0.13 + sd) % 1; if (g2 < 0.08) { fR = 0.9 + Math.sin(g2 * 80) * 0.15; bR = 1.6; } }   // now and then a gesture: rubbing a chin, scratching the head
     if (swordish(u)) {
       fL = 0.8; bL = 1.0;
       if (a > 0) fR = a < 0.42 ? lerp(0.45, -2.35, ease(a / 0.42)) : a < 0.68 ? lerp(-2.35, 1.6, ease((a - 0.42) / 0.26)) : lerp(1.6, 0.45, ease((a - 0.68) / 0.32));
@@ -5527,7 +5589,7 @@ const R3D = (() => {
       const mixL = (o, v) => o + (v - o) * kk;
       if (pose === 'sit' && u.stool) { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.6); g.knee.rotation.x = mixL(g.knee.rotation.x, 1.6); g.hip.rotation.z = mixL(0, g.side * 0.18); } drop = 10; lean = -0.05;
         fR = mixL(fR, 0.3); bR = mixL(bR, 1.35); fL = mixL(fL, 0.3); bL = mixL(bL, 1.35); }
-      else if (pose === 'sit') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.5); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.65); g.hip.rotation.z = mixL(0, g.side * 1.05); } drop = 17.6; lean = 0.06; fR = mixL(fR, 0.42); bR = mixL(bR, 1.2); fL = mixL(fL, 0.42); bL = mixL(bL, 1.2); }
+      else if (pose === 'sit') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.5); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.65); g.hip.rotation.z = mixL(0, g.side * 1.05); } drop = 18.6; lean = 0.06; fR = mixL(fR, 0.42); bR = mixL(bR, 1.2); fL = mixL(fL, 0.42); bL = mixL(bL, 1.2); }
       else if (pose === 'kneel') { Lg.hip.rotation.x = mixL(Lg.hip.rotation.x, -1.5); Lg.knee.rotation.x = mixL(Lg.knee.rotation.x, 1.55); Rg.hip.rotation.x = mixL(Rg.hip.rotation.x, 0.15); Rg.knee.rotation.x = mixL(Rg.knee.rotation.x, 1.6); drop = 8.6; lean = 0.08; fL = mixL(fL, 0.9); bL = mixL(bL, 0.7); }
       else if (pose === 'crouch') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, -1.25); g.knee.rotation.x = mixL(g.knee.rotation.x, 2.2); g.hip.rotation.z = mixL(0, g.side * 0.2); } drop = 9.5; lean = 0.32; fL = mixL(fL, 0.9); bL = mixL(bL, 0.8); fR = mixL(fR, 0.6); bR = mixL(bR, 0.9); }
       else if (pose === 'prone') { for (const g of legs) { g.hip.rotation.x = mixL(g.hip.rotation.x, 0); g.knee.rotation.x = mixL(g.knee.rotation.x, 0.15); } fL = mixL(fL, 2.7); bL = mixL(bL, 0.3); fR = mixL(fR, 2.5); bR = mixL(bR, 0.5); }
@@ -5539,9 +5601,29 @@ const R3D = (() => {
       md.head.rotation.x = pose === 'prone' ? -1.2 * kk : 0;
     } else { md.body.rotation.x = 0; md.body.position.z = 0; md.head.rotation.y = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
     if (md.tools.stool) md.tools.stool.visible = pose === 'sit' && !!u.stool && k > 0.5;
+    // seated people fold their arms, or rest their hands on their knees
+    let fold = 0;
+    if (k > 0.5 && (pose === 'sit' || pose === 'kneel') && !(a > 0)) { if ((sd * 7.7) % 1 < 0.55) { fR = 0.72; bR = 2.05; fL = 0.66; bL = 2.15; fold = 1; } else { fR = 0.5; bR = 0.55; fL = 0.5; bL = 0.55; } }
+    // joints ease toward their targets, so nothing snaps: arms follow through like real limbs
+    const S = md.sm || (md.sm = { fR, bR, fL, bL, tw: 0 }), e2 = Math.min(1, dt * 11);
+    S.fR += (fR - S.fR) * e2; S.bR += (bR - S.bR) * e2; S.fL += (fL - S.fL) * e2; S.bL += (bL - S.bL) * e2; S.tw += ((fold ? 1 : 0) - S.tw) * e2;
+    fR = S.fR; bR = S.bR; fL = S.fL; bL = S.bL;
+    R.sh.rotation.z = -S.tw * 0.42; L.sh.rotation.z = S.tw * 0.42;
     R.sh.rotation.x = -fR; R.el.rotation.x = -bR; L.sh.rotation.x = -fL; L.el.rotation.x = -bL;
+    // weight: a fat belly and a wider middle, or a thin frame
+    const fat = u.fat || 0;
+    if (md.belly) { md.belly.visible = fat > 0.12; const bs = 0.5 + fat * 0.75; md.belly.scale.set(bs * 1.05, bs * 0.95, bs * 1.1); md.belly.position.z = 1.2 + fat * 2.6; }
+    if (md.torso) { md.torso.scale.x = 0.94 + fat * 0.3; md.torso.scale.z = 0.66 + fat * 0.3; }
+    // the face: smiles when the town is content, frowns when it is not; brows knit in anger or in battle
+    if (md.m.mouths) { const mm = md.m.mouths, angry = mood < 35 || u.combatT > 0 || u.sick, glad = !angry && mood >= 60; mm.smile.visible = glad; mm.frown.visible = angry; mm.mouth.visible = !glad && !angry;
+      for (const b of md.m.brows || []) b.brow.rotation.z = -b.side * (angry ? -0.32 : 0.14); }
+    // the sick look pale and green
+    if (md.m.skin && md.m.skinBase === undefined) md.m.skinBase = md.m.skin.color.clone();
+    if (md.m.skin) { const target = u.sick ? 1 : 0; md.m.sickK = (md.m.sickK || 0) + (target - (md.m.sickK || 0)) * Math.min(1, dt * 2); md.m.skin.color.copy(md.m.skinBase).lerp(new T.Color(0.42, 0.52, 0.3), md.m.sickK * 0.55); }
+    // hair blows in the wind, swings as they move, and whips about in battle
+    if (md.tail) { const wnd = (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2) * (u.combatT > 0 ? 1.6 : 1); md.tail.rotation.x = 0.35 + (moving ? 0.25 + Math.sin(ph * 2) * 0.12 : 0) + Math.sin(time * 3.1 + sd) * 0.06 * (1 + wnd * 2); md.tail.rotation.z = Math.sin(time * 2.3 + sd) * 0.12 * (0.4 + wnd); }
     // clothing moves: the skirt and surcoat swing with each step and stir in the wind, even when seated
-    const wind = (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2), sway = Math.sin(time * 2.3 + (u.seed || 0) * 5) * (0.02 + wind * 0.05);
+    const wind = (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2) * (u.combatT > 0 || a > 0 ? 1.8 : 1), sway = Math.sin(time * 2.3 + (u.seed || 0) * 5) * (0.02 + wind * 0.06) + Math.sin(time * 5.1 + (u.seed || 0)) * wind * 0.025;
     for (const cm of md.cloth || []) { cm.rotation.x = (moving ? Math.sin(ph) * 0.07 : 0) + sway + (k > 0 && pose === 'sit' ? -0.35 * k : 0); cm.rotation.z = (moving ? Math.cos(ph) * 0.05 : 0) + sway * 0.6; }
     const tl = md.tools;
     if (tl.shieldGrip) tl.shieldGrip.rotation.x = fL + bL;   // shield stays upright, facing forward
@@ -5571,7 +5653,7 @@ const R3D = (() => {
       if (want !== null) md.heading = angLerp(md.heading, want, Math.min(1, dt * (u.pose ? 3 : 10)));
       md.px = u.x; md.pz = u.y;
       md.root.rotation.y = md.heading;
-      const sc = u.look ? u.look.h * (u.look.s || 1) : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
+      const sc = u.look ? (u.look.h || 1) * (u.look.s || 1) : 1; if (!md.ram) md.root.scale.set(sc, sc, sc);
       if (md.ram) {
         const a = u.attackAnim;
         if (md.oxLegs) { md.oxLegs.forEach((l, i) => l.rotation.x = u.moving ? Math.sin(u.walkPhase * 1.2 + (i % 3 ? Math.PI : 0)) * 0.45 : 0); md.load.visible = u.carry > 0; }
@@ -5647,7 +5729,16 @@ const R3D = (() => {
     }
     for (const [id, md] of bModels) if (!seen.has(id)) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(id); }
   }
+  let footMesh = null;
+  function syncPrints() {
+    if (!footMesh) { const fg = new T.CircleGeometry(1, 10); fg.rotateX(-Math.PI / 2); footMesh = new T.InstancedMesh(fg, new T.MeshBasicMaterial({ color: 0x1e2812, transparent: true, opacity: 0.3, depthWrite: false }), 600); footMesh.frustumCulled = false; footMesh.renderOrder = 1; scene.add(footMesh); }
+    const life = WEATHER.cover > 0.3 ? 60 : 28, n = Math.min(600, prints.length), M = new T.Matrix4(), Q = new T.Quaternion(), V = new T.Vector3(), Sc = new T.Vector3();
+    footMesh.material.color.set(WEATHER.cover > 0.3 ? 0x6e7480 : 0x1e2812); footMesh.material.opacity = WEATHER.cover > 0.3 ? 0.42 : 0.3;
+    for (let i = 0; i < n; i++) { const f = prints[prints.length - n + i], k = Math.max(0, 1 - f.t / life); V.set(f.x, heightAt(f.x, f.y) + 0.35, f.y); Q.setFromAxisAngle(new T.Vector3(0, 1, 0), -f.a); Sc.set(2.6 * k, 1, 1.3 * k); M.compose(V, Q, Sc); footMesh.setMatrixAt(i, M); }
+    footMesh.count = n; footMesh.instanceMatrix.needsUpdate = true;
+  }
   function syncScenery() {
+    syncPrints();
     rocks.forEach((r, i) => { if (r.gone && !r.hid3) { r.hid3 = true; rockMesh.setMatrixAt(i, new T.Matrix4().makeScale(0, 0, 0)); rockMesh.instanceMatrix.needsUpdate = true; } });
     for (const tl of treeList) if (tl.t.gone && !tl.hidden) { tl.hidden = true; const z = new T.Matrix4().makeScale(0, 0, 0); tl.crown.setMatrixAt(tl.i, z); tl.trunk.setMatrixAt(tl.i, z); tl.crown.instanceMatrix.needsUpdate = tl.trunk.instanceMatrix.needsUpdate = true; }
     for (const st of stumps) if (!stumpSeen.has(st)) { stumpSeen.add(st); const s = cyl(3.2 * st.s, 3.8 * st.s, 5, woodVM(6, 5), st.x, heightAt(st.x, st.y) + 2.5, st.y + 4, 8); scene.add(s); }
@@ -5845,7 +5936,9 @@ const R3D = (() => {
 const speeches = [];
 function sayLine(u) {
   const t = u.type, b = u.buildTarget, j = u.job;
+  if (u.sick) return u.toHeal ? 'I feel ill... going to the keep to be cared for.' : 'I feel ill...';
   if (t === 'civ') {
+    if (u.fat > 0.55 && u.order === 'idle') return 'Ah, that was a fine meal. Do I have to work?';
     if (u.breakUntil > time) return 'Just a short rest, sir. Back to it soon.';
     if (u.order === 'build' && b) return `I'm building the ${b.name}.`;
     if (u.order === 'craft' && j) return `I am busy at the ${j.name}.`;
@@ -6118,6 +6211,7 @@ function frame(now) {
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
   updateTrainButtons(); if (!halted) updateWeather(dt);
   if (leftNoteT > 0) { leftNoteT -= dt; if (leftNoteT <= 0) document.getElementById('leftNote').hidden = true; }
+  for (let i = prints.length - 1; i >= 0; i--) { prints[i].t += frameDt; if (prints[i].t > (WEATHER.cover > 0.3 ? 60 : 28)) prints.splice(i, 1); }
   for (let i = speeches.length - 1; i >= 0; i--) { speeches[i].t += dt; if (speeches[i].t > 3.6 || speeches[i].u.dead) speeches.splice(i, 1); } AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
   const civSel = [...selection].some(u => u.type === 'civ');
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
@@ -6173,6 +6267,7 @@ function render() {
   for (const st of stumps) if (visible(st)) drawStump(g, st);
   for (const fm of farms) drawBuilding(g, fm, time);
   for (const b of structures) if ((b.kind === 'moat' || b.kind === 'pit') && visible(b)) drawBuilding(g, b, time);
+  for (const f of prints) { if (!visible(f)) continue; g.save(); g.translate(f.x, f.y); g.rotate(f.a); g.globalAlpha = Math.max(0, 0.32 * (1 - f.t / 28)) + WEATHER.cover * 0.2; g.fillStyle = WEATHER.cover > 0.3 ? '#8a8f98' : '#2e3a1c'; g.beginPath(); g.ellipse(0, 0, 2.6, 1.3, 0, 0, Math.PI * 2); g.fill(); g.restore(); }
   // fallen soldiers lie on the ground layer
   for (const u of units) if (u.dead && visible(u)) (isMachine(u) ? drawMachine : drawPerson)(g, u, time);
 
