@@ -8,3 +8,63 @@ Gerald's rules for pausing when multiplayer is added:
 - **No pausing during war** (while enemies are engaged or close by).
 - In single player today, the game pauses on its own while a menu is being read
   (Help, Menu, mood report, goods list, building panels), unless enemies are close.
+
+## Where we left off (for a fresh session)
+
+Gerald asked that, if the conversation runs out of room and restarts, work picks
+up from here. State as of the latest build (artifact version 31 or later,
+branch `stronghold-destroyer`):
+
+**Done and live**
+- Market (Town tab, 60 wood): click it for a panel that buys and sells wood,
+  stone, iron, hops, wheat, flour, food, bread, ale and all weapons.
+  - Buying always costs more than making it yourself; selling always pays less
+    than buying (no buy-and-resell profit at any mood).
+  - Prices follow mood: up to 25% cheaper when the people are happy, up to 40%
+    market tax when they are upset. Even at best, never as cheap as making it.
+  - The Armory's weapon-buy buttons use the same prices.
+- A big X closes every pop-up box.
+- Workers go inside workshops (bowyer, spear-maker, blacksmith, mill, bakery,
+  brewery); people on breaks go inside the tavern, the House of Prayer or a
+  house; the sick are cared for inside the keep. Clicking a building shows who
+  is inside, with little figures. Outdoor work stays outdoors (farms, food
+  gathering, woodcutters, quarry, iron mine, soldiers, the fire).
+- Free door knight with every tower and the keep; he charges anyone nearby.
+- Lookout Tower about 2 inches above the keep (about 1.5 inches above the
+  Round Tower) at the starting zoom on an iPad. The Round Tower was already
+  about 3/4 inch above the keep and was left as it was.
+- Round helmets (2D domes; 3D domed great helm for knights).
+- Bug sweep: running in place fixed (crowded doors, guards blocking their own
+  side, settlers spawning inside a tree, the walled-in enemy camp, break-goers
+  pulled to the fire, re-planning every frame).
+
+**Art overhaul from Gerald's design sheets (in `design/`)**
+Gerald supplied three sheets ("Gerald Studio OS", Phase 1) and asked that they be
+implemented thoroughly; they set the look for everything. Keep controls and
+gameplay as they are; the 3D view is approved. Work in phases:
+1. Soldiers: DONE (first pass). Polished plate with gold edging, layered pauldrons,
+   elbow and knee cops; crimson capes and tabards with a gold lion rampant; lion
+   shields; longsword with gold hilt. Swordsman bare-headed and bearded; spearman
+   in a rounded open kettle helm; maceman = "Armored Soldier" in a closed rounded
+   armet; knight in a rounded great helm; archer hooded, leather, crimson cape.
+   Team colours: Gerald's army is crimson and gold for every civilisation; the
+   enemy became the sheets' "Black Stone" faction (blackened steel, charcoal,
+   ember-orange tower emblem). Gerald was told and may change this.
+   Still to do: knights on horseback (sheet: cavalry), crossbowman unit (new),
+   2D swordsman without a helmet, faces like the sheet portraits.
+2. Citizens and workers: male/female citizen, builder (hammer), farmer (straw hat,
+   wheat), gatherer (basket, red scarf), miller (sack), brewer (barrel).
+3. Castle and walls: gray stone castle with round towers and crimson lion banners;
+   modular walls (straight, corner), gatehouse with portcullis, round and square
+   towers, wall stairs. Black Stone castle for the enemy.
+4. Homes and workshops: thatched peasant home, larger home, half-timbered
+   townhouse, barracks, blacksmith (forge glow, smoke), mill with waterwheel,
+   brewery.
+5. Land: oak, ash, pine, pecan trees; berry bush, herb greens, wild bush, rocks;
+   wheat, barley and vegetable fields; grass, dirt, road, wooden and stone bridges,
+   water; stone and brick wall textures. Gerald singled out water and stones as
+   needing the most work.
+
+**Still open from earlier**
+- A fixed soldier cap: waiting on a number from Gerald.
+- Breaks stay 20 to 30 seconds (Gerald approved).
