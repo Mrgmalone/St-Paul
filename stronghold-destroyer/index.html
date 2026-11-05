@@ -1146,11 +1146,17 @@ function followPath(u, dt) {
   u.walkPhase += dt * u.speed * 0.17;
   if (Math.random() < dt * 3) spawn('dust', u.x + RR(-4, 4), u.y);
 }
+// newcomers walk in along the west road, at the first clear spot (never inside a tree)
+function roadEntry() {
+  curTeam = 'player';
+  for (let dx = 0; dx < 200; dx += 8) for (const dy of [0, -12, 12, -24, 24, -36, 36]) { const x = 26 + dx, y = 1092 + dy; if (!circleBlocked(x, y, 10)) return { x, y }; }
+  return { x: 60, y: 1092 };
+}
 function moveBy(u, mx, my) {
   curTeam = u.team;
-  const r = u.radius * 0.8;
-  if (!circleBlocked(u.x + mx, u.y, r)) u.x += mx;
-  if (!circleBlocked(u.x, u.y + my, r)) u.y += my;
+  const r = u.radius * 0.8, trapped = blockedAt(u.x, u.y);   // someone standing right inside a tree or a wall may always step out
+  if (trapped || !circleBlocked(u.x + mx, u.y, r)) u.x += mx;
+  if (trapped || !circleBlocked(u.x, u.y + my, r)) u.y += my;
   u.x = clamp(u.x, 10, MW - 10); u.y = clamp(u.y, 10, MH - 10);
 }
 function aggro(u, r) {
@@ -1274,12 +1280,12 @@ function enemyBrain(u, dt) {
   if (u.order === 'raid' && u.route && u.route.length) {
     const w = u.route[0];
     if (u.chopTree) {   // cutting a way through the woods
-      u.moving = false; u.facing = u.chopTree.x >= u.x ? 1 : -1; if (u.attackAnim === 0) u.attackAnim = 0.001;
+      u.moving = false; u.facing = u.chopTree.x >= u.x ? 1 : -1; if (u.attackAnim === 0 && !isMachine(u)) u.attackAnim = 0.001;
       u.chopT -= dt; if (u.chopT <= 0) { if (!u.chopTree.gone) fellTree(u.chopTree); u.chopTree = null; u.path = []; u.repath = 0; }
       return;
     }
     const movedSq = (u.x - (u.rlx || 0)) ** 2 + (u.y - (u.rly || 0)) ** 2; u.rlx = u.x; u.rly = u.y; u.rstuck = movedSq < 0.05 ? (u.rstuck || 0) + dt : 0;
-    if (u.rstuck > 1.6 && !isMachine(u)) { let best = null, bd = 46; for (const t of trees) { if (t.gone) continue; const d = Math.hypot(t.x - u.x, t.y - u.y); if (d < bd && ((t.x - u.x) * (w.x - u.x) + (t.y - u.y) * (w.y - u.y)) > 0) { bd = d; best = t; } } if (best) { u.chopTree = best; u.chopT = 3.5; u.rstuck = 0; return; } }
+    if (u.rstuck > (isMachine(u) ? 3 : 1.6) && u.type !== 'ram') { let best = null, bd = isMachine(u) ? 64 : 46; for (const t of trees) { if (t.gone) continue; const d = Math.hypot(t.x - u.x, t.y - u.y); if (d < bd && ((t.x - u.x) * (w.x - u.x) + (t.y - u.y) * (w.y - u.y)) > 0) { bd = d; best = t; } } if (best) { u.chopTree = best; u.chopT = 3.5; u.rstuck = 0; return; } }
     if (Math.hypot(w.x - u.x, w.y - u.y) < 70) { u.route.shift(); u.path = []; u.repath = 0; }
     else if (u.repath <= 0 || !u.path.length) { u.path = findPath(u.x, u.y, w.x, w.y); u.repath = 4; if (!u.path.length) u.route.shift(); }
     return;
@@ -3107,7 +3113,7 @@ function updateMood(dt, people) {
   const holdsUp = time < contentUntil && moodRate < 0;   // after a feast or a new comfort, spirits stay up for a while
   mood = clamp(mood + (holdsUp ? 0 : moodRate) * dt / 60, 0, 100);
   // people who left come back when the town is happy again
-  if (leftCount > 0 && mood >= 55 && k0()) { returnT -= dt; if (returnT <= 0) { returnT = 20; if (people.length + trainQueue.length < popCap()) { leftCount--; const u = makeUnit('player', 'civ', 20, 1168); const kk = k0(); commandMove([u], kk.x1 + 40, kk.y1 + 30); showBanner('A citizen who left has come back to your town!', 3.5); AudioSys.ui('bell'); } } }
+  if (leftCount > 0 && mood >= 55 && k0()) { returnT -= dt; if (returnT <= 0) { returnT = 20; if (people.length + trainQueue.length < popCap()) { leftCount--; const en = roadEntry(); const u = makeUnit('player', 'civ', en.x, en.y); const kk = k0(); commandMove([u], kk.x1 + 40, kk.y1 + 30); showBanner('A citizen who left has come back to your town!', 3.5); AudioSys.ui('bell'); } } }
   // taxes: gold per person every 20 seconds
   goldT += people.length * TAXES[tax].gold * dt / 20;
   while (goldT >= 1) { goldT -= 1; res.gold += 1; }
@@ -3118,7 +3124,7 @@ function updateMood(dt, people) {
     if (settleT <= 0) {
       settleT = 40;
       if (people.length + trainQueue.length < popCap()) {
-        const u = makeUnit('player', 'civ', 20, 1168);
+        const en = roadEntry(); const u = makeUnit('player', 'civ', en.x, en.y);
         commandMove([u], k.x1 + 40 + RR(-20, 20), k.y1 + 30 + RR(-15, 15));
         showBanner('A settler has come to join your town.', 3); AudioSys.ui('bell');
       }
