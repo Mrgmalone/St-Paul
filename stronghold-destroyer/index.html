@@ -26,6 +26,10 @@
   #btnPause.on{background:linear-gradient(#bff5c4,#6fc27a);outline:3px solid #9fe8a8}
   #menuNote{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;background:rgba(16,11,7,.85);border:1px solid rgba(214,170,90,.8);border-radius:10px;padding:5px 14px;font-size:15px;color:#ffd98a;pointer-events:none}
   #menuNote[hidden]{display:none}
+  #btnTurn{position:absolute;left:50%;bottom:60px;transform:translateX(-50%);z-index:6;font-size:22px;font-weight:700;padding:10px 22px;border-radius:14px;background:linear-gradient(#f1d38f,#c99a4a);color:#1c140b;border:2px solid #fff0c8;box-shadow:0 3px 10px rgba(0,0,0,.5);touch-action:manipulation}
+  #btnTurn small{font-size:15px;font-weight:600;margin-left:6px}
+  #btnTurn[hidden]{display:none}
+  .bb.tearing{outline:3px solid #ff9d86;background:linear-gradient(#ffb8a0,#d0603e)}
   #leftNote{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;background:rgba(60,14,10,.92);border:1px solid #ff9d86;border-radius:12px;padding:8px 12px;font-size:16px;color:#fff0e6;max-width:86%}
   #leftNote[hidden]{display:none}
   #leftWhy{font-size:14px;padding:4px 12px}
@@ -218,6 +222,7 @@
   <canvas id="game"></canvas>
   <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
   <div id="menuNote" hidden>&#10074;&#10074; Paused while you read</div>
+  <button id="btnTurn" hidden title="Turn the building (R or T)">&#8635; Turn <small id="turnDir"></small></button>
   <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="xbtn" id="leftClose" aria-label="Close" style="position:static;flex:0 0 auto">&times;</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="pick"><div class="wrap">
@@ -271,6 +276,7 @@
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
     <p><b>Running a workplace:</b> click any hut, farm, mine or workshop to see its status, workers, what it makes and how fast, and what it has made so far. Add workers there (up to 2 at huts and farms, 3 at other industries); each one adds the same again to its output. Remove a worker, or put the building to sleep with Z (press Z again to wake it), to free people: they go gathering, and when your houses are full, training a soldier calls up a free civilian. Civilians without a building job gather food and wood by themselves (up to 5 at one bush or tree), and every few minutes a worker takes a 20 to 30 second break by the fire.</p>
+    <p><b>Turning and tearing down:</b> while a building hovers before you set it down, press R or T (or tap the Turn button) to turn it; the yellow arrow shows which way its front will face. Gates turn too, to sit in a wall running north to south. The Tear Down tool (Castle tab) pulls down your own walls and buildings and gives back half of what they cost. The keep cannot be torn down.</p>
     <p><b>Market:</b> build a Market (Town tab, 60 wood) and click it to buy or sell almost anything: wood, stone, iron, hops, wheat, flour, food, bread, ale and weapons. Buying always costs more than making it yourself, and selling pays less than buying. A happy town gets better prices (up to 25% off); an upset town pays a market tax (up to 40% more). The Armory's weapon prices follow the market.</p>
     <p><b>Knights and macemen:</b> the Blacksmith (click it) can make swords, maces or knight armor from iron; iron mines stand on the red-and-black iron ground. A Maceman needs a mace and 10 gold; a Knight needs a sword, armor and 20 gold (leather comes by trade). Knights are hard to hurt: only knights, kings, ballistas and trebuchets wound them fully. Up to five knights guard your King first; then knights, macemen and spearmen guard tower doors. Every tower, big or small, and the keep come with one free knight at the door; he does not count against your people and charges anyone who comes near.</p>
     <p><b>Towers and engines:</b> a Lookout Tower is tall and slim with its own stairs: three archers on top see and shoot far, and two guards hold its door. A Round Tower carries a Ballista or a Trebuchet (click it to mount one); the Trebuchet throws stones farthest of all. Click a tower engine, ballista or trebuchet to Stop or Continue its fire.</p>
@@ -323,6 +329,7 @@
       <button class="tab" data-tab="castle" title="Castle (key 2)" aria-expanded="false"><span class="tl">Castle</span><span class="key">2</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="castle">
         <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small><span class="why"></span></button>
+        <button class="bb ib" id="btnTear"><canvas data-icon="b:wall"></canvas>Tear Down<small>get back half the cost</small><span class="why"></span></button>
         <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="moat"><canvas data-icon="b:moat"></canvas>Moat<small>free &middot; dug by workers</small><span class="why"></span></button>
@@ -2635,7 +2642,7 @@ canvas.addEventListener('pointerdown', e => {
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
     if (e.button === 0 && e.altKey && R3D.active) { orbit = { x: p.x, y: p.y }; return; }
     if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
-    else if (e.button === 2) { if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
+    else if (e.button === 2) { if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
   } else touchDown(p);
 });
@@ -2685,6 +2692,7 @@ function touchUp(p) {
 }
 function touchTap(p) {
   if (settingRally) { setRallyAt(p.x, p.y); return; }
+  if (tearing) { tearAt(p.x, p.y); return; }
   if (placing) { placeAt(p.x, p.y, false); return; }
   const hit = pickScreen(p.x, p.y), now = performance.now(), last = TOUCH.lastTap;
   TOUCH.lastTap = { t: now, x: p.x, y: p.y, hit };
@@ -2721,6 +2729,7 @@ function endPointer(e) {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { pointers.delete(e.pointerId); touchUp(p); pinch = null; return; }
   if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
+  if (drag && pointers.has(e.pointerId) && tearing && !drag.box) { tearAt(p.x, p.y); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && placing && !drag.box) { placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId)) {
     if (drag.box) {
@@ -2764,7 +2773,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
   if (e.key === 'Escape' && settingRally) { settingRally = null; rallyButtons(); return; }
-  if (e.key === 'Escape') { if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); else if (UI.closePops()) {} else if (placing) cancelPlacing(); else selection.clear(); }
+  if (e.key === 'Escape') { if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); else if (UI.closePops()) {} else if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else selection.clear(); }
   if (['1', '2', '3', '4', '5'].includes(e.key)) UI.showTab(['town', 'castle', 'army', 'rule', 'industry'][+e.key - 1]);
   if (e.key === 'Tab') { e.preventDefault(); UI.toggleHide(); }
   if (e.key === 'h' || e.key === 'H') toggleHelp();
@@ -2772,7 +2781,8 @@ window.addEventListener('keydown', e => {
   if ((e.key === 'z' || e.key === 'Z') && storeShown && JOBS[storeShown.kind]) siteAction(storeShown, 'sleep');
   if (e.key === 'q' || e.key === 'Q') R3D.rotate(-1);
   if (e.key === 'e' || e.key === 'E') R3D.rotate(1);
-  if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
+  if (placing && !isLine(placing.kind) && ['r', 'R', 't', 'T'].includes(e.key)) turnPlacing();
+  else if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
   if (e.key === 'f' || e.key === 'F') R3D.tilt(-0.12);
   if (e.key === ' ' && started) { e.preventDefault(); goHome(); }
   if (e.key === 'v' || e.key === 'V') setView(!R3D.active);
@@ -2814,6 +2824,7 @@ function endGame(title, text) {
   setTimeout(() => { document.getElementById('endTitle').textContent = title; document.getElementById('endText').textContent = text; document.getElementById('win').style.display = 'flex'; }, 1500);
 }
 function updateHud() {
+  { const tb = document.getElementById('btnTurn'), on = !!(placing && !isLine(placing.kind) && started); if (tb.hidden === on) tb.hidden = !on; if (on) { const t = 'faces ' + DIR_NAME[placing.dir || 0]; const el = document.getElementById('turnDir'); if (el.textContent !== t) el.textContent = t; } }
   if (!started) return;
   const mine = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length;
   const pop = mine + trainQueue.filter(q => !MACHINE[q.kind]).length;
@@ -3532,9 +3543,12 @@ const TERRITORY = 560;
 const farms = [];
 let placing = null;
 const popCap = () => CIV.popCap + 5 * structures.filter(b => b.kind === 'house' && b.done && !b.dead && b.team === 'player').length;
-function tileFor(kind, wx, wy) { const d = BUILD[kind]; return { c: Math.round(wx / TILE - d.w / 2), r: Math.round(wy / TILE - d.h / 2) }; }
-function canPlace(kind, c, r) {
-  const k = playerKeep(), d = BUILD[kind]; if (!k) return false;
+// a building can face any of four ways before it is set down: 0 south (toward you), 1 west, 2 north, 3 east
+const DIR_NAME = ['south', 'west', 'north', 'east'], DIR_VEC = [[0, 1], [-1, 0], [0, -1], [1, 0]];
+const dimsOf = (kind, dir = 0) => { const d = BUILD[kind]; return dir % 2 ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; };
+function tileFor(kind, wx, wy, dir = 0) { const d = dimsOf(kind, dir); return { c: Math.round(wx / TILE - d.w / 2), r: Math.round(wy / TILE - d.h / 2) }; }
+function canPlace(kind, c, r, dir = 0) {
+  const k = playerKeep(), d = dimsOf(kind, dir); if (!k) return false;
   const cx = (c + d.w / 2) * TILE, cy = (r + d.h / 2) * TILE;
   if (kind !== 'ironmine' && kind !== 'quarry' && Math.hypot(cx - k.x, cy - (k.y0 + k.y1) / 2) > TERRITORY) return false;
   if (kind === 'ironmine' && !rocks.some(rk => rk.iron && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
@@ -3549,9 +3563,9 @@ function canPlace(kind, c, r) {
   }
   return true;
 }
-function makeBuildingObj(kind, c, r) {
-  const d = BUILD[kind];
-  const b = { id: nextId++, kind, team: 'player', name: d.name, c, r, w: d.w, h: d.h,
+function makeBuildingObj(kind, c, r, dir = 0) {
+  const d = Object.assign({}, BUILD[kind], dimsOf(kind, dir));
+  const b = { id: nextId++, kind, team: 'player', name: d.name, c, r, w: d.w, h: d.h, dir,
     x0: c * TILE, y0: r * TILE, x1: (c + d.w) * TILE, y1: (r + d.h) * TILE, x: (c + d.w / 2) * TILE, y: (r + d.h) * TILE,
     maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower', 'lookout', 'roundtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
   if (kind === 'gtower') Object.assign(b, { range: 230, fireRate: 2.0, arrowDmg: 7, archerY: 112 });
@@ -3562,8 +3576,8 @@ function makeBuildingObj(kind, c, r) {
   if (isField(kind)) Object.assign(b, { amount: 0, max: 40 });
   return b;
 }
-function createBuilding(kind, c, r) {
-  const b = makeBuildingObj(kind, c, r);
+function createBuilding(kind, c, r, dir = 0) {
+  const b = makeBuildingObj(kind, c, r, dir);
   if (isField(kind)) { farms.push(b); return b; }
   for (let i = 0; i < b.w; i++) for (let j = 0; j < b.h; j++) { if (kind === 'gate') gate[(r + j) * COLS + c + i] = 1; else if (kind !== 'pit') setBlock(c + i, r + j, 1); }
   if (kind === 'pit') Object.assign(b, { charges: 3, sprung: 0, cool: 0 });
@@ -3632,18 +3646,67 @@ function startPlacing(kind) {
   if (!started || won) return;
   if (!afford(BUILD[kind])) { showBanner(`Not enough ${lacking(BUILD[kind])} for a ${BUILD[kind].name}.${lacking(BUILD[kind]) === 'stone' ? ' Build a Quarry beside a grey rock.' : ''}`, 3); return; }
   if ((kind === 'garden' || kind === 'stocks') && structures.filter(b => b.kind === kind && !b.dead && b.team === 'player').length >= 3) { showBanner(`You can have at most 3 ${kind === 'garden' ? 'gardens' : 'sets of stocks'}.`, 2.5); return; }
-  placing = { kind, start: null };
-  showBanner(isLine(kind) ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Click near your keep to place the ${BUILD[kind].name}. Right-click or Esc cancels.`, 4);
+  tearing = false; tearButton();
+  placing = { kind, start: null, dir: lastDir };
+  showBanner(isLine(kind) ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Click near your keep to place the ${BUILD[kind].name}. Press R (or the Turn button) to turn it; the arrow shows its front. Right-click or Esc cancels.`, 4.5);
   updateHud();
 }
 function cancelPlacing() { placing = null; updateHud(); }
+let lastDir = 0;
+// tearing down: pull down your own walls and buildings and get back half of what they cost
+let tearing = false;
+function tearButton() { const b = document.getElementById('btnTear'); if (b) b.classList.toggle('tearing', tearing); }
+function startTearing() {
+  if (!started || won) return;
+  placing = null; tearing = !tearing; tearButton();
+  showBanner(tearing ? 'Tear Down: click one of your walls or buildings to pull it down. You get back half of what it cost. Right-click, Esc or the button again to stop.' : 'Tear Down finished.', tearing ? 5 : 1.5);
+  updateHud();
+}
+const refundOf = b => { const d = BUILD[b.kind] || {}; return { wood: Math.floor((d.wood || 0) / 2), stone: Math.floor((d.stone || 0) / 2), gold: Math.floor((d.gold || 0) / 2) }; };
+const refundText = r => [r.wood && r.wood + ' wood', r.stone && r.stone + ' stone', r.gold && r.gold + ' gold'].filter(Boolean).join(', ') || 'nothing';
+function tearTarget(sx, sy) {
+  const h = pickScreen(sx, sy); if (h && h.x0 !== undefined && h.team === 'player' && !h.dead) return h;
+  const w = toWorld(sx, sy); return structures.concat(farms).find(b => b.team === 'player' && !b.dead && w.x > b.x0 - 4 && w.x < b.x1 + 4 && w.y > b.y0 - 4 && w.y < b.y1 + 4) || null;
+}
+function tearAt(sx, sy) {
+  const b = tearTarget(sx, sy);
+  if (!b) { showBanner('Click one of your own walls or buildings to tear it down.', 2); return; }
+  if (b.kind === 'keep') { showBanner('The keep cannot be torn down.', 2.5); return; }
+  const r = refundOf(b); res.wood += r.wood; res.stone += r.stone; res.gold += r.gold;
+  for (const u of units) {
+    if (u.dead) continue;
+    if (u.onWall === b) dismount(u);
+    if (u.job === b) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
+    if (u.buildTarget === b) { u.buildTarget = null; u.order = 'idle'; u.sub = null; }
+    if (u.inside === b) u.inside = null;
+    if (u.guardOf === b) u.guardOf = null;
+    if (u.breakAt === b) u.breakAt = null;
+  }
+  if (isField(b.kind)) { const i = farms.indexOf(b); if (i >= 0) farms.splice(i, 1); }
+  else { kill(b); const i = structures.indexOf(b); if (i >= 0) structures.splice(i, 1); }
+  if (storeShown === b) { document.getElementById('storePop').hidden = true; storeShown = null; }
+  floatText(b.x, b.y - Math.min(60, b.topH || 20) - 10, `${b.name} torn down: got back ${refundText(r)}`, '#ffd98a');
+  updateHud();
+}
+function drawTearHover(g, proj) {
+  const b = tearTarget(mouse.x, mouse.y); if (!b) return;
+  const q = [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]].map(([x, y]) => proj(x, y));
+  g.save(); g.beginPath(); q.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.closePath();
+  g.fillStyle = b.kind === 'keep' ? 'rgba(120,120,120,0.3)' : 'rgba(255,80,60,0.35)'; g.fill(); g.setLineDash([6, 4]); g.lineWidth = 2.5; g.strokeStyle = 'rgba(255,140,110,0.95)'; g.stroke(); g.restore();
+  const c = proj((b.x0 + b.x1) / 2, b.y0 - 6), label = b.kind === 'keep' ? 'The keep cannot be torn down' : `Tear down ${b.name}: get back ${refundText(refundOf(b))}`;
+  g.save(); g.font = 'bold 16px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(label, c.x, c.y - 10); g.fillStyle = '#ffd98a'; g.fillText(label, c.x, c.y - 10); g.restore();
+}
+document.getElementById('btnTear').onclick = startTearing;
+document.getElementById('btnTurn').onclick = e => { e.stopPropagation(); turnPlacing(); };
+document.getElementById('btnTurn').addEventListener('pointerdown', e => e.stopPropagation());
+function turnPlacing() { if (!placing || isLine(placing.kind)) return; placing.dir = lastDir = (placing.dir + 1) % 4; AudioSys.ui('select'); updateHud(); }
 function wallLine(c0, r0, c1, r1) {
   const out = []; let dx = Math.abs(c1 - c0), dy = -Math.abs(r1 - r0), sx = c0 < c1 ? 1 : -1, sy = r0 < r1 ? 1 : -1, err = dx + dy, c = c0, r = r0;
   for (let n = 0; n < 200; n++) { out.push({ c, r }); if (c === c1 && r === r1) break; const e2 = 2 * err; if (e2 >= dy) { err += dy; c += sx; } if (e2 <= dx) { err += dx; r += sy; } }
   return out;
 }
 function placeAt(sx, sy, keepGoing) {
-  const w = toWorld(sx, sy), kind = placing.kind, d = BUILD[kind], { c, r } = tileFor(kind, w.x, w.y);
+  const w = toWorld(sx, sy), kind = placing.kind, d = BUILD[kind]; let { c, r } = tileFor(kind, w.x, w.y);
   if (isLine(kind)) {
     if (!placing.start) { placing.start = { c, r }; showBanner('Now click where the wall should end.', 3); return; }
     let first = null, short = false;
@@ -3656,30 +3719,40 @@ function placeAt(sx, sy, keepGoing) {
     if (first) { assignBuilders(first); AudioSys.ui('place'); }
     placing = keepGoing ? { kind, start: null } : null; updateHud(); return;
   }
-  if (!canPlace(kind, c, r)) { showBanner(kind === 'stairs' ? 'Stairs must stand right beside one of your High Walls.' : kind === 'quarry' ? 'A quarry must stand beside a grey rock.' : 'You cannot build there. Build on open ground near your keep.', 2.5); return; }
+  const dir = placing.dir || 0, tf = tileFor(kind, w.x, w.y, dir); c = tf.c; r = tf.r;
+  if (!canPlace(kind, c, r, dir)) { showBanner(kind === 'stairs' ? 'Stairs must stand right beside one of your High Walls.' : kind === 'quarry' ? 'A quarry must stand beside a grey rock.' : 'You cannot build there. Build on open ground near your keep.', 2.5); return; }
   if (!afford(d)) { showBanner(`Not enough ${lacking(d)}.`, 2); placing = null; updateHud(); return; }
   pay(d);
-  assignBuilders(createBuilding(kind, c, r)); AudioSys.ui('place');
-  if (!keepGoing) placing = null;
+  { const nb = createBuilding(kind, c, r, dir); nb.dropT = performance.now(); assignBuilders(nb); } AudioSys.ui('place');
+  if (!keepGoing) placing = null; else placing = { kind, start: null, dir };
   updateHud();
 }
 function drawPlacement(g) {
   const k = playerKeep(); if (!k) return;
   g.save(); g.setLineDash([10, 8]); g.strokeStyle = 'rgba(255,230,140,0.55)'; g.lineWidth = 2;
   g.beginPath(); g.arc(k.x, (k.y0 + k.y1) / 2, TERRITORY, 0, Math.PI * 2); g.stroke(); g.restore();
-  const w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y);
+  const dir = isLine(placing.kind) ? 0 : placing.dir || 0;
+  const w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y, dir);
   const spots = isLine(kind) && placing.start ? wallLine(placing.start.c, placing.start.r, cur.c, cur.r) : [cur];
-  let cost = 0;
+  let cost = 0; const bob = -8 - Math.sin(performance.now() / 260) * 3;
   for (const t of spots) {
-    const ok = canPlace(kind, t.c, t.r); if (ok) cost += d.stone || d.wood;
-    const ghost = makeBuildingObj(kind, t.c, t.r); ghost.done = true; ghost.progress = 1;
+    const ok = canPlace(kind, t.c, t.r, dir); if (ok) cost += d.stone || d.wood;
+    const ghost = makeBuildingObj(kind, t.c, t.r, dir); ghost.done = true; ghost.progress = 1;
     g.fillStyle = ok ? 'rgba(120,255,140,0.28)' : 'rgba(255,80,60,0.35)'; g.fillRect(ghost.x0, ghost.y0, ghost.x1 - ghost.x0, ghost.y1 - ghost.y0);
-    g.save(); g.globalAlpha = 0.55; drawBuilding(g, ghost, time); g.restore();
+    g.save(); g.globalAlpha = 0.55; g.translate(0, isLine(kind) ? 0 : bob); drawBuilding(g, ghost, time); g.restore();
+    if (!isLine(kind)) facingArrow(g, (ghost.x0 + ghost.x1) / 2, (ghost.y0 + ghost.y1) / 2, dir, Math.max(ghost.x1 - ghost.x0, ghost.y1 - ghost.y0) / 2 + 26, p => p);
   }
   if (isLine(kind)) {
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
     const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, w.x, w.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, w.x, w.y - 24);
   }
+}
+// a fat yellow arrow on the ground from the building's middle, pointing the way its front will face
+function facingArrow(g, cx, cy, dir, len, proj) {
+  const [vx, vy] = DIR_VEC[dir], px = -vy, py = vx, P = (a, s) => proj({ x: cx + vx * a + px * s, y: cy + vy * a + py * s });
+  const pts = [P(len * 0.25, -5), P(len - 16, -5), P(len - 16, -13), P(len, 0), P(len - 16, 13), P(len - 16, 5), P(len * 0.25, 5)];
+  g.save(); g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)); g.closePath();
+  g.fillStyle = 'rgba(255,214,90,0.95)'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = 'rgba(40,24,6,0.95)'; g.stroke(); g.restore();
 }
 function drawBuilding(g, b, t) {
   if (b.dead) {
@@ -3690,6 +3763,7 @@ function drawBuilding(g, b, t) {
     return;
   }
   const fk = b.flash > 0 ? b.flash * 0.5 : 0, P = c => fk ? mixHex(c, '#ffffff', fk) : c;
+  if (b.dir === 1 && !b.mirrored) { g.save(); g.translate(b.x, 0); g.scale(-1, 1); g.translate(-b.x, 0); b.mirrored = true; drawBuilding(g, b, t); b.mirrored = false; g.restore(); return; }
   const unfinished = b.done === false && b.kind !== 'moat' && b.kind !== 'pit';
   if (unfinished) {
     const H = b.topH + 14, top = b.y - H * Math.max(0.08, b.progress);
@@ -3933,6 +4007,14 @@ function drawWall(g, b, P) {
 }
 function drawGate(g, b, P) {
   const M = mats(), x = b.x0, gy = b.y - 4, w = 32;
+  if (b.dir % 2) {   // turned to sit in a north-south wall: seen from the side, a thick stone gatehouse with the closed gate edge-on
+    softShadow(g, x + w / 2 + 6, gy + 2, 20, 6, 0.4);
+    g.fillStyle = M.stone; g.fillRect(x + 4, gy - 42, w - 8, 42); lightFace(g, x + 4, gy - 42, w - 8, 42);
+    g.fillStyle = M.stoneDark; g.fillRect(x + 2, gy - 46, w - 4, 5); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + w / 2 - 2, gy - 32, 4, 32);
+    g.fillStyle = M.woodV; g.fillRect(x + w / 2 - 1.5, gy - 30, 3, 30);
+    g.fillStyle = P((b.team === 'enemy' ? ENEMY_COL : PAL.player.tunic)); g.fillRect(x + 7, gy - 40, 6, 10); g.fillRect(x + w - 13, gy - 40, 6, 10);
+    flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, x, gy - 46, w, 46); return;
+  }
   softShadow(g, x + w / 2 + 6, gy + 2, 22, 6, 0.4);
   for (const px of [x, x + w - 7]) { g.fillStyle = M.stone; g.fillRect(px, gy - 40, 7, 40); lightFace(g, px, gy - 40, 7, 40); g.fillStyle = M.stoneDark; g.fillRect(px - 1, gy - 44, 9, 5); g.fillStyle = 'rgba(255,240,210,0.2)'; g.fillRect(px - 1, gy - 44, 9, 1.4); }
   const door = () => { g.beginPath(); g.rect(x + 7, gy - 30, w - 14, 30); };
@@ -5967,10 +6049,12 @@ const R3D = (() => {
       if (md && md.palVer !== palVer && !b.dead) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(b.id); md = null; }
       if (!md) {
         md = buildingModel(b); md.palVer = palVer; md.engine = b.engine || null; bModels.set(b.id, md);
+        md.inner.rotation.y = [0, -Math.PI / 2, Math.PI, Math.PI / 2][b.dir || 0]; md.baseY = md.g.position.y;
         if (['wall', 'gate', 'highwall', 'stairs', 'moat'].includes(b.kind) && !joined.has(b.id) && joined.add(b.id)) for (const o of structures) if (o !== b && (o.kind === 'wall' || o.kind === 'highwall' || o.kind === 'stairs' || o.kind === 'moat') && Math.abs(o.c - b.c) + Math.abs(o.r - b.r) === 1) { const om = bModels.get(o.id); if (om && !om.rubble) { scene.remove(om.g); bModels.delete(o.id); } }
         if (isField(b.kind) || b.kind === 'house') hideGrass(b.x0, b.y0, b.x1, b.y1);
       }
       if (b.dead) { if (!md.rubble) { md.g.visible = false; md.rubble = (b.kind === 'farm' || b.kind === 'moat' || b.kind === 'pit') ? null : rubble(b); } if (Math.random() < 0.05) spawn('smoke', b.x + RR(-25, 25), b.y - RR(5, 25), b.y); continue; }
+      if (b.dropT) { const k = 1 - (performance.now() - b.dropT) / 380; md.g.position.y = md.baseY + Math.max(0, k) * k * 18; if (k <= 0) { b.dropT = 0; md.g.position.y = md.baseY; } }
       const prog = b.done === false ? Math.max(0.06, b.progress) : 1;
       md.inner.scale.y = prog;
       if (md.scaffold) md.scaffold.visible = b.done === false;
@@ -6148,15 +6232,18 @@ const R3D = (() => {
     for (const u of selection) { if (u.dead) continue; ringPath(g, u.x, u.y, isMachine(u) ? 24 : 13, 1 + elev3D(u)); g.fillStyle = 'rgba(120,255,140,0.16)'; g.fill(); g.strokeStyle = 'rgba(130,255,150,0.95)'; g.lineWidth = 2; g.stroke(); }
     if (hover && !hover.dead && hover.kind === 'unit' && !selection.has(hover)) { ringPath(g, hover.x, hover.y, 13); g.strokeStyle = hover.team === 'enemy' ? 'rgba(255,90,70,0.9)' : 'rgba(220,255,220,0.7)'; g.lineWidth = 1.6; g.stroke(); }
     if (placing && mouse.inside) {
-      const k = playerKeep(), w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = BUILD[kind], cur = tileFor(kind, w.x, w.y);
+      const dir = isLine(placing.kind) ? 0 : placing.dir || 0, hov = isLine(placing.kind) ? 0 : 10 + Math.sin(performance.now() / 260) * 4;
+      const k = playerKeep(), w = toWorld(mouse.x, mouse.y), kind = placing.kind, d = Object.assign({}, BUILD[placing.kind], dimsOf(placing.kind, dir)), cur = tileFor(kind, w.x, w.y, dir);
       if (k) { g.setLineDash([10, 8]); g.strokeStyle = 'rgba(255,230,140,0.6)'; g.lineWidth = 2; ringPath(g, k.x, (k.y0 + k.y1) / 2, TERRITORY); g.stroke(); g.setLineDash([]); }
       const spots = isLine(kind) && placing.start ? wallLine(placing.start.c, placing.start.r, cur.c, cur.r) : [cur];
       let cost = 0;
       for (const t of spots) {
-        const okp = canPlace(kind, t.c, t.r); if (okp) cost += d.stone || d.wood;
+        const okp = canPlace(kind, t.c, t.r, dir); if (okp) cost += d.stone || d.wood;
         const x0 = t.c * TILE, z0 = t.r * TILE, x1 = x0 + d.w * TILE, z1 = z0 + d.h * TILE;
-        const corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, 1, z));
-        const top = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, Math.min(60, d.topH), z));
+        const corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, 1 + hov, z));
+        const top = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, Math.min(60, d.topH) + hov, z));
+        if (!isLine(kind)) { const fl = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => project(x, 1, z)); g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); fl.forEach((q, i) => i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)); g.closePath(); g.fill();
+          facingArrow(g, (x0 + x1) / 2, (z0 + z1) / 2, dir, Math.max(x1 - x0, z1 - z0) / 2 + 30, q => project(q.x, 2, q.y)); }
         g.fillStyle = okp ? 'rgba(120,255,140,0.3)' : 'rgba(255,80,60,0.38)';
         g.beginPath(); corners.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.closePath(); g.fill();
         g.strokeStyle = okp ? 'rgba(150,255,170,0.9)' : 'rgba(255,120,100,0.9)'; g.lineWidth = 1.5; g.stroke();
@@ -6165,6 +6252,7 @@ const R3D = (() => {
       }
       if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
+    if (tearing && mouse.inside) drawTearHover(g, (x, y) => project(x, 2, y));
     for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
     for (const s of structures.concat(farms)) if (s.asleep && !s.dead) { const q = project(s.x, (s.topH || 20) + 30, (s.y0 + s.y1) / 2); if (q.ok) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', q.x, q.y); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', q.x, q.y); g.restore(); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
@@ -6610,6 +6698,7 @@ function render() {
     g.restore();
   }
   if (placing && mouse.inside) drawPlacement(g);
+  if (tearing && mouse.inside) drawTearHover(g, (x, y) => ({ x, y }));
   drawParticles(g);
   for (const a of arrows) {
     const k = a.t / a.dur, x = lerp(a.x0, a.x1, k), y = lerp(a.y0, a.y1, k) - a.h * 4 * k * (1 - k);

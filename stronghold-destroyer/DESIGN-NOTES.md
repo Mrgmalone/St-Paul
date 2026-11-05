@@ -24,6 +24,13 @@ branch `stronghold-destroyer`):
     market tax when they are upset. Even at best, never as cheap as making it.
   - The Armory's weapon-buy buttons use the same prices.
 - A big X closes every pop-up box.
+- Turning before placing: a building hovers with a yellow arrow showing its front;
+  R or T (or the Turn button) turns it a quarter turn (south, west, north, east).
+  Gates turn to sit in north-south walls. Non-square footprints swap width and
+  depth. 3D shows the full turn; 2D mirrors west-facing buildings and shows turned
+  gates edge-on.
+- Tear Down (Castle tab): pull down your own walls and buildings for half the
+  cost back; the keep cannot be torn down.
 - Workers go inside workshops (bowyer, spear-maker, blacksmith, mill, bakery,
   brewery); people on breaks go inside the tavern, the House of Prayer or a
   house; the sick are cared for inside the keep. Clicking a building shows who
