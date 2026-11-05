@@ -121,6 +121,14 @@
   .vol input{width:130px;height:24px;accent-color:#e0b84e;cursor:pointer}
   #help{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:12px;box-sizing:border-box}
   #help.hide{display:none}
+  .xbtn{position:absolute;top:6px;right:6px;width:42px;height:42px;border-radius:50%;padding:0;margin:0;font-size:28px;line-height:38px;font-weight:700;text-align:center;
+    background:#6a2a1c;color:#fff6e6;border:2px solid #f0c070;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer;z-index:3;pointer-events:auto;touch-action:manipulation}
+  .xbtn:hover{background:#8a3a26}
+  .pop{padding-right:56px!important}
+  #help .box,#win .box{position:relative;padding-right:60px}
+  #banner{padding-right:62px!important;padding-left:62px!important}
+  #banner .xbtn{pointer-events:none}
+  #banner.shown .xbtn{pointer-events:auto}
   #help .box{background:#241a10;border:3px solid #b08a4a;border-radius:10px;padding:16px 20px;max-width:640px;max-height:100%;overflow:auto;font-size:16px;line-height:1.5}
   #help h3{margin:0 0 8px;color:#ffd27a;font-size:20px;letter-spacing:1px}
   #help b{color:#ffd98a}
@@ -210,7 +218,7 @@
   <canvas id="game"></canvas>
   <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
   <div id="menuNote" hidden>&#10074;&#10074; Paused while you read</div>
-  <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="sm" id="leftClose">&times;</button></div>
+  <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="xbtn" id="leftClose" aria-label="Close" style="position:static;flex:0 0 auto">&times;</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="pick"><div class="wrap">
     <h1>CHOOSE YOUR CIVILIZATION</h1>
@@ -867,6 +875,7 @@ function findPath(sx, sy, gx, gy) {
 
 // ---------- combat helpers ----------
 const alive = t => t && !t.dead && !t.inside;
+function setBox(el, html) { if (el._html === html && el.firstChild && el.querySelector(':scope > .xbtn')) return; el._html = html; el.innerHTML = html; }
 function edgeDist(u, t) {
   if (t.x0 !== undefined) {
     const dx = Math.max(t.x0 - u.x, 0, u.x - t.x1), dy = Math.max(t.y0 - u.y, 0, u.y - t.y1);
@@ -2484,7 +2493,7 @@ function insideHtml(b, label) {
 const HALLS = { house: 'Rest at home on a break.', tavern: 'People drink ale here on their breaks.', chapel: 'People pray here on their breaks.' };
 function showInside(b) {
   storeShown = b; const p = document.getElementById('storePop'); if (b.dead) { p.hidden = true; storeShown = null; return; }
-  p.innerHTML = `<h3>${b.name.toUpperCase()}</h3>` + (b.done === false ? '<div class="ln"><span>Status</span><b>Being built</b></div>' : insideHtml(b)) + `<div style="font-size:13px;color:#d9c9a3;margin-top:6px">${HALLS[b.kind] || ''} Click the ground or press Esc to close.</div>`;
+  setBox(p, `<h3>${b.name.toUpperCase()}</h3>` + (b.done === false ? '<div class="ln"><span>Status</span><b>Being built</b></div>' : insideHtml(b)) + `<div style="font-size:13px;color:#d9c9a3;margin-top:6px">${HALLS[b.kind] || ''} Click the ground or press Esc to close.</div>`);
   p.dataset.site = ''; p.hidden = false;
 }
 function showSite(b) {
@@ -2541,7 +2550,7 @@ function showStore(b) {
   if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));
   if (b.kind === 'keep') html += insideHtml(b, 'Being cared for inside');
   html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
-  p.innerHTML = html; p.dataset.site = ''; p.hidden = false;
+  setBox(p, html); p.dataset.site = ''; p.hidden = false;
 }
 function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && !u.inside && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
 
@@ -2761,8 +2770,8 @@ document.getElementById('again').onclick = () => location.reload();
 
 let hudT = 0, won = false, alertCooldown = 0, bannerTimer = null;
 function showBanner(html, secs) {
-  const b = document.getElementById('banner'); b.innerHTML = html; b.style.opacity = 1;
-  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { b.style.opacity = 0; }, secs * 1000);
+  const b = document.getElementById('banner'); b.innerHTML = html; b.style.opacity = 1; b.classList.add('shown');
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { b.style.opacity = 0; b.classList.remove('shown'); }, secs * 1000);
 }
 function endGame(title, text) {
   won = true;
@@ -4363,9 +4372,9 @@ const UI = (() => {
     { const band = d.mood >= 70 ? 4 : d.mood >= 50 ? 3 : d.mood >= 35 ? 2 : d.mood >= 20 ? 1 : 0; if (band !== moodBand) { moodBand = band; const c = document.querySelector('#cMood canvas'); if (c) paintIcon(c); } }
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
-    if (!$('goodsPop').hidden) $('goodsPop').innerHTML = goodsReport();
+    if (!$('goodsPop').hidden) setBox($('goodsPop'), goodsReport());
     if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
-    if (!$('moodPop').hidden) $('moodPop').innerHTML = moodReport();
+    if (!$('moodPop').hidden) setBox($('moodPop'), moodReport());
   }
   function moodReport() {
     const r = RATIONS[ration], t = TAXES[tax];
@@ -6128,6 +6137,27 @@ function showLeftNote(reasons) {
 }
 document.getElementById('leftWhy').onclick = () => { const el = document.getElementById('leftNote'); document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b><span class="why2">' + el.dataset.why + '</span>'; leftNoteT = 20; const mp = document.getElementById('moodPop'); if (mp.hidden) document.getElementById('cMood').click(); };
 document.getElementById('leftClose').onclick = () => { document.getElementById('leftNote').hidden = true; };
+// every box that pops up gets a big X to close it, and keeps it even when its contents are redrawn
+(function closeButtons() {
+  const $ = id => document.getElementById(id);
+  const closers = {
+    storePop: () => { $('storePop').hidden = true; storeShown = null; },
+    menuPop: () => { $('menuPop').hidden = true; $('btnMenu').setAttribute('aria-expanded', 'false'); },
+    moodPop: () => { $('moodPop').hidden = true; },
+    goodsPop: () => { $('goodsPop').hidden = true; },
+    banner: () => { clearTimeout(bannerTimer); $('banner').style.opacity = 0; $('banner').classList.remove('shown'); },
+    help: () => $('btnHelpClose').click(),
+    win: () => { $('win').style.display = 'none'; }
+  };
+  for (const [id, close] of Object.entries(closers)) {
+    const el = id === 'help' || id === 'win' ? $(id).querySelector('.box') : $(id);
+    const add = () => { if (el.querySelector(':scope > .xbtn')) return; const x = document.createElement('button'); x.className = 'xbtn'; x.type = 'button'; x.dataset.close = id; x.setAttribute('aria-label', 'Close'); x.title = 'Close'; x.innerHTML = '&times;'; el.prepend(x); };
+    add(); new MutationObserver(add).observe(el, { childList: true });
+  }
+  // the box closes the moment the X is pressed, even if the box redraws itself in between
+  const hit = e => { const x = e.target.closest && e.target.closest('.xbtn[data-close]'); if (!x) return; e.stopPropagation(); e.preventDefault(); if (e.type === 'click' && e.detail > 0) return; closers[x.dataset.close](); try { AudioSys.ui('select'); } catch (er) {} };
+  document.addEventListener('pointerdown', hit, true); document.addEventListener('click', hit, true);
+})();
 function enemiesClose() {
   const k = playerKeep(), mine = units.filter(u => u.team === 'player' && !u.dead);
   return units.some(e => !e.dead && e.team === 'enemy' && e.type !== 'civ' && ((k && Math.hypot(e.x - k.x, e.y - k.y) < 760) || mine.some(m => Math.hypot(e.x - m.x, e.y - m.y) < 380) || structures.some(b => b.team === 'player' && !b.dead && Math.hypot(e.x - b.x, e.y - b.y) < 420)));
@@ -6477,7 +6507,7 @@ if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.g
 resize();
 cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
-document.getElementById('banner').style.opacity = 0;
+document.getElementById('banner').style.opacity = 0; document.getElementById('banner').classList.remove('shown');
 let palVer = 0;
 function startGame(key) {
   palVer++;   // team colours change: 3D buildings made before this are rebuilt in the new colours
