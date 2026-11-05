@@ -87,7 +87,9 @@ offered to Gerald: (1) 3D models made from his concept art with an image-to-3D t
 humans auto-rigged with walk/idle/attack/die animations, delivered as .glb files and
 loaded with three.js; (2) sprite sheets from his image tool (each unit in 8
 directions, a few frames per action, transparent background, same size and camera
-angle). Waiting on his choice; procedural improvements continue meanwhile.
+angle). Gerald chose path (1), 3D models. The game now loads .glb models listed in
+`models/models.json` (see `design/MODELS.md` for names, moves and sizes); anything
+without a model keeps its built-in look. Waiting on his first files (swordsman first).
 
 **Still open from earlier**
 - A fixed soldier cap: waiting on a number from Gerald.

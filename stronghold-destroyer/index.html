@@ -395,6 +395,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -4818,6 +4820,7 @@ const R3D = (() => {
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
     scene = new T.Scene(); scene.background = C('#b7c6cc'); scene.fog = new T.Fog(C('#b7c6cc'), 1100, 3200);
+    loadGlbModels();
     camera = new T.PerspectiveCamera(38, 1, 10, 7000);
     scene.add(new T.HemisphereLight(C('#d6e6ff'), C('#4d5a2c'), 0.62));
     try {   // a small painted sky for metal to reflect: helmets, mail, blades and iron catch the light
@@ -5199,7 +5202,8 @@ const R3D = (() => {
     const inner = new T.Group(); g.add(inner);
     const info = { g, inner, flags: [], archer: null, mats: [], kind: b.kind };
     const add = o => { inner.add(o); return o; };
-    if (b.kind === 'keep') {
+    if (glbBuilding(b, info)) { /* Gerald's model for this building */ }
+    else if (b.kind === 'keep') {
       add(box(90, 104, 90, stoneM(90, 104), 0, 52, 0));
       add(box(94, 4, 94, stoneM(94, 4), 0, 104, 0));
       addMerlons(inner, -47, -47, 94, 94, 106, 13.5, 8, 9);
@@ -5520,6 +5524,76 @@ const R3D = (() => {
       mg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); mg.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); mg.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
       mg.computeBoundingSphere(); const mm = new T.Mesh(mg, list[0].material); mm.castShadow = cast; mm.receiveShadow = true; g.add(mm);
     }
+  }
+  // ---- Gerald's 3D models (.glb): when a model for a unit or building is present it replaces the built-in figure ----
+  // models/models.json lists the files. A base file holds the mesh (and may hold its moves); extra moves can come in
+  // separate files named <name>-walk.glb, <name>-attack.glb and so on. Enemy versions are <name>-enemy.glb.
+  const GLB = {}, GLB_ACTIONS = ['idle', 'walk', 'run', 'attack', 'die', 'work'];
+  const UNIT_MODEL = { sword: 'swordsman', spear: 'spearman', archer: 'archer', maceman: 'armored-soldier', knight: 'knight', king: 'king', crossbow: 'crossbowman' };
+  const clipKey = n => { n = (n || '').toLowerCase(); return /idle|stand|breath/.test(n) ? 'idle' : /run|sprint|charge/.test(n) ? 'run' : /walk|move/.test(n) ? 'walk' : /die|death|dead|fall/.test(n) ? 'die' : /work|chop|hammer|gather|build|dig|harvest/.test(n) ? 'work' : /attack|slash|thrust|stab|swing|fire|shoot|strike|combo/.test(n) ? 'attack' : null; };
+  function civModelName(u) {
+    const lk = u.look || {}, j = u.job && u.job.kind;
+    const role = u.order === 'build' ? 'builder' : j === 'mill' ? 'miller' : j === 'brewery' || j === 'tavern' ? 'brewer' : j && isField(j) ? 'farmer' : u.task && u.task.type === 'food' ? 'gatherer' : null;
+    return [role, lk.female ? 'citizen-female' : 'citizen-male'];
+  }
+  function glbEntry(u) {
+    if (isMachine(u) || u.lord) return null;
+    const names = u.type === 'civ' ? civModelName(u) : [UNIT_MODEL[u.type]];
+    for (const n of names) { if (!n) continue; if (u.team === 'enemy' && GLB[n + '-enemy']) return { e: GLB[n + '-enemy'], key: n + '-enemy' }; if (GLB[n]) return { e: GLB[n], key: n, tint: u.team === 'enemy' }; }
+    return null;
+  }
+  function registerGlb(name, gltf) {
+    const sc = gltf.scene; sc.updateMatrixWorld(true); const bb = new T.Box3().setFromObject(sc), size = bb.getSize(new T.Vector3());
+    const prev = GLB[name]; GLB[name] = { scene: sc, clips: (prev ? prev.clips : []).concat(gltf.animations || []), h: Math.max(0.001, size.y), w: Math.max(0.001, size.x), d: Math.max(0.001, size.z), minY: bb.min.y, cx: (bb.min.x + bb.max.x) / 2, cz: (bb.min.z + bb.max.z) / 2 };
+    // anything already standing is rebuilt with the new model
+    for (const [id, md] of unitModels) { scene.remove(md.root); unitModels.delete(id); }
+    for (const [id, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(id); }
+  }
+  function addGlbClips(name, gltf, act) { const e = GLB[name]; if (!e) return; for (const c of gltf.animations || []) { if (act && !clipKey(c.name)) c.name = act; e.clips.push(c); } for (const [id, md] of unitModels) if (md.glbKey === name) { scene.remove(md.root); unitModels.delete(id); } }
+  function loadGlbModels() {
+    if (!T.GLTFLoader || !T.SkeletonUtils) return;
+    fetch('models/models.json').then(r => r.ok ? r.json() : null).then(list => {
+      if (!list || !Array.isArray(list.files)) return;
+      const loader = new T.GLTFLoader(), files = list.files.filter(f => /\.glb$/i.test(f));
+      const isAct = f => GLB_ACTIONS.some(a => f.toLowerCase().endsWith('-' + a + '.glb'));
+      for (const f of files.filter(f => !isAct(f))) { const name = f.replace(/\.glb$/i, '').toLowerCase();
+        loader.load('models/' + f, g => { registerGlb(name, g); for (const af of files.filter(x => isAct(x) && x.toLowerCase().startsWith(name + '-') && !x.toLowerCase().startsWith(name + '-enemy'))) { const act = af.toLowerCase().slice(name.length + 1, -4); loader.load('models/' + af, g2 => addGlbClips(name, g2, act), undefined, () => {}); } }, undefined, () => {}); }
+    }).catch(() => {});
+  }
+  function glbUnitModel(u, ent) {
+    const e = ent.e, root = new T.Group(), body = new T.Group(); root.add(body);
+    const obj = T.SkeletonUtils.clone(e.scene), H = u.type === 'king' ? 46 : u.type === 'knight' ? 45 : 43, s = H / e.h;
+    obj.scale.setScalar(s); obj.position.set(-e.cx * s, -e.minY * s, -e.cz * s);
+    const mats = [], tint = ent.tint ? new T.Color('#55565e') : null;
+    obj.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+      const one = m => { const c = m.clone(); if (tint && c.color) c.color.multiply(tint); if (!c.emissive) c.emissive = new T.Color(0, 0, 0); mats.push(c); return c; };
+      o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material); });
+    body.add(obj);
+    const mixer = new T.AnimationMixer(obj), acts = {};
+    for (const c of e.clips) { const k = clipKey(c.name); if (k && !acts[k]) acts[k] = mixer.clipAction(c); }
+    if (!Object.keys(acts).length && e.clips[0]) acts.idle = mixer.clipAction(e.clips[0]);
+    return { root, body, mats, glb: true, glbKey: ent.key, mixer, acts, cur: null, m: {}, heading: u.facing < 0 ? -Math.PI / 2 : Math.PI / 2 };
+  }
+  function animateGlb(u, md, dt) {
+    const A = md.acts; let want = u.dead ? 'die' : u.attackAnim > 0 ? 'attack' : (u.type === 'civ' && u.sub === 'work') ? (A.work ? 'work' : 'attack') : u.moving ? ((u.order === 'attack' || u.order === 'raid' || u.order === 'flee') && A.run ? 'run' : 'walk') : 'idle';
+    if (!A[want]) want = want === 'run' && A.walk ? 'walk' : want === 'work' && A.attack ? 'attack' : A.idle ? 'idle' : null;
+    const fresh = want === 'attack' && u.attackAnim > 0 && u.attackAnim < (md.lastAtk || 1) && md.cur === 'attack';
+    if (want && (md.cur !== want || fresh)) {
+      const a = A[want]; a.enabled = true; a.reset(); a.setEffectiveWeight(1);
+      if (want === 'die' || want === 'attack') { a.setLoop(T.LoopOnce, 1); a.clampWhenFinished = want === 'die'; } else a.setLoop(T.LoopRepeat, Infinity);
+      if (want === 'attack' && u.animDur) a.setEffectiveTimeScale(Math.max(0.3, a.getClip().duration / u.animDur));
+      a.play(); if (md.cur && md.cur !== want && A[md.cur]) A[md.cur].crossFadeTo(a, 0.18, false); md.cur = want;
+    }
+    md.lastAtk = u.attackAnim || 1;
+    if (A.walk && md.cur === 'walk') A.walk.setEffectiveTimeScale(Math.max(0.4, u.speed / 40 * (u.sick ? 0.72 : 1)));
+    md.mixer.update(Number.isFinite(dt) ? Math.min(dt, 0.1) : 0);   // one bad time step would leave the model nowhere
+  }
+  function glbBuilding(b, info) {   // a building model, fitted to its plot
+    const name = b.kind, e = (b.team === 'enemy' && GLB[name + '-enemy']) || GLB[name]; if (!e) return false;
+    const obj = e.scene.clone(true), fw = (b.dir || 0) % 2 ? b.y1 - b.y0 : b.x1 - b.x0, fd = (b.dir || 0) % 2 ? b.x1 - b.x0 : b.y1 - b.y0, s = Math.min(fw / e.w, fd / e.d) * 0.98;
+    obj.scale.setScalar(s); obj.position.set(-e.cx * s, -e.minY * s, -e.cz * s);
+    obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    info.inner.add(obj); return true;
   }
   function personModel(u) {
     const P = u.pal, soldier = (swordish(u) || u.type === 'spear'), lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
@@ -6078,7 +6152,8 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : personModel(u); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); return ent ? glbUnitModel(u, ent) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
       seen.add(u.id);
       const y = heightAt(u.x, u.y);
@@ -6102,13 +6177,13 @@ const R3D = (() => {
         if (md.log) md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
         if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
-      } else animatePerson(u, md, dt);
+      } else if (md.glb) animateGlb(u, md, dt); else animatePerson(u, md, dt);
       // hit flash, falling, fading
       const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
       for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk, fk, fk); }
       if (u.dead) {
         let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f);
-        md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2;
+        if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; }
         const al = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1;
         if (al < 1) for (const mt of md.mats) { mt.transparent = true; mt.opacity = al; }
       }
@@ -6377,7 +6452,8 @@ const R3D = (() => {
   const panAxes = () => ({ c: Math.cos(yaw), s: Math.sin(yaw) });
   // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
   function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
-  return { rebuildModel, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
+  const glbStatus = detail => ({ loaded: Object.keys(GLB), unitsUsingModels: [...unitModels.values()].filter(m => m.glb).map(m => m.glbKey + ':' + (m.cur || '-') + (detail ? ' ' + JSON.stringify((() => { const bb = new T.Box3().setFromObject(m.root); return { min: bb.min.toArray().map(Math.round), max: bb.max.toArray().map(Math.round), vis: m.root.visible, inScene: !!m.root.parent }; })()) : '')) });
+  return { rebuildModel, glbStatus, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
 const speeches = [];
