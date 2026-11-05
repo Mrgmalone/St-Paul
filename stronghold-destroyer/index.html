@@ -4373,6 +4373,58 @@ const R3D = (() => {
     }
     pineParts.push({ geo: new T.ConeGeometry(2.2, 8, 8), m: M4(0, 72, 0), color: lightCol('#1c3d1f', '#4a8546') });
     const pineGeo = merge(pineParts);
+    // ---- needle-frond pines: rings of drooping see-through branches around a slim dark core ----
+    function needleTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), Rn2 = mulberry32(77);
+      g.fillStyle = '#5a5a5a'; g.fillRect(0, 0, 16, 256);   // solid strip for the core
+      for (let f = 0; f < 3; f++) {   // three twigs per frond, spreading from the base (left) to the tip (right)
+        const y0 = 128 + (f - 1) * 26, spread = (f - 1) * 0.16;
+        // a soft filled body so the frond stays solid when seen from afar
+        g.fillStyle = '#8a8a8a'; g.beginPath(); g.moveTo(22, 128); g.quadraticCurveTo(120, y0 - 18, 240, 128 + spread * 240); g.quadraticCurveTo(120, y0 + 18, 22, 128); g.fill();
+        g.strokeStyle = '#4a4030'; g.lineWidth = 2.6 - f * 0.2; g.beginPath(); g.moveTo(22, 128); g.quadraticCurveTo(120, y0, 246, 128 + spread * 240); g.stroke();
+        for (let t = 0.06; t < 0.98; t += 0.018) {
+          const x = 16 + t * 230, y = 128 + (y0 - 128) * 4 * t * (1 - t) * 0.9 + spread * 240 * t * t, len = 16 * (1 - t * 0.55) + Rn2() * 5;
+          for (const sd of [-1, 1]) { const a = sd * (0.75 + Rn2() * 0.35) + 0.25, v = 140 + Rn2() * 100 | 0; g.strokeStyle = `rgb(${v},${v},${v})`; g.lineWidth = 2.6; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); g.stroke(); }
+        }
+      }
+      const img = g.getImageData(0, 0, 256, 256), d = img.data;   // bleed colour into clear pixels so edges never fringe dark
+      for (let pass = 0; pass < 3; pass++) for (let y = 1; y < 255; y++) for (let x = 7; x < 255; x++) { const i = (y * 256 + x) * 4; if (d[i + 3] > 0) continue; for (const o of [-4, 4, -1024, 1024]) { const j = i + o; if (d[j + 3] > 0) { d[i] = d[j]; d[i + 1] = d[j + 1]; d[i + 2] = d[j + 2]; d[i + 3] = 1; break; } } }
+      g.putImageData(img, 0, 0);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t;
+    }
+    function pineFronds() {
+      const Rp2 = mulberry32(4040), pos = [], nor = [], col = [], uv = [];
+      const push = (p, n, c, u, v) => { pos.push(p.x, p.y, p.z); nor.push(n.x, n.y, n.z); col.push(c.r, c.g, c.b); uv.push(u, v); };
+      const colAt = lightCol('#24502c', '#78b064');
+      // the slim core
+      const core = merge([0, 1, 2, 3, 4, 5].map(k => ({ geo: new T.ConeGeometry((17 - k * 2.5) * 0.4, 19, 8), m: M4(0, 16 + k * 9.5, 0), color: lightCol('#1c3d20', '#3f7442') })));
+      const cp = core.attributes.position, cn = core.attributes.normal, cc = core.attributes.color;
+      for (let i = 0; i < cp.count; i++) push(new T.Vector3(cp.getX(i), cp.getY(i), cp.getZ(i)), new T.Vector3(cn.getX(i), cn.getY(i), cn.getZ(i)), new T.Color(cc.getX(i), cc.getY(i), cc.getZ(i)), 0.03, 0.5);
+      for (let k = 0; k < 7; k++) {
+        const yb = 12 + k * 8.6, len = 19 - k * 2.3, n = 9 - Math.floor(k / 2), off = Rp2() * 6.3;
+        for (let b = 0; b < n; b++) {
+          const a = off + b / n * Math.PI * 2 + (Rp2() - 0.5) * 0.3, dir = new T.Vector3(Math.cos(a), 0, Math.sin(a)), side = new T.Vector3(-dir.z, 0, dir.x);
+          const L = len * (0.85 + Rp2() * 0.3), W = L * 0.42, droop = L * (0.32 + Rp2() * 0.12);
+          const base = new T.Vector3(0, yb + 6, 0).addScaledVector(dir, 1.5), tip = base.clone().addScaledVector(dir, L).add(new T.Vector3(0, -droop, 0));
+          for (const tilt of [0.0, 0.55]) {   // two cards per branch, one flat and one tipped up, for depth
+            const sv = side.clone().multiplyScalar(W * 0.5).add(new T.Vector3(0, W * 0.5 * tilt, 0));
+            const q = [[base.clone().sub(sv), 0.08, 0], [tip.clone().sub(sv), 1, 0], [tip.clone().add(sv), 1, 1], [base.clone().sub(sv), 0.08, 0], [tip.clone().add(sv), 1, 1], [base.clone().add(sv), 0.08, 1]];
+            const lit = dir.clone().add(new T.Vector3(0, 0.8, 0)).normalize(), c = colAt(tip.x, tip.y, tip.z).multiplyScalar(0.8 + Rp2() * 0.35);
+            for (const [p2, u, v] of q) push(p2, lit, c, u, v);
+          }
+        }
+      }
+      const tip = [new T.Vector3(0, 82, 0), new T.Vector3(-2.2, 70, 0), new T.Vector3(2.2, 70, 0)];   // the leader at the very top
+      for (const p2 of tip) push(p2, new T.Vector3(0, 1, 0), colAt(0, 80, 0), 0.03, 0.5);
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new T.Float32BufferAttribute(nor, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+      g.computeBoundingSphere(); return g;
+    }
+    const pineCardGeo = pineFronds(), needleTex = needleTexture();
+    const needleMat = new T.MeshStandardMaterial({ vertexColors: true, map: needleTex, alphaTest: 0.4, side: T.DoubleSide, roughness: 0.88 }); needleMat.color.setRGB(1.9, 1.9, 1.75); swayLeaves(needleMat, 20);
+    { const sway = needleMat.onBeforeCompile; needleMat.extensions = { derivatives: true };
+      needleMat.onBeforeCompile = sh => { sway(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', '#include <alphatest_fragment>\n  #ifdef USE_UV\n  if (vUv.x > 0.07) { vec3 fn = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))); if (abs(dot(fn, normalize(vViewPosition))) < 0.2) discard; }\n  #endif'); }; }
+    const needleDepth = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: needleTex, alphaTest: 0.4 });
     const leafMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false, side: T.DoubleSide, map: leafTex(), bumpMap: leafTex(), bumpScale: 1.6 }); swayLeaves(leafMat, 28);
     const barkMat = woodVM(8, 36);
     const border = [], Rb = mulberry32(4711);
@@ -4398,12 +4450,13 @@ const R3D = (() => {
     const simpleMat = leafMat.clone(); swayLeaves(simpleMat, 28);
     setTreeDetail = detailed => {   // detailed leaf crowns, or the older solid ones for slower computers
       oakMesh.geometry = detailed ? oakGeo : oakBlobGeo; birchMesh.geometry = detailed ? birchGeo : birchBlobGeo;
+      if (pineMesh) { pineMesh.geometry = detailed ? pineCardGeo : pineGeo; pineMesh.material = detailed ? needleMat : leafMat; pineMesh.customDepthMaterial = detailed ? needleDepth : undefined; }
       const mt = detailed ? cardMat : simpleMat; oakMesh.material = birchMesh.material = mt; simpleMat.color.copy(cardMat.color); leafDecid = mt;
       oakMesh.customDepthMaterial = birchMesh.customDepthMaterial = detailed ? cardDepth : undefined;
     };
     if (treeDetailWant === false) setTreeDetail(false);
     birchMesh = new T.InstancedMesh(birchGeo, leafDecid, birches.length); birchMesh.customDepthMaterial = cardDepth; birchTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.3, 2.1, 46, 8), std('#e6e2d6', { roughness: 0.8, map: barkMat.map }), birches.length);
-    pineMesh = new T.InstancedMesh(pineGeo, leafMat, pines.length); pineTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.8, 2.6, 22, 7), barkMat, pines.length);
+    pineMesh = new T.InstancedMesh(treeDetailWant !== false ? pineCardGeo : pineGeo, treeDetailWant !== false ? needleMat : leafMat, pines.length); if (treeDetailWant !== false) pineMesh.customDepthMaterial = needleDepth; pineTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.8, 2.6, 22, 7), barkMat, pines.length);
     const place = (list, crown, trunk, trunkY) => list.forEach((t, i) => {
       const x = t.c * TILE + 16 + (t.x - (t.c * TILE + 16)), z = t.r * TILE + 16, y = heightAt(x, z), s = t.s * 1.05, ry = t.seed * 2.1;
       const v1 = (t.seed * 3.31) % 1, v2 = (t.seed * 7.77) % 1;
