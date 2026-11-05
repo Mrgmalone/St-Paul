@@ -271,6 +271,7 @@
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
     <p><b>Running a workplace:</b> click any hut, farm, mine or workshop to see its status, workers, what it makes and how fast, and what it has made so far. Add workers there (up to 2 at huts and farms, 3 at other industries); each one adds the same again to its output. Remove a worker, or put the building to sleep with Z (press Z again to wake it), to free people: they go gathering, and when your houses are full, training a soldier calls up a free civilian. Civilians without a building job gather food and wood by themselves (up to 5 at one bush or tree), and every few minutes a worker takes a 20 to 30 second break by the fire.</p>
+    <p><b>Market:</b> build a Market (Town tab, 60 wood) and click it to buy or sell almost anything: wood, stone, iron, hops, wheat, flour, food, bread, ale and weapons. Buying always costs more than making it yourself, and selling pays less than buying.</p>
     <p><b>Knights and macemen:</b> the Blacksmith (click it) can make swords, maces or knight armor from iron; iron mines stand on the red-and-black iron ground. A Maceman needs a mace and 10 gold; a Knight needs a sword, armor and 20 gold (leather comes by trade). Knights are hard to hurt: only knights, kings, ballistas and trebuchets wound them fully. Up to five knights guard your King first; then knights, macemen and spearmen guard tower doors. Every tower, big or small, and the keep come with one free knight at the door; he does not count against your people and charges anyone who comes near.</p>
     <p><b>Towers and engines:</b> a Lookout Tower is tall and slim with its own stairs: three archers on top see and shoot far, and two guards hold its door. A Round Tower carries a Ballista or a Trebuchet (click it to mount one); the Trebuchet throws stones farthest of all. Click a tower engine, ballista or trebuchet to Stop or Continue its fire.</p>
     <p><b>Your people:</b> click anyone and they tell you what they are doing. Anything waiting to be built gets builders at once. If a citizen leaves, press Why? to see the reasons; a feast, a tavern, a house of prayer or a full granary lifts spirits at once and for a while they will not fall, and when mood rises, people who left come back.</p>
@@ -316,6 +317,7 @@
         <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; worker comes by itself</small><span class="why"></span></button>
         <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small><span class="why"></span></button>
+        <button class="bb ib" data-b="market"><canvas data-icon="b:market"></canvas>Market<small>60 wood &middot; buy and sell goods</small><span class="why"></span></button>
         <button class="tb ib" data-k="civ"><canvas data-icon="u:civ"></canvas>Civilian<small>40 food</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
       </div>
       <button class="tab" data-tab="castle" title="Castle (key 2)" aria-expanded="false"><span class="tl">Castle</span><span class="key">2</span><span class="chev">&#9662;</span></button>
@@ -2664,6 +2666,7 @@ function touchTap(p) {
   if (hit && hit.team === 'player' && JOBS[hit.kind] && !selection.size) { showSite(hit); return; }
   if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false && !selection.size) { showTower(hit); return; }
   if (hit && hit.team === 'player' && HALLS[hit.kind] && !selection.size) { showInside(hit); return; }
+  if (hit && hit.team === 'player' && hit.kind === 'market' && !selection.size) { showMarket(hit); return; }
   if (selection.size) { issueAt(p.x, p.y); return; }
   document.getElementById('storePop').hidden = true; storeShown = null;
 }
@@ -2706,6 +2709,7 @@ function endPointer(e) {
         else if (hit && hit.team === 'player' && JOBS[hit.kind]) showSite(hit);
         else if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false) showTower(hit);
         else if (hit && hit.team === 'player' && HALLS[hit.kind]) showInside(hit);
+        else if (hit && hit.team === 'player' && hit.kind === 'market') showMarket(hit);
         else if (!hit && pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) && isField((pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) || {}).kind) && !selection.size) showSite(pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y));
         else if (!drag.shift) { selection.clear(); document.getElementById('storePop').hidden = true; storeShown = null; }
         lastClick = { t: now, x: p.x, y: p.y };
@@ -3203,6 +3207,50 @@ const feeOf = k => k === 'knight' ? 20 : 10;
 const weaponRoute = kind => WEAPON[kind] && NEEDS[kind].every(w => res[w] >= 1) && res.gold >= feeOf(kind);
 const BUY = { sword: 40, spear: 20, bow: 30, mace: 30, armor: 70 };
 const hasArmory = () => countOf('armory') > 0;
+// the market: buying always costs more than making it yourself, and selling pays far less than buying
+const MARKET = [
+  ['wood', 'Wood', 10, 20, 8], ['stone', 'Stone', 10, 30, 12], ['iron', 'Iron', 5, 30, 12], ['hops', 'Hops', 10, 30, 12], ['wheat', 'Wheat', 10, 30, 12], ['flour', 'Flour', 10, 45, 18],
+  ['food', 'Food (crops)', 10, 25, 10], ['bread', 'Bread', 10, 40, 16], ['ale', 'Ale', 5, 40, 16],
+  ['bow', 'Bow', 1, BUY.bow, 12], ['spear', 'Spear', 1, BUY.spear, 8], ['sword', 'Sword', 1, BUY.sword, 16], ['mace', 'Mace', 1, BUY.mace, 12], ['armor', 'Knight armor', 1, BUY.armor, 28]
+];
+const WEAPONS = { bow: 1, spear: 1, sword: 1, mace: 1, armor: 1 };
+const haveOf = k => Math.floor(k === 'food' ? (foodKinds.crops || 0) + (foodKinds.berries || 0) : k === 'bread' ? (foodKinds.bread || 0) : (res[k] || 0));
+function trade(b, act, key) {
+  const row = MARKET.find(r => r[0] === key); if (!row || !b || b.dead || b.done === false) return;
+  const [, name, lot, buy, sell] = row;
+  if (act === 'buy') {
+    if (WEAPONS[key] && !hasArmory()) { showBanner('Build an Armory first: bought weapons are stored there.', 3); return; }
+    if (res.gold < buy) { showBanner(`${lot > 1 ? lot + ' ' : 'A '}${name.toLowerCase()} costs ${buy} gold. You have ${Math.floor(res.gold)}.`, 2.5); return; }
+    res.gold -= buy;
+    if (key === 'food') addFood('crops', lot); else if (key === 'bread') addFood('bread', lot); else res[key] += lot;
+    b.mkMsg = `Bought ${lot > 1 ? lot + ' ' : ''}${name.toLowerCase()} for ${buy} gold.`;
+  } else {
+    if (haveOf(key) < lot) { showBanner(`You need ${lot} ${name.toLowerCase()} to sell. You have ${haveOf(key)}.`, 2.5); return; }
+    if (key === 'food') { let n = lot; for (const k of ['berries', 'crops']) { const t = Math.min(n, foodKinds[k] || 0); foodKinds[k] -= t; n -= t; } res.food -= lot; }
+    else if (key === 'bread') { foodKinds.bread -= lot; res.food -= lot; }
+    else res[key] -= lot;
+    res.gold += sell;
+    b.mkMsg = `Sold ${lot > 1 ? lot + ' ' : ''}${name.toLowerCase()} for ${sell} gold.`;
+  }
+  AudioSys.ui('select'); updateHud(); showMarket(b);
+}
+function showMarket(b) {
+  storeShown = b; const p = document.getElementById('storePop'); if (b.dead) { p.hidden = true; storeShown = null; return; }
+  if (b.done === false) { setBox(p, `<h3>MARKET</h3><div class="ln"><span>Status</span><b>Being built</b></div>`); p.dataset.site = ''; p.hidden = false; return; }
+  // the buttons are built once; only the amounts refresh, so a tap is never lost
+  if (p.dataset.site !== 'mk' + b.id || !document.getElementById('mkGold')) {
+    p.innerHTML = `<h3>MARKET</h3><div class="ln"><span>Your gold</span><b id="mkGold"></b></div><div id="mkMsg" style="min-height:20px;color:#9fe8a8;font-weight:600;font-size:15px"></div>
+      <table style="border-collapse:collapse;font-size:15px;margin-top:6px"><tr style="color:#d9c9a3;font-size:13px"><th style="text-align:left">Goods</th><th>You have</th><th>Buy</th><th>Sell</th></tr>` +
+      MARKET.map(([k, name, lot, buy, sell]) => `<tr><td style="padding:3px 8px 3px 0">${name}${lot > 1 ? ` <small style="color:#d9c9a3">(${lot})</small>` : ''}</td><td style="text-align:center"><b id="mkHave-${k}"></b></td>
+        <td style="padding:2px"><button class="sm" data-mk="buy:${k}" style="min-width:86px">Buy ${buy}g</button></td><td style="padding:2px"><button class="sm" data-mk="sell:${k}" style="min-width:86px">Sell ${sell}g</button></td></tr>`).join('') +
+      `</table><div style="font-size:13px;color:#d9c9a3;margin-top:6px;max-width:420px">Buying always costs more than making it yourself, and selling pays less than buying. Bought weapons go to the Armory. Esc closes.</div>`;
+    p.dataset.site = 'mk' + b.id;
+  }
+  document.getElementById('mkGold').textContent = Math.floor(res.gold); document.getElementById('mkMsg').textContent = b.mkMsg || '';
+  for (const [k, , lot, buy] of MARKET) { document.getElementById('mkHave-' + k).textContent = haveOf(k); const bb = p.querySelector(`[data-mk="buy:${k}"]`), sb = p.querySelector(`[data-mk="sell:${k}"]`); bb.style.opacity = res.gold >= buy ? 1 : 0.45; sb.style.opacity = haveOf(k) >= lot ? 1 : 0.45; }
+  p.hidden = false;
+}
+document.getElementById('storePop').addEventListener('click', e => { const t = e.target.closest('[data-mk]'); if (t && storeShown && storeShown.kind === 'market') { const [act, key] = t.dataset.mk.split(':'); trade(storeShown, act, key); } });
 function buyWeapon(w) {
   if (!started || won) return;
   if (!hasArmory()) { showBanner('Build an Armory first (Industry tab). Bought weapons are stored there.', 3); return; }
@@ -3436,7 +3484,8 @@ const BUILD = {
   bowyer: { name: 'Bowyer', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 60 },
   poleturner: { name: 'Spear-maker', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 60 },
   smithy: { name: 'Blacksmith', w: 2, h: 2, wood: 50, time: 12, hp: 380, topH: 64 },
-  armory: { name: 'Armory', w: 2, h: 2, wood: 50, time: 12, hp: 450, topH: 66 }
+  armory: { name: 'Armory', w: 2, h: 2, wood: 50, time: 12, hp: 450, topH: 66 },
+  market: { name: 'Market', w: 3, h: 2, wood: 60, time: 14, hp: 400, topH: 48 }
 };
 const TERRITORY = 560;
 const farms = [];
@@ -3628,6 +3677,7 @@ function drawBuilding(g, b, t) {
   else if (b.kind === 'woodhut') drawWoodHut(g, b, P);
   else if (b.kind === 'stockpile') drawStockpile(g, b, P);
   else if (b.kind === 'granary') drawGranary(g, b, P);
+  else if (b.kind === 'market') drawMarket(g, b, P);
   if (unfinished) {
     g.restore();
     // scaffolding and stakes
@@ -3650,6 +3700,24 @@ function drawWoodHut(g, b, P) {
   for (let k = 0; k < 6; k++) { const x = cx + 26 + (k % 3) * 5, y = gy - 4 - Math.floor(k / 3) * 5; g.fillStyle = '#6b4a28'; g.beginPath(); g.arc(x, y, 2.6, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9a26a'; g.beginPath(); g.arc(x, y, 1.6, 0, Math.PI * 2); g.fill(); }
   g.fillStyle = '#7a5a34'; g.fillRect(cx + 22, gy + 2, 10, 5); g.strokeStyle = '#9aa2a8'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx + 27, gy + 2); g.lineTo(cx + 31, gy - 6); g.stroke();
   flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 28, gy - 50, 64, 56);
+}
+// the market: three stalls under striped awnings, their tables heaped with goods
+function drawMarket(g, b, P) {
+  const M = mats(), gy = b.y - 6;
+  softShadow(g, b.x + 8, gy + 2, 52, 12, 0.35);
+  const stalls = [[b.x - 30, '#b8402e'], [b.x + 2, '#2f63b0'], [b.x + 32, '#3f8a3a']];
+  for (const [sx, col] of stalls) {
+    g.fillStyle = '#4a3018'; g.fillRect(sx - 13, gy - 30, 2.4, 30); g.fillRect(sx + 11, gy - 30, 2.4, 30);
+    g.fillStyle = M.woodH; g.fillRect(sx - 14, gy - 13, 28, 8); lightFace(g, sx - 14, gy - 13, 28, 8);
+    // goods on the table
+    for (let k = 0; k < 5; k++) { g.fillStyle = ['#c0392b', '#e0a040', '#c9b38a', '#7a5430', '#8fb04a'][(k + Math.round(sx)) % 5]; g.beginPath(); g.arc(sx - 9 + k * 4.5, gy - 14.5, 2.2, 0, Math.PI * 2); g.fill(); }
+    // striped awning
+    for (let k = 0; k < 6; k++) { g.fillStyle = k % 2 ? '#f1e6cf' : col; g.beginPath(); g.moveTo(sx - 16 + k * 5.4, gy - 31); g.lineTo(sx - 16 + (k + 1) * 5.4, gy - 31); g.lineTo(sx - 15 + (k + 1) * 5.2, gy - 40); g.lineTo(sx - 15 + k * 5.2, gy - 40); g.closePath(); g.fill(); }
+    g.strokeStyle = 'rgba(30,18,8,0.55)'; g.lineWidth = 0.8; g.strokeRect(sx - 16, gy - 40, 32.4, 9);
+    for (let k = 0; k < 6; k++) { g.fillStyle = k % 2 ? '#f1e6cf' : col; g.beginPath(); g.arc(sx - 13.3 + k * 5.4, gy - 31, 2.7, 0, Math.PI); g.fill(); }
+  }
+  g.fillStyle = '#7a5430'; g.beginPath(); g.ellipse(b.x - 44, gy - 3, 5, 6, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#4a3018'; g.fillRect(b.x - 49, gy - 5, 10, 1.2);
+  g.fillStyle = '#d8c69a'; g.beginPath(); g.ellipse(b.x + 46, gy - 4, 5, 6, 0, 0, Math.PI * 2); g.fill();
 }
 function drawStockpile(g, b, P) {
   const M = mats(), x0 = b.x0 + 4, y0 = b.y0 + 10, w = b.x1 - b.x0 - 8, h = b.y1 - b.y0 - 14;
@@ -4249,7 +4317,7 @@ const UI = (() => {
   }
   function iconBuilding(g, name, w, h) {
     const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (isField(name)) b.amount = b.max;
-    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84] }[name];
+    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84], market: [104, 66] }[name];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -4373,7 +4441,7 @@ const UI = (() => {
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
     if (!$('goodsPop').hidden) setBox($('goodsPop'), goodsReport());
-    if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
+    if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else if (storeShown.kind === 'market') showMarket(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
     if (!$('moodPop').hidden) setBox($('moodPop'), moodReport());
   }
   function moodReport() {
@@ -5103,6 +5171,17 @@ const R3D = (() => {
       for (let r = 0; r < 4; r++) for (let k = 0; k < 5 - r; k++) { const l = cyl(2.7, 2.7, 24, logM, -12, 5.6 + r * 4.7, -12 + k * 5.6 + r * 2.8, 8); l.rotation.z = Math.PI / 2; add(l); info.stockLogs.push(l); }
       for (let i = 0; i < 6; i++) { const st = add(box(8, 6, 8, stoneM(8, 6), 14 + (i % 2) * 9, 6 + Math.floor(i / 2) * 6.2, -10 + (i % 3) * 9)); info.stockStones.push(st); }
       for (let i = 0; i < 4; i++) { const sk = sph(4, std(i % 2 ? '#c9b38a' : '#a88a5a', { roughness: 1 }), 10 + i * 6, 5.5, 18, 10); sk.scale.set(1, 1.2, 0.9); add(sk); info.stockSacks.push(sk); }
+    } else if (b.kind === 'market') {
+      add(box(90, 2, 58, texMat('stoneDark', 2, 1), 0, 1, 0));
+      const stripe = col => { const c = document.createElement('canvas'); c.width = 64; c.height = 8; const q = c.getContext('2d'); for (let k = 0; k < 8; k++) { q.fillStyle = k % 2 ? '#f1e6cf' : col; q.fillRect(k * 8, 0, 8, 8); } const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return new T.MeshStandardMaterial({ map: t, roughness: 0.9, side: T.DoubleSide }); };
+      const goodsCol = ['#c0392b', '#e0a040', '#c9b38a', '#7a5430', '#8fb04a', '#d8c69a'];
+      [[-29, '#b8402e'], [0, '#2f63b0'], [29, '#3f8a3a']].forEach(([x, col], i) => {
+        for (const [px, pz] of [[-11, -9], [11, -9], [-11, 9], [11, 9]]) add(cyl(0.9, 0.9, pz < 0 ? 30 : 24, woodVM(2, 30), x + px, pz < 0 ? 15 : 12, pz, 6));
+        add(box(25, 2, 13, woodHM(25, 13), x, 11, 2)); add(box(25, 9, 1.2, woodVM(25, 9), x, 6, 8.5));
+        for (let k = 0; k < 7; k++) { const gm = std(goodsCol[(k + i * 2) % 6], { roughness: 0.8 }); const o = (k % 3 === 2) ? box(4, 2.6, 3.2, gm, x - 9 + k * 3, 13.3, 2 + (k % 2) * 3) : sph(1.7, gm, x - 9 + k * 3, 13.6, 1 + (k % 2) * 4, 8); add(o); }
+        const aw = box(28, 0.6, 22, stripe(col), x, 27, 0); aw.rotation.x = -0.27; add(aw);
+      });
+      for (const [x, z] of [[-41, 16], [41, 14], [38, 20]]) add(cyl(3.6, 3.2, 8, woodVM(6, 8), x, 4, z, 10));
     } else if (b.kind === 'granary') {
       add(box(54, 4, 46, stoneM(54, 4), 0, 2, 0));
       add(box(48, 34, 40, woodVM(48, 34), 0, 21, 0));
