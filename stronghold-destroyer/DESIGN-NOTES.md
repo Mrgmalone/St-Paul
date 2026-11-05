@@ -87,7 +87,15 @@ offered to Gerald: (1) 3D models made from his concept art with an image-to-3D t
 humans auto-rigged with walk/idle/attack/die animations, delivered as .glb files and
 loaded with three.js; (2) sprite sheets from his image tool (each unit in 8
 directions, a few frames per action, transparent background, same size and camera
-angle). Gerald chose path (1), 3D models. The game now loads .glb models listed in
+angle). Gerald first chose path (1), 3D models, but has no 3D tool. So his own art is now cut
+straight out of his sheets (`tools/cut_sprites.py`) and shown as sprites: the swordsman,
+archer and spearman from sheet 3, six views each (front, 3/4 front, side L, back, side R,
+3/4 back), in `sprites/` with `sprites/sprites.json`. In 3D each sprite is a card that
+faces the camera and shows the view matching the unit's facing; in 2D the matching view
+is drawn. Enemies keep the built-in Black Stone figures so the sides stay distinct.
+Next: knight, armored soldier, crossbowman (sheet 2 has smaller 360 views), citizens
+(only front views exist; more angles would need new pictures from Gerald's image tool).
+The .glb loader stays in place should models ever come. The game now loads .glb models listed in
 `models/models.json` (see `design/MODELS.md` for names, moves and sizes); anything
 without a model keeps its built-in look. Waiting on his first files (swordsman first).
 

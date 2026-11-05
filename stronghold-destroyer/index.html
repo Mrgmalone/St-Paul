@@ -420,6 +420,36 @@ function hexToRgb(h) { if (hexCache[h]) return hexCache[h]; const s = h.replace(
 function mixHex(h1, h2, t) { const a = hexToRgb(h1), b = hexToRgb(h2); return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
 function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
+// ---------- character sprites: Gerald's own art, cut out of his design sheets ----------
+// sprites/sprites.json lists them; each file is a row of views of one character (front, 3/4 front, side, back, other side, 3/4 back)
+const ART = {}, ART_UNIT = { sword: 'swordsman', spear: 'spearman', archer: 'archer', maceman: 'armored-soldier', knight: 'knight', king: 'king', crossbow: 'crossbowman' };
+function loadSprites() {
+  fetch('sprites/sprites.json').then(r => r.ok ? r.json() : null).then(list => {
+    if (!list || !list.units) return;
+    for (const [name, d] of Object.entries(list.units)) { const img = new Image(); img.onload = () => { ART[name] = Object.assign({ img, n: d.views.length }, d); ART.ver = (ART.ver || 0) + 1; }; img.src = 'sprites/' + d.file; }
+  }).catch(() => {});
+}
+loadSprites();
+const spriteOf = u => (u.team === 'player' && !u.lord && ART[ART_UNIT[u.type]]) || null;
+// which picture to show: the unit's facing compared with the direction to the viewer (0 = looking at us)
+function spriteView(sp, rel) {
+  const k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, v = sp.views, at = n => Math.max(0, v.indexOf(n));
+  return [[at('front'), false], [at('front34'), false], [at('sideL'), false], [at('back34'), false], [at('back'), false], [at('back34'), true], [at('sideR'), false], [at('front34'), true]][k];
+}
+function drawSpritePerson(g, u, sp, time) {   // the flat view: pick the picture by which way they face and move
+  const H = 50 * ((u.look && u.look.h) || 1), cw = sp.img.width / sp.n, ch = sp.img.height, W = H * cw / ch;
+  const moving = u.moving && !u.dead, mvx = u.x - (u.lastDrawX ?? u.x); u.lastDrawX = u.x;
+  const [idx, flip] = moving ? (u.facing > 0 ? [sp.views.indexOf('sideR'), false] : [sp.views.indexOf('sideL'), false]) : spriteView(sp, u.facing > 0 ? -Math.PI / 4 : Math.PI / 4);
+  const bob = moving ? Math.abs(Math.sin(u.walkPhase)) * 2.2 : 0, lean = u.attackAnim > 0 ? Math.sin(u.attackAnim * Math.PI) * 0.18 * (u.facing || 1) : 0;
+  const y0 = u.y - elev2D(u);
+  g.save(); g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(u.x, y0, W * 0.32, 3.4, 0, 0, Math.PI * 2); g.fill();
+  g.translate(u.x, y0 - bob);
+  if (u.dead) { const f = Math.min(1, u.deathT / 0.45); g.rotate(f * Math.PI / 2 * (u.facing > 0 ? -1 : 1)); g.globalAlpha = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1; }
+  g.rotate(lean); if (flip) g.scale(-1, 1);
+  g.drawImage(sp.img, Math.max(0, idx) * cw, 0, cw, ch, -W / 2, -H, W, H);
+  if (u.flash > 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(0.5, u.flash * 0.5); g.drawImage(sp.img, Math.max(0, idx) * cw, 0, cw, ch, -W / 2, -H, W, H); }
+  g.restore();
+}
 // ---------- heraldry ----------
 function drawLion(g, cx, cy, s, col) {   // a heraldic lion rampant: rearing, forepaws raised, mane, tail curling up with a tuft
   const X = x => cx + (x / 100 - 0.5) * s, Y = y => cy + (y / 100 - 0.5) * s;
@@ -5595,6 +5625,28 @@ const R3D = (() => {
     obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     info.inner.add(obj); return true;
   }
+  function spriteUnitModel(u, sp) {
+    const root = new T.Group(), body = new T.Group(); root.add(body);
+    const pivot = new T.Group(); body.add(pivot);
+    const H = (u.type === 'king' ? 47 : u.type === 'knight' ? 46 : 44) * 1.12, cw = sp.img.width / sp.n, W = H * cw / sp.img.height;
+    const tex = new T.Texture(sp.img); tex.encoding = T.sRGBEncoding; tex.needsUpdate = true; tex.repeat.set(1 / sp.n, 1); tex.anisotropy = 4;
+    const mat = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.45, side: T.DoubleSide, toneMapped: false });
+    const geo = new T.PlaneGeometry(W, H); geo.translate(0, H / 2 - 1.5, 0);
+    const card = new T.Mesh(geo, mat); pivot.add(card);
+    const sh = new T.Mesh(new T.CircleGeometry(W * 0.36, 16), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.4; sh.scale.set(1, 0.55, 1); root.add(sh);
+    return { root, body, pivot, card, tex, sp, sprite: true, mats: [mat], m: {}, heading: u.facing < 0 ? -Math.PI / 2 : Math.PI / 2, spVer: ART.ver };
+  }
+  function animateSprite(u, md, dt) {
+    const cp = camera.position, camDir = Math.atan2(cp.x - u.x, cp.z - u.y);
+    let rel = md.heading - camDir; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    const [idx, flip] = spriteView(md.sp, rel), n = md.sp.n;
+    md.tex.repeat.x = (flip ? -1 : 1) / n; md.tex.offset.x = (flip ? idx + 1 : idx) / n;
+    md.pivot.rotation.y = camDir - md.heading;   // the card always faces the viewer
+    const mv = u.moving && !u.dead, ph = u.walkPhase || 0;
+    md.card.position.y = mv ? Math.abs(Math.sin(ph)) * 1.6 : Math.sin(time * 1.6 + (u.seed || 0)) * 0.15;
+    md.card.rotation.z = mv ? Math.sin(ph) * 0.045 : 0;
+    md.card.rotation.x = u.attackAnim > 0 ? -Math.sin(u.attackAnim * Math.PI) * 0.22 : 0;
+  }
   function personModel(u) {
     const P = u.pal, soldier = (swordish(u) || u.type === 'spear'), lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
     const m = {
@@ -6152,7 +6204,8 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); return ent ? glbUnitModel(u, ent) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); const sp = spriteOf(u); return sp ? spriteUnitModel(u, sp) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      else if (!md.sprite && !md.glb && !md.machine && !md.ram && md.spVer !== ART.ver && spriteOf(u)) { scene.remove(md.root); unitModels.delete(u.id); continue; }
       else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
       seen.add(u.id);
@@ -6177,7 +6230,7 @@ const R3D = (() => {
         if (md.log) md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
         if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
-      } else if (md.glb) animateGlb(u, md, dt); else animatePerson(u, md, dt);
+      } else if (md.glb) animateGlb(u, md, dt); else if (md.sprite) animateSprite(u, md, dt); else animatePerson(u, md, dt);
       // hit flash, falling, fading
       const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
       for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk, fk, fk); }
@@ -6839,7 +6892,7 @@ function render() {
     else if (o.kind === 'bush') drawBush(g, o);
     else if (o.kind === 'fire') drawFire(g, o, time);
     else if (isMachine(o)) drawMachine(g, o, time);
-    else drawPerson(g, o, time);
+    else { const sp = spriteOf(o); if (sp) drawSpritePerson(g, o, sp, time); else drawPerson(g, o, time); }
   }
   if (outlinesOn) drawHiddenOutlines(g, visible);
   for (const which of ['army', 'town']) {   // rally flags

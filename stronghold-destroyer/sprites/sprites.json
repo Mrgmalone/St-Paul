@@ -1,0 +1,5 @@
+{ "units": {
+  "swordsman": { "file": "swordsman.png", "views": ["front", "front34", "sideL", "back", "sideR", "back34"] },
+  "archer": { "file": "archer.png", "views": ["front", "front34", "sideL", "back", "sideR", "back34"] },
+  "spearman": { "file": "spearman.png", "views": ["front", "front34", "sideL", "back", "sideR", "back34"] }
+} }
