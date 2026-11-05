@@ -24,6 +24,8 @@
   #btnMenu{margin-left:6px;padding:5px 12px;font-size:15px}
   #btnPause{margin-left:auto;padding:5px 12px;font-size:15px;white-space:nowrap}
   #btnPause.on{background:linear-gradient(#bff5c4,#6fc27a);outline:3px solid #9fe8a8}
+  #menuNote{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;background:rgba(16,11,7,.85);border:1px solid rgba(214,170,90,.8);border-radius:10px;padding:5px 14px;font-size:15px;color:#ffd98a;pointer-events:none}
+  #menuNote[hidden]{display:none}
   #leftNote{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;background:rgba(60,14,10,.92);border:1px solid #ff9d86;border-radius:12px;padding:8px 12px;font-size:16px;color:#fff0e6;max-width:86%}
   #leftNote[hidden]{display:none}
   #leftWhy{font-size:14px;padding:4px 12px}
@@ -207,6 +209,7 @@
 <div id="view">
   <canvas id="game"></canvas>
   <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
+  <div id="menuNote" hidden>&#10074;&#10074; Paused while you read</div>
   <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="sm" id="leftClose">&times;</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="pick"><div class="wrap">
@@ -280,6 +283,7 @@
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers. <b>Catapults</b> lob heavy stones from far away: best against walls and towers, and the stone hurts everyone where it lands, but it misses soldiers on the move. <b>Ballistas</b> fire great bolts that cut down soldiers at long range but only chip stone. Neither can fight up close: guard them. The enemy brings them too, in later raids.</p>
     <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
+    <p><b>Reading pauses the game:</b> while this help, the Menu, the mood report, the goods list or a building's panel is open, time stands still (unless enemies are close by).</p>
     <p><b>Peace and pause:</b> the war begins after about five minutes of peace; the top bar counts it down. Press Pause (or P) to stop time and place buildings and walls at your leisure; workers start when you resume. You cannot pause while enemies are close by.</p>
     <p><b>Keys:</b> P pause &middot; S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
     <button id="btnHelpClose">Close</button>
@@ -5843,7 +5847,7 @@ document.getElementById('storePop').addEventListener('click', e => {
   else { const cost = a === 'ballista' ? { wood: 110, gold: 50 } : { wood: 200, stone: 40, gold: 80 }; if (!afford(cost)) { showBanner(`Not enough ${lacking(cost)} to mount a ${a}.`, 2.5); return; } pay(cost); b.engine = a; b.engineHold = false; floatText(b.x, b.y - b.topH - 20, `${a === 'ballista' ? 'Ballista' : 'Trebuchet'} mounted`, '#9fe8a8'); }
   AudioSys.ui('select'); showTower(b); updateHud();
 });
-let paused = false, leftNoteT = 0;
+let paused = false, leftNoteT = 0, menuPause = false, menuT = 0;
 function showLeftNote(reasons) {
   const el = document.getElementById('leftNote'); el.hidden = false; leftNoteT = 14;
   el.dataset.why = reasons.length ? 'They left because ' + reasons.slice(0, 4).join(', ') + '. Fix these to win them back; when mood rises, people who left return.' : 'Mood is very low. Open the mood report to see why.';
@@ -6014,7 +6018,12 @@ function drawHiddenOutlines(g, visible) {
 // ---------- main loop ----------
 let last = performance.now(), time = 0, lastSel = 0, lastRaiders = 0, frameDt = 0.016;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!paused) time += dt; frameDt = paused ? 0 : dt;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // reading a menu (help, mood, goods, a building's panel) pauses the game, unless enemies are close
+  menuT -= dt; if (menuT <= 0) { menuT = 0.25; const open = started && !won && (!document.getElementById('help').classList.contains('hide') || ['menuPop', 'moodPop', 'goodsPop', 'storePop'].some(id => !document.getElementById(id).hidden));
+    menuPause = open && !enemiesClose(); document.getElementById('menuNote').hidden = !menuPause || paused; }
+  const halted = paused || menuPause;
+  if (!halted) time += dt; frameDt = halted ? 0 : dt;
   // camera scrolling
   const sp = 620 / cam.z * dt;
   let mx = 0, my = 0;
@@ -6039,7 +6048,7 @@ function frame(now) {
     if (done) zoomAnim = null;
   }
 
-  if (!paused) {
+  if (!halted) {
   for (const u of units) updateUnit(u, dt);
   curTeam = 'player';
   separate();
@@ -6054,7 +6063,7 @@ function frame(now) {
   }
 
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
-  updateTrainButtons(); if (!paused) updateWeather(dt);
+  updateTrainButtons(); if (!halted) updateWeather(dt);
   if (leftNoteT > 0) { leftNoteT -= dt; if (leftNoteT <= 0) document.getElementById('leftNote').hidden = true; }
   for (let i = speeches.length - 1; i >= 0; i--) { speeches[i].t += dt; if (speeches[i].t > 3.6 || speeches[i].u.dead) speeches.splice(i, 1); } AudioSys.setRain(WEATHER.rain + WEATHER.snow * 0.15, WEATHER.wind);
   const civSel = [...selection].some(u => u.type === 'civ');
