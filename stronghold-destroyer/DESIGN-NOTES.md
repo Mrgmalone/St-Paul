@@ -24,6 +24,15 @@ branch `stronghold-destroyer`):
     market tax when they are upset. Even at best, never as cheap as making it.
   - The Armory's weapon-buy buttons use the same prices.
 - A big X closes every pop-up box.
+- Fix a glitch: select a person and tap the floating "X Fix" button, or open any
+  building's panel (walls, gates and towers now have a small one) and tap
+  "Remove & rebuild". It is cleared and rebuilt fresh in place at no cost,
+  keeping its job, health and look.
+- The King lives on top of the keep. Ordering him anywhere brings him down;
+  right-clicking the keep with him selected sends him back up, and he goes back
+  by himself after a minute idle. From the roof he sees enemies up to 900 away
+  (far beyond any archer) and warns where they are coming from.
+- Sound starts very low: music 15%, effects 25% (a one-time reset of saved volumes).
 - Turning before placing: a building hovers with a yellow arrow showing its front;
   R or T (or the Turn button) turns it a quarter turn (south, west, north, east).
   Gates turn to sit in north-south walls. Non-square footprints swap width and
@@ -71,6 +80,14 @@ gameplay as they are; the 3D view is approved. Work in phases:
    wheat, barley and vegetable fields; grass, dirt, road, wooden and stone bridges,
    water; stone and brick wall textures. Gerald singled out water and stones as
    needing the most work.
+
+**Art quality: Gerald says it does not yet match his sheets**
+Shapes built in code cannot reach painted concept-art quality. The two real paths
+offered to Gerald: (1) 3D models made from his concept art with an image-to-3D tool,
+humans auto-rigged with walk/idle/attack/die animations, delivered as .glb files and
+loaded with three.js; (2) sprite sheets from his image tool (each unit in 8
+directions, a few frames per action, transparent background, same size and camera
+angle). Waiting on his choice; procedural improvements continue meanwhile.
 
 **Still open from earlier**
 - A fixed soldier cap: waiting on a number from Gerald.

@@ -29,6 +29,8 @@
   #btnTurn{position:absolute;left:50%;bottom:60px;transform:translateX(-50%);z-index:6;font-size:22px;font-weight:700;padding:10px 22px;border-radius:14px;background:linear-gradient(#f1d38f,#c99a4a);color:#1c140b;border:2px solid #fff0c8;box-shadow:0 3px 10px rgba(0,0,0,.5);touch-action:manipulation}
   #btnTurn small{font-size:15px;font-weight:600;margin-left:6px}
   #btnTurn[hidden]{display:none}
+  #btnFix{position:absolute;z-index:6;transform:translate(-50%,-100%);font-size:17px;font-weight:700;padding:6px 12px;border-radius:20px;background:#6a2a1c;color:#fff6e6;border:2px solid #f0c070;box-shadow:0 2px 8px rgba(0,0,0,.55);touch-action:manipulation;white-space:nowrap}
+  #btnFix[hidden]{display:none}
   .bb.tearing{outline:3px solid #ff9d86;background:linear-gradient(#ffb8a0,#d0603e)}
   #leftNote{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;background:rgba(60,14,10,.92);border:1px solid #ff9d86;border-radius:12px;padding:8px 12px;font-size:16px;color:#fff0e6;max-width:86%}
   #leftNote[hidden]{display:none}
@@ -222,6 +224,7 @@
   <canvas id="game"></canvas>
   <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
   <div id="menuNote" hidden>&#10074;&#10074; Paused while you read</div>
+  <button id="btnFix" hidden title="Remove this person and rebuild them fresh">&#10005; Fix</button>
   <button id="btnTurn" hidden title="Turn the building (R or T)">&#8635; Turn <small id="turnDir"></small></button>
   <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="xbtn" id="leftClose" aria-label="Close" style="position:static;flex:0 0 auto">&times;</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
@@ -1109,7 +1112,7 @@ function commandDeposit(list) {
 }
 // archers can climb onto your walls and towers: farther shots, half damage from arrows, out of reach of blades
 const WALL_INFO = { wall: { posts: 2, e2: 30, e3: 31.5, rng: 1.35 }, gtower: { posts: 4, e2: 92, e3: 96, rng: 1.35 }, highwall: { posts: 2, e2: 88, e3: 97, rng: 1.5 },
-  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, lookout: { posts: 3, e2: 239, e3: 255, rng: 1.8 }, roundtower: { posts: 6, e2: 136, e3: 150, rng: 1.6 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 } };
+  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, lookout: { posts: 3, e2: 239, e3: 255, rng: 1.8 }, roundtower: { posts: 6, e2: 136, e3: 150, rng: 1.6 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 }, keep: { posts: 1, e2: 112, e3: 106, rng: 1 } };
 const WALL_POSTS = Object.fromEntries(Object.entries(WALL_INFO).map(([k, v]) => [k, v.posts]));
 const elev2D = u => u.onWall ? WALL_INFO[u.onWall.kind].e2 : 0;
 const elev3D = u => u.onWall ? WALL_INFO[u.onWall.kind].e3 : 0;
@@ -1139,7 +1142,7 @@ function commandMount(list, b) {
 }
 function mountOn(u, b) {
   let post = canMount(b) && postsFree(b) > 0 ? b : null;
-  if (!post) { let bd = 220; for (const o of structures) if (canMount(o) && postsFree(o) > 0 && wallAccess(o)) { const d = edgeDist(u, o); if (d < bd) { bd = d; post = o; } } }
+  if (!post || post.kind === 'keep') { post = null; let bd = 220; for (const o of structures) if (canMount(o) && o.kind !== 'keep' && postsFree(o) > 0 && wallAccess(o)) { const d = edgeDist(u, o); if (d < bd) { bd = d; post = o; } } }
   if (!post) { u.order = 'idle'; return; }
   const k = WALL_POSTS[post.kind] - postsFree(post), cx = (post.x0 + post.x1) / 2, cy = (post.y0 + post.y1) / 2;
   const off = post.kind === 'lookout' ? [[-8, -4], [8, -4], [0, 8]][k] : post.kind === 'roundtower' ? [Math.cos(k * 1.05) * 28, Math.sin(k * 1.05) * 18 + 2] : post.kind === 'gtower' ? [[-9, -6], [9, -6], [-9, 8], [9, 8]][k] : post.kind === 'stower' ? [Math.cos(k * 1.256 + 0.6) * 15, Math.sin(k * 1.256 + 0.6) * 9 + 2]
@@ -1492,14 +1495,34 @@ function updateRest(u, dt) {
     u.restFace = f ? Math.atan2(f.x - u.x, f.y - u.y) : null;
   }
 }
+// the King stays on top of the keep, protected, as the eyes of the realm, unless you bring him down and send him somewhere
+const KING_SIGHT = 900;
+function kingOnKeep(u, k) { if (u.onWall) dismount(u); u.onWall = k; u.x = k.x - 14; u.y = (k.y0 + k.y1) / 2 + 6; u.order = 'idle'; u.path = []; u.moving = false; u.target = null; }
 function kingBrain(u) {
   const k = playerKeep();
+  if (u.onWall === k && k) { u.order = 'idle'; u.moving = false; kingWatch(u, k); return; }
   if (u.order === 'attack' && !alive(u.target)) { u.order = 'idle'; u.target = null; u.path = []; }
   if (u.order === 'idle') {
     u.moving = false;
     const n = nearestEnemy(u, 130); if (n && n.x0 === undefined) { u.order = 'attack'; u.target = n; u.repath = 0; return; }
-    if (k && Math.hypot(u.x - k.x, u.y - (k.y1 + 30)) > 140) commandMove([u], k.x + RR(-30, 30), k.y1 + 30);
+    // he goes back up when told to, or by himself once you have left him idle for a minute
+    if (k && (!u.leftKeep || time - (u.cmdT || 0) > 60)) {
+      if (edgeDist(u, k) < 30) { u.leftKeep = false; kingOnKeep(u, k); floatText(k.x, k.y - 150, 'The King watches from the keep', '#ffe9a8'); }
+      else if (u.order !== 'move') { const ap = approachPoint(u, k); commandMove([u], ap.x, ap.y); u.order = 'move'; }
+    }
   }
+}
+// from the roof he sees far beyond any archer's reach, and warns you who is coming and from where
+function kingWatch(u, k) {
+  u.watchT = (u.watchT || 0) - frameDt; if (u.watchT > 0) return; u.watchT = 1;
+  const cy = (k.y0 + k.y1) / 2, seen = units.filter(e => !e.dead && e.team !== 'player' && !e.inside && e.type !== 'civ' && Math.hypot(e.x - k.x, e.y - cy) < KING_SIGHT);
+  for (const e of seen) e.seenByKing = time;
+  const fresh = seen.filter(e => !e.kingWarned); if (!fresh.length || time - (u.warnT || -99) < 20) return;
+  for (const e of seen) e.kingWarned = true; u.warnT = time;
+  const mx = fresh.reduce((a, e) => a + e.x, 0) / fresh.length, my = fresh.reduce((a, e) => a + e.y, 0) / fresh.length, a = Math.atan2(my - cy, mx - k.x);
+  const from = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'][((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8];
+  showBanner(`<b>The King sees ${fresh.length} ${fresh.length > 1 ? 'enemies' : 'enemy'}</b> coming from the ${from}, still far off. Ready your defences!`, 4);
+  raidPing = { x: mx, y: my, t: 0, from: 'the ' + from }; AudioSys.ui('warn');
 }
 let guardT = 0;
 const GUARD_TOWERS = { lookout: 1, roundtower: 1 };
@@ -1551,12 +1574,13 @@ function updateGuards(dt) {
   for (const u of units) {
     if (u.dead || !u.guardOf || u.order !== 'idle' || u.toHeal) continue;
     const g = u.guardOf; if (g.dead) { u.guardOf = null; continue; }
+    if (g.type === 'king' && g.onWall) { const dk = g.onWall, gx2 = dk.x + (u.id % 5 - 2) * 18, gy2 = dk.y1 + 34; if (Math.hypot(u.x - gx2, u.y - gy2) > 40) commandMove([u], gx2, gy2); continue; }
     const gx = u.guardSpot ? u.guardSpot.x : g.x0 !== undefined ? g.x + (u.id % 2 ? -14 : 14) : g.x + (u.id % 5 - 2) * 18, gy = u.guardSpot ? u.guardSpot.y : g.kind === 'keep' ? g.y1 + 16 : g.x0 !== undefined ? g.y + 14 : g.y + 26;
     if (Math.hypot(u.x - gx, u.y - gy) > 40) commandMove([u], gx, gy);
   }
 }
 function spawnKing() {
-  const k = keep; const u = makeUnit('player', 'king', k.x + 10, k.y1 + 30); u.name = 'Your King'; return u;
+  const k = keep; const u = makeUnit('player', 'king', k.x + 10, k.y1 + 30); u.name = 'Your King'; kingOnKeep(u, k); return u;
 }
 const prints = [];
 function stepPrint(u) {
@@ -1599,6 +1623,7 @@ function updateUnit(u, dt) {
 
   if (u.order === 'move' || u.order === 'return') {
     followPath(u, dt);
+    if (!u.dest) u.dest = { x: u.path.length ? u.path[u.path.length - 1].x : u.x, y: u.path.length ? u.path[u.path.length - 1].y : u.y };
     const d = Math.hypot(u.dest.x - u.x, u.dest.y - u.y);
     const movedSq = (u.x - u.lastX) ** 2 + (u.y - u.lastY) ** 2;
     u.stuckT = movedSq < 0.04 ? u.stuckT + dt : 0;
@@ -2533,7 +2558,7 @@ function insideHtml(b, label) {
 const HALLS = { house: 'Rest at home on a break.', tavern: 'People drink ale here on their breaks.', chapel: 'People pray here on their breaks.' };
 function showInside(b) {
   storeShown = b; const p = document.getElementById('storePop'); if (b.dead) { p.hidden = true; storeShown = null; return; }
-  setBox(p, `<h3>${b.name.toUpperCase()}</h3>` + (b.done === false ? '<div class="ln"><span>Status</span><b>Being built</b></div>' : insideHtml(b)) + `<div style="font-size:13px;color:#d9c9a3;margin-top:6px">${HALLS[b.kind] || ''} Click the ground or press Esc to close.</div>`);
+  setBox(p, `<h3>${b.name.toUpperCase()}</h3>` + (b.done === false ? '<div class="ln"><span>Status</span><b>Being built</b></div>' : insideHtml(b)) + fixRow + `<div style="font-size:13px;color:#d9c9a3;margin-top:6px">${HALLS[b.kind] || ''} Click the ground or press Esc to close.</div>`);
   p.dataset.site = ''; p.hidden = false;
 }
 function showSite(b) {
@@ -2551,7 +2576,7 @@ function showSite(b) {
   if (INDOOR[b.kind] && b.done !== false) html += insideHtml(b, 'Working inside');
   // the buttons are built once per building; only the figures above them refresh, so a click is never lost
   if (p.dataset.site !== String(b.id) || !document.getElementById('siteInfo')) {
-    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div><div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
+    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div>${fixRow}<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
       '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Workers you remove (or free by sleeping a building) go gathering, and can be called up as soldiers when your houses are full. Esc closes.</div>';
     p.dataset.site = String(b.id);
   }
@@ -2589,6 +2614,7 @@ function showStore(b) {
   const q = structures.filter(o => o.kind === 'quarry' && o.team === 'player' && !o.dead && o.stock);
   if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));
   if (b.kind === 'keep') html += insideHtml(b, 'Being cared for inside');
+  html += fixRow;
   html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
   setBox(p, html); p.dataset.site = ''; p.hidden = false;
 }
@@ -2596,7 +2622,7 @@ function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.
 
 function issueAt(sx, sy) {
   const sel = selectedList().filter(u => u.type !== 'oxcart'); if (!sel.length) return false;
-  for (const u of sel) { u.cmdT = time; if (u.guardOf && u.type !== 'knight') u.guardOf = null; }
+  for (const u of sel) { u.cmdT = time; if (u.guardOf && u.type !== 'knight') u.guardOf = null; if (u.type === 'king') u.leftKeep = true; }
   AudioSys.ui('ack');
   for (const u of sel) if (u.type === 'civ') { u.job = null; u.manualT = time; }
   const w = toWorld(sx, sy), hit = pickScreen(sx, sy);
@@ -2617,6 +2643,7 @@ function issueAt(sx, sy) {
     floatText(hit.x, hit.y - hit.topH - 10, added ? `${hit.name}: ${staffOf(hit)} worker${staffOf(hit) > 1 ? 's' : ''}${staffOf(hit) > 1 ? ` (${staffOf(hit)}x output)` : ''}` : `${hit.name} already has ${maxStaff(hit.kind)} workers`, '#9fe8a8');
     if (sold.length) commandMove(sold, w.x, w.y); return true;
   }
+  { const kg = sold.find(u => u.type === 'king'); if (hit && hit.kind === 'keep' && hit.team === 'player' && kg) { kg.leftKeep = false; kg.cmdT = -999; if (kg.onWall !== hit) { const ap = approachPoint(kg, hit); commandMove([kg], ap.x, ap.y); } floatText(hit.x, hit.y - 150, 'The King returns to the keep', '#ffe9a8'); const rest = sold.filter(u => u !== kg); if (!civs.length && !rest.length) return true; sold.splice(sold.indexOf(kg), 1); } }
   if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResourceScreen(sx, sy);
   if (node && isField(node.kind) && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
@@ -2706,6 +2733,7 @@ function touchTap(p) {
   if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false && !selection.size) { showTower(hit); return; }
   if (hit && hit.team === 'player' && HALLS[hit.kind] && !selection.size) { showInside(hit); return; }
   if (hit && hit.team === 'player' && hit.kind === 'market' && !selection.size) { showMarket(hit); return; }
+  if (hit && hit.team === 'player' && hit.x0 !== undefined && !selection.size) { showBasic(hit); return; }
   if (selection.size) { issueAt(p.x, p.y); return; }
   document.getElementById('storePop').hidden = true; storeShown = null;
 }
@@ -2750,6 +2778,7 @@ function endPointer(e) {
         else if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false) showTower(hit);
         else if (hit && hit.team === 'player' && HALLS[hit.kind]) showInside(hit);
         else if (hit && hit.team === 'player' && hit.kind === 'market') showMarket(hit);
+        else if (hit && hit.team === 'player' && hit.x0 !== undefined) showBasic(hit);
         else if (!hit && pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) && isField((pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) || {}).kind) && !selection.size) showSite(pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y));
         else if (!drag.shift) { selection.clear(); document.getElementById('storePop').hidden = true; storeShown = null; }
         lastClick = { t: now, x: p.x, y: p.y };
@@ -3289,7 +3318,7 @@ function showMarket(b) {
       <table style="border-collapse:collapse;font-size:15px;margin-top:6px"><tr style="color:#d9c9a3;font-size:13px"><th style="text-align:left">Goods</th><th>You have</th><th>Buy</th><th>Sell</th></tr>` +
       MARKET.map(([k, name, lot, buy, sell]) => `<tr><td style="padding:3px 8px 3px 0">${name}${lot > 1 ? ` <small style="color:#d9c9a3">(${lot})</small>` : ''}</td><td style="text-align:center"><b id="mkHave-${k}"></b></td>
         <td style="padding:2px"><button class="sm" data-mk="buy:${k}" style="min-width:86px"></button></td><td style="padding:2px"><button class="sm" data-mk="sell:${k}" style="min-width:86px"></button></td></tr>`).join('') +
-      `</table><div style="font-size:13px;color:#d9c9a3;margin-top:6px;max-width:420px">Buying always costs more than making it yourself, and selling pays less than buying. A happy town gets better prices; an upset town pays a market tax. Bought weapons go to the Armory. Esc closes.</div>`;
+      `</table>${fixRow}<div style="font-size:13px;color:#d9c9a3;margin-top:6px;max-width:420px">Buying always costs more than making it yourself, and selling pays less than buying. A happy town gets better prices; an upset town pays a market tax. Bought weapons go to the Armory. Esc closes.</div>`;
     p.dataset.site = 'mk' + b.id;
   }
   document.getElementById('mkGold').textContent = Math.floor(res.gold); document.getElementById('mkMsg').textContent = b.mkMsg || '';
@@ -3653,6 +3682,52 @@ function startPlacing(kind) {
 }
 function cancelPlacing() { placing = null; updateHud(); }
 let lastDir = 0;
+// fix a glitch: remove anything that is stuck or jittering and rebuild it fresh where it stands, keeping what it is and what it was doing
+function fixUnit(u) {
+  if (!u || u.dead) return;
+  const keepRoof = u.type === 'king' && u.onWall && u.onWall.kind === 'keep' ? u.onWall : null;
+  if (u.onWall && !keepRoof) dismount(u);
+  for (const k of ['path', 'target', 'goal', 'chopTree', 'pose', 'buildTarget']) u[k] = k === 'path' ? [] : null;
+  Object.assign(u, { order: 'idle', sub: null, moving: false, attackAnim: 0, stuckT: 0, rstuck: 0, repath: 0, fpT: undefined, fpN: 0, stT: undefined, noPathT: 0, poseK: 0, idleT: 0, inside: null, cmdT: time, mountTarget: null });
+  if (u.type === 'civ' && u.task && !u.job) u.task = null;
+  if (!keepRoof && circleBlocked(u.x, u.y, u.radius * 0.8)) { const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; } }
+  u.lastX = u.x; u.lastY = u.y;
+  try { R3D.rebuildModel(u); } catch (e) {}
+  for (let i = 0; i < 12; i++) spawn('smoke', u.x + RR(-8, 8), u.y - RR(0, 30), u.y);
+  floatText(u.x, u.y - 60, 'Fixed and rebuilt', '#9fe8a8'); AudioSys.ui('select');
+  if (u.job && u.type === 'civ') startJob(u);
+}
+function fixBuilding(b) {
+  if (!b || b.dead) return;
+  if (!isField(b.kind)) for (let i = 0; i < b.w; i++) for (let j = 0; j < b.h; j++) { if (b.kind === 'gate') gate[(b.r + j) * COLS + b.c + i] = 1; else if (b.kind !== 'pit') setBlock(b.c + i, b.r + j, 1); }
+  for (const u of units) {
+    if (u.dead || u.inside === b || u.onWall === b) continue;
+    if (u.x > b.x0 - 4 && u.x < b.x1 + 4 && u.y > b.y0 - 4 && u.y < b.y1 + 4 && b.kind !== 'gate' && b.kind !== 'pit') { const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }
+    if (u.job === b && u.type === 'civ' && !u.inside) { u.order = 'idle'; u.sub = null; u.path = []; u.crafting = null; startJob(u); }
+  }
+  b.flash = 0; b.wobble = 0; b.dropT = performance.now();
+  try { R3D.rebuildModel(b); } catch (e) {}
+  for (let i = 0; i < 20; i++) spawn('smoke', b.x + RR(-25, 25), b.y - RR(0, 50), b.y);
+  floatText(b.x, b.y - Math.min(60, b.topH || 20) - 10, `${b.name} rebuilt`, '#9fe8a8'); AudioSys.ui('select');
+}
+const fixRow = '<div style="margin-top:8px"><button class="sm" data-fix="1" style="background:#6a2a1c;color:#fff6e6;border-color:#f0c070">&#10005; Remove &amp; rebuild <small>(fix a glitch)</small></button></div>';
+document.getElementById('storePop').addEventListener('click', e => { const t = e.target.closest('[data-fix]'); if (t && storeShown) { const b = storeShown; if (b.kind === 'unit') fixUnit(b); else fixBuilding(b); } });
+// walls, gates, towers and other buildings without a panel of their own get a small one, so they too can be fixed
+function showBasic(b) {
+  storeShown = b; const p = document.getElementById('storePop'); if (b.dead) { p.hidden = true; storeShown = null; return; }
+  setBox(p, `<h3>${b.name.toUpperCase()}</h3><div class="ln"><span>Status</span><b>${b.done === false ? 'Being built' : 'Standing'}</b></div><div class="ln"><span>Strength</span><b>${Math.ceil(b.hp)} of ${b.maxHp}</b></div>${fixRow}<div style="font-size:13px;color:#d9c9a3;margin-top:6px">If it ever looks wrong or people get stuck on it, Remove &amp; rebuild puts it right at no cost. Esc closes.</div>`);
+  p.dataset.site = ''; p.hidden = false;
+}
+const fixBtn = document.getElementById('btnFix');
+fixBtn.addEventListener('pointerdown', e => e.stopPropagation());
+fixBtn.onclick = e => { e.stopPropagation(); const u = selection.size === 1 ? [...selection][0] : null; if (u) fixUnit(u); };
+function placeFixButton() {
+  const u = selection.size === 1 ? [...selection][0] : null;
+  if (!u || u.dead || u.inside || !started) { if (!fixBtn.hidden) fixBtn.hidden = true; return; }
+  const q = screenOf(u.x, u.y, (isMachine(u) ? 60 : 64) + (R3D.active ? elev3D(u) : elev2D(u)));
+  if (!q.ok || q.x < 0 || q.y < 30 || q.x > vw || q.y > vh) { fixBtn.hidden = true; return; }
+  fixBtn.hidden = false; fixBtn.style.left = q.x + 'px'; fixBtn.style.top = q.y + 'px';
+}
 // tearing down: pull down your own walls and buildings and get back half of what they cost
 let tearing = false;
 function tearButton() { const b = document.getElementById('btnTear'); if (b) b.classList.toggle('tearing', tearing); }
@@ -4183,8 +4258,9 @@ document.querySelectorAll('.bb[data-b]').forEach(b => b.onclick = () => startPla
 // ---------- sound and music: everything is synthesised live, no files ----------
 const AudioSys = (() => {
   let ac = null, master, sfxBus, musicBus, ambBus, noiseBuf, lastCombat = -1e9, musicTimer = null;
-  let on = { sfx: true, music: true, musicVol: 0.8, sfxVol: 0.8 };
-  try { const s = JSON.parse(localStorage.getItem('sd-audio') || 'null'); if (s && typeof s.sfx === 'boolean') on = Object.assign(on, s); } catch (e) {}
+  // Gerald: music and sound start very low, with the sound effects a little above the music
+  let on = { sfx: true, music: true, musicVol: 0.15, sfxVol: 0.25, quiet: 1 };
+  try { const s = JSON.parse(localStorage.getItem('sd-audio') || 'null'); if (s && typeof s.sfx === 'boolean') { on = Object.assign(on, s); if (!s.quiet) { on.musicVol = 0.15; on.sfxVol = 0.25; on.quiet = 1; } } } catch (e) {}
   const save = () => { try { localStorage.setItem('sd-audio', JSON.stringify(on)); } catch (e) {} };
   const last = {};
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -4564,7 +4640,7 @@ const UI = (() => {
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
     if (!$('goodsPop').hidden) setBox($('goodsPop'), goodsReport());
-    if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else if (storeShown.kind === 'market') showMarket(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
+    if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else if (storeShown.kind === 'market') showMarket(storeShown); else if (!JOBS[storeShown.kind] && !STORE_KINDS[storeShown.kind]) showBasic(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
     if (!$('moodPop').hidden) setBox($('moodPop'), moodReport());
   }
   function moodReport() {
@@ -6299,7 +6375,9 @@ const R3D = (() => {
   function tilt(d) { pitchTarget = clamp(pitchTarget + d, PITCH_MIN, PITCH_MAX); }
   function resetView() { yawTarget = Math.round(yawTarget / (Math.PI * 2)) * Math.PI * 2; pitchTarget = 0.8; }
   const panAxes = () => ({ c: Math.cos(yaw), s: Math.sin(yaw) });
-  return { treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
+  // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
+  function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
+  return { rebuildModel, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
 const speeches = [];
@@ -6340,7 +6418,7 @@ function drawSpeech(g, x, y, text) {
 function showMachine(u) {
   storeShown = u; const p = document.getElementById('storePop');
   const key = 'm' + u.id + (u.holdFire ? 'h' : '');
-  if (p.dataset.site !== key) { p.innerHTML = `<h3>${u.name.toUpperCase()}</h3><div class="ln"><span>Status</span><b>${u.holdFire ? 'Holding fire' : 'Firing at will'}</b></div><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="sm" data-mach="stop">Stop</button><button class="sm" data-mach="go">Continue</button></div>`; p.dataset.site = key; }
+  if (p.dataset.site !== key) { p.innerHTML = `<h3>${u.name.toUpperCase()}</h3>${fixRow}<div class="ln"><span>Status</span><b>${u.holdFire ? 'Holding fire' : 'Firing at will'}</b></div><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="sm" data-mach="stop">Stop</button><button class="sm" data-mach="go">Continue</button></div>`; p.dataset.site = key; }
   p.hidden = false;
 }
 function showTower(b) {
@@ -6351,7 +6429,7 @@ function showTower(b) {
     html += ln('Engine', b.engine ? (b.engine === 'trebuchet' ? 'Trebuchet' : 'Ballista') + (b.engineHold ? ' (holding fire)' : ' (firing)') : 'none');
     html += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` + (b.engine ? `<button class="sm" data-tw="stop">Stop</button><button class="sm" data-tw="go">Continue</button>` : `<button class="sm" data-tw="ballista">Mount Ballista (110 wood, 50 gold)</button><button class="sm" data-tw="trebuchet">Mount Trebuchet (200 wood, 40 stone, 80 gold)</button>`) + `</div>`;
   }
-  html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Idle archers climb up by themselves; idle knights, macemen and spearmen guard the door. Esc closes.</div>';
+  html += fixRow + '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Idle archers climb up by themselves; idle knights, macemen and spearmen guard the door. Esc closes.</div>';
   const key = 'tw' + b.id + (b.engine || '') + (b.engineHold ? 'h' : '') + top + '/' + door;
   if (p.dataset.site !== key) { p.innerHTML = html; p.dataset.site = key; } p.hidden = false;
 }
@@ -6600,6 +6678,7 @@ function frame(now) {
   }
 
   hover = mouse.inside ? pickScreen(mouse.x, mouse.y) : null;
+  placeFixButton();
   updateTrainButtons(); if (!halted) updateWeather(dt);
   if (leftNoteT > 0) { leftNoteT -= dt; if (leftNoteT <= 0) document.getElementById('leftNote').hidden = true; }
   for (let i = prints.length - 1; i >= 0; i--) { prints[i].t += frameDt; if (prints[i].t > (WEATHER.cover > 0.3 ? 60 : 28)) prints.splice(i, 1); }
@@ -6670,7 +6749,7 @@ function render() {
   for (const s of structures) list.push(s);
   for (const f of fires) list.push(f);
   for (const u of units) if (!u.dead && !u.inside && visible(u)) list.push(u);
-  list.sort((a, b) => (a.y + (a.onWall ? 44 : 0)) - (b.y + (b.onWall ? 44 : 0)));
+  const lift = o => o.onWall ? (o.onWall.kind === 'keep' ? 130 : 44) : 0; list.sort((a, b) => (a.y + lift(a)) - (b.y + lift(b)));
   const mine = units.filter(u => u.team === 'player' && !u.dead);
   for (const o of list) {
     if (o.kind === 'tree') {
