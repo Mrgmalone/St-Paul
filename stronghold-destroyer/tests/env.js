@@ -14,7 +14,7 @@ const LIB = path.join(SP, 'lib/three/package');
 async function use3d(page, opts = {}) {
   page.setDefaultTimeout(300000);
   // software 3D is slow: draw a full frame every few seconds so game time keeps pace (the game itself draws every frame)
-  if (opts.drawMs !== 0) await page.addInitScript(n => { window.__drawMs = n; }, opts.drawMs || 4000);
+  if (opts.drawMs !== 0) await page.addInitScript(n => { window.__drawMs = n; }, opts.drawMs || 10000);
   const js = f => r => r.fulfill({ body: fs.readFileSync(path.join(LIB, f)), contentType: 'application/javascript' });
   await page.route('**/three.min.js', js('build/three.min.js'));
   await page.route('**/GLTFLoader.js', js('examples/js/loaders/GLTFLoader.js'));
