@@ -161,7 +161,7 @@ function frame(now) {
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
 
-  frameNo++; if (!window.__drawMs || now - lastDraw >= window.__drawMs) { lastDraw = now; render(); }   // (__drawMs: tests only, to keep game time at pace in slow software 3D)
+  frameNo++; if (!window.__drawMs || now - lastDraw >= window.__drawMs) { lastDraw = now; render(); } else if (R3D.active) R3D.prepare();   // (__drawMs: tests only, to keep game time at pace in slow software 3D)
   hudT -= dt; if (hudT <= 0) { hudT = 0.2; updateHud(); UI.drawMini(); }
   {
     const fire = fires.filter(f => f.x > cam.x - 100 && f.x < cam.x + vw / cam.z + 100 && f.y > cam.y - 100 && f.y < cam.y + vh / cam.z + 100);

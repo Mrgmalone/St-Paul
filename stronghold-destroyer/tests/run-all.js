@@ -18,6 +18,6 @@ const run = n => new Promise(res => {
   fs.mkdirSync(SP, { recursive: true });
   const fast = pick.filter(n => !slow(n)), heavy = pick.filter(slow), results = [];
   const pool = async (list, k) => { const q = list.slice(); await Promise.all(Array.from({ length: k }, async () => { while (q.length) { const r = await run(q.shift()); results.push(r); console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.n.padEnd(10)} ${r.secs}s${r.ok ? '' : '  (see tests/.work/' + r.n + '.log)'}`); } })); };
-  await pool(fast, 3); await pool(heavy, 1);
+  await pool(fast, 2); await pool(heavy, 1);
   const bad = results.filter(r => !r.ok); console.log(`\n${results.length - bad.length} of ${results.length} passed`); process.exit(bad.length ? 1 : 0);
 })();

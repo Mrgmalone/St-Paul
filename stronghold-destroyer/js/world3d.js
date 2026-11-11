@@ -1922,7 +1922,8 @@ const R3D = (() => {
   // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
   function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
   const glbStatus = detail => ({ loaded: Object.keys(GLB), unitsUsingModels: [...unitModels.values()].filter(m => m.glb).map(m => m.glbKey + ':' + (m.cur || '-') + (detail ? ' ' + JSON.stringify((() => { const bb = new T.Box3().setFromObject(m.root); return { min: bb.min.toArray().map(Math.round), max: bb.max.toArray().map(Math.round), vis: m.root.visible, inScene: !!m.root.parent }; })()) : '')) });
-  return { rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
+  return { prepare, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];
