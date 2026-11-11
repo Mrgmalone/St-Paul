@@ -3,7 +3,8 @@
 // Loaded in order by index.html; all files share one global scope.
 
 // ---------- constants & helpers ----------
-const TILE = 32, COLS = 96, ROWS = 56, MW = COLS * TILE, MH = ROWS * TILE;
+// the land: 128 by 80 squares (it was 96 by 56) so the castle and several peoples have room to grow
+const TILE = 32, COLS = 128, ROWS = 80, MW = COLS * TILE, MH = ROWS * TILE;
 const AF = (COLS * ROWS) / (64 * 42);   // how much bigger than the first map, for scattering things evenly
 const EX = 29, EXP = EX * TILE;          // the enemy camp sits 29 tiles farther east than it first did
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;

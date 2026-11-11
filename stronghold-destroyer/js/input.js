@@ -21,7 +21,7 @@ function resize() {
 }
 function clampCam() {
   let a3 = false; try { a3 = R3D.active; } catch (e) {}
-  if (a3) { const hw = vw / cam.z / 2, hh = vh / cam.z / 2, cx = clamp(cam.x + hw, -200, MW + 200), cy = clamp(cam.y + hh, -200, MH + 200); cam.x = cx - hw; cam.y = cy - hh; return; }
+  if (a3) { const hw = vw / cam.z / 2, hh = vh / cam.z / 2, cx = clamp(cam.x + hw, -120, MW + 120), cy = clamp(cam.y + hh, -120, MH + 120); cam.x = cx - hw; cam.y = cy - hh; return; }
   cam.x = clamp(cam.x, 0, Math.max(0, MW - vw / cam.z)); cam.y = clamp(cam.y, 0, Math.max(0, MH - vh / cam.z));
 }
 const toWorld = (sx, sy) => (typeof R3D !== 'undefined' && R3D.active) ? R3D.groundAt(sx, sy) : ({ x: sx / cam.z + cam.x, y: sy / cam.z + cam.y });

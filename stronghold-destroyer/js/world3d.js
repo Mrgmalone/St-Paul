@@ -52,7 +52,7 @@ const R3D = (() => {
       d[i] = 128 + dx * 160; d[i + 1] = 128 + dy * 160; d[i + 2] = 255; d[i + 3] = 255; }
     g.putImageData(img, 0, 0); }, 6);
   let envCube = null, gmatRef = null, groundTex = null;
-  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(1, 1, 1); water.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
+  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(0.5, 0.68, 0.78); water.material.needsUpdate = true; } if (seaMesh && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set((MW + 2 * BAND) / 210, (MH + 2 * BAND) / 70); t.encoding = T.sRGBEncoding; seaMesh.material.map = t; seaMesh.material.color.setRGB(0.3, 0.48, 0.6); seaMesh.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
   function std(hex, o = {}) { const m = new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); if (envCube && (o.metalness || 0) >= 0.45) { m.envMap = envCube; m.envMapIntensity = 0.85; } return m; }
   // walls of stone and of plaster are built from the sheet's brick sets: gray stone for your castle, brown brick for
   // your houses and workshops, green for the house of prayer, black-gray-green for everything the Black Stone builds
@@ -103,7 +103,7 @@ const R3D = (() => {
     renderer = new T.WebGLRenderer({ canvas: glCanvas, antialias: true });
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
-    scene = new T.Scene(); scene.background = C('#b7c6cc'); scene.fog = new T.Fog(C('#b7c6cc'), 1100, 3200);
+    scene = new T.Scene(); scene.background = new T.Color(0x000000); scene.fog = new T.Fog(C('#b7c6cc'), 1100, 3200);
     loadGlbModels();
     camera = new T.PerspectiveCamera(38, 1, 10, 7000);
     scene.add(new T.HemisphereLight(C('#d6e6ff'), C('#4d5a2c'), 0.62));
@@ -123,16 +123,17 @@ const R3D = (() => {
       uniforms: { top: { value: new T.Color('#4f86c9') }, mid: { value: new T.Color('#bcd3e3') }, bot: { value: new T.Color('#b7c6cc') } },
       vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
       fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h, 0.0, 1.0), 0.55)) : bot; gl_FragColor = vec4(c, 1.0); }' }));
-    sky.renderOrder = -1; scene.add(sky);
+    sky.renderOrder = -1;   // (kept for the sky colours; the world beyond the frame is plain black, so it is not shown)
     buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass();
     ready = true;
   }
   function buildGround() {
-    const geo = new T.PlaneGeometry(MW + 1400, MH + 1400, 300, 190); geo.rotateX(-Math.PI / 2); geo.translate(MW / 2, 0, MH / 2);
+    // the land runs right to the edge of the map and slips gently under the water band there
+    const E = 70, geo = new T.PlaneGeometry(MW + 2 * E, MH + 2 * E, 330, 210); geo.rotateX(-Math.PI / 2); geo.translate(MW / 2, 0, MH / 2);
     const p = geo.attributes.position, uv = geo.attributes.uv;
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, heightAt(x, z)); uv.setXY(i, x / MW, 1 - z / MH); }
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), cx = clamp(x, 0, MW), cz = clamp(z, 0, MH), out = Math.hypot(x - cx, z - cz); p.setY(i, lerp(heightAt(cx, cz), SEA - 16, Math.min(1, out / E))); uv.setXY(i, x / MW, 1 - z / MH); }   // past the edge the ground picture is mirrored, so the bank has no streaks
     geo.computeVertexNormals();
-    const tex = new T.CanvasTexture(terrain); groundTex = tex; tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
+    const tex = new T.CanvasTexture(terrain); groundTex = tex; tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.MirroredRepeatWrapping;
     // a fine repeating layer of grass and soil grain keeps the ground crisp when you zoom in or tilt low
     const det = document.createElement('canvas'); det.width = det.height = 256;
     { const g = det.getContext('2d'), R = mulberry32(4242); g.fillStyle = '#808080'; g.fillRect(0, 0, 256, 256);
@@ -151,7 +152,7 @@ const R3D = (() => {
     };
     groundMesh = mesh(geo, gmat, 0, 0, 0, false);
     scene.add(groundMesh);
-    const outer = mesh(new T.PlaneGeometry(24000, 24000), std('#3f6a2c', { roughness: 1 }), MW / 2, -40, MH / 2, false); outer.rotation.x = -Math.PI / 2; scene.add(outer);
+    buildBorder();
     // cloud shadows drifting over the land
     const ct = genTex('clouds', 256, (g, n, R) => { g.fillStyle = '#000'; g.fillRect(0, 0, n, n); const cn = makeNoise(9); const img = g.getImageData(0, 0, n, n), d = img.data;
       for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const v = cn(x / 40, y / 40) * 0.6 + cn(x / 16 + 7, y / 16) * 0.4, a = clamp((v - 0.5) * 3.2, 0, 1) * 255, i = (y * n + x) * 4; d[i] = d[i + 1] = d[i + 2] = a; d[i + 3] = 255; }
@@ -159,6 +160,40 @@ const R3D = (() => {
     ct.encoding = T.LinearEncoding;
     clouds3 = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x0b1824, transparent: true, opacity: 0.3, alphaMap: ct, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
     clouds3.renderOrder = 1; scene.add(clouds3);
+  }
+  // ---------- the edge of the world: a band of water, then a gold frame like a game board, then black ----------
+  const BAND = 230, SEA = -52, waveU = { value: 0 };   // SEA: the water's height, below the lowest hollow of the land
+  let seaMesh = null;
+  function buildBorder() {
+    const black = new T.Mesh(new T.PlaneGeometry(40000, 40000), new T.MeshBasicMaterial({ color: 0x000000, fog: false })); black.rotation.x = -Math.PI / 2; black.position.set(MW / 2, SEA - 70, MH / 2); scene.add(black);
+    // the sea: gentle waves in the vertices, the sheet's water picture drifting over them
+    const W = MW + 2 * BAND, H = MH + 2 * BAND, sg = new T.PlaneGeometry(W, H, 160, 100); sg.rotateX(-Math.PI / 2);
+    const sm = new T.MeshPhongMaterial({ color: C('#2a6a8c'), specular: C('#55707c'), shininess: 38, emissive: C('#04121c'), normalMap: waterNormal(), normalScale: new T.Vector2(0.6, 0.6) });
+    sm.onBeforeCompile = sh => { sh.uniforms.uWave = waveU; sh.vertexShader = 'uniform float uWave;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y += sin(position.x * 0.021 + uWave * 1.3) * 1.6 + sin(position.z * 0.017 + uWave * 0.9) * 1.3 + sin((position.x + position.z) * 0.05 + uWave * 2.2) * 0.5;'); };
+    seaMesh = new T.Mesh(sg, sm); seaMesh.position.set(MW / 2, SEA, MH / 2); seaMesh.receiveShadow = true; scene.add(seaMesh);
+    // the frame: a raised gold moulding with a darker inner lip, and an ornate piece on each corner
+    const gold = new T.MeshStandardMaterial({ color: C('#d8a93a'), metalness: 0.92, roughness: 0.32, fog: false }), dark = new T.MeshStandardMaterial({ color: C('#8a6418'), metalness: 0.85, roughness: 0.45, fog: false });
+    if (envCube) { gold.envMap = envCube; gold.envMapIntensity = 1.2; dark.envMap = envCube; }
+    const x0 = -BAND, z0 = -BAND, x1 = MW + BAND, z1 = MH + BAND, w = 46;
+    const bar = (cx, cz, sx, sz, h, y, m) => { const b = new T.Mesh(new T.BoxGeometry(sx, h, sz), m); b.position.set(cx, y, cz); b.castShadow = false; b.receiveShadow = true; scene.add(b); };
+    for (const [cx, cz, sx, sz] of [[(x0 + x1) / 2, z0 - w / 2, x1 - x0 + 2 * w, w], [(x0 + x1) / 2, z1 + w / 2, x1 - x0 + 2 * w, w], [x0 - w / 2, (z0 + z1) / 2, w, z1 - z0], [x1 + w / 2, (z0 + z1) / 2, w, z1 - z0]]) {
+      bar(cx, cz, sx, sz, 30, SEA + 2, gold);
+      bar(cx, cz, sx > sz ? sx : w * 0.42, sx > sz ? w * 0.42 : sz, 6, SEA + 20, gold);   // the raised ridge along the middle
+    }
+    for (const [cx, cz] of [[x0, z1 + 0], [x1, z1], [x0, z0], [x1, z0]]) cornerPiece(cx + (cx < 0 ? -w / 2 : w / 2), cz + (cz < 0 ? -w / 2 : w / 2), gold, dark);
+    for (const [ax, az, bx, bz] of [[x0, z0 - w / 2, x1, z0 - w / 2], [x0, z1 + w / 2, x1, z1 + w / 2], [x0 - w / 2, z0, x0 - w / 2, z1], [x1 + w / 2, z0, x1 + w / 2, z1]]) {   // small studs along the frame
+      const n = Math.round(Math.hypot(bx - ax, bz - az) / 420); for (let i = 1; i < n; i++) { const t = i / n, st = new T.Mesh(new T.SphereGeometry(6, 10, 8), dark); st.position.set(ax + (bx - ax) * t, SEA + 23, az + (bz - az) * t); scene.add(st); }
+    }
+  }
+  function cornerPiece(x, z, gold, dark) {
+    const g = new T.Group(); g.position.set(x, SEA + 10, z);
+    const base = new T.Mesh(new T.CylinderGeometry(52, 58, 18, 8), gold); base.rotation.y = Math.PI / 8; base.position.y = 0; g.add(base);
+    const ring = new T.Mesh(new T.TorusGeometry(38, 6, 8, 24), dark); ring.rotation.x = Math.PI / 2; ring.position.y = 11; g.add(ring);
+    const boss = new T.Mesh(new T.SphereGeometry(20, 16, 12), gold); boss.position.y = 16; boss.scale.y = 0.75; g.add(boss);
+    const tip = new T.Mesh(new T.ConeGeometry(7, 22, 10), gold); tip.position.y = 38; g.add(tip);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, leaf = new T.Mesh(new T.ConeGeometry(7, 34, 6), i % 2 ? dark : gold); leaf.position.set(Math.cos(a) * 46, 12, Math.sin(a) * 46); leaf.rotation.set(0, -a, Math.PI / 2); leaf.rotation.order = 'YZX'; g.add(leaf);
+      const pearl = new T.Mesh(new T.SphereGeometry(5, 8, 6), gold); pearl.position.set(Math.cos(a + Math.PI / 8) * 34, 15, Math.sin(a + Math.PI / 8) * 34); g.add(pearl); }
+    g.traverse(o => { o.castShadow = false; }); scene.add(g);
   }
   // ---------- water and grass ----------
   let water = null, grass = null, grassPos = [], windU = { value: 0 }, windAmt = { value: 0.3 }, windDir = { value: T ? new T.Vector2(1, 0) : null };   // (no 3D library: the flat view still runs)
@@ -209,7 +244,8 @@ const R3D = (() => {
     if (leafDecid) { const se = WEATHER.season, tgt = [[1.0, 1.08, 0.86], [0.92, 1.0, 0.86], [1.75, 0.78, 0.28], [0.82, 0.72, 0.6]][se]; const c = leafDecid.color, kk = Math.min(1, dt * 0.35); c.r += (tgt[0] - c.r) * kk; c.g += (tgt[1] - c.g) * kk; c.b += (tgt[2] - c.b) * kk; }
     windU.value = time; windAmt.value = 0.38 + WEATHER.wind * 1.2 + WEATHER.rain * 0.2; windDir.value.set(Math.cos(WEATHER.ang), Math.sin(WEATHER.ang));
     if (clouds3) { const t = clouds3.material.alphaMap; t.offset.x = time * 0.0022; t.offset.y = time * 0.0012; }
-    if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; }
+    if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; if (water.material.map) { water.material.map.offset.x = time * 0.006; water.material.map.offset.y = Math.sin(time * 0.3) * 0.02; } }
+    waveU.value = time; if (seaMesh) { const n = seaMesh.material.normalMap; n.offset.x = -time * 0.01; n.offset.y = time * 0.007; if (seaMesh.material.map) seaMesh.material.map.offset.set(time * 0.004, -time * 0.003); }
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
   let setTreeDetail = null, treeDetailWant = true; try { treeDetailWant = localStorage.getItem('sd-trees') !== 'simple'; } catch (e) {}
@@ -340,7 +376,7 @@ const R3D = (() => {
     const barkMat = woodVM(8, 36);
     const border = [], Rb = mulberry32(4711);
     for (let x = -420; x < MW + 420; x += 58) for (let z = -420; z < MH + 420; z += 58) {
-      const out = x < -8 || x > MW + 8 || z < -8 || z > MH + 8; if (!out || Rb() < 0.2) continue;
+      const out = x < -8 || x > MW + 8 || z < -8 || z > MH + 8; if (out || true) continue;   // the world now ends at water: no trees beyond the map
       const px = x + (Rb() - 0.5) * 26, pz = z + (Rb() - 0.5) * 26;
       border.push({ x: px, c: (px - 16) / TILE, r: (pz - 16) / TILE, s: 0.9 + Rb() * 0.5, pine: Rb() < 0.4, seed: Rb() * 10, tone: Rb() });
     }
@@ -1717,8 +1753,8 @@ const R3D = (() => {
     fill.position.set(c.x + 600, ty + 420, c.z + 500); fill.target.position.set(c.x, ty, c.z); fill.target.updateMatrixWorld();
     sky.position.copy(camera.position);
     const s = Math.max(500, D * 0.95); Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s }); sun.shadow.camera.updateProjectionMatrix();
-    const wet = WEATHER.rain, sn = WEATHER.snow; scene.fog.near = D * (1.1 - 0.5 * wet - 0.3 * sn); scene.fog.far = D * (3.2 - 1.5 * wet - 1.0 * sn);
-    scene.fog.color.setRGB(0.718 - 0.2 * wet + 0.12 * sn, 0.776 - 0.2 * wet + 0.1 * sn, 0.8 - 0.15 * wet + 0.1 * sn); scene.background = scene.fog.color;
+    const wet = WEATHER.rain, sn = WEATHER.snow; scene.fog.near = D * (2.2 - 0.9 * wet - 0.6 * sn); scene.fog.far = D * (6 - 2.5 * wet - 1.8 * sn);
+    scene.fog.color.setRGB(0.718 - 0.2 * wet + 0.12 * sn, 0.776 - 0.2 * wet + 0.1 * sn, 0.8 - 0.15 * wet + 0.1 * sn); 
     sun.intensity = 1.75 * (1 - 0.5 * wet - 0.25 * sn); if (gmatRef && gmatRef.userData.sh) gmatRef.userData.sh.uniforms.snowAmt.value = WEATHER.cover;
   }
   const ray = available ? new T.Raycaster() : null, v2 = available ? new T.Vector2() : null, plane = available ? new T.Plane(new T.Vector3(0, 1, 0), 0) : null, hit = available ? new T.Vector3() : null;
