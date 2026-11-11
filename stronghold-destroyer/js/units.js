@@ -484,7 +484,7 @@ function updateHealth(dt) {
     // someone notices and sends them to the keep to be cared for
     if (k && !u.toHeal) { const helper = people.find(o => o !== u && !o.sick && Math.hypot(o.x - u.x, o.y - u.y) < 90); if (helper) { u.toHeal = true; speeches.push({ u: helper, text: 'You look ill! Go to the keep to be cared for.', t: 0 }); } }
     if (u.toHeal && k) {
-      if (edgeDist(u, k) < 40) { u.healT = (u.healT || 0) + 1; u.order = 'idle'; if (u.healT >= 18) { u.sick = 0; u.sickT = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } }
+      if (edgeDist(u, k) < 40 || (stalled(u) && edgeDist(u, k) < 110)) { u.path = []; u.moving = false; u.healT = (u.healT || 0) + 1; u.order = 'idle'; if (u.healT >= 18) { u.sick = 0; u.sickT = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } }
       else if (u.order !== 'move') { const ap = approachPoint(u, k); u.task = null; commandMove([u], ap.x, ap.y); u.cmdT = time; }
     }
   }

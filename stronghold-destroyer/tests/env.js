@@ -12,7 +12,7 @@ if (!fs.existsSync(THREE)) {
 const LAUNCH = { args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] };
 const LIB = path.join(SP, 'lib/three/package');
 async function use3d(page, opts = {}) {
-  page.setDefaultTimeout(300000);
+  page.setDefaultTimeout(1800000);
   // software 3D is slow: draw a full frame every few seconds so game time keeps pace (the game itself draws every frame)
   if (opts.drawMs !== 0) await page.addInitScript(n => { window.__drawMs = n; }, opts.drawMs || 10000);
   const js = f => r => r.fulfill({ body: fs.readFileSync(path.join(LIB, f)), contentType: 'application/javascript' });

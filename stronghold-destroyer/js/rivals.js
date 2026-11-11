@@ -94,7 +94,7 @@ function enemyWorker(u, dt) {
   }
   if (u.sub === 'toSite') {
     const b = u.ejob; if (!b || b.dead || b.done) { u.sub = null; u.ejob = null; return; }
-    if (edgeDist(u, b) <= 12 || stalled(u) && edgeDist(u, b) <= 32) { u.sub = 'work'; u.path = []; u.moving = false; } else { const ap = approachPoint(u, b); walk(ap.x, ap.y); }
+    if (edgeDist(u, b) <= 12 || stalled(u) && edgeDist(u, b) <= 56) { u.sub = 'work'; u.path = []; u.moving = false; } else { const ap = approachPoint(u, b); walk(ap.x, ap.y); }
     return;
   }
   if (u.sub === 'work' && u.order === 'build') {

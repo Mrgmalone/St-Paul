@@ -44,7 +44,8 @@ const CIV = process.argv[2] || 'harvest', MINUTES = +(process.argv[3] || 20);
         if (u.order === 'attack' && !u.target) N('attack without target ' + u.type, u.team);
         if (u.look && !Number.isFinite(u.fat || 0)) N('fat NaN', u.fat);
         if (!isMachine(u) && !u.onWall) for (const s of structures) { if (s.dead || s.done === false || s.kind === 'moat' || s.kind === 'stairs' || s.kind === 'gate') continue; if (u.x > s.x0 + 4 && u.x < s.x1 - 4 && u.y > s.y0 + 4 && u.y < s.y1 - 4) { N('inside ' + s.kind + ' ' + u.type + ' ' + u.order, [Math.round(u.x), Math.round(u.y)]); break; } }
-        // stuck: wants to move but has not moved for 25s
+        // stuck: wants to move but has not moved for 25s (not counted once the game is over: then nothing moves on purpose)
+        if (won) { window.__hist.delete(u); continue; }
         const h = window.__hist.get(u) || { x: u.x, y: u.y, t: time };
         if (Math.hypot(u.x - h.x, u.y - h.y) > 6) { h.x = u.x; h.y = u.y; h.t = time; }
         else if ((u.order === 'move' || u.order === 'return' || u.order === 'raid' || (u.order === 'build' && u.moving)) && time - h.t > 12) { { let ns = null, nd = 1e9; for (const s2 of structures) { if (s2.dead) continue; const d2 = edgeDist(u, s2); if (d2 < nd) { nd = d2; ns = s2; } } N('stuck ' + u.type + ' ' + u.team + ' ' + u.order, { at: [Math.round(u.x), Math.round(u.y)], t: Math.round(time), dest: u.dest ? [Math.round(u.dest.x), Math.round(u.dest.y)] : null, path: u.path.length, wp: u.path[0] ? [Math.round(u.path[0].x), Math.round(u.path[0].y)] : null, moving: u.moving, near: ns ? ns.kind + '/' + ns.team + ' d' + Math.round(nd) + (ns.done === false ? ' unbuilt' : '') : '', bt: u.buildTarget ? u.buildTarget.kind : u.ejob ? 'e:' + u.ejob.kind : '', sub: u.sub || '', route: u.route ? u.route.length : '', chop: !!u.chopTree, sick: u.sick, toHeal: u.toHeal, rest: u.rest || u.breakUntil > time ? 'rest' : '' }); } h.t = time; }
