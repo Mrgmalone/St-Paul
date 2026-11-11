@@ -228,6 +228,18 @@ document.getElementById('volMusic').value = Math.round(AudioSys.vol('music') * 1
 document.getElementById('volSound').value = Math.round(AudioSys.vol('sfx') * 100);
 refreshSoundButtons();
 UI.paintIcons(); UI.drawMini();
+// picture buttons: the name shows in a small label above the button when you tap it or point at it
+(function buttonLabels() {
+  const L = document.getElementById('ibLabel');
+  document.querySelectorAll('.ib').forEach(b => {
+    const name = [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').trim(), sm = b.querySelector('small');
+    b.dataset.name = name; b.setAttribute('aria-label', name + (sm ? ', ' + sm.textContent : ''));
+    const show = () => { const r = b.getBoundingClientRect(), why = b.querySelector('.why'); L.innerHTML = name + (sm ? '<small>' + sm.innerHTML + '</small>' : '') + (why && why.textContent ? '<small style="color:#ff9d86">' + why.textContent + '</small>' : ''); L.style.left = clamp(r.left + r.width / 2, 90, window.innerWidth - 90) + 'px'; L.style.top = Math.max(70, r.top - 6) + 'px'; L.hidden = false; };
+    b.addEventListener('pointerenter', show); b.addEventListener('pointerdown', show);
+    b.addEventListener('pointerleave', () => { L.hidden = true; });
+    b.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') setTimeout(() => { L.hidden = true; }, 1400); });
+  });
+})();
 setView(true);
 updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });

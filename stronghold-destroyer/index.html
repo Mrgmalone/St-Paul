@@ -10,10 +10,10 @@
 </head>
 <body>
 <div id="top">
-  <div id="title">STRONGHOLD DESTROYER</div>
-  <div id="status"><b>Choose your civilization to begin</b></div>
+  <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9776;<span class="lbl"> Menu</span></button>
   <button id="btnPause" title="Pause the game to plan and place your castle (P)">&#10074;&#10074;<span class="lbl"> Pause</span></button>
-  <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9881;<span class="lbl"> Menu</span></button>
+  <div id="status"><b>Choose your civilization to begin</b></div>
+  <div id="title">STRONGHOLD DESTROYER</div>
 </div>
 <div id="main">
 <div id="view">
@@ -47,12 +47,14 @@
     </div>
   </div></div>
   <canvas id="mini" title="Map: click or drag to move the view"></canvas>
-  <div id="camCtl">
-    <div class="cg tonly"><div class="row"><button id="camAdd" title="Add mode: tap people to add them to your group">&#65291;</button></div><span>Add</span></div>
-    <div class="cg"><div class="row"><button id="camHome" title="Back to your castle (Space)">&#8962;</button></div><span>Castle</span></div>
+  <div id="cmdbar">
+    <div id="selbox"><span id="selLabel">No soldiers selected</span><div id="selSum"></div><div id="selBar"><i></i></div></div>
+    <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button><button id="camAdd" class="sm tonly" title="Add mode: tap people to add them to your group">&#65291; Add</button><button id="camHome" class="sm" title="Back to your castle (Space)">&#8962; Castle</button></div>
   </div>
+  <div id="tips" aria-label="Reserved for the Art of War advisor (Phase 7)"></div>
+  <div id="ibLabel" hidden></div>
   <div id="moodPop" class="pop" hidden></div>
-  <div id="goodsPop" class="pop" hidden style="left:auto;right:10px;top:8px"></div>
+  <div id="goodsPop" class="pop" hidden style="left:10px;top:8px"></div>
   <div id="storePop" class="pop" hidden style="left:10px;top:8px;min-width:230px"></div>
   <div id="menuPop" class="pop" hidden>
     <h3>MENU</h3>
@@ -104,12 +106,6 @@
 <div id="side">
   <div id="sideHead"><span>COMMANDS</span><button id="btnHide" title="Hide or show this panel (Tab)">&#9656; Hide</button></div>
   <div id="sideScroll"><div id="sideIn">
-  <div id="selbox">
-    <span id="selLabel">No soldiers selected</span>
-    <div id="selSum"></div>
-    <div id="selBar"><i></i></div>
-    <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button></div>
-  </div>
   <div id="secs">
       <button class="tab active" data-tab="town" title="Town (key 1)" aria-expanded="true"><span class="tl">Town</span><span class="key">1</span><span class="chev">&#9662;</span></button>
       <div class="pane active" data-pane="town">

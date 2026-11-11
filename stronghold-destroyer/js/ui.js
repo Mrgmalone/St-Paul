@@ -104,9 +104,13 @@ const UI = (() => {
   }
   function paintIcon(c) {
     const id = c.dataset.icon, chip = !!c.closest('.chip');
-    const w = chip ? 22 : 60, h = chip ? 22 : 46;
+    const big = !chip && !!c.closest('.ib'), w = chip ? 22 : big ? 120 : 60, h = chip ? 22 : big ? 120 : 46;
     c.width = w * 2; c.height = h * 2; const g = c.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, w, h);
     const [kind, name] = id.split(':');
+    // picture buttons: the sheet's art for units that have it, otherwise a photo of the 3D model (a stand-in in the same style)
+    if (big && (kind === 'b' || kind === 'u')) { const name2 = kind === 'u' && ATLAS.ready && ART_UNIT[name], f = name2 && ATLAS.frames[name2 + '/front'];
+      if (f) { const sc = Math.min((h - 6) / f.h, (w - 6) / f.w); g.drawImage(teamAtlas('player'), f.x, f.y, f.w, f.h, w / 2 - f.w * sc / 2, h - 3 - f.h * sc, f.w * sc, f.h * sc); return; }
+      let pic = null; try { pic = R3D.available && R3D.isReady() && R3D.iconOf(kind + ':' + name); } catch (e) {} if (pic) { g.drawImage(pic, 0, 0, w, h); return; } }
     try { if (kind === 'b') iconBuilding(g, name, w, h); else if (kind === 'u') iconUnit(g, name, w, h); else if (kind === 'w') iconWeapon(g, name, w, h); else iconRes(g, name, w, h); } catch (e) {}
   }
   const paintIcons = (root = document) => root.querySelectorAll('canvas[data-icon]').forEach(paintIcon);

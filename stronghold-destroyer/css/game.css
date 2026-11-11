@@ -201,3 +201,60 @@
   #banner{border-radius:12px;border:1px solid rgba(214,170,90,.7);background:rgba(16,11,7,.84);backdrop-filter:blur(4px)}
   .pop{border-radius:12px;border:1px solid rgba(214,170,90,.7);backdrop-filter:blur(4px)}
   #view::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%)}
+
+/* ===================== Phase 2: iPad first, the sheet's dark and simple style =====================
+   One size rule: every picture button is --tile square (about one inch on an iPad, 130 points);
+   every other tap target is at least --tap (44 points). */
+:root{--tile:130px;--tap:44px;--ink:#efe6d2;--dim:#b9ad94;--gold:#d9b45a;--panel:#1c1b1a;--panel2:#262422;--line:rgba(217,180,90,.38)}
+body{background:#000}
+#top{min-height:52px;padding:4px 10px;gap:8px;background:#151413;border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.6)}
+#top #title{margin-left:auto;font-size:14px;letter-spacing:3px;color:var(--gold);opacity:.8}
+#btnMenu,#btnPause{margin:0;min-height:var(--tap);min-width:var(--tap);padding:6px 14px;font-size:17px}
+#status{flex:1 1 auto;gap:4px 6px}
+.chip{min-height:38px;padding:2px 10px 2px 6px;background:rgba(255,240,210,.05);border:1px solid rgba(217,180,90,.2);color:var(--ink)}
+button.chip{min-height:var(--tap)}
+button{background:linear-gradient(#34302b,#24211e);color:var(--ink);border:1px solid var(--line);box-shadow:0 2px 6px rgba(0,0,0,.45);min-height:var(--tap)}
+button:hover{filter:brightness(1.15)}
+#btnPause.on{background:linear-gradient(#3e5a3a,#2a3f28);outline:2px solid #9fe8a8}
+.xbtn{width:var(--tap);height:var(--tap);line-height:40px}
+/* the side panel: tidy, dark, collapsible; picture buttons two to a row */
+#side{flex-basis:calc(var(--tile) * 2 + 48px);background:var(--panel);border-left:1px solid var(--line)}
+#sideIn{padding:8px 10px 14px}
+.tab{min-height:48px;background:linear-gradient(#2c2926,#201e1c);color:var(--ink);border:1px solid var(--line)}
+.tab.active{background:linear-gradient(#3a3226,#2a241b);color:var(--gold);border-color:var(--gold)}
+.tab .key{color:var(--dim);border-color:var(--line)}
+.pane{grid-template-columns:repeat(2,var(--tile));justify-content:center;gap:10px;padding:10px 4px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-top:none}
+.ib{width:var(--tile);height:var(--tile);min-width:var(--tile);padding:4px;font-size:0;line-height:0;border-radius:12px;
+  background:radial-gradient(circle at 50% 38%,#3a352e,#1f1d1b 72%);border:1px solid var(--line);justify-content:center}
+.ib small,.ib .lbl{display:none}
+.ib canvas{width:calc(var(--tile) - 10px);height:calc(var(--tile) - 10px)}
+.ib .why{position:absolute;left:4px;right:4px;bottom:4px;font-size:11px;line-height:1.2;padding:2px 3px;border-radius:6px;background:rgba(138,42,32,.92)}
+.ib .cnt{right:5px;top:5px;font-size:15px}
+.ib .secs{font-size:12px;line-height:1.3}
+.ib .ring{width:calc(var(--tile) - 14px);height:calc(var(--tile) - 14px);margin-left:calc((var(--tile) - 14px) / -2);top:7px;
+  -webkit-mask:radial-gradient(circle,transparent calc(50% - 6px),#000 calc(50% - 5px));mask:radial-gradient(circle,transparent calc(50% - 6px),#000 calc(50% - 5px))}
+.ib.off{filter:saturate(.35) brightness(.7)}
+.bb.on,.ib:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.grp .row .rb,.rally button{min-height:var(--tap)}
+.grp .tl{color:var(--gold)}
+/* the name shows in a small label above a picture button when you tap or point at it */
+#ibLabel{position:fixed;z-index:30;pointer-events:none;transform:translate(-50%,-100%);background:rgba(16,14,12,.95);color:var(--ink);
+  border:1px solid var(--gold);border-radius:8px;padding:5px 10px;font-size:15px;font-weight:700;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.6)}
+#ibLabel small{display:block;font-weight:400;font-size:13px;color:var(--dim)}
+#ibLabel[hidden]{display:none}
+/* the command bar along the bottom: what is selected, and big buttons for it */
+#cmdbar{position:absolute;left:10px;right:230px;bottom:10px;z-index:3;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:rgba(20,19,18,.88);border:1px solid var(--line);border-radius:14px;padding:6px 10px;backdrop-filter:blur(3px)}
+#cmdbar #selbox{flex:1 1 200px;min-width:160px}
+#cmdbar #selLabel{color:var(--ink);font-size:16px}
+#cmdbar #selSum{font-size:14px;color:var(--dim)}
+#cmdbar .btns{display:flex;gap:6px;flex-wrap:wrap}
+#cmdbar .btns button{min-height:var(--tap);min-width:var(--tap);padding:6px 14px;font-size:16px}
+body:not(.touch) #cmdbar .tonly{display:none}
+#camAdd.on{outline:3px solid #9fe8a8}
+/* the minimap corner (fog of war will show here later) */
+#mini{right:10px;bottom:10px;width:210px;height:131px;border-radius:12px;border:1px solid var(--gold)}
+/* top right of the view is kept clear for the Art of War advisor */
+#tips{position:absolute;top:10px;right:10px;width:300px;height:96px;pointer-events:none;z-index:2}
+#banner{top:118px}
+@media (max-width:760px){ :root{--tile:110px} #cmdbar{right:10px;bottom:150px} #tips{width:200px} }

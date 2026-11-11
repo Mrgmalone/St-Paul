@@ -125,7 +125,7 @@ const R3D = (() => {
       fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h, 0.0, 1.0), 0.55)) : bot; gl_FragColor = vec4(c, 1.0); }' }));
     sky.renderOrder = -1;   // (kept for the sky colours; the world beyond the frame is plain black, so it is not shown)
     buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass(); buildLife();
-    ready = true;
+    ready = true; setTimeout(() => { try { UI.paintIcons(); } catch (e) {} }, 0);
   }
   function buildGround() {
     // the land runs right to the edge of the map and slips gently under the water band there
@@ -1664,7 +1664,7 @@ const R3D = (() => {
   let sheetBricks = false;
   function syncBuildings(dt) {
     // the sheet's materials arrive a moment after start: build every building again in them once
-    if (MATS.ready && !sheetBricks) { sheetBricks = true; for (const [, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); } bModels.clear(); for (const k in matCache) delete matCache[k]; if (MATS.ready) repaintGround(); }
+    if (MATS.ready && !sheetBricks) { sheetBricks = true; for (const [, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); } bModels.clear(); for (const k in matCache) delete matCache[k]; if (MATS.ready) repaintGround(); iconCache.clear(); setTimeout(() => { try { UI.paintIcons(); } catch (e) {} }, 0); }
     const all = structures.concat(farms), seen = new Set();
     for (const b of all) {
       seen.add(b.id);
@@ -1922,8 +1922,40 @@ const R3D = (() => {
   // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
   function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
   const glbStatus = detail => ({ loaded: Object.keys(GLB), unitsUsingModels: [...unitModels.values()].filter(m => m.glb).map(m => m.glbKey + ':' + (m.cur || '-') + (detail ? ' ' + JSON.stringify((() => { const bb = new T.Box3().setFromObject(m.root); return { min: bb.min.toArray().map(Math.round), max: bb.max.toArray().map(Math.round), vis: m.root.visible, inScene: !!m.root.parent }; })()) : '')) });
+
+  // ---------- pictures for the side buttons: each building or unit photographed by the game's own camera ----------
+  const iconCache = new Map(); let iconScene = null, iconCam = null, iconRT = null;
+  function iconOf(key, size = 256) {
+    if (!available) return null; if (!ready) init();
+    if (iconCache.has(key)) return iconCache.get(key);
+    if (!iconScene) {
+      iconScene = new T.Scene(); iconScene.add(new T.HemisphereLight(C('#e8f0ff'), C('#5a5040'), 0.9));
+      const d = new T.DirectionalLight(C('#fff0d2'), 1.6); d.position.set(-300, 500, -200); iconScene.add(d); iconScene.add(d.target);
+      iconCam = new T.PerspectiveCamera(26, 1, 1, 8000);
+      iconRT = new T.WebGLRenderTarget(size, size); iconRT.texture.encoding = T.sRGBEncoding;
+    }
+    const [kind, name] = key.split(':'); let obj = null;
+    try {
+      if (kind === 'b') { const b = makeBuildingObj(name, 200, 200); b.done = true; b.progress = 1; b.hp = b.maxHp; b.id = -1; if (isField(name)) b.amount = b.max; const md = buildingModel(b); scene.remove(md.g); obj = md.g; }
+      else if (kind === 'u') { const u = { kind: 'unit', type: name, team: 'player', x: 0, y: 0, pal: name === 'civ' ? PAL.civ : PAL.player, skin: '#d9a57a', hair: '#4a2e18', seed: 1, facing: 1, walkPhase: 0, moving: false, attackAnim: 0, order: 'idle', dead: false, deathT: 0, flash: 0, carry: 0, task: null, look: { beard: true, longHair: false, w: 1, h: 1 }, radius: 11, animDur: 1 };
+        const md = name === 'ram' ? ramModel(u) : name === 'oxcart' ? oxcartModel(u) : name === 'trebuchet' ? trebuchetModel(u) : name === 'catapult' ? catapultModel(u) : name === 'ballista' ? ballistaModel(u) : personModel(u);
+        md.root.rotation.y = Math.PI / 4 + 0.35; obj = md.root; }
+    } catch (e) { console.warn('icon', key, e); }
+    if (!obj) return null;
+    iconScene.add(obj); obj.updateMatrixWorld(true);
+    const bb = new T.Box3().setFromObject(obj), c = bb.getCenter(new T.Vector3()), r = bb.getSize(new T.Vector3()).length() / 2;
+    const dist = r / Math.sin(iconCam.fov * Math.PI / 360) * 0.92;
+    iconCam.position.set(c.x + Math.sin(yaw) * Math.cos(pitch) * dist, c.y + Math.sin(pitch) * dist, c.z + Math.cos(yaw) * Math.cos(pitch) * dist); iconCam.lookAt(c); iconCam.updateProjectionMatrix();
+    const old = renderer.getRenderTarget(), oc = renderer.getClearColor(new T.Color()), oa = renderer.getClearAlpha(), sh = renderer.shadowMap.enabled;
+    renderer.shadowMap.enabled = false; renderer.setRenderTarget(iconRT); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(iconScene, iconCam);
+    const px = new Uint8Array(size * size * 4); renderer.readRenderTargetPixels(iconRT, 0, 0, size, size, px);
+    renderer.setRenderTarget(old); renderer.setClearColor(oc, oa); renderer.shadowMap.enabled = sh; iconScene.remove(obj);
+    const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d'), im = g.createImageData(size, size);
+    for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);   // the picture comes out upside down
+    g.putImageData(im, 0, 0); iconCache.set(key, cv); return cv;
+  }
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
-  return { prepare, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  return { prepare, iconOf, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];
