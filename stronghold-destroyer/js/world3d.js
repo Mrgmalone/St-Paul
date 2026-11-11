@@ -51,11 +51,22 @@ const R3D = (() => {
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const h = (u, v) => wn(u / 9, v / 9) + 0.5 * wn(u / 4 + 20, v / 4); const dx = h(x + 1, y) - h(x - 1, y), dy = h(x, y + 1) - h(x, y - 1), i = (y * n + x) * 4;
       d[i] = 128 + dx * 160; d[i + 1] = 128 + dy * 160; d[i + 2] = 255; d[i + 3] = 255; }
     g.putImageData(img, 0, 0); }, 6);
-  let envCube = null, gmatRef = null;
+  let envCube = null, gmatRef = null, groundTex = null;
+  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(1, 1, 1); water.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
   function std(hex, o = {}) { const m = new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); if (envCube && (o.metalness || 0) >= 0.45) { m.envMap = envCube; m.envMapIntensity = 0.85; } return m; }
+  // walls of stone and of plaster are built from the sheet's brick sets: gray stone for your castle, brown brick for
+  // your houses and workshops, green for the house of prayer, black-gray-green for everything the Black Stone builds
+  let BRICK = { stone: 'brick_gray', plaster: 'brick_brown' };
+  const sheetTex = {};
   function texMat(name, rx, ry, tint, o = {}) {
+    const sheet = MATS.ready && BRICK[name] && MATS.img[BRICK[name]];
+    if (sheet) { rx *= name === 'stone' ? 72 / 120 : 40 / 120; ry *= name === 'stone' ? 54 / 36 : 40 / 36; name = BRICK[name]; tint = null; }
     const key = name + rx.toFixed(2) + ry.toFixed(2) + (tint || '');
     if (matCache[key]) return matCache[key];
+    if (sheet) {
+      const tex = new T.Texture(MATS.img[name]); tex.needsUpdate = true; tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(rx, ry); tex.encoding = T.sRGBEncoding; tex.anisotropy = 8;
+      return matCache[key] = new T.MeshStandardMaterial(Object.assign({ map: tex, bumpMap: tex, bumpScale: 0.8, roughness: 0.9 }, o));
+    }
     const M = mats(), tex = new T.CanvasTexture(M[name]._canvas);
     tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(rx, ry); tex.encoding = T.sRGBEncoding; tex.anisotropy = 8;
     return matCache[key] = new T.MeshStandardMaterial(Object.assign({ map: tex, bumpMap: tex, bumpScale: name === 'plaster' ? 0.4 : 1.1, color: tint ? C(tint) : 0xffffff, roughness: 0.92 }, o));
@@ -121,7 +132,7 @@ const R3D = (() => {
     const p = geo.attributes.position, uv = geo.attributes.uv;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, heightAt(x, z)); uv.setXY(i, x / MW, 1 - z / MH); }
     geo.computeVertexNormals();
-    const tex = new T.CanvasTexture(terrain); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
+    const tex = new T.CanvasTexture(terrain); groundTex = tex; tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
     // a fine repeating layer of grass and soil grain keeps the ground crisp when you zoom in or tilt low
     const det = document.createElement('canvas'); det.width = det.height = 256;
     { const g = det.getContext('2d'), R = mulberry32(4242); g.fillStyle = '#808080'; g.fillRect(0, 0, 256, 256);
@@ -470,6 +481,7 @@ const R3D = (() => {
   }
   function buildingModel(b) {
     const teamCol = b.team === 'enemy' ? ENEMY_COL : PAL.player.tunic, teamSide = b.team === 'enemy' ? 'enemy' : 'player';
+    BRICK = b.team === 'enemy' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
     const g = new T.Group(), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2, gy = heightAt(cx, cz);
     g.position.set(cx, gy - 1, cz);
     const inner = new T.Group(); g.add(inner);
@@ -1558,7 +1570,10 @@ const R3D = (() => {
     for (const [id, md] of unitModels) if (!seen.has(id)) { scene.remove(md.root); unitModels.delete(id); }
   }
   const bModels = new Map(), joined = new Set();
+  let sheetBricks = false;
   function syncBuildings(dt) {
+    // the sheet's materials arrive a moment after start: build every building again in them once
+    if (MATS.ready && !sheetBricks) { sheetBricks = true; for (const [, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); } bModels.clear(); for (const k in matCache) delete matCache[k]; if (MATS.ready) repaintGround(); }
     const all = structures.concat(farms), seen = new Set();
     for (const b of all) {
       seen.add(b.id);

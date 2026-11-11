@@ -234,6 +234,6 @@ const UI = (() => {
   mini.addEventListener('pointermove', e => { if (miniDrag) miniMove(e); });
   mini.addEventListener('pointerup', () => { miniDrag = false; });
   mini.addEventListener('pointercancel', () => { miniDrag = false; });
-  return { setStatus, setSelection, paintIcons, showTab, toggleHide, closePops, drawMini, moodReport };
+  return { setStatus, setSelection, paintIcons, showTab, toggleHide, closePops, drawMini, moodReport, rebuildMini: () => { miniBase = null; } };
 })();
 
