@@ -9,8 +9,10 @@ const R3D = (() => {
   const T = window.THREE;
   const available = !!T && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
   let active = false, ready = false, renderer, scene, camera, sun, fill, sky, clouds3, glCanvas, groundMesh;
-  let yaw = 0, yawTarget = 0, pitch = 0.8, pitchTarget = 0.8;
-  const PITCH_MIN = 0.36, PITCH_MAX = 1.25;
+  // one fixed camera: looking down at 40 degrees above the ground, turned 45 degrees so buildings show two faces,
+  // as the sheet draws them. Only zoom changes. (40 degrees keeps the unit pictures, drawn from a little above, natural.)
+  const CAM_YAW = Math.PI / 4, CAM_PITCH = 40 * Math.PI / 180;
+  const yaw = CAM_YAW, pitch = CAM_PITCH;
   const hN = available ? makeNoise(77) : null;
   const heightAt = (x, z) => { let h = elevAt(x, z); if (pond) { const d = Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry); if (d < 1.25) h -= 9 * (1 - ease(clamp((d - 0.55) / 0.7, 0, 1))); } return h; };
   const C = hex => new T.Color(hex).convertSRGBToLinear();
@@ -1652,7 +1654,7 @@ const R3D = (() => {
   // ---------- camera ----------
   function camCenter() { return { x: cam.x + vw / cam.z / 2, z: cam.y + vh / cam.z / 2 }; }
   function placeCamera(dt) {
-    yaw = angLerp(yaw, yawTarget, Math.min(1, dt * 6)); pitch += (pitchTarget - pitch) * Math.min(1, dt * 6); const PITCH = pitch;
+    const PITCH = pitch;
     const c = camCenter(), D = 820 / cam.z, ty = heightAt(c.x, c.z);
     camera.position.set(c.x + Math.sin(yaw) * Math.cos(PITCH) * D, ty + Math.sin(PITCH) * D, c.z + Math.cos(yaw) * Math.cos(PITCH) * D);
     camera.lookAt(c.x, ty, c.z);
@@ -1771,15 +1773,11 @@ const R3D = (() => {
     if (glCanvas) glCanvas.style.display = active ? 'block' : 'none';
     try { localStorage.setItem('sd-view', active ? '3d' : '2d'); } catch (e) {}
   }
-  function rotate(dir) { yawTarget = Math.round((yawTarget + dir * Math.PI / 4) / (Math.PI / 4)) * (Math.PI / 4); }
-  function turn(rad) { yawTarget += rad; }
-  function tilt(d) { pitchTarget = clamp(pitchTarget + d, PITCH_MIN, PITCH_MAX); }
-  function resetView() { yawTarget = Math.round(yawTarget / (Math.PI * 2)) * Math.PI * 2; pitchTarget = 0.8; }
   const panAxes = () => ({ c: Math.cos(yaw), s: Math.sin(yaw) });
   // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
   function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
   const glbStatus = detail => ({ loaded: Object.keys(GLB), unitsUsingModels: [...unitModels.values()].filter(m => m.glb).map(m => m.glbKey + ':' + (m.cur || '-') + (detail ? ' ' + JSON.stringify((() => { const bb = new T.Box3().setFromObject(m.root); return { min: bb.min.toArray().map(Math.round), max: bb.max.toArray().map(Math.round), vis: m.root.visible, inScene: !!m.root.parent }; })()) : '')) });
-  return { rebuildModel, glbStatus, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
+  return { rebuildModel, glbStatus, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];
@@ -1850,8 +1848,6 @@ function showLeftNote(reasons) {
   document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b>';
 }
 document.getElementById('leftWhy').onclick = () => { const el = document.getElementById('leftNote'); document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b><span class="why2">' + el.dataset.why + '</span>'; leftNoteT = 20; const mp = document.getElementById('moodPop'); if (mp.hidden) document.getElementById('cMood').click(); };
-document.getElementById('btnArt3d').onclick = () => { art3d = !art3d; try { localStorage.setItem('sd-art3d', art3d ? 'pictures' : 'models'); } catch (e) {} document.getElementById('btnArt3d').textContent = 'Soldiers in 3D: ' + (art3d ? 'Pictures' : 'Models'); };
-document.getElementById('btnArt3d').textContent = 'Soldiers in 3D: ' + (art3d ? 'Pictures' : 'Models');
 document.getElementById('leftClose').onclick = () => { document.getElementById('leftNote').hidden = true; };
 // every box that pops up gets a big X to close it, and keeps it even when its contents are redrawn
 (function closeButtons() {

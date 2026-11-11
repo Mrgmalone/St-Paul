@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); await p.route('**/three.min.js', r => r.abort());
+(async () => { const b = await chromium.launch(require('./env').LAUNCH); const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); await require('./env').use3d(p);
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(require('./env').GAME); await p.waitForTimeout(500); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(600);
   const r = await p.evaluate(()=>{ SD.setRaid(9999); const k = SD.keep(); const scr = (c, r) => [SD.scr((c + 0.5) * 32, (r + 0.5) * 32).x, SD.scr((c + 0.5) * 32, (r + 0.5) * 32).y];

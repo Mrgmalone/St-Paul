@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p.route('**/three.min.js', r => r.abort());
+(async () => { const b = await chromium.launch(require('./env').LAUNCH); const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await require('./env').use3d(p);
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack||'').split('\n')[1]));
   await p.goto(require('./env').GAME); await p.waitForTimeout(500); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(700);
   await p.evaluate(()=>{ SD.setRaid(9999); SD.res.wood = 300; SD.res.gold = 500; const k = SD.keep(); for (let r = 0; r < 12; r++) for (let a = 0; a < 16; a++) { const c = k.c + 8 + Math.round(Math.cos(a / 16 * 6.28) * r), rr = k.r + 2 + Math.round(Math.sin(a / 16 * 6.28) * r); if (SD.canPlace('market', c, rr)) { const m = SD.createBuilding('market', c, rr); m.hp = m.maxHp; finishBuilding(m); window.__m = m; return; } } });

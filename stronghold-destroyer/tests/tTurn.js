@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await p.route('**/three.min.js', r => r.abort());
+(async () => { const b = await chromium.launch(require('./env').LAUNCH); const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await require('./env').use3d(p);
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack||'').split('\n')[1]));
   await p.goto(require('./env').GAME); await p.waitForTimeout(500); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(700);
   await p.evaluate(()=>{ SD.setRaid(9999); document.getElementById('banner').style.opacity = 0; Object.assign(SD.res, { wood: 900, stone: 300, gold: 300 }); const k = SD.keep(); SD.cam.z = 1.6; SD.camWorld(k.x - 120, k.y - 200); });

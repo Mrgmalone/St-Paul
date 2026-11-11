@@ -173,7 +173,6 @@ canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse') {
     if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
-    if (e.button === 0 && e.altKey && R3D.active) { orbit = { x: p.x, y: p.y }; return; }
     if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
     else if (e.button === 2) { if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
@@ -203,7 +202,7 @@ function touchMove(p) {
   else if (TOUCH.mode === 'two' && pointers.size >= 2) {
     const t = twoInfo();
     const nz = clamp(TOUCH.z0 * t.d / TOUCH.d0, R3D.active ? 0.45 : minZoom(), 2.4);
-    if (R3D.active) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = nz; centerOn(cx, cy); R3D.turn(-(t.ang - TOUCH.ang)); }
+    if (R3D.active) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = nz; centerOn(cx, cy); }
     else { const w = toWorld(t.mx, t.my); cam.z = nz; cam.x = w.x - t.mx / cam.z; cam.y = w.y - t.my / cam.z; clampCam(); }
     panBy(TOUCH.mx, TOUCH.my, t.mx, t.my);
     TOUCH.ang = t.ang; TOUCH.mx = t.mx; TOUCH.my = t.my;
@@ -249,7 +248,6 @@ canvas.addEventListener('pointermove', e => {
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
   if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
-  if (orbit) { R3D.turn(-(p.x - orbit.x) * 0.007); R3D.tilt((p.y - orbit.y) * 0.004); orbit.x = p.x; orbit.y = p.y; return; }
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
     const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -300,7 +298,6 @@ canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); dr
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse.inside = false; });
 canvas.addEventListener('wheel', e => {
   e.preventDefault(); const p = localPos(e), w = toWorld(p.x, p.y);
-  if (R3D.active && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.2 && !e.ctrlKey) { R3D.turn(e.deltaX * 0.004); return; }
   const base = zoomAnim ? zoomAnim.z : cam.z, dz = clamp(e.deltaY, -120, 120);
   zoomAnim = { z: clamp(base * Math.exp(-dz * 0.0018), R3D.active ? 0.45 : minZoom(), 2.4), sx: p.x, sy: p.y };
 }, { passive: false });
@@ -314,13 +311,8 @@ window.addEventListener('keydown', e => {
   if (e.key === 'h' || e.key === 'H') toggleHelp();
   if (e.key === 'p' || e.key === 'P') setPaused(!paused);
   if ((e.key === 'z' || e.key === 'Z') && storeShown && JOBS[storeShown.kind]) siteAction(storeShown, 'sleep');
-  if (e.key === 'q' || e.key === 'Q') R3D.rotate(-1);
-  if (e.key === 'e' || e.key === 'E') R3D.rotate(1);
   if (placing && !isLine(placing.kind) && ['r', 'R', 't', 'T'].includes(e.key)) turnPlacing();
-  else if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
-  if (e.key === 'f' || e.key === 'F') R3D.tilt(-0.12);
   if (e.key === ' ' && started) { e.preventDefault(); goHome(); }
-  if (e.key === 'v' || e.key === 'V') setView(!R3D.active);
   if (e.key === 'm' || e.key === 'M') { const anyOn = AudioSys.isOn('music') || AudioSys.isOn('sfx'); AudioSys.setOn('music', !anyOn); AudioSys.setOn('sfx', !anyOn); refreshSoundButtons(); }
   if (e.key === 's' || e.key === 'S') commandStop(selectedList());
   if (e.key.startsWith('Arrow')) e.preventDefault();

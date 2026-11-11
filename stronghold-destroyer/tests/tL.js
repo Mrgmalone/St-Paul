@@ -2,7 +2,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const SP =
 const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
 (async () => { const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
-  if (USE3D) await p.route('**/three.min.js', r => r.fulfill({ body: THREE_JS, contentType: 'application/javascript' })); else await p.route('**/three.min.js', r => r.abort());
+  if (USE3D) await p.route('**/three.min.js', r => r.fulfill({ body: THREE_JS, contentType: 'application/javascript' })); else await require('./env').use3d(p);
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack||'').split('\n')[1]));
   await p.goto(require('./env').GAME); await p.waitForTimeout(800);
   await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(800);
