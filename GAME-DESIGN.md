@@ -1,0 +1,64 @@
+# Stronghold Destroyer: master design (owner: Gerald)
+
+## How to work
+- Keep what already works: rules, economy, combat, controls, sound. The changes are mostly the look, plus the gameplay listed here.
+- One phase at a time. At the end of each phase, run the tests and long automated games, then report in plain language: what changed, what I need to decide, anything that looks wrong. I don't read code.
+- Never leave the game broken or slower. Measure frame rate before and after each phase on a large game.
+- Must keep opening from a link and running on iPad.
+- Don't invent numbers silently. Propose costs, thresholds and balance, explain each in one line, and I will adjust.
+
+## Look
+- Final art direction is the asset PDF: page 1 military units, page 2 battlefields, bricks (brown, gray, green, black-gray-green; straight wall, block, arch, corner, battlement), ground and vegetation, bridge, river. Style is a 2008-era isometric RTS. Replace the old character looks completely.
+- ONE view only: fixed isometric. Remove the 2D/3D toggle and the camera turning and tilting. Pick the lightest way to render it and tell me why.
+- Keep the trees. Redo ground, grass, water, bridges and castle bricks to match the sheet.
+- King: the knight with a crown, regal robe, bigger sword and richer helmet. Civilians restyled to match.
+- For every unit or building with no art on the sheet (back views, walk frames, civilians, maceman, ram, ballista, king), make a stand-in in the same style, and give me a list of the images I should make in an image generator.
+- The old buttons and layout were bad. Redesign for iPad touch first: big clear buttons, uncluttered, tidy panels.
+
+## Calm people and glitches
+- Idle people sit or stand still and only move their head or eyes. They don't wander. People on watch sit and look around.
+- No circling, no freezing in doorways, no stuck units. My other game, Glowroot Town, solved this. If you can access that project, compare how it handles movement and bring the fixes over. If you can't, say so and fix it independently. Long test games must show zero stuck units.
+- Keep the game smooth with many units. Raise the cap on people substantially, as high as stays smooth, and tell me the number you reached.
+- People near each other should look like they are talking (chatter sound or a small gesture), without heavy animation.
+
+## Map and fog of war
+- Large map, not endless, with room for every people to grow. Start positions are random every game, for me and the rivals. Offer a seed option for testing only.
+- Fog of war every game. I don't know where the enemy camp is. Explored ground stays revealed. Ground is revealed by exploring, or when enemies show themselves.
+- Sight: longbowmen see twice as far as any other unit. A ballista on a tower matches longbow sight. Berserkers see as far as longbowmen.
+- Reserve growth ground around every camp ahead of time.
+
+## Start and castle growth
+- I start with a knight just made king, a few civilians, a shack in the woods and a small palisade. Wood and food only.
+- Five stages: 1 Shack. 2 Homestead (palisade, houses, farms, small barracks). 3 Hold (small stone keep, first stone walls and towers, iron workshop, swordsmen, knights). 4 Castle (full keep, gatehouse, giant towers, siege engines). 5 Stronghold (great castle, best armor).
+- Upgrades happen automatically when requirements are met (people, happy people, food, stone, iron, buildings standing). Propose the thresholds. Adding to the castle still costs stone, iron, food and building time.
+- On upgrade the castle footprint grows about 2-3 blocks in every direction. Trees and rocks in the way are cleared. Wood becomes brick becomes stone becomes thicker stone. Any of my buildings inside the new footprint move inside the new walls automatically, with a small payment if needed. Nothing is lost.
+- Units: stages 1-2 are spearmen, berserkers, crossbowmen and archers. Archers upgrade to longbowmen at stage 2 and cost more. Knights need iron and come at stage 3.
+- Towers: stage 4 giant towers come empty. A ballista can be added (about 5,000 coins) or a trebuchet (about 10,000). At stage 5 every tower comes with one. Scale prices to the economy so these are real goals.
+- Apothecary, church, monastery and abbey: once built, health and happiness are handled unless the building is destroyed, and the bigger ones are stronger. Taxes and food stay but should be light. Build these in the sheet's brick look in different colors.
+
+## Four peoples (working names)
+I pick one at the start and it changes how I build. The computer plays the rivals (number is a start-up setting), and one rival can be a trading friend who trades with me at the same stage level but with a different build.
+- Cy Young (bread makers): mill and bakery make 4-5x the food and they sell surplus for money, so they out-buy and out-upgrade others. No special power. The weakness is that slowing them early is the best counter.
+- Ticanologue (marketers): their market prices are half of everyone else's, but the market costs a lot to build.
+- Hekaranok (healers): wounded units run home to the castle or abbey, heal and return to exactly where they were. I can ring a bell to recall them. Double the people, but each is weaker. Killed units are not healed. Their abbeys are stronger.
+- Psychana (sight and stealth): all units see as far as longbowmen. Berserkers can sneak up unseen in groups under 10. Towers and palisade towers near a castle still spot them.
+
+## Rivals, raids and combat
+- Rivals follow the same stages and the same economy rules as me. They build up visibly over time, with houses and food and workshops, and never start with a finished castle. Their stage depends on their economy, so raiding their farms slows them. A rival rushed early is small, and the game can end fast.
+- Raids come from different directions each time. Rams, catapults and other siege engines come only with a large army, never with a few riders. Small groups are scouts and light raiders.
+- Separate random rogues and bandits unrelated to any rival steal and run off.
+- Effects: red and yellow sparks on every hit (no blood), sword clash sounds, arrow sounds, bricks visibly tumbling through the air. Generate sounds in code.
+- Challenging but winnable. A good player who rushes an early rival can win in about 15 minutes.
+
+## Art of War advisor
+- Always on, cannot be turned off. A small panel in a top corner, clear but not covering play.
+- Gives timely tips based on the situation (high ground, traps, which direction raiders come from, build a tower here). Short, in your own words, credited to Sun Tzu's The Art of War. One tip at a time, not constant.
+
+## Phases
+1. Foundation: save tests, split the one big file, fix idle behavior and circling, measure speed and the people cap. No look changes.
+2. One isometric view, the new art, UI redesign, list of missing images.
+3. Big map, random starts, fog of war.
+4. Castle stages, growth, absorbing buildings, unit unlocks, new buildings, tower weapons.
+5. Four peoples, start screen, rival AI, trading friend.
+6. Raids, combat effects and sounds, difficulty.
+7. Art of War advisor and final polish.

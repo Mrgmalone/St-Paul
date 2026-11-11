@@ -1,0 +1,11 @@
+const { chromium } = require('playwright');
+(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); await p.route('**/three.min.js', r => r.abort());
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto(require('./env').GAME); await p.waitForTimeout(500); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(600);
+  const t = () => p.evaluate(()=>time);
+  await p.click('#cMood'); await p.waitForTimeout(400); const a = await t(); await p.waitForTimeout(1500); const b2 = await t();
+  console.log('mood report open: time frozen', a === b2, '| note', await p.evaluate(()=>!document.getElementById('menuNote').hidden));
+  await p.click('#cMood'); await p.waitForTimeout(600); const c = await t(); await p.waitForTimeout(800); console.log('closed: time moves', (await t()) > c);
+  await p.keyboard.press('h'); await p.waitForTimeout(400); const d = await t(); await p.waitForTimeout(1000); console.log('help open: frozen', d === await t()); await p.keyboard.press('h');
+  await p.evaluate(()=>{ const k = SD.keep(); makeUnit('enemy', 'sword', k.x + 150, k.y); }); await p.click('#cMood'); await p.waitForTimeout(500); const e = await t(); await p.waitForTimeout(800); console.log('enemy near, menu open: time moves', (await t()) > e);
+  console.log('errors', errs); await b.close(); })();
