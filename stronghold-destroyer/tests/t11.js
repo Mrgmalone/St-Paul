@@ -27,7 +27,7 @@ const SP = require('./env').SP;
   await p.screenshot({path:SP+'/m_hud.png'});
   // archer: train via button, then shoot the enemy tower area guard
   await p.evaluate(()=>{ SD.setMood(60); SD.res.gold=100; SD.res.wood=200; });
-  await p.evaluate(()=>UI.showTab('army')); await p.click('.tb[data-k="archer"]'); await p.waitForTimeout(15000);
+  await p.evaluate(()=>UI.showTab('army')); await p.click('.tb[data-k="archer"]'); for (let i = 0; i < 120 && !(await p.evaluate(()=>SD.units.some(u=>u.type==='archer'&&!u.dead))); i++) await p.waitForTimeout(500);   // training takes a few game seconds
   const arch = await p.evaluate(()=>SD.units.filter(u=>u.type==='archer'&&!u.dead).length); console.log('archers', arch);
   await p.evaluate(()=>{ const a=SD.units.find(u=>u.type==='archer'); const g=SD.units.find(u=>u.team==='enemy'&&!u.dead); a.x=g.x-150; a.y=g.y; SD.commandAttack([a], g); SD.camWorld(g.x-500, g.y-350); });
   await p.waitForTimeout(2200); await p.screenshot({path:SP+'/m_archer.png'});

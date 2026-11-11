@@ -10,10 +10,14 @@
 ## Look
 - Final art direction is the asset PDF: page 1 military units, page 2 battlefields, bricks (brown, gray, green, black-gray-green; straight wall, block, arch, corner, battlement), ground and vegetation, bridge, river. Style is a 2008-era isometric RTS. Replace the old character looks completely.
 - ONE view only: fixed isometric. Remove the 2D/3D toggle and the camera turning and tilting. Pick the lightest way to render it and tell me why.
+  - Update (Gerald's Phase 2 follow-up, overrides the line above): the game STAYS TRUE 3D in three.js. No isometric or 2D view. The 2D view and the V toggle are gone; no camera turning or tilting (no Q, E, R, F, no twist or tilt buttons). The camera is fixed at one angle (45 degrees round, 40 degrees down) with smooth zoom (wheel, pinch, buttons) and scrolling only.
+  - Units are the sheet's flat pictures standing in the 3D world, facing the camera, using the left, front and right views (right is the left view mirrored). Terrain, water, walls, towers and buildings are real 3D, built in the sheet's brick, wood and ground style.
+  - Outlines, not cutouts: a person hidden behind a building, wall, tower or tree is drawn as a team-coloured silhouette over the top. Buildings stay solid.
 - Keep the trees. Redo ground, grass, water, bridges and castle bricks to match the sheet.
 - King: the knight with a crown, regal robe, bigger sword and richer helmet. Civilians restyled to match.
 - For every unit or building with no art on the sheet (back views, walk frames, civilians, maceman, ram, ballista, king), make a stand-in in the same style, and give me a list of the images I should make in an image generator.
 - The old buttons and layout were bad. Redesign for iPad touch first: big clear buttons, uncluttered, tidy panels.
+  - Button rules (side panel: training people, collecting materials, placing buildings): no names under the buttons; each button is a large picture of the item filling nearly all of it, with a thin margin and a small corner badge for the count. About one inch square on the iPad (130 points), the same size everywhere, never under 44 points. Tapping or hovering shows the name in a small label above. Items with no picture yet get a stand-in in the same style and go on the missing-art list.
 
 ## Calm people and glitches
 - Idle people sit or stand still and only move their head or eyes. They don't wander. People on watch sit and look around.
@@ -22,6 +26,8 @@
 - People near each other should look like they are talking (chatter sound or a small gesture), without heavy animation.
 
 ## Map and fog of war
+- The land is much wider now (128 by 80 squares, was 96 by 56). The world ends at a fancy gold frame like a game board, with ornate gold corner pieces. Inside the frame is a band of water, then the land; outside the frame is plain black. Trees and ground run right to the water.
+- Living water: all water moves, with gentle waves and occasional splashes; now and then a fish jumps. Birds fly over, butterflies flutter over the grass, frogs sit by the shore. Sporadic, cheap to draw, capped, and fewer automatically when the frame rate drops.
 - Large map, not endless, with room for every people to grow. Start positions are random every game, for me and the rivals. Offer a seed option for testing only.
 - Fog of war every game. I don't know where the enemy camp is. Explored ground stays revealed. Ground is revealed by exploring, or when enemies show themselves.
 - Sight: longbowmen see twice as far as any other unit. A ballista on a tower matches longbow sight. Berserkers see as far as longbowmen.
@@ -62,3 +68,8 @@ I pick one at the start and it changes how I build. The computer plays the rival
 5. Four peoples, start screen, rival AI, trading friend.
 6. Raids, combat effects and sounds, difficulty.
 7. Art of War advisor and final polish.
+
+## Where we left off
+- Phase 1 (foundation) is done: tests saved, one big file split into modules, calm idle people, no circling or stuck units in the long games, people cap 400.
+- Phase 2 (look and interface) is done, as changed by Gerald's follow-up: true 3D with a fixed camera (45 degrees round, 40 degrees down) and zoom only; the sheet's units as picture cards with team colours (crimson and gold with a gold lion; Black Stone charcoal and ember) from one recolour system ready for the four peoples; buildings and ground in the sheet's bricks, grass, dirt and water; team-coloured outlines behind buildings, walls, towers and trees; picture-first side buttons; a wider map ending in water and a gold frame; living water and small wildlife. The list of pictures still to make is design/MISSING-ART.md.
+- Next is Phase 3: big map with random starts and fog of war. Not started.
