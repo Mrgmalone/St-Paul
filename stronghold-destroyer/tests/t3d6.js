@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+const fs = require('fs');
+const THREE_JS = fs.readFileSync(require('./env').SP + '/lib/three/package/build/three.min.js');
+(async () => {
+  const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+  const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+  await p.route('**/three.min.js', r => r.fulfill({ body: THREE_JS, contentType: 'application/javascript' }));
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto(require('./env').GAME); await p.waitForTimeout(800);
+  await p.click('.civ[data-civ="wardens"]', { timeout: 300000 }); await p.waitForTimeout(1500);
+  await p.evaluate(()=>{ SD.setRaid(9999); document.getElementById('banner').style.opacity = 0; });
+  const top = await p.evaluate(()=>document.getElementById('game').getBoundingClientRect().top);
+  const info = await p.evaluate(()=>{ const k=SD.keep(); const bs=SD.bushes.slice().sort((a,b)=>Math.hypot(a.x-k.x,a.y-k.y)-Math.hypot(b.x-k.x,b.y-k.y)); const v = document.getElementById('view').getBoundingClientRect();
+    return bs.slice(0, 6).map(b=>{ const q=SD.R3D.project(b.x,8,b.y); return { x: Math.round(q.x), y: Math.round(q.y), onScreen: q.x>0 && q.x<v.width && q.y>0 && q.y<v.height }; }); });
+  console.log('nearest bushes on screen?', JSON.stringify(info));
+  const civ = await p.evaluate(()=>{ const c=SD.units.find(u=>u.type==='civ'); return SD.R3D.project(c.x, 22, c.y); });
+  await p.mouse.click(civ.x, civ.y + top); await p.waitForTimeout(200);
+  const vis = info.find(q => q.onScreen);
+  await p.mouse.click(vis.x, vis.y + top, { button: 'right' }); await p.waitForTimeout(300);
+  console.log('civilian order after right-clicking a visible bush:', await p.evaluate(()=>{ const u=[...SD.selection()][0]; return u.order + '/' + (u.task && u.task.type); }), 'errors', errs);
+  await b.close(); })();

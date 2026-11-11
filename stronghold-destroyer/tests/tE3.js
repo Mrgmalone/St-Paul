@@ -1,0 +1,13 @@
+const { chromium } = require('playwright');
+(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); await p.route('**/three.min.js', r => r.abort());
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto(require('./env').GAME); await p.waitForTimeout(500); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(600);
+  const r = await p.evaluate(()=>{ SD.setRaid(9999); const k = SD.keep(); const scr = (c, r) => [((c + 0.5) * 32 - SD.cam.x) * SD.cam.z, ((r + 0.5) * 32 - SD.cam.y) * SD.cam.z];
+    centerOn(k.x + 100, k.y + 80); const out = { before: SD.res.stone };
+    SD.startPlacing('highwall'); const a = scr(k.c + 4, k.r + 5), e = scr(k.c + 7, k.r + 5); SD.placeAt(a[0], a[1]); SD.placeAt(e[0], e[1]);
+    out.after = SD.res.stone; out.walls = SD.structures.filter(s => s.kind === 'highwall').length;
+    SD.startPlacing('highwall'); const a2 = scr(k.c + 4, k.r + 8), e2 = scr(k.c + 12, k.r + 8); SD.placeAt(a2[0], a2[1]); SD.placeAt(e2[0], e2[1]);
+    out.after2 = SD.res.stone; out.walls2 = SD.structures.filter(s => s.kind === 'highwall').length; out.banner = document.getElementById('banner').textContent;
+    SD.startPlacing('greattower'); out.gtBanner = document.getElementById('banner').textContent;
+    return out; });
+  console.log(JSON.stringify(r)); console.log('errors', errs); await b.close(); })();

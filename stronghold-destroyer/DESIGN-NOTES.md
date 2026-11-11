@@ -102,3 +102,31 @@ without a model keeps its built-in look. Waiting on his first files (swordsman f
 **Still open from earlier**
 - A fixed soldier cap: waiting on a number from Gerald.
 - Breaks stay 20 to 30 seconds (Gerald approved).
+
+
+## Final art direction (branch `stronghold-destroyer-art`)
+
+Gerald's final art direction is `design/Stronghold_Destroyer_Assets.pdf`: page 1
+(`design/sheet4-military-units.png`) has ten units in left, front and right views in a
+2008-era isometric RTS style; page 2 (`design/sheet5-battlefields-materials.png`) has
+battlefields, brick sets, ground patches and two trees, for the next step.
+
+- `tools/cut_units.py` cuts each unit into transparent views (`sprites/units/`), recolours
+  blue and green cloth to Gerald's crimson (gold, steel, wood and skin untouched) and makes a
+  Black Stone enemy version (charcoal cloth, ember-orange gold, darker steel). It writes
+  `sprites/units.js`, which embeds every view so the game cannot lose them.
+- Units drawn only from this art, in 2D and 3D (no code-built fallback): swordsman,
+  spearman, archer, knight (the Mounted Knight), catapult, trebuchet. The game waits for the
+  art before starting and says plainly if it cannot load.
+- Views: the view comes from the direction of travel as the viewer sees it: within about
+  43 degrees of straight towards the viewer shows the front; otherwise the side the unit is
+  heading towards. The sheet has real right views, so those are used rather than mirrored
+  left views. There is no back view: a unit walking away shows the side view of the way it
+  drifts (left or right), and keeps its last side when heading straight away.
+- In 3D each picture stands on the unit's spot, turns to the camera and leans back to face
+  it squarely.
+- Waiting on Gerald: Berserker, Flame Trooper, Crossbowman and Heavy Spearman are cut and
+  coloured but not used; maceman, ram, ballista, the King, Lord Varek, civilians and the ox
+  cart have no art on the sheet and keep their old look until he decides. Camera: the
+  recommendation is to lock the 3D camera to one fixed angle (see the report); not changed yet.
+- Tests now live in `tests/` (`node tests/run-all.js`).

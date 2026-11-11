@@ -265,7 +265,6 @@
     <button id="btnHelp">Help and controls (H)</button>
     <div class="row"><button id="btnTrees">Trees: Detailed</button><span style="font-size:14px;color:#d9c9a3">Simple runs faster on slower computers</span></div>
     <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
-    <div class="row"><button id="btnArt3d">Soldiers in 3D: Models</button><span style="font-size:14px;color:#d9c9a3">or your pictures from the design sheet</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
     <div class="row"><button id="btnView">View: 3D</button><span style="font-size:14px;color:#d9c9a3">V switches &middot; Q and E turn the camera</span></div>
     <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
@@ -398,6 +397,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="sprites/units.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -421,35 +421,57 @@ function hexToRgb(h) { if (hexCache[h]) return hexCache[h]; const s = h.replace(
 function mixHex(h1, h2, t) { const a = hexToRgb(h1), b = hexToRgb(h2); return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
 function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
-// ---------- character sprites: Gerald's own art, cut out of his design sheets ----------
-// sprites/sprites.json lists them; each file is a row of views of one character (front, 3/4 front, side, back, other side, 3/4 back)
-const ART = {}, ART_UNIT = { sword: 'swordsman', spear: 'spearman', archer: 'archer', maceman: 'armored-soldier', knight: 'knight', king: 'king', crossbow: 'crossbowman' };
-function loadSprites() {
-  fetch('sprites/sprites.json').then(r => r.ok ? r.json() : null).then(list => {
-    if (!list || !list.units) return;
-    for (const [name, d] of Object.entries(list.units)) { const img = new Image(); img.onload = () => { ART[name] = Object.assign({ img, n: d.views.length }, d); ART.ver = (ART.ver || 0) + 1; }; img.src = 'sprites/' + d.file; }
-  }).catch(() => {});
+// ---------- unit art: Gerald's final art direction (design/sheet4-military-units.png) ----------
+// sprites/units.js (made by tools/cut_units.py) holds each unit's left, front and right views, both as Gerald's
+// crimson-and-gold army and as the Black Stone enemy. Units listed here are drawn only from this art, in both views.
+const ART_UNIT = { sword: 'swordsman', spear: 'spearman', archer: 'archer', knight: 'mounted-knight', catapult: 'catapult', trebuchet: 'trebuchet' };
+// world units per picture pixel: the sheet draws every unit at about the same height, so the horse and the engines are scaled up
+const ART_SCALE = { swordsman: 0.245, spearman: 0.245, archer: 0.245, 'mounted-knight': 0.33, catapult: 0.31, trebuchet: 0.4, berserker: 0.245, 'flame-trooper': 0.245, crossbowman: 0.245, 'heavy-spearman': 0.245 };
+const ART = { ready: false, failed: false, ver: 0 };
+(function loadUnitArt() {
+  const src = window.UNIT_ART; if (!src) { ART.failed = true; return; }
+  let left = 0;
+  for (const [name, views] of Object.entries(src)) for (const [view, d] of Object.entries(views)) for (const team of ['army', 'enemy']) {
+    const img = new Image(); left++;
+    img.onload = () => { if (--left === 0) { ART.ready = true; ART.ver++; try { UI.paintIcons(); } catch (e) {} } };
+    img.onerror = () => { ART.failed = true; };
+    img.src = d[team];
+    ((ART[name] = ART[name] || {})[team] = ART[name][team] || {})[view] = { img, w: d.w, h: d.h };
+  }
+})();
+const artOf = u => { const n = !u.lord && ART_UNIT[u.type]; return n && ART.ready ? ART[n][u.team === 'enemy' ? 'enemy' : 'army'] : null; };
+// which of the three views: a = how far the unit's facing is turned from straight at the viewer (0 = towards us, positive = to our left).
+// Within about 43 degrees of us it shows its front; otherwise the side it is heading towards. There is no back view, so a unit
+// walking away shows the side view of the way it is drifting (left or right), never its back.
+function artView(prev, a) {
+  const ab = Math.abs(a);
+  if (ab < 0.75 || (prev === 'front' && ab < 0.95)) return 'front';
+  if (prev && prev !== 'front' && ab > 2.75) return prev;   // straight away from us: keep the side it was showing
+  return a > 0 ? 'left' : 'right';
 }
-let art3d = false; try { art3d = localStorage.getItem('sd-art3d') === 'pictures'; } catch (e) {}
-loadSprites();
-const spriteOf = u => (u.team === 'player' && !u.lord && ART[ART_UNIT[u.type]]) || null;
-// which picture to show: the unit's facing compared with the direction to the viewer (0 = looking at us)
-function spriteView(sp, rel) {
-  const k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, v = sp.views, at = n => Math.max(0, v.indexOf(n));
-  return [[at('front'), false], [at('front34'), false], [at('sideL'), false], [at('back34'), false], [at('back'), false], [at('back34'), true], [at('sideR'), false], [at('front34'), true]][k];
+// the flat view: direction from movement on screen, else towards its target, else it turns back to face us
+function artFacing2D(u) {
+  const dx = u.x - (u.artX ?? u.x), dy = u.y - (u.artY ?? u.y); u.artX = u.x; u.artY = u.y;
+  let a = u.artA ?? 0;
+  if (u.moving && dx * dx + dy * dy > 0.0004) a = Math.atan2(-dx, dy);
+  else if (u.target && alive(u.target) && (u.attackAnim > 0 || u.order === 'attack')) { const t = u.target, tx = t.x, ty = t.x0 !== undefined ? (t.y0 + t.y1) / 2 : t.y; a = Math.atan2(-(tx - u.x), ty - u.y); }
+  else if (!u.moving) a *= 0.96;
+  u.artA = a; u.artV = artView(u.artV, a);
 }
-function drawSpritePerson(g, u, sp, time) {   // the flat view: pick the picture by which way they face and move
-  const H = 50 * ((u.look && u.look.h) || 1), cw = sp.img.width / sp.n, ch = sp.img.height, W = H * cw / ch;
-  const moving = u.moving && !u.dead, mvx = u.x - (u.lastDrawX ?? u.x); u.lastDrawX = u.x;
-  const [idx, flip] = moving ? (u.facing > 0 ? [sp.views.indexOf('sideR'), false] : [sp.views.indexOf('sideL'), false]) : spriteView(sp, u.facing > 0 ? -Math.PI / 4 : Math.PI / 4);
-  const bob = moving ? Math.abs(Math.sin(u.walkPhase)) * 2.2 : 0, lean = u.attackAnim > 0 ? Math.sin(u.attackAnim * Math.PI) * 0.18 * (u.facing || 1) : 0;
+function drawUnitArt(g, u, art, time, keepFacing) {
+  if (!keepFacing) artFacing2D(u);
+  const v = art[u.artV || 'front'], k = ART_SCALE[ART_UNIT[u.type]] * ((u.look && u.look.h) || 1), W = v.w * k, H = v.h * k;
+  const machine = isMachine(u), moving = u.moving && !u.dead, side = u.artV === 'left' ? -1 : u.artV === 'right' ? 1 : 0;
+  const bob = moving && !machine ? Math.abs(Math.sin(u.walkPhase)) * 2.0 : 0, sway = moving && !machine ? Math.sin(u.walkPhase) * 0.035 : 0;
+  const a = u.attackAnim > 0 ? Math.sin(u.attackAnim * Math.PI) : 0, lean = machine ? 0 : a * 0.16 * (side || 1), kick = machine ? a * 2.2 : 0;
   const y0 = u.y - elev2D(u);
-  g.save(); g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(u.x, y0, W * 0.32, 3.4, 0, 0, Math.PI * 2); g.fill();
-  g.translate(u.x, y0 - bob);
-  if (u.dead) { const f = Math.min(1, u.deathT / 0.45); g.rotate(f * Math.PI / 2 * (u.facing > 0 ? -1 : 1)); g.globalAlpha = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1; }
-  g.rotate(lean); if (flip) g.scale(-1, 1);
-  g.drawImage(sp.img, Math.max(0, idx) * cw, 0, cw, ch, -W / 2, -H, W, H);
-  if (u.flash > 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(0.5, u.flash * 0.5); g.drawImage(sp.img, Math.max(0, idx) * cw, 0, cw, ch, -W / 2, -H, W, H); }
+  g.save();
+  if (!keepFacing) { g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(u.x, y0 - 1, W * 0.34, Math.max(3.2, W * 0.07), 0, 0, Math.PI * 2); g.fill(); }
+  g.translate(u.x + kick * (side || 1), y0 - bob);
+  if (u.dead) { const f = Math.min(1, u.deathT / 0.45); g.rotate(f * Math.PI / 2 * 0.92 * (side >= 0 ? 1 : -1)); g.globalAlpha = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1; }
+  g.rotate(lean + sway);
+  g.drawImage(v.img, -W / 2, -H, W, H);
+  if (u.flash > 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(0.5, u.flash * 0.5); g.drawImage(v.img, -W / 2, -H, W, H); }
   g.restore();
 }
 // ---------- heraldry ----------
@@ -4557,7 +4579,9 @@ const UI = (() => {
   function iconUnit(g, type, w, h) {
     const u = fakeUnit(type);
     g.save(); g.translate(w / 2, h - 3);
-    if (MACHINE[type]) { const sc = Math.min((w - 4) / 60, (h - 4) / 58); g.scale(sc, sc); u.animDur = 1; drawMachine(g, u, 0); }
+    const art = ART_UNIT[type] && ART.ready ? ART[ART_UNIT[type]].army.front : null;
+    if (art) { const sc = Math.min((w - 4) / art.w, (h - 4) / art.h); g.drawImage(art.img, -art.w * sc / 2, -art.h * sc, art.w * sc, art.h * sc); }
+    else if (MACHINE[type]) { const sc = Math.min((w - 4) / 60, (h - 4) / 58); g.scale(sc, sc); u.animDur = 1; drawMachine(g, u, 0); }
     else { const sc = (h - 4) / 46; g.scale(sc, sc); drawPerson(g, u, 0); }
     g.restore();
   }
@@ -5637,27 +5661,33 @@ const R3D = (() => {
     obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     info.inner.add(obj); return true;
   }
-  function spriteUnitModel(u, sp) {
+  const artTex = new Map();
+  function artTexture(img) { let t = artTex.get(img); if (!t) { t = new T.Texture(img); t.encoding = T.sRGBEncoding; t.anisotropy = 4; t.needsUpdate = true; artTex.set(img, t); } return t; }
+  const ART_SIGN3D = -1;   // which way round left and right are, seen through the 3D camera (checked: walking screen-left shows the left view)
+  function artUnitModel(u, art) {
     const root = new T.Group(), body = new T.Group(); root.add(body);
-    const pivot = new T.Group(); body.add(pivot);
-    const H = (u.type === 'king' ? 47 : u.type === 'knight' ? 46 : 44) * 1.12, cw = sp.img.width / sp.n, W = H * cw / sp.img.height;
-    const tex = new T.Texture(sp.img); tex.encoding = T.sRGBEncoding; tex.needsUpdate = true; tex.repeat.set(1 / sp.n, 1); tex.anisotropy = 4;
-    const mat = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.45, side: T.DoubleSide, toneMapped: false });
-    const geo = new T.PlaneGeometry(W, H); geo.translate(0, H / 2 - 1.5, 0);
-    const card = new T.Mesh(geo, mat); pivot.add(card);
-    const sh = new T.Mesh(new T.CircleGeometry(W * 0.36, 16), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.4; sh.scale.set(1, 0.55, 1); root.add(sh);
-    return { root, body, pivot, card, tex, sp, sprite: true, mats: [mat], m: {}, heading: u.facing < 0 ? -Math.PI / 2 : Math.PI / 2, spVer: ART.ver };
+    const pivot = new T.Group(); body.add(pivot); const tilt = new T.Group(); pivot.add(tilt);
+    const mat = new T.MeshBasicMaterial({ map: artTexture(art.front.img), alphaTest: 0.5, side: T.DoubleSide, toneMapped: false });
+    const geo = new T.PlaneGeometry(1, 1); geo.translate(0, 0.5, 0);
+    const card = new T.Mesh(geo, mat); tilt.add(card);
+    const k = ART_SCALE[ART_UNIT[u.type]], fw = art.front.w * k;
+    const sh = new T.Mesh(new T.CircleGeometry(Math.max(7, Math.min(22, fw * 0.36)), 18), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.5; sh.scale.set(1, 0.6, 1); root.add(sh);
+    return { root, body, pivot, tilt, card, mat, art, k, artModel: true, mats: [mat], m: {}, heading: u.facing < 0 ? -Math.PI / 2 : Math.PI / 2, view: null, artVer: ART.ver };
   }
-  function animateSprite(u, md, dt) {
+  function animateArt(u, md, dt) {
     const cp = camera.position, camDir = Math.atan2(cp.x - u.x, cp.z - u.y);
     let rel = md.heading - camDir; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
-    const [idx, flip] = spriteView(md.sp, rel), n = md.sp.n;
-    md.tex.repeat.x = (flip ? -1 : 1) / n; md.tex.offset.x = (flip ? idx + 1 : idx) / n;
-    md.pivot.rotation.y = camDir - md.heading;   // the card always faces the viewer
-    const mv = u.moving && !u.dead, ph = u.walkPhase || 0;
-    md.card.position.y = mv ? Math.abs(Math.sin(ph)) * 1.6 : Math.sin(time * 1.6 + (u.seed || 0)) * 0.15;
-    md.card.rotation.z = mv ? Math.sin(ph) * 0.045 : 0;
-    md.card.rotation.x = u.attackAnim > 0 ? -Math.sin(u.attackAnim * Math.PI) * 0.22 : 0;
+    const view = artView(md.view, rel * ART_SIGN3D);
+    if (view !== md.view) { const v = md.art[view]; md.mat.map = artTexture(v.img); md.card.scale.set(v.w * md.k, v.h * md.k, 1); md.view = view; }
+    md.pivot.rotation.y = camDir - md.heading;   // the picture always turns to the viewer...
+    const horiz = Math.max(1, Math.hypot(cp.x - u.x, cp.z - u.y)), elev = Math.atan2(cp.y - md.root.position.y, horiz);
+    md.tilt.rotation.x = -elev;                  // ...and leans back so the camera looking down sees it whole, not squashed
+    const machine = isMachine(u), mv = u.moving && !u.dead, ph = u.walkPhase || 0, side = md.view === 'left' ? -1 : md.view === 'right' ? 1 : 0;
+    const a = u.attackAnim > 0 ? Math.sin(u.attackAnim * Math.PI) : 0;
+    md.card.position.y = mv && !machine ? Math.abs(Math.sin(ph)) * 1.7 : 0;
+    md.card.position.x = machine ? a * 2.4 * (side || 1) : 0;
+    md.card.rotation.z = (mv && !machine ? Math.sin(ph) * 0.04 : 0) - (machine ? 0 : a * 0.17 * (side || 1));
+    if (u.dead) { const f = Math.min(1, u.deathT / 0.45); md.card.rotation.z = -f * Math.PI / 2 * 0.92 * (side >= 0 ? 1 : -1); }
   }
   function personModel(u) {
     const P = u.pal, soldier = (swordish(u) || u.type === 'spear'), lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
@@ -6242,8 +6272,8 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); const sp = art3d ? spriteOf(u) : null; return sp ? spriteUnitModel(u, sp) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
-      else if (!u.dead && (md.sprite ? !art3d : (!md.glb && !md.machine && !md.ram && art3d && md.spVer !== ART.ver && spriteOf(u)))) { scene.remove(md.root); unitModels.delete(u.id); continue; }
+      if (!md) { const art = artOf(u); md = art ? artUnitModel(u, art) : u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); return ent ? glbUnitModel(u, ent) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      else if (!u.dead && !md.artModel && artOf(u)) { scene.remove(md.root); unitModels.delete(u.id); continue; }
       else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
       seen.add(u.id);
@@ -6268,13 +6298,13 @@ const R3D = (() => {
         if (md.log) md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
         if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
-      } else if (md.glb) animateGlb(u, md, dt); else if (md.sprite) animateSprite(u, md, dt); else animatePerson(u, md, dt);
+      } else if (md.artModel) animateArt(u, md, dt); else if (md.glb) animateGlb(u, md, dt); else animatePerson(u, md, dt);
       // hit flash, falling, fading
       const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
       for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk, fk, fk); }
       if (u.dead) {
         let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f);
-        if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; }
+        if (!md.artModel && !(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; }
         const al = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1;
         if (al < 1) for (const mt of md.mats) { mt.transparent = true; mt.opacity = al; }
       }
@@ -6544,7 +6574,8 @@ const R3D = (() => {
   // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
   function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
   const glbStatus = detail => ({ loaded: Object.keys(GLB), unitsUsingModels: [...unitModels.values()].filter(m => m.glb).map(m => m.glbKey + ':' + (m.cur || '-') + (detail ? ' ' + JSON.stringify((() => { const bb = new T.Box3().setFromObject(m.root); return { min: bb.min.toArray().map(Math.round), max: bb.max.toArray().map(Math.round), vis: m.root.visible, inScene: !!m.root.parent }; })()) : '')) });
-  return { rebuildModel, glbStatus, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
+  const artViewOf = u => { const md = unitModels.get(u.id); if (!md || !md.artModel) return null; const cp = camera.position, camDir = Math.atan2(cp.x - u.x, cp.z - u.y); let rel = md.heading - camDir; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); return md.view + ' rel=' + rel.toFixed(2) + ' head=' + md.heading.toFixed(2) + ' cam=' + camDir.toFixed(2) + ' moving=' + u.moving; };
+  return { rebuildModel, glbStatus, artViewOf, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, rotate, turn, tilt, resetView, panAxes, heightAt };
 })();
 
 const speeches = [];
@@ -6615,8 +6646,6 @@ function showLeftNote(reasons) {
   document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b>';
 }
 document.getElementById('leftWhy').onclick = () => { const el = document.getElementById('leftNote'); document.getElementById('leftText').innerHTML = '<b>An unhappy citizen has left your town.</b><span class="why2">' + el.dataset.why + '</span>'; leftNoteT = 20; const mp = document.getElementById('moodPop'); if (mp.hidden) document.getElementById('cMood').click(); };
-document.getElementById('btnArt3d').onclick = () => { art3d = !art3d; try { localStorage.setItem('sd-art3d', art3d ? 'pictures' : 'models'); } catch (e) {} document.getElementById('btnArt3d').textContent = 'Soldiers in 3D: ' + (art3d ? 'Pictures' : 'Models'); };
-document.getElementById('btnArt3d').textContent = 'Soldiers in 3D: ' + (art3d ? 'Pictures' : 'Models');
 document.getElementById('leftClose').onclick = () => { document.getElementById('leftNote').hidden = true; };
 // every box that pops up gets a big X to close it, and keeps it even when its contents are redrawn
 (function closeButtons() {
@@ -6787,7 +6816,7 @@ function drawHiddenOutlines(g, visible) {
     const ga = a.getContext('2d'), gb = b.getContext('2d');
     ga.setTransform(1, 0, 0, 1, 0, 0); ga.clearRect(0, 0, cw, ch);
     ga.setTransform(S, 0, 0, S, (W / 2 - u.x) * S, (H - 12 - u.y) * S);
-    (isMachine(u) ? drawMachine : drawPerson)(ga, u, time);
+    { const art = artOf(u); if (art) drawUnitArt(ga, u, art, time, true); else (isMachine(u) ? drawMachine : drawPerson)(ga, u, time); }
     ga.setTransform(1, 0, 0, 1, 0, 0); ga.globalCompositeOperation = 'source-in';
     const col = u.team === 'player' ? PAL.player.tunic : ENEMY_PLUME;
     gb.setTransform(1, 0, 0, 1, 0, 0); gb.clearRect(0, 0, cw, ch); gb.drawImage(a, 0, 0); gb.globalCompositeOperation = 'source-in'; gb.fillStyle = '#fff6d8'; gb.fillRect(0, 0, cw, ch); gb.globalCompositeOperation = 'source-over';
@@ -6931,8 +6960,7 @@ function render() {
     else if (BUILD[o.kind]) drawBuilding(g, o, time);
     else if (o.kind === 'bush') drawBush(g, o);
     else if (o.kind === 'fire') drawFire(g, o, time);
-    else if (isMachine(o)) drawMachine(g, o, time);
-    else { const sp = spriteOf(o); if (sp) drawSpritePerson(g, o, sp, time); else drawPerson(g, o, time); }
+    else { const art = artOf(o); if (art) drawUnitArt(g, o, art, time); else if (isMachine(o)) drawMachine(g, o, time); else drawPerson(g, o, time); }
   }
   if (outlinesOn) drawHiddenOutlines(g, visible);
   for (const which of ['army', 'town']) {   // rally flags
@@ -6993,6 +7021,15 @@ centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
 document.getElementById('banner').style.opacity = 0; document.getElementById('banner').classList.remove('shown');
 let palVer = 0;
 function startGame(key) {
+  if (started) return;
+  if (!ART.ready) {   // the units are drawn only from Gerald's art: wait for it, and say so plainly if it cannot load
+    const note = document.getElementById('artWait') || Object.assign(document.createElement('div'), { id: 'artWait' });
+    note.style.cssText = 'position:absolute;left:50%;top:18px;transform:translateX(-50%);z-index:9;background:rgba(16,11,7,.92);border:2px solid #b08a4a;border-radius:10px;padding:10px 18px;color:#fff0cf;font-size:18px';
+    if (!note.parentNode) document.body.appendChild(note);
+    if (ART.failed) { note.textContent = 'The unit pictures (sprites/units.js) did not load. Please reload the page.'; return; }
+    note.textContent = 'Loading the soldiers\u2019 art\u2026'; clearTimeout(startGame.wait); startGame.wait = setTimeout(() => startGame(key), 120); return;
+  }
+  { const n = document.getElementById('artWait'); if (n) n.remove(); }
   palVer++;   // team colours change: 3D buildings made before this are rebuilt in the new colours
   AudioSys.init(); AudioSys.setTheme(key);
   CIV = CIVS[key];
