@@ -19,6 +19,37 @@ function hexToRgb(h) { if (hexCache[h]) return hexCache[h]; const s = h.replace(
 function mixHex(h1, h2, t) { const a = hexToRgb(h1), b = hexToRgb(h2); return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
 function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
+// ---------- character sprites: Gerald's own art, cut out of his design sheets ----------
+// sprites/sprites.json lists them; each file is a row of views of one character (front, 3/4 front, side, back, other side, 3/4 back)
+const ART = {}, ART_UNIT = { sword: 'swordsman', spear: 'spearman', archer: 'archer', maceman: 'armored-soldier', knight: 'knight', king: 'king', crossbow: 'crossbowman' };
+function loadSprites() {
+  fetch('sprites/sprites.json').then(r => r.ok ? r.json() : null).then(list => {
+    if (!list || !list.units) return;
+    for (const [name, d] of Object.entries(list.units)) { const img = new Image(); img.onload = () => { ART[name] = Object.assign({ img, n: d.views.length }, d); ART.ver = (ART.ver || 0) + 1; }; img.src = 'sprites/' + d.file; }
+  }).catch(() => {});
+}
+let art3d = false; try { art3d = localStorage.getItem('sd-art3d') === 'pictures'; } catch (e) {}
+loadSprites();
+const spriteOf = u => (u.team === 'player' && !u.lord && ART[ART_UNIT[u.type]]) || null;
+// which picture to show: the unit's facing compared with the direction to the viewer (0 = looking at us)
+function spriteView(sp, rel) {
+  const k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, v = sp.views, at = n => Math.max(0, v.indexOf(n));
+  return [[at('front'), false], [at('front34'), false], [at('sideL'), false], [at('back34'), false], [at('back'), false], [at('back34'), true], [at('sideR'), false], [at('front34'), true]][k];
+}
+function drawSpritePerson(g, u, sp, time) {   // the flat view: pick the picture by which way they face and move
+  const H = 50 * ((u.look && u.look.h) || 1), cw = sp.img.width / sp.n, ch = sp.img.height, W = H * cw / ch;
+  const moving = u.moving && !u.dead, mvx = u.x - (u.lastDrawX ?? u.x); u.lastDrawX = u.x;
+  const [idx, flip] = moving ? (u.facing > 0 ? [sp.views.indexOf('sideR'), false] : [sp.views.indexOf('sideL'), false]) : spriteView(sp, u.facing > 0 ? -Math.PI / 4 : Math.PI / 4);
+  const bob = moving ? Math.abs(Math.sin(u.walkPhase)) * 2.2 : 0, lean = u.attackAnim > 0 ? Math.sin(u.attackAnim * Math.PI) * 0.18 * (u.facing || 1) : 0;
+  const y0 = u.y - elev2D(u);
+  g.save(); g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(u.x, y0, W * 0.32, 3.4, 0, 0, Math.PI * 2); g.fill();
+  g.translate(u.x, y0 - bob);
+  if (u.dead) { const f = Math.min(1, u.deathT / 0.45); g.rotate(f * Math.PI / 2 * (u.facing > 0 ? -1 : 1)); g.globalAlpha = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1; }
+  g.rotate(lean); if (flip) g.scale(-1, 1);
+  g.drawImage(sp.img, Math.max(0, idx) * cw, 0, cw, ch, -W / 2, -H, W, H);
+  if (u.flash > 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(0.5, u.flash * 0.5); g.drawImage(sp.img, Math.max(0, idx) * cw, 0, cw, ch, -W / 2, -H, W, H); }
+  g.restore();
+}
 // ---------- heraldry ----------
 function drawLion(g, cx, cy, s, col) {   // a heraldic lion rampant: rearing, forepaws raised, mane, tail curling up with a tuft
   const X = x => cx + (x / 100 - 0.5) * s, Y = y => cy + (y / 100 - 0.5) * s;
@@ -626,7 +657,7 @@ function alertAllies(src, foe, radius) {
 }
 function underAttackAlert(u) {
   if (alertCooldown > 0) return;
-  const onScreen = onView(u.x, u.y, 0);
+  const onScreen = u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z;
   if (!onScreen) { showBanner('Your soldiers are under attack!', 3); alertCooldown = 12; AudioSys.ui('warn'); }
 }
 function kill(t) {

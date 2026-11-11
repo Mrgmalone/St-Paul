@@ -164,6 +164,7 @@ function fixUnit(u) {
   if (u.type === 'civ' && u.task && !u.job) u.task = null;
   if (!keepRoof && circleBlocked(u.x, u.y, u.radius * 0.8)) { const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; } }
   u.lastX = u.x; u.lastY = u.y;
+  try { R3D.rebuildModel(u); } catch (e) {}
   for (let i = 0; i < 12; i++) spawn('smoke', u.x + RR(-8, 8), u.y - RR(0, 30), u.y);
   floatText(u.x, u.y - 60, 'Fixed and rebuilt', '#9fe8a8'); AudioSys.ui('select');
   if (u.job && u.type === 'civ') startJob(u);
@@ -177,6 +178,7 @@ function fixBuilding(b) {
     if (u.job === b && u.type === 'civ' && !u.inside) { u.order = 'idle'; u.sub = null; u.path = []; u.crafting = null; startJob(u); }
   }
   b.flash = 0; b.wobble = 0; b.dropT = performance.now();
+  try { R3D.rebuildModel(b); } catch (e) {}
   for (let i = 0; i < 20; i++) spawn('smoke', b.x + RR(-25, 25), b.y - RR(0, 50), b.y);
   floatText(b.x, b.y - Math.min(60, b.topH || 20) - 10, `${b.name} rebuilt`, '#9fe8a8'); AudioSys.ui('select');
 }
@@ -194,7 +196,7 @@ fixBtn.onclick = e => { e.stopPropagation(); const u = selection.size === 1 ? [.
 function placeFixButton() {
   const u = selection.size === 1 ? [...selection][0] : null;
   if (!u || u.dead || u.inside || !started) { if (!fixBtn.hidden) fixBtn.hidden = true; return; }
-  const q = screenOf(u.x, u.y, (isMachine(u) ? 60 : 64) + elev2D(u));
+  const q = screenOf(u.x, u.y, (isMachine(u) ? 60 : 64) + (R3D.active ? elev3D(u) : elev2D(u)));
   if (!q.ok || q.x < 0 || q.y < 30 || q.x > vw || q.y > vh) { fixBtn.hidden = true; return; }
   fixBtn.hidden = false; fixBtn.style.left = q.x + 'px'; fixBtn.style.top = q.y + 'px';
 }
