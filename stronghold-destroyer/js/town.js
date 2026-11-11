@@ -334,14 +334,16 @@ function updateJobs(dt) {
   }
   for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time) && !u.toHeal) startJob(u);
   // anyone with no building job gathers by themselves: food when stores are low, otherwise wood; at most 5 to a bush, tree or rock
-  const onNode = n => civs.filter(o => o.task && o.task.node === n && o.order === 'gather').length;
+  // how many are already on each bush, tree or rock: counted once, then kept up to date as people are sent
+  const onCount = new Map(); for (const o of civs) if (o.task && o.task.node && o.order === 'gather') onCount.set(o.task.node, (onCount.get(o.task.node) || 0) + 1);
+  const onNode = n => onCount.get(n) || 0;
   for (const u of civs) {
     if (u.job || u.toHeal || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
     const want = res.food < 120 || foodKinds.berries + foodKinds.crops < res.wood * 0.6 ? 'food' : 'wood';
     for (const type of [want, want === 'food' ? 'wood' : 'food']) {
       const list = type === 'wood' ? trees : bushes; let best = null, bd = 1100;
       for (const n of list) { if (!nodeOk(n, type) || onNode(n) >= 5 || (u.bad && u.bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - u.x, c.y - u.y); if (d < bd) { bd = d; best = n; } }
-      if (best) { commandGather([u], best); break; }
+      if (best) { commandGather([u], best); onCount.set(best, onNode(best) + 1); break; }
     }
   }
   // people with no job wait by the campfire

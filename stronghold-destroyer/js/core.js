@@ -508,23 +508,25 @@ function nearestFree(c, r) {
   }
   return null;
 }
+// the search maps are made once and reused: a stamp per search says which entries belong to this search
+const FP_N = COLS * ROWS, fpG = new Float32Array(FP_N), fpCame = new Int32Array(FP_N), fpSeen = new Uint32Array(FP_N), fpClosed = new Uint32Array(FP_N); let fpGen = 0;
 function findPath(sx, sy, gx, gy) {
   let gc = Math.floor(gx / TILE), gr = Math.floor(gy / TILE);
   if (circleBlocked(gx, gy, 7)) { const f = nearestFree(gc, gr); if (!f) return []; gc = f.c; gr = f.r; gx = gc * TILE + 16; gy = gr * TILE + 16; }
   if (lineClear(sx, sy, gx, gy)) return [{ x: gx, y: gy }];
   let sc = Math.floor(sx / TILE), sr = Math.floor(sy / TILE);
   if (tileBlocked(sc, sr)) { const f = nearestFree(sc, sr); if (!f) return []; sc = f.c; sr = f.r; }
-  const N = COLS * ROWS, gs = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+  const gen = ++fpGen, G = i => fpSeen[i] === gen ? fpG[i] : Infinity;
   const start = sr * COLS + sc, goal = gr * COLS + gc;
   const h = i => { const dc = Math.abs(i % COLS - gc), dr = Math.abs(((i / COLS) | 0) - gr); return (dc + dr) + (1.4142 - 2) * Math.min(dc, dr); };
   const heap = []; // [f, idx]
   const push = (f, i) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
-  gs[start] = 0; push(h(start), start);
+  fpSeen[start] = gen; fpG[start] = 0; fpCame[start] = -1; push(h(start), start);
   let best = start, bestH = h(start);
   while (heap.length) {
     const [, cur] = pop();
-    if (closed[cur]) continue; closed[cur] = 1;
+    if (fpClosed[cur] === gen) continue; fpClosed[cur] = gen;
     if (cur === goal) { best = cur; bestH = 0; break; }
     const hc = h(cur); if (hc < bestH) { bestH = hc; best = cur; }
     const cc = cur % COLS, cr = (cur / COLS) | 0;
@@ -533,13 +535,13 @@ function findPath(sx, sy, gx, gy) {
       const nc = cc + dc, nr = cr + dr;
       if (tileBlocked(nc, nr)) continue;
       if (dc && dr && (tileBlocked(cc + dc, cr) || tileBlocked(cc, cr + dr))) continue;
-      const ni = nr * COLS + nc; if (closed[ni]) continue;
-      const ng = gs[cur] + (dc && dr ? 1.4142 : 1);
-      if (ng < gs[ni]) { gs[ni] = ng; came[ni] = cur; push(ng + h(ni), ni); }
+      const ni = nr * COLS + nc; if (fpClosed[ni] === gen) continue;
+      const ng = fpG[cur] + (dc && dr ? 1.4142 : 1);
+      if (ng < G(ni)) { fpSeen[ni] = gen; fpG[ni] = ng; fpCame[ni] = cur; push(ng + h(ni), ni); }
     }
   }
   const pts = [];
-  for (let i = best; i !== -1 && i !== start; i = came[i]) pts.push({ x: (i % COLS) * TILE + 16, y: ((i / COLS) | 0) * TILE + 16 });
+  for (let i = best; i !== -1 && i !== start; i = fpCame[i]) pts.push({ x: (i % COLS) * TILE + 16, y: ((i / COLS) | 0) * TILE + 16 });
   pts.reverse();
   if (best === goal) { if (pts.length) pts[pts.length - 1] = { x: gx, y: gy }; else pts.push({ x: gx, y: gy }); }
   // string-pull smoothing
@@ -576,9 +578,10 @@ function enemiesOf(team) {
   for (const s of structures) if (s.team !== team && !s.dead && s.kind !== 'pit' && s.kind !== 'moat') list.push(s);
   return list;
 }
-function nearestEnemy(u, maxD) {
+function nearestEnemy(u, maxD) {   // the closest enemy person (from the nearby grid) or enemy building
   let best = null, bd = maxD;
-  for (const e of enemiesOf(u.team)) { const d = edgeDist(u, e); if (d < bd) { bd = d; best = e; } }
+  for (const e of nearUnits(u.x, u.y, maxD + 40)) { if (e.team === u.team || e.dead || e.inside) continue; const d = edgeDist(u, e); if (d < bd) { bd = d; best = e; } }
+  for (const s of structures) { if (s.team === u.team || s.dead || s.kind === 'pit' || s.kind === 'moat') continue; const d = edgeDist(u, s); if (d < bd) { bd = d; best = s; } }
   return best;
 }
 function hitCenter(t) { return t.x0 !== undefined ? { x: t.x + RR(-22, 22), y: t.y - RR(20, 90) } : { x: t.x, y: t.y - 21 }; }
@@ -703,3 +706,18 @@ function drawParticles(g) {
   }
 }
 
+
+// ---------- who is near whom: a grid of 64-pixel squares, refilled once a frame ----------
+// Lets "who is close to me?" look at a handful of squares instead of every unit on the map, so the game
+// stays smooth with many people. nearUnits returns a shared list: use it straight away, don't keep it or nest calls.
+const UG = 64, UGW = Math.ceil(MW / UG) + 2, UGH = Math.ceil(MH / UG) + 2, unitGrid = Array.from({ length: UGW * UGH }, () => []), nearBuf = [];
+function buildUnitGrid() {
+  for (const c of unitGrid) c.length = 0;
+  for (const u of units) { if (u.dead) continue; const cx = Math.max(0, Math.min(UGW - 1, Math.floor(u.x / UG) + 1)), cy = Math.max(0, Math.min(UGH - 1, Math.floor(u.y / UG) + 1)); unitGrid[cy * UGW + cx].push(u); }
+}
+function nearUnits(x, y, r) {
+  nearBuf.length = 0;
+  const x0 = Math.max(0, Math.floor((x - r) / UG) + 1), x1 = Math.min(UGW - 1, Math.floor((x + r) / UG) + 1), y0 = Math.max(0, Math.floor((y - r) / UG) + 1), y1 = Math.min(UGH - 1, Math.floor((y + r) / UG) + 1);
+  for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) { const c = unitGrid[cy * UGW + cx]; for (let i = 0; i < c.length; i++) nearBuf.push(c[i]); }
+  return nearBuf;
+}

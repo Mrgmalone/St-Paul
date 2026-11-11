@@ -1360,29 +1360,35 @@ const R3D = (() => {
   }
   const unitModels = new Map();
   const angLerp = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * t; };
+  const angDiff = (b, a) => ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  // an idle person's slow look about: turn the head to a new spot every few seconds, ease there, hold still
+  const lookAbout = sd => { const T0 = (time + sd * 7.3) / 3.4, k = Math.floor(T0), f = T0 - k, at = n => Math.sin(n * 12.9898 + sd * 78.233) * 0.62;
+    const e = Math.min(1, f / 0.28), sm = e * e * (3 - 2 * e); return at(k - 1) + (at(k) - at(k - 1)) * sm; };
   function animatePerson(u, md, dt) {
     const moving = u.moving && !u.dead, ph = u.walkPhase, a = u.attackAnim;
     const sd = u.seed || 0, run = moving && (u.order === 'attack' || u.order === 'raid') ? 1.25 : 1;
     for (const l of md.legs) {
       const p = ph + (l.side > 0 ? 0 : Math.PI), sw = Math.sin(p);
       // thigh swings through; the knee bends hard as the foot passes under, and stays a little soft on landing
-      l.hip.rotation.x = moving ? -sw * 0.58 * run : (l.side > 0 ? 0.04 : -0.03) * Math.sin(time * 0.4 + sd);
-      l.knee.rotation.x = moving ? Math.max(0, Math.cos(p) + 0.25) * 0.95 * run + 0.06 : 0.05 + (l.side > 0 ? 0.06 : 0) * (0.5 + 0.5 * Math.sin(time * 0.4 + sd));
+      l.hip.rotation.x = moving ? -sw * 0.58 * run : (l.side > 0 ? 0.03 : -0.02);   // standing still: the legs do not shift
+      l.knee.rotation.x = moving ? Math.max(0, Math.cos(p) + 0.25) * 0.95 * run + 0.06 : (l.side > 0 ? 0.08 : 0.05);
       l.hip.rotation.z = 0;
     }
     // the body rises and falls with each step, sways over the planted foot, and the chest turns against the hips
     const breath = Math.sin(time * 1.6 + sd * 3);
-    md.body.position.y = moving ? Math.abs(Math.sin(ph)) * 1.25 * run - 0.3 : breath * 0.18;
-    md.body.position.x = moving ? Math.sin(ph) * 0.45 : Math.sin(time * 0.4 + sd) * 0.35;
-    md.body.rotation.z = moving ? Math.sin(ph) * 0.035 : Math.sin(time * 0.4 + sd) * 0.02;
-    if (md.torso) md.torso.scale.y = 1 + breath * 0.012;
+    // standing still, only the head moves: it looks slowly about, or turns to whoever they are talking with
+    md.body.position.y = moving ? Math.abs(Math.sin(ph)) * 1.25 * run - 0.3 : 0;
+    md.body.position.x = moving ? Math.sin(ph) * 0.45 : 0;
+    md.body.rotation.z = moving ? Math.sin(ph) * 0.035 : 0;
+    if (md.torso) md.torso.scale.y = 1;
     md.head.rotation.z = moving ? -Math.sin(ph) * 0.03 : 0;
+    if (!u.pose) md.head.rotation.y = moving || a > 0 ? 0 : u.chatWith ? Math.max(-0.7, Math.min(0.7, angDiff(Math.atan2(u.chatWith.x - u.x, u.chatWith.y - u.y), md.heading))) : lookAbout(sd);
     // arm angles: positive swings the arm forward and up; elbows bend forward
     const L = md.arms[0], R = md.arms[1];
     // arms swing against the legs; the elbow bends more as the arm comes forward and opens as it swings back
     const swing = moving ? Math.sin(ph) * 0.48 * run : 0;
-    let fR = 0.08 - swing, bR = 0.22 + (moving ? Math.max(0, -Math.sin(ph)) * 0.55 : 0.08 + 0.04 * breath), fL = 0.08 + swing, bL = 0.22 + (moving ? Math.max(0, Math.sin(ph)) * 0.55 : 0.08 + 0.04 * breath);
-    if (!moving && !(a > 0) && u.type === 'civ' && !u.pose) { const g2 = (time * 0.13 + sd) % 1; if (g2 < 0.08) { fR = 0.9 + Math.sin(g2 * 80) * 0.15; bR = 1.6; } }   // now and then a gesture: rubbing a chin, scratching the head
+    let fR = 0.08 - swing, bR = 0.22 + (moving ? Math.max(0, -Math.sin(ph)) * 0.55 : 0.08), fL = 0.08 + swing, bL = 0.22 + (moving ? Math.max(0, Math.sin(ph)) * 0.55 : 0.08);
+    if (!moving && !(a > 0) && u.chatWith && !u.pose) { const g2 = (time * 0.21 + sd) % 1; if (g2 < 0.12) { fR = 0.55 + Math.sin(g2 * 50) * 0.18; bR = 1.15; } }   // talking: now and then a small open-hand gesture
     if (swordish(u)) {
       fL = 0.8; bL = 1.0;
       if (a > 0) fR = a < 0.42 ? lerp(0.45, -2.35, ease(a / 0.42)) : a < 0.68 ? lerp(-2.35, 1.6, ease((a - 0.42) / 0.26)) : lerp(1.6, 0.45, ease((a - 0.68) / 0.32));
@@ -1431,7 +1437,7 @@ const R3D = (() => {
       if (pose === 'prone') md.body.position.y = 3.2 * kk + md.body.position.y * (1 - kk);
       md.head.rotation.y = Math.sin(time * 0.45 + (u.seed || 0) * 3) * 0.55 * kk;   // looking out over the land, or chatting to the next man
       md.head.rotation.x = pose === 'prone' ? -1.2 * kk : 0;
-    } else { md.body.rotation.x = 0; md.body.position.z = 0; md.head.rotation.y = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
+    } else { md.body.rotation.x = 0; md.body.position.z = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
     if (md.tools.stool) md.tools.stool.visible = pose === 'sit' && !!u.stool && k > 0.5;
     // seated people fold their arms, or rest their hands on their knees
     let fold = 0;

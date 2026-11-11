@@ -144,7 +144,7 @@ function moveBy(u, mx, my) {
 }
 function aggro(u, r) {
   let best = null, bd = r;
-  for (const o of units) { if (o.dead || o.inside || o.team === u.team || (o.onWall && u.type !== 'archer')) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
+  for (const o of nearUnits(u.x, u.y, r + 40)) { if (o.dead || o.inside || o.team === u.team || (o.onWall && u.type !== 'archer')) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
   return best;
 }
 function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
@@ -408,7 +408,7 @@ function civBrain(u, dt) {
 // resting: people with nothing to do sit, kneel, squat or lie watching, and get up when trouble comes
 function restPoseFor(u) {
   const r = (u.seed * 7.31) % 1;
-  if (u.onWall) return 'crouch';
+  if (u.onWall || u.guardOf) return 'sit';   // on watch: they sit and look around
   if (u.type === 'civ') { u.stool = ((u.seed || 0) * 11.3) % 1 < 0.35; return 'sit'; }
   if (u.type === 'archer') return r < 0.4 ? 'prone' : 'crouch';
   return r < 0.4 ? 'sit' : r < 0.75 ? 'kneel' : 'crouch';
@@ -416,9 +416,13 @@ function restPoseFor(u) {
 function updateRest(u, dt) {
   if (isMachine(u) || u.lord) { u.pose = null; u.poseK = 0; return; }
   u.alertT = (u.alertT || 0) - dt;
-  if (u.alertT <= 0) { u.alertT = 0.4; u.danger = units.some(e => !e.dead && e.team !== u.team && e.type !== 'civ' && Math.hypot(e.x - u.x, e.y - u.y) < 300); }
+  if (u.alertT <= 0) { u.alertT = 0.4; u.danger = nearUnits(u.x, u.y, 300).some(e => !e.dead && e.team !== u.team && e.type !== 'civ' && Math.hypot(e.x - u.x, e.y - u.y) < 300); }
   const still = !u.moving && !(u.attackAnim > 0) && (u.order === 'idle' || u.order === 'hold' || (u.order === 'mount' && u.onWall)) && !u.danger && u.combatT <= 0 && time - u.lastHurt > 4;
   u.idleT = still ? (u.idleT || 0) + dt : 0;
+  // two idle people standing close together talk: they face each other's way now and then, with a small gesture
+  u.chatT = (u.chatT || 0) - dt;
+  if (u.chatT <= 0) { u.chatT = 1 + Math.random() * 0.5; u.chatWith = null;
+    if (still && u.team === 'player' && !u.inside) { let best = null, bd = 36; for (const o of nearUnits(u.x, u.y, 36)) { if (o === u || o.dead || o.inside || o.team !== u.team || o.moving || isMachine(o)) continue; const d = Math.hypot(o.x - u.x, o.y - u.y); if (d < bd) { bd = d; best = o; } } u.chatWith = best; } }
   if (u.idleT > 2.5) { if (!u.pose) u.pose = restPoseFor(u); u.poseK = Math.min(1, (u.poseK || 0) + dt * 1.6); }
   else { u.poseK = Math.max(0, (u.poseK || 0) - dt * 4); if (u.poseK === 0) u.pose = null; }
   if (u.pose && u.idleT > 2.5 && u.idleT - dt <= 2.5) {   // face the fire if one is close, otherwise look out over the land
@@ -467,7 +471,7 @@ function updateHealth(dt) {
     u.fat = clamp((u.fat || 0) + (ration - 1) * (u.type === 'civ' ? 1 : 0.5) / 300 + (starving ? -1 / 150 : 0), 0, 1);
     if (!u.sick) {
       const risk = 0.00035 + (starving ? 0.004 : 0) + (crowd ? 0.0012 : 0) + (winter ? 0.0008 : 0) + WEATHER.rain * 0.0005 - (u.fat > 0.2 && u.fat < 0.6 ? 0.0002 : 0);
-      const near = people.some(o => o !== u && o.sick && Math.hypot(o.x - u.x, o.y - u.y) < 34);
+      const near = nearUnits(u.x, u.y, 34).some(o => o !== u && o.sick && !o.dead && o.team === u.team && Math.hypot(o.x - u.x, o.y - u.y) < 34);
       if (Math.random() < risk + (near ? 0.003 : 0)) { u.sick = 1; u.healT = 0; floatText(u.x, u.y - 55, 'Feeling ill...', '#c8e0a0'); }
       continue;
     }
@@ -570,10 +574,11 @@ function updateUnit(u, dt) {
   updateInside(u);
   u.lastX = u.x; u.lastY = u.y;
 }
-function separate() {
-  const live = units.filter(u => !u.dead && !u.onWall && !u.inside);
-  for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
-    const a = live[i], b = live[j];
+function separate() {   // people standing on each other step apart; only neighbours are compared (the nearby grid)
+  for (const a of units) {
+    if (a.dead || a.onWall || a.inside) continue;
+    for (const b of nearUnits(a.x, a.y, a.radius + 32)) {
+    if (b.id <= a.id || b.dead || b.onWall || b.inside) continue;
     let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
     const min = a.radius + b.radius;
     if (d >= min) continue;
@@ -581,11 +586,14 @@ function separate() {
     const push = (min - d), nx = dx / d, ny = dy / d;
     const aFixed = a.team !== 'player' && a.order === 'idle' && b.team !== a.team, bFixed = b.team !== 'player' && b.order === 'idle' && a.team !== b.team;   // guards hold their ground against foes, but make way for their own
     if (aFixed && bFixed) continue;
-    const wa = aFixed ? 0 : bFixed ? 1 : 0.5, wb = 1 - wa;
+    // someone standing still holds their ground; the one walking gives way and steps around (no drifting crowds)
+    const aStill = !a.moving && (a.order === 'idle' || a.order === 'hold'), bStill = !b.moving && (b.order === 'idle' || b.order === 'hold');
+    const wa = aFixed ? 0 : bFixed ? 1 : aStill && !bStill ? 0.12 : bStill && !aStill ? 0.88 : 0.5, wb = 1 - wa;
     moveBy(a, -nx * push * wa, -ny * push * wa);
     moveBy(b, nx * push * wb, ny * push * wb);
     // someone walking into a person who stands still steps around them, instead of being pushed straight back forever
     slideAround(a, -nx, -ny, push, true); slideAround(b, nx, ny, push, true);
+    }
   }
 }
 function slideAround(u, nx, ny, push, other) {

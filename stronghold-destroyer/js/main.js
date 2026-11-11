@@ -181,6 +181,7 @@ function frame(now) {
   }
 
   if (!halted) {
+  buildUnitGrid();
   for (const u of units) updateUnit(u, dt);
   curTeam = 'player';
   separate();

@@ -1,6 +1,7 @@
 // Speed benchmark: a big battle with N people, timed frame by frame in the flat view.
 // usage, from the stronghold-destroyer folder:   node tests/bench.js 100 200 400 800
 // Reports, per size: average and slowest-5% frame time, split into game logic and drawing. 16.7 ms is 60 frames a second.
+// LOGIC=1 node tests/bench.js ... times the game logic alone (no drawing).
 // Note: this runs on a desktop processor in a headless browser; an iPad is slower, so treat the numbers as relative.
 const { chromium } = require('playwright'); const { GAME } = require('./env');
 const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.length) sizes.push(100, 200, 400, 800);
@@ -13,6 +14,7 @@ const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.leng
     await p.goto(GAME);
     await p.evaluate(() => { window.__raf.splice(0).forEach(f => f(0)); window.__now = 0; });
     await p.click('.civ[data-civ="legion"]');
+    if (process.env.LOGIC) await p.evaluate(() => { window.__logicOnly = true; });
     const r = await p.evaluate((N) => {
       SD.setRaid(99999); SD.WEATHER.on = false; document.getElementById('banner').style.opacity = 0;
       Object.assign(SD.res, { wood: 99999, stone: 99999, gold: 99999, food: 99999 }); SD.res.food = 99999;
@@ -21,7 +23,7 @@ const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.leng
       for (let i = 0; i < mine; i++) { const [x, y] = free(k.x - 300 + (i % 20) * 30, k.y + 120 + Math.floor(i / 20) * 30); makeUnit('player', kinds[i % 5], x, y); }
       for (let i = 0; i < foes; i++) { const [x, y] = free(k.x + 700 + (i % 20) * 30, k.y - 200 + Math.floor(i / 20) * 30); const e = makeUnit('enemy', ['sword', 'spear', 'archer'][i % 3], x, y); e.order = 'attack'; e.target = k; e.raider = true; e.repath = 0; }
       SD.cam.z = 1.0; SD.cam.x = k.x - 200; SD.cam.y = k.y - 200;
-      const orig = window.render; let rt = 0; window.render = function () { const t = performance.now(); orig(); rt += performance.now() - t; };
+      const orig = window.render; let rt = 0; window.render = window.__logicOnly ? function () {} : function () { const t = performance.now(); orig(); rt += performance.now() - t; };
       const times = [], rts = []; let last = 0;
       for (let i = 0; i < 900; i++) { window.__now += 33; const t0 = performance.now(); rt = 0; window.__raf.splice(0).forEach(f => f(window.__now)); times.push(performance.now() - t0); rts.push(rt); }
       window.render = orig;

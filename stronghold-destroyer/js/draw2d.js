@@ -176,7 +176,7 @@ function drawPerson(g, u, time) {
   if (u.dead) { let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f); g.rotate(-f * Math.PI / 2 * 0.94); }
 
   const moving = u.moving && !u.dead, ph = u.walkPhase;
-  const bob = moving ? -Math.abs(Math.sin(ph)) * 0.9 : Math.sin(time * 2 + u.seed) * 0.3;
+  const bob = moving ? -Math.abs(Math.sin(ph)) * 0.9 : 0;   // standing still means still
   const hipY = -12 + bob, sx = moving ? 0.7 : 0, sy = hipY - 10.2;
   const soldier = (swordish(u) || u.type === 'spear');
   const sleeve = P(soldier ? MAIL : pal.tunic), skin = P(u.skin);
