@@ -52,7 +52,7 @@ const R3D = (() => {
       d[i] = 128 + dx * 160; d[i + 1] = 128 + dy * 160; d[i + 2] = 255; d[i + 3] = 255; }
     g.putImageData(img, 0, 0); }, 6);
   let envCube = null, gmatRef = null, groundTex = null;
-  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(0.5, 0.68, 0.78); water.material.needsUpdate = true; } if (seaMesh && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set((MW + 2 * BAND) / 210, (MH + 2 * BAND) / 70); t.encoding = T.sRGBEncoding; seaMesh.material.map = t; seaMesh.material.color.setRGB(0.3, 0.48, 0.6); seaMesh.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
+  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(0.5, 0.68, 0.78); water.material.specular.set(C('#3a4c54')); water.material.shininess = 30; water.material.needsUpdate = true; } if (seaMesh && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set((MW + 2 * BAND) / 210, (MH + 2 * BAND) / 70); t.encoding = T.sRGBEncoding; seaMesh.material.map = t; seaMesh.material.color.setRGB(0.3, 0.48, 0.6); seaMesh.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
   function std(hex, o = {}) { const m = new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); if (envCube && (o.metalness || 0) >= 0.45) { m.envMap = envCube; m.envMapIntensity = 0.85; } return m; }
   // walls of stone and of plaster are built from the sheet's brick sets: gray stone for your castle, brown brick for
   // your houses and workshops, green for the house of prayer, black-gray-green for everything the Black Stone builds
@@ -124,7 +124,7 @@ const R3D = (() => {
       vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
       fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h, 0.0, 1.0), 0.55)) : bot; gl_FragColor = vec4(c, 1.0); }' }));
     sky.renderOrder = -1;   // (kept for the sky colours; the world beyond the frame is plain black, so it is not shown)
-    buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass();
+    buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass(); buildLife();
     ready = true;
   }
   function buildGround() {
@@ -185,6 +185,61 @@ const R3D = (() => {
       const n = Math.round(Math.hypot(bx - ax, bz - az) / 420); for (let i = 1; i < n; i++) { const t = i / n, st = new T.Mesh(new T.SphereGeometry(6, 10, 8), dark); st.position.set(ax + (bx - ax) * t, SEA + 23, az + (bz - az) * t); scene.add(st); }
     }
   }
+
+  // ---------- living water and small wildlife: splashes, a jumping fish, birds, butterflies, frogs ----------
+  // Each is a handful of tiny shapes from a small fixed pool, appearing now and then near where you are looking.
+  // At most LIFE_CAP of each kind at once; fewer when the game has had to lower its detail to stay smooth.
+  const LIFE_CAP = { splash: 6, fish: 2, flock: 2, fly: 6, frog: 3 };
+  const life = { splash: [], fish: [], flock: [], fly: [], frog: [], t: {} };
+  function buildLife() {
+    const white = new T.MeshBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.8, depthWrite: false, side: T.DoubleSide });
+    for (let i = 0; i < LIFE_CAP.splash; i++) { const m = new T.Mesh(new T.RingGeometry(0.6, 1, 20), white.clone()); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); life.splash.push({ m, on: false }); }
+    const fishMat = new T.MeshStandardMaterial({ color: C('#c8d2d8'), metalness: 0.6, roughness: 0.35 });
+    for (let i = 0; i < LIFE_CAP.fish; i++) { const g = new T.Group(), b = new T.Mesh(new T.SphereGeometry(1, 10, 6), fishMat); b.scale.set(6, 2.2, 1.6); g.add(b); const tail = new T.Mesh(new T.ConeGeometry(2, 4, 4), fishMat); tail.rotation.z = Math.PI / 2; tail.position.x = -7; g.add(tail); g.visible = false; scene.add(g); life.fish.push({ g, on: false }); }
+    const birdMat = new T.MeshBasicMaterial({ color: 0x1c1a18, side: T.DoubleSide });
+    const wingGeo = new T.BufferGeometry(); wingGeo.setAttribute('position', new T.Float32BufferAttribute([0, 0, 0, 0, 0, 5, 12, 0, 1.5], 3));
+    for (let i = 0; i < LIFE_CAP.flock; i++) { const g = new T.Group(), birds = []; for (let k = 0; k < 5; k++) { const b = new T.Group(), l = new T.Mesh(wingGeo, birdMat), r = new T.Mesh(wingGeo, birdMat); r.scale.x = -1; b.add(l); b.add(r); b.position.set(-k * 14, (k % 2) * 4, (k % 2 ? 1 : -1) * k * 9); g.add(b); birds.push({ b, l, r }); } g.visible = false; scene.add(g); life.flock.push({ g, birds, on: false }); }
+    const wingCols = ['#f2c84a', '#f4f1e6', '#e88a3a', '#9ab8f0', '#d86aa8'];
+    for (let i = 0; i < LIFE_CAP.fly; i++) { const g = new T.Group(), mat = new T.MeshBasicMaterial({ color: C(wingCols[i % wingCols.length]), side: T.DoubleSide }), wg = new T.PlaneGeometry(5.5, 4.4); wg.translate(2.75, 0, 0); const l = new T.Mesh(wg, mat), r = new T.Mesh(wg, mat); r.scale.x = -1; g.add(l); g.add(r); g.visible = false; scene.add(g); life.fly.push({ g, l, r, on: false }); }
+    const frogMat = new T.MeshStandardMaterial({ color: C('#4f7a2a'), roughness: 0.6 }), eyeMat = new T.MeshBasicMaterial({ color: 0x111111 });
+    for (let i = 0; i < LIFE_CAP.frog; i++) { const g = new T.Group(), b = new T.Mesh(new T.SphereGeometry(4.2, 10, 8), frogMat); b.scale.set(1.2, 0.7, 1); b.position.y = 2.6; g.add(b); for (const sx of [-1, 1]) { const e = new T.Mesh(new T.SphereGeometry(1.1, 6, 5), eyeMat); e.position.set(sx * 2, 4.8, 2.6); g.add(e); } g.visible = false; scene.add(g); life.frog.push({ g, on: false }); }
+  }
+  const isSea = (x, z) => (x < -20 || z < -20 || x > MW + 20 || z > MH + 20) && x > -BAND + 10 && z > -BAND + 10 && x < MW + BAND - 10 && z < MH + BAND - 10;
+  const inPond = (x, z) => pond && Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry) < 0.85;
+  function waterSpot(c, R) { for (let i = 0; i < 14; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (isSea(x, z)) return { x, z, y: SEA + 1 }; if (inPond(x, z)) return { x, z, y: water.position.y + 0.6 }; } return null; }
+  function landSpot(c, R) { for (let i = 0; i < 10; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (x > 20 && z > 20 && x < MW - 20 && z < MH - 20 && !blockedAt(x, z) && !inPond(x, z)) return { x, z }; } return null; }
+  function shoreSpot(c, R) {
+    for (let i = 0; i < 12; i++) {
+      if (pond && Math.hypot(pond.x - c.x, pond.y - c.z) < R + pond.rx) { const a = Math.random() * 6.28, k = 1.05 + Math.random() * 0.1, x = pond.x + Math.cos(a) * pond.rx * k, z = pond.y + Math.sin(a) * pond.ry * k; if (!blockedAt(x, z)) return { x, z }; }
+      const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2, e = Math.min(x, z, MW - x, MH - z); if (e > 4 && e < 22) return { x, z };
+    }
+    return null;
+  }
+  function splashAt(x, y, z, big) { const s = life.splash.find(q => !q.on); if (!s) return; Object.assign(s, { on: true, t: 0, x, y, z, big }); s.m.visible = true; }
+  let lifeScale = 1;
+  function syncLife(dt, demo) {
+    if (!demo) lifeScale = quality >= 3 ? 0.34 : quality >= 2 ? 0.5 : 1;   // the game lowered its detail to stay smooth: fewer creatures
+    const c = camCenter(), R = 520 / cam.z, cap = k => Math.max(1, Math.floor(LIFE_CAP[k] * lifeScale)), on = k => life[k].filter(q => q.on).length, due = (k, every) => { life.t[k] = (life.t[k] === undefined ? Math.random() * every : life.t[k]) - dt; if (life.t[k] > 0) return false; life.t[k] = every * (0.5 + Math.random()); return on(k) < cap(k); };
+    if (dt <= 0) return;
+    // waves now and then break into a little splash
+    if (due('splash', 1.6)) { const w = waterSpot(c, R); if (w) splashAt(w.x, w.y, w.z, false); }
+    for (const s of life.splash) if (s.on) { s.t += dt; const k = s.t / (s.big ? 1.1 : 0.8); if (k >= 1) { s.on = false; s.m.visible = false; continue; } const r = (s.big ? 3 : 2) + k * (s.big ? 14 : 9); s.m.position.set(s.x, s.y, s.z); s.m.scale.set(r, r, r); s.m.material.opacity = 0.8 * (1 - k); }
+    // a fish jumps out of the water in a little arc
+    if (due('fish', 14)) { const w = waterSpot(c, R), f = life.fish.find(q => !q.on); if (w && f) { const a = Math.random() * 6.28; Object.assign(f, { on: true, t: 0, x: w.x, y: w.y, z: w.z, dx: Math.cos(a), dz: Math.sin(a) }); f.g.visible = true; f.g.rotation.y = -a; splashAt(w.x, w.y, w.z, false); } }
+    for (const f of life.fish) if (f.on) { f.t += dt; const k = f.t / 0.9; if (k >= 1) { f.on = false; f.g.visible = false; splashAt(f.x + f.dx * 26, f.y, f.z + f.dz * 26, true); continue; } f.g.position.set(f.x + f.dx * 26 * k, f.y + Math.sin(k * Math.PI) * 16 - 2, f.z + f.dz * 26 * k); f.g.rotation.z = (0.5 - k) * 2.2; }
+    // a few birds fly over, high up, flapping
+    if (due('flock', 22)) { const fl = life.flock.find(q => !q.on); if (fl) { const a = Math.random() * 6.28; Object.assign(fl, { on: true, t: 0, x: c.x - Math.cos(a) * R * 1.4, z: c.z - Math.sin(a) * R * 1.4, dx: Math.cos(a), dz: Math.sin(a), y: heightAt(c.x, c.z) + 230 + Math.random() * 80 }); fl.g.visible = true; fl.g.rotation.y = -a; } }
+    for (const fl of life.flock) if (fl.on) { fl.t += dt; if (fl.t > (R * 2.8) / 70) { fl.on = false; fl.g.visible = false; continue; } fl.g.position.set(fl.x + fl.dx * 70 * fl.t, fl.y, fl.z + fl.dz * 70 * fl.t); fl.birds.forEach((b, i) => { const f = Math.sin(time * 9 + i * 1.3) * 0.7; b.l.rotation.x = f; b.r.rotation.x = f; }); }
+    // butterflies flutter over the grass for a while
+    if (due('fly', 3.5)) { const p = landSpot(c, R * 0.8), b = life.fly.find(q => !q.on); if (p && b) { Object.assign(b, { on: true, t: 0, life: 8 + Math.random() * 8, x: p.x, z: p.z, a: Math.random() * 6.28 }); b.g.visible = true; } }
+    for (const b of life.fly) if (b.on) { b.t += dt; if (b.t > b.life) { b.on = false; b.g.visible = false; continue; } b.a += (Math.random() - 0.5) * dt * 4; b.x += Math.cos(b.a) * 16 * dt; b.z += Math.sin(b.a) * 16 * dt; const f = Math.sin(time * 22 + b.life) * 1.1; b.l.rotation.y = f; b.r.rotation.y = -f; b.g.position.set(b.x, heightAt(b.x, b.z) + 9 + Math.sin(b.t * 3) * 3, b.z); b.g.rotation.y = -b.a; }
+    // frogs sit by the water and hop now and then
+    if (due('frog', 9)) { const p = shoreSpot(c, R), fr = life.frog.find(q => !q.on); if (p && fr) { Object.assign(fr, { on: true, t: 0, life: 12 + Math.random() * 10, x: p.x, z: p.z, hop: 0, nextHop: 1 + Math.random() * 3, a: Math.random() * 6.28 }); fr.g.visible = true; } }
+    for (const fr of life.frog) if (fr.on) { fr.t += dt; if (fr.t > fr.life) { fr.on = false; fr.g.visible = false; continue; } fr.nextHop -= dt; let lift = 0; if (fr.nextHop <= 0) { fr.hop += dt; const k = fr.hop / 0.4; if (k >= 1) { fr.hop = 0; fr.nextHop = 2 + Math.random() * 4; fr.a += (Math.random() - 0.5) * 2; } else { lift = Math.sin(k * Math.PI) * 6; fr.x += Math.cos(fr.a) * 22 * dt; fr.z += Math.sin(fr.a) * 22 * dt; } } fr.g.position.set(fr.x, Math.max(heightAt(fr.x, fr.z), SEA) + lift, fr.z); fr.g.rotation.y = Math.PI / 2 - fr.a; }
+  }
+  // tests and screenshots: start every kind of creature at once near the middle of the view
+  function lifeDemo() { for (const k of ['splash', 'fish', 'flock', 'fly', 'frog']) life.t[k] = 0; const keep = lifeScale; for (let i = 0; i < 4; i++) { lifeScale = 1; for (const k of Object.keys(life.t)) life.t[k] = 0; syncLife(0.016, true); } lifeScale = keep; }
+  const lifeCount = () => Object.assign({ quality, scale: lifeScale },  Object.fromEntries(Object.keys(LIFE_CAP).map(k => [k, life[k].filter(q => q.on).length])));
   function cornerPiece(x, z, gold, dark) {
     const g = new T.Group(); g.position.set(x, SEA + 10, z);
     const base = new T.Mesh(new T.CylinderGeometry(52, 58, 18, 8), gold); base.rotation.y = Math.PI / 8; base.position.y = 0; g.add(base);
@@ -1854,7 +1909,7 @@ const R3D = (() => {
     const pr = quality >= 1 ? 1 : dpr, W = Math.round(vw * pr), H = Math.round(vh * pr);
     if (glCanvas.width !== W || glCanvas.height !== H) { renderer.setPixelRatio(pr); renderer.setSize(vw, vh, false); }
     adapt();
-    placeCamera(dt); syncWater(dt); syncScenery(); syncBuildings(dt); syncUnits(dt); syncRally(); syncFx();
+    placeCamera(dt); syncWater(dt); syncScenery(); syncBuildings(dt); syncUnits(dt); syncRally(); syncFx(); syncLife(dt);
     renderer.render(scene, camera);
     overlay(g);
   }
@@ -1867,7 +1922,7 @@ const R3D = (() => {
   // throw away a model so it is built again fresh on the next frame (the fix-a-glitch button)
   function rebuildModel(o) { if (o.x0 !== undefined) { const md = bModels.get(o.id); if (md) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); bModels.delete(o.id); } } else { const md = unitModels.get(o.id); if (md) { scene.remove(md.root); unitModels.delete(o.id); } } }
   const glbStatus = detail => ({ loaded: Object.keys(GLB), unitsUsingModels: [...unitModels.values()].filter(m => m.glb).map(m => m.glbKey + ':' + (m.cur || '-') + (detail ? ' ' + JSON.stringify((() => { const bb = new T.Box3().setFromObject(m.root); return { min: bb.min.toArray().map(Math.round), max: bb.max.toArray().map(Math.round), vis: m.root.visible, inScene: !!m.root.parent }; })()) : '')) });
-  return { rebuildModel, glbStatus, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  return { rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];
