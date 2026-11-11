@@ -1825,9 +1825,14 @@ const R3D = (() => {
     let best = null, bd = 26;
     for (const u of units) { if (u.dead || u.inside) continue; const p = project(u.x, (isMachine(u) ? 18 : 22) + elev3D(u), u.y); if (!p.ok) continue; const d = Math.hypot(p.x - sx, p.y - sy) * Math.min(1.6, Math.max(0.7, 1 / cam.z)); if (d < bd) { bd = d; best = u; } }
     if (best) return best;
-    for (const s of structures) { if (s.dead) continue; if (inBox(sx, sy, s.x0, s.x1, s.y0, s.y1, s.topH || 40)) return s; }
-    return null;
+    // a building is under the finger if the line of sight through that point passes through its block; the nearest wins
+    v2.set(sx / vw * 2 - 1, -(sy / vh) * 2 + 1); ray.setFromCamera(v2, camera); let near = null, nd = 1e9;
+    for (const s of structures) { if (s.dead) continue; if (!inBox(sx, sy, s.x0, s.x1, s.y0, s.y1, s.topH || 40)) continue;
+      const gy = heightAt((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2); pickBox.min.set(s.x0 - 2, gy - 2, s.y0 - 2); pickBox.max.set(s.x1 + 2, gy + (s.topH || 40), s.y1 + 2);
+      if (ray.ray.intersectBox(pickBox, hit)) { const d = hit.distanceTo(ray.ray.origin); if (d < nd) { nd = d; near = s; } } }
+    return near;
   }
+  const pickBox = available ? new T.Box3() : null;
   function inBox(sx, sy, x0, x1, z0, z1, h) {
     let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
     for (const x of [x0, x1]) for (const z of [z0, z1]) for (const y of [0, h]) { const p = project(x, y, z); minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
