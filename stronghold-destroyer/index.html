@@ -10,10 +10,10 @@
 </head>
 <body>
 <div id="top">
-  <div id="title">STRONGHOLD DESTROYER</div>
-  <div id="status"><b>Choose your civilization to begin</b></div>
+  <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9776;<span class="lbl"> Menu</span></button>
   <button id="btnPause" title="Pause the game to plan and place your castle (P)">&#10074;&#10074;<span class="lbl"> Pause</span></button>
-  <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9881;<span class="lbl"> Menu</span></button>
+  <div id="status"><b>Choose your civilization to begin</b></div>
+  <div id="title">STRONGHOLD DESTROYER</div>
 </div>
 <div id="main">
 <div id="view">
@@ -47,12 +47,13 @@
     </div>
   </div></div>
   <canvas id="mini" title="Map: click or drag to move the view"></canvas>
-  <div id="camCtl">
-    <div class="cg tonly"><div class="row"><button id="camAdd" title="Add mode: tap people to add them to your group">&#65291;</button></div><span>Add</span></div>
-    <div class="cg"><div class="row"><button id="camHome" title="Back to your castle (Space)">&#8962;</button></div><span>Castle</span></div>
+  <div id="cmdbar">
+    <div id="selbox"><span id="selLabel">No soldiers selected</span><div id="selSum"></div><div id="selBar"><i></i></div></div>
+    <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button><button id="camAdd" class="sm tonly" title="Add mode: tap people to add them to your group">&#65291; Add</button><button id="camHome" class="sm" title="Back to your castle (Space)">&#8962; Castle</button></div>
   </div>
+  <div id="tips" aria-label="Advisor (arrives in a later phase)"></div>
   <div id="moodPop" class="pop" hidden></div>
-  <div id="goodsPop" class="pop" hidden style="left:auto;right:10px;top:8px"></div>
+  <div id="goodsPop" class="pop" hidden style="left:10px;top:8px"></div>
   <div id="storePop" class="pop" hidden style="left:10px;top:8px;min-width:230px"></div>
   <div id="menuPop" class="pop" hidden>
     <h3>MENU</h3>
@@ -64,10 +65,10 @@
   </div>
   <div id="help" class="hide"><div class="box">
     <h3>HOW TO PLAY</h3>
-    <p><b>iPad and touch:</b> tap a person to select them, then tap where they should go or what they should do: ground to move, a tree or bush or field to gather, an enemy to attack, your wall or tower to climb it. They start the job as soon as they arrive. Double-tap a person to select everyone of that kind on screen. Press and hold, then drag, to draw a selection box. Drag one finger to scroll (flick to glide); pinch to zoom; twist two fingers to turn the view. The Add button lets taps add people to your group.</p>
+    <p><b>iPad and touch:</b> tap a person to select them, then tap where they should go or what they should do: ground to move, a tree or bush or field to gather, an enemy to attack, your wall or tower to climb it. They start the job as soon as they arrive. Double-tap a person to select everyone of that kind on screen. Press and hold, then drag, to draw a selection box. Drag one finger to scroll (flick to glide); pinch to zoom. The Add button lets taps add people to your group.</p>
     <p><b>Select:</b> left-click a person, or drag a box around several. Double-click selects everyone on screen. On touch, tap or drag.</p>
     <p><b>Command:</b> right-click (or tap) the ground to move, an enemy to attack, a tree for wood, a berry bush or farm for food.</p>
-    <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. <b>Turn and tilt (3D):</b> the Turn and Tilt buttons at the bottom left, Q and E to turn, R and F to tilt, a two-finger sideways swipe, or hold Option (Alt) and drag. Space or the Castle button brings you home.</p>
+    <p><b>View:</b> push the mouse against any edge of the screen (or use the arrow keys) to scroll; mouse wheel or pinch to zoom; click the map in the corner to jump. Space or the Castle button brings you home.</p>
     <p><b>Command panel (right side):</b> click Town, Castle, Army, Rule or Industry to drop that list down (keys 1 to 5). Scroll the panel with the mouse wheel. <b>Hide</b> (or the Tab key) folds it away.</p>
     <p><b>Resting:</b> people with nothing to do sit around the fire, kneel, squat, or lie flat watching the land; archers on walls crouch on lookout. They get up the moment an enemy comes near or you give an order.</p>
     <p><b>Running a workplace:</b> click any hut, farm, mine or workshop to see its status, workers, what it makes and how fast, and what it has made so far. Add workers there (up to 2 at huts and farms, 3 at other industries); each one adds the same again to its output. Remove a worker, or put the building to sleep with Z (press Z again to wake it), to free people: they go gathering, and when your houses are full, training a soldier calls up a free civilian. Civilians without a building job gather food and wood by themselves (up to 5 at one bush or tree), and every few minutes a worker takes a 20 to 30 second break by the fire.</p>
@@ -92,7 +93,7 @@
     <p><b>The rival lord:</b> Lord Varek of Ashmoor commands the enemy. He is big, tough and hits hard, and his men fight harder near him; his name and health always show above him and a gold dot marks him on the map. He guards his camp, and in later raids he rides out at their head. Kill him and the enemy's spirit breaks: no raids for three minutes, and their camp works more slowly from then on.</p>
     <p><b>Archers on walls:</b> select archers and right-click one of your walls or towers. Up there they shoot farther, take half damage from arrows, and swords cannot reach them. Order them elsewhere to climb down.</p>
     <p><b>Siege:</b> stone walls resist swords and arrows. Battering rams smash walls and buildings but cannot hurt soldiers. <b>Catapults</b> lob heavy stones from far away: best against walls and towers, and the stone hurts everyone where it lands, but it misses soldiers on the move. <b>Ballistas</b> fire great bolts that cut down soldiers at long range but only chip stone. Neither can fight up close: guard them. The enemy brings them too, in later raids.</p>
-    <p><b>3D view:</b> Q and E turn the camera. V (or the Menu) switches between the 3D and the flat view.</p>
+    <p><b>The view:</b> one fixed view of the land from above and to the side. Drag (or use the arrow keys) to look around, pinch or use the mouse wheel to zoom. Space or the Castle button brings you home.</p>
     <p><b>Reading pauses the game:</b> while this help, the Menu, the mood report, the goods list or a building's panel is open, time stands still (unless enemies are close by).</p>
     <p><b>Peace and pause:</b> the war begins after about five minutes of peace; the top bar counts it down. Press Pause (or P) to stop time and place buildings and walls at your leisure; workers start when you resume. You cannot pause while enemies are close by.</p>
     <p><b>Keys:</b> P pause &middot; S stop &middot; Esc clear &middot; H help &middot; M sound on or off.</p>
@@ -103,12 +104,6 @@
 <div id="side">
   <div id="sideHead"><span>COMMANDS</span><button id="btnHide" title="Hide or show this panel (Tab)">&#9656; Hide</button></div>
   <div id="sideScroll"><div id="sideIn">
-  <div id="selbox">
-    <span id="selLabel">No soldiers selected</span>
-    <div id="selSum"></div>
-    <div id="selBar"><i></i></div>
-    <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button></div>
-  </div>
   <div id="secs">
       <button class="tab active" data-tab="town" title="Town (key 1)" aria-expanded="true"><span class="tl">Town</span><span class="key">1</span><span class="chev">&#9662;</span></button>
       <div class="pane active" data-pane="town">

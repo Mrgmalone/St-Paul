@@ -23,7 +23,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   const w0 = await p.evaluate(()=>SD.res.wood);
   await p.waitForTimeout(USE3D ? 60000 : 30000);
   console.log('after working:', JSON.stringify(await st()), 'wood gained', Math.floor(await p.evaluate(()=>SD.res.wood) - w0));
-  await p.evaluate((u3)=>{ SD.cam.z = u3 ? 1.7 : 1.4; SD.cam.x = 40; SD.cam.y = 680; }, USE3D);
+  await p.evaluate((u3)=>{ SD.cam.z = u3 ? 1.7 : 1.4; SD.camWorld(40, 680); }, USE3D);
   await p.waitForTimeout(1200); await p.screenshot({ path: SP + `/B_${USE3D ? '3d' : '2d'}.png` });
   // a direct order takes the woodcutter off the job
   await p.evaluate(()=>{ const w = SD.units.find(u=>u.job && u.job.kind==='woodhut'); SD.selectOnly([w]); });

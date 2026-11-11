@@ -10,7 +10,7 @@ const { chromium } = require('playwright'); const SP = require('./env').SP;
   const b2 = await p.evaluate(()=>({ x: SD.units[0].x, t: time, raid: SD.raid(), food: SD.res.food }));
   console.log('paused world frozen:', a.t === b2.t && a.raid === b2.raid, '| note shown:', await p.evaluate(()=>!document.getElementById('pauseNote').hidden));
   // place a house while paused
-  const placed = await p.evaluate(()=>{ const k = SD.keep(); const scr = (c, r) => [((c + 1) * 32 - SD.cam.x) * SD.cam.z, ((r + 1) * 32 - SD.cam.y) * SD.cam.z]; SD.startPlacing('house'); const s = scr(k.c - 4, k.r + 4); SD.placeAt(s[0], s[1]); return SD.structures.filter(b => b.kind === 'house').length; });
+  const placed = await p.evaluate(()=>{ const k = SD.keep(); const scr = (c, r) => [SD.scr((c + 1) * 32, (r + 1) * 32).x, SD.scr((c + 1) * 32, (r + 1) * 32).y]; SD.startPlacing('house'); const s = scr(k.c - 4, k.r + 4); SD.placeAt(s[0], s[1]); return SD.structures.filter(b => b.kind === 'house').length; });
   console.log('house placed while paused:', placed);
   await p.screenshot({ path: SP + '/Pause.png' });
   await p.keyboard.press('p'); await p.waitForTimeout(1500); console.log('resumed, time moving:', await p.evaluate((t)=>time > t, b2.t));

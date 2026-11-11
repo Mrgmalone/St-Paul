@@ -11,9 +11,9 @@ const THREE_JS = fs.readFileSync(require('./env').SP + '/lib/three/package/build
   await p.evaluate(()=>{ SD.setRaid(9999); document.getElementById('banner').style.opacity = 0; });
   const top = await p.evaluate(()=>document.getElementById('game').getBoundingClientRect().top);
   const info = await p.evaluate(()=>{ const k=SD.keep(); const bs=SD.bushes.slice().sort((a,b)=>Math.hypot(a.x-k.x,a.y-k.y)-Math.hypot(b.x-k.x,b.y-k.y)); const v = document.getElementById('view').getBoundingClientRect();
-    return bs.slice(0, 6).map(b=>{ const q=SD.R3D.project(b.x,8,b.y); return { x: Math.round(q.x), y: Math.round(q.y), onScreen: q.x>0 && q.x<v.width && q.y>0 && q.y<v.height }; }); });
+    return bs.slice(0, 6).map(b=>{ const q=SD.scr(b.x, b.y, 8); return { x: Math.round(q.x), y: Math.round(q.y), onScreen: q.x>0 && q.x<v.width && q.y>0 && q.y<v.height }; }); });
   console.log('nearest bushes on screen?', JSON.stringify(info));
-  const civ = await p.evaluate(()=>{ const c=SD.units.find(u=>u.type==='civ'); return SD.R3D.project(c.x, 22, c.y); });
+  const civ = await p.evaluate(()=>{ const c=SD.units.find(u=>u.type==='civ'); return SD.scr(c.x, c.y, 22); });
   await p.mouse.click(civ.x, civ.y + top); await p.waitForTimeout(200);
   const vis = info.find(q => q.onScreen);
   await p.mouse.click(vis.x, vis.y + top, { button: 'right' }); await p.waitForTimeout(300);

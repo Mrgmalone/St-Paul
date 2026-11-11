@@ -8,7 +8,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(800);
   await p.evaluate(()=>{ SD.setRaid(9999); SD.WEATHER.on = false; document.getElementById('banner').style.opacity = 1; SD.res.wood = 500; });
   // dig a moat line with the real placement path; builders dig it
-  const r = await p.evaluate(()=>{ const k = SD.keep(); const scr = (c, r) => [((c + 0.5) * 32 - SD.cam.x) * SD.cam.z, ((r + 0.5) * 32 - SD.cam.y) * SD.cam.z];
+  const r = await p.evaluate(()=>{ const k = SD.keep(); const scr = (c, r) => [SD.scr((c + 0.5) * 32, (r + 0.5) * 32).x, SD.scr((c + 0.5) * 32, (r + 0.5) * 32).y];
     SD.cam.z = 1; centerOn(k.x + 150, k.y + 60);
     const c0 = k.c + 6, r0 = k.r + 5; SD.startPlacing('moat'); let a = scr(c0, r0), e = scr(c0 + 8, r0); SD.placeAt(a[0], a[1]); SD.placeAt(e[0], e[1]);
     SD.startPlacing('pit'); a = scr(c0 + 4, r0 + 3); SD.placeAt(a[0], a[1]);

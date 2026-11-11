@@ -25,7 +25,7 @@ const SP = require('./env').SP;
   const w1 = await p.evaluate(()=>window.__w.hp);
   console.log('3 swordsmen vs wall in 8s:', w0, '->', w1);
   // order attack on the tower behind walls: soldiers should breach; rams join
-  await p.evaluate(()=>{ const all=SD.units.filter(u=>u.team==='player'&&!u.dead&&u.type!=='civ'); SD.commandAttack(all, SD.structures.find(s=>s.kind==='tower')); const t=SD.structures.find(s=>s.kind==='tower'); SD.cam.z=1.0; SD.cam.x=t.x-700; SD.cam.y=t.y-380; });
+  await p.evaluate(()=>{ const all=SD.units.filter(u=>u.team==='player'&&!u.dead&&u.type!=='civ'); SD.commandAttack(all, SD.structures.find(s=>s.kind==='tower')); const t=SD.structures.find(s=>s.kind==='tower'); SD.cam.z=1.0; SD.camWorld(t.x-700, t.y-380); });
   for (let i=0;i<70;i++){ await p.waitForTimeout(1000);
     const st = await p.evaluate(()=>({walls:SD.enemyWalls().filter(w=>!w.dead).length, broken:SD.enemyWalls().filter(w=>w.dead).length, tower:SD.structures.find(s=>s.kind==='tower').hp, rams:SD.units.filter(u=>u.type==='ram'&&!u.dead).map(u=>u.order+':'+(u.target?u.target.kind:'')).join(' '), mine:SD.units.filter(u=>u.team==='player'&&!u.dead&&u.type!=='civ').length, end:document.getElementById('win').style.display}));
     if (i%10==0) console.log(i, JSON.stringify(st)); if (i===8) await p.screenshot({path:SP+'/s_siege.png'}); if (st.end==='flex' || st.tower<=0) { console.log('end', i, JSON.stringify(st)); break; } }

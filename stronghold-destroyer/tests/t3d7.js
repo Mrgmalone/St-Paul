@@ -18,7 +18,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   // real UI: select archers, right-click the wall segment
   await p.evaluate(()=>SD.selectOnly(SD.units.filter(u=>u.type==='archer')));
   const top = await p.evaluate(()=>document.getElementById('game').getBoundingClientRect().top);
-  const wp = await p.evaluate(()=>{ const w=window.__w; const q = (SD.R3D.active ? SD.R3D.project(w.x, 20, (w.y0+w.y1)/2) : { x: (w.x - SD.cam.x)*SD.cam.z, y: (w.y - 20 - SD.cam.y)*SD.cam.z }); return q; });
+  const wp = await p.evaluate(()=>{ const w=window.__w; const q = SD.scr(w.x, (w.y0+w.y1)/2, 20); return q; });
   await p.mouse.click(wp.x, wp.y + top, { button: 'right' }); await p.waitForTimeout(300);
   console.log('archers', nArch, 'orders', await p.evaluate(()=>SD.units.filter(u=>u.type==='archer').map(u=>u.order).join(',')));
   for (let i = 0; i < 90; i++) { await p.waitForTimeout(500); if (await p.evaluate(()=>SD.units.filter(u=>u.type==='archer'&&u.onWall).length===2)) break; }
@@ -26,7 +26,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   // a raid: three swordsmen right next to the wall, our other soldiers sent away
   await p.evaluate(()=>{ SD.commandMove(SD.units.filter(u=>u.team==='player'&&u.type!=='civ'&&u.type!=='archer'), 300, 1250);
     SD.spawnRaid(); const w = window.__w; SD.units.filter(u=>u.raider&&!u.dead).forEach((u,i)=>{ u.x = w.x - 30 + i * 20; u.y = w.y1 + 30; });
-    SD.cam.z = 1.8; SD.cam.x = w.x - 1280/2/1.8; SD.cam.y = w.y - 600/2/1.8; });
+    SD.cam.z = 1.8; SD.camWorld(w.x - 1280/2/1.8, w.y - 600/2/1.8); });
   const hp0 = await p.evaluate(()=>SD.units.filter(u=>u.type==='archer').map(u=>u.hp));
   await p.waitForTimeout(USE3D ? 25000 : 9000);
   await p.screenshot({ path: SP + `/w_archers_${USE3D?'3d':'2d'}.png` });

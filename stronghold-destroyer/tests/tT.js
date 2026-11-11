@@ -34,7 +34,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   // 5. pinch zoom and twist
   const z0 = await p.evaluate(()=>SD.cam.z);
   await touch('touchStart', [[500, 400], [700, 400]]); for (let i = 1; i <= 8; i++) { const r = 100 + i * 12, a = i * 0.05; await touch('touchMove', [[600 - Math.cos(a) * r, 400 - Math.sin(a) * r], [600 + Math.cos(a) * r, 400 + Math.sin(a) * r]]); await p.waitForTimeout(16); } await touch('touchEnd', []);
-  console.log('pinch zoom', z0.toFixed(2), '->', (await p.evaluate(()=>SD.cam.z)).toFixed(2), '| view turned (3D):', await p.evaluate(()=>R3D.panAxes().s.toFixed(2)));
+  console.log('pinch zoom', z0.toFixed(2), '->', (await p.evaluate(()=>SD.cam.z)).toFixed(2));
   // 6. press-and-hold then drag: selection box
   await p.evaluate(()=>{ const k = SD.keep(); centerOn(k.x + 90, k.y - 10); SD.selection().clear(); }); await p.waitForTimeout(300);
   const box = await p.evaluate(()=>{ const s = SD.units.filter(u => u.team === 'player' && !u.dead).map(u => screenOf(u.x, u.y, 20)); return [Math.min(...s.map(q => q.x)) - 20, Math.min(...s.map(q => q.y)) - 20, Math.max(...s.map(q => q.x)) + 20, Math.max(...s.map(q => q.y)) + 20]; });

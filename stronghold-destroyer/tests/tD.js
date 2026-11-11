@@ -45,6 +45,6 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   console.log('chapel btn with 10 gold:', await p.evaluate(()=>{ const g=document.querySelector('.bb[data-b="chapel"]'); return g.className + ' | ' + g.textContent.replace(/\s+/g,' '); }));
   const sails = await p.evaluate(async ()=>{ return null; });
   await p.click('.tab[data-tab="industry"]'); await p.waitForTimeout(200);
-  await p.evaluate((u3)=>{ SD.cam.z = u3 ? 1.5 : 1.3; SD.cam.x = 300; SD.cam.y = 680; }, USE3D); await p.waitForTimeout(1500);
+  await p.evaluate((u3)=>{ SD.cam.z = u3 ? 1.5 : 1.3; SD.camWorld(300, 680); }, USE3D); await p.waitForTimeout(1500);
   await p.screenshot({ path: SP + `/D_${USE3D ? '3d' : '2d'}.png` });
   console.log('errors', errs.slice(0, 5)); await b.close(); })();

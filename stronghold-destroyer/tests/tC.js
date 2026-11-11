@@ -37,7 +37,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
   await p.click('.tb[data-k="sword"]'); await p.waitForTimeout(200);
   console.log('queued:', await p.textContent('#queue'), '| left: swords', await p.evaluate(()=>SD.res.sword), 'gold', await p.evaluate(()=>SD.res.gold), 'food', await p.evaluate(()=>SD.res.food));
   await p.click('.tab[data-tab="industry"]'); await p.waitForTimeout(200);
-  await p.evaluate((u3)=>{ SD.cam.z = u3 ? 1.5 : 1.3; SD.cam.x = 200; SD.cam.y = 640; }, USE3D); await p.waitForTimeout(1500);
+  await p.evaluate((u3)=>{ SD.cam.z = u3 ? 1.5 : 1.3; SD.camWorld(200, 640); }, USE3D); await p.waitForTimeout(1500);
   await p.screenshot({ path: SP + `/C_${USE3D ? '3d' : '2d'}.png` });
   await p.click('#cGoods'); await p.waitForTimeout(200); await p.screenshot({ path: SP + `/C_goods.png` });
   console.log('errors', errs.slice(0, 5)); await b.close(); })();

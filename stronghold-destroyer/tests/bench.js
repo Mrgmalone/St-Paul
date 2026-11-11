@@ -22,7 +22,7 @@ const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.leng
       const free = (x, y) => { const f = nearestFree(Math.floor(x / TILE), Math.floor(y / TILE)); return f ? [f.c * TILE + 16, f.r * TILE + 16] : [x, y]; };
       for (let i = 0; i < mine; i++) { const [x, y] = free(k.x - 300 + (i % 20) * 30, k.y + 120 + Math.floor(i / 20) * 30); makeUnit('player', kinds[i % 5], x, y); }
       for (let i = 0; i < foes; i++) { const [x, y] = free(k.x + 700 + (i % 20) * 30, k.y - 200 + Math.floor(i / 20) * 30); const e = makeUnit('enemy', ['sword', 'spear', 'archer'][i % 3], x, y); e.order = 'attack'; e.target = k; e.raider = true; e.repath = 0; }
-      SD.cam.z = 1.0; SD.cam.x = k.x - 200; SD.cam.y = k.y - 200;
+      SD.cam.z = 1.0; SD.camWorld(k.x - 200, k.y - 200);
       const orig = window.render; let rt = 0; window.render = window.__logicOnly ? function () {} : function () { const t = performance.now(); orig(); rt += performance.now() - t; };
       const times = [], rts = []; let last = 0;
       for (let i = 0; i < 900; i++) { window.__now += 33; const t0 = performance.now(); rt = 0; window.__raf.splice(0).forEach(f => f(window.__now)); times.push(performance.now() - t0); rts.push(rt); }

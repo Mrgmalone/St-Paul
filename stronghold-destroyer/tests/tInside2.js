@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
   for (let i = 0; i < 6; i++) { await p.waitForTimeout(2500); console.log('t', i, await p.evaluate(()=>SD.units.filter(u => u.job === window.__bw).map(u => u.sub + (u.inside ? '[IN]' : '') + ' d' + Math.round(edgeDist(u, window.__bw))).join(', '))); }
   await p.evaluate(()=>SD.showSite(window.__bw)); await p.waitForTimeout(300);
   console.log('panel:', await p.evaluate(()=>document.getElementById('siteInfo').innerText.replace(/\n/g, ' | ')), '| figures:', await p.evaluate(()=>document.querySelectorAll('#siteInfo svg').length));
-  const k = await p.evaluate(()=>{ const bw = window.__bw; SD.cam.z = 2.2; SD.cam.x = bw.x - 300; SD.cam.y = bw.y - 220; return 1; }); await p.waitForTimeout(400);
+  const k = await p.evaluate(()=>{ const bw = window.__bw; SD.cam.z = 2.2; SD.camWorld(bw.x - 300, bw.y - 220); return 1; }); await p.waitForTimeout(400);
   await p.screenshot({ path: 'inside_panel.png' });
   // break at the tavern
   await p.evaluate(()=>{ document.getElementById('storePop').hidden = true; const tv = window.__tv; const u = SD.units.find(o => o.type === 'civ' && !o.job && !o.dead); window.__bu = u; u.carry = 0; u.task = null; u.sub = null; u.order = 'idle'; u.breakUntil = time + 25; u.breakAt = tv; SD.commandMove([u], tv.x, tv.y + 10); });

@@ -7,7 +7,7 @@ const SP = require('./env').SP;
   await p.click('.civ[data-civ="wardens"]'); await p.waitForTimeout(300);
   await p.evaluate(()=>{ SD.res.wood = 1000; SD.res.food = 1000; SD.setRaid(9999); });
   const top = await p.evaluate(()=>document.getElementById('game').getBoundingClientRect().top);
-  const scr = (wx,wy) => p.evaluate(([x,y])=>({x:(x-SD.cam.x)*SD.cam.z, y:(y-SD.cam.y)*SD.cam.z}), [wx,wy]);
+  const scr = (wx,wy) => p.evaluate(([x,y])=>SD.scr(x,y), [wx,wy]);
   const clickWorld = async (wx,wy,btn='left') => { const s = await scr(wx,wy); await p.mouse.move(s.x, s.y+top); await p.mouse.click(s.x, s.y+top, {button:btn}); };
   // place a farm, a house, a tower through the real UI
   await p.evaluate(()=>UI.showTab('town')); await p.click('.bb[data-b="farm"]'); await clickWorld(330+352, 760-96);
@@ -34,6 +34,6 @@ const SP = require('./env').SP;
   // raid vs the tower and wall
   await p.evaluate(()=>{ SD.spawnRaid(); });
   for (let i=0;i<60;i++){ await p.waitForTimeout(1000); const r = await p.evaluate(()=>({raiders:SD.units.filter(u=>u.raider&&!u.dead).map(u=>u.order+(u.target?':'+(u.target.kind||''):'')).join(' '), arrows: SD.arrows.filter(a=>a.from.kind==='gtower').length, hurt: SD.structures.filter(s=>s.team==='player'&&s.hp<s.maxHp&&s.done).map(s=>s.kind).join(',')}));
-    if (i%10==0) console.log('raid', i, JSON.stringify(r)); if (i===25) { await p.evaluate(()=>{SD.cam.x=250; SD.cam.y=480;}); await p.waitForTimeout(60); await p.screenshot({path:SP+'/b_raid.png'}); } if (!r.raiders) { console.log('raid over at', i); break; } }
+    if (i%10==0) console.log('raid', i, JSON.stringify(r)); if (i===25) { await p.evaluate(()=>{SD.camWorld(250, 480);}); await p.waitForTimeout(60); await p.screenshot({path:SP+'/b_raid.png'}); } if (!r.raiders) { console.log('raid over at', i); break; } }
   console.log('errors', errs); await b.close();
 })();
