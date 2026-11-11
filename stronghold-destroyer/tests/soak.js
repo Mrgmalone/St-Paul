@@ -8,7 +8,27 @@ const CIV = process.argv[2] || 'harvest', MINUTES = +(process.argv[3] || 20);
   await p.goto(require('./env').GAME);
   await p.evaluate(() => { const fs = window.__raf.splice(0); fs.forEach(f => f(0)); window.__now = 0; });
   await p.click(`.civ[data-civ="${CIV}"]`);
-  await p.evaluate(() => { window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); } };
+  await p.evaluate(() => { window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); if (i % 10 === 9) window.__track(); } };
+    // circling: lots of walking in 10 seconds without getting anywhere; idle wandering: people with nothing to do moving about
+    window.__tr = new Map();
+    window.__track = () => {
+      for (const u of units) {
+        if (u.dead || u.inside || u.onWall) { window.__tr.delete(u); continue; }
+        let t = window.__tr.get(u);
+        if (!t) { window.__tr.set(u, { x: u.x, y: u.y, len: 0, x0: u.x, x1: u.x, y0: u.y, y1: u.y, t0: time, mv: 0, n: 0, fight: 0, idleLen: 0, cmd: u.cmdT }); continue; }
+        const d = Math.hypot(u.x - t.x, u.y - t.y); t.len += d; t.x = u.x; t.y = u.y;
+        t.x0 = Math.min(t.x0, u.x); t.x1 = Math.max(t.x1, u.x); t.y0 = Math.min(t.y0, u.y); t.y1 = Math.max(t.y1, u.y);
+        t.n++; if (u.moving) t.mv++; if (u.combatT > 0 || u.attackAnim > 0 || (u.order === 'attack' && u.target && edgeDist(u, u.target) < 60)) t.fight++;
+        const idle = u.order === 'idle' && !u.job && !(u.breakUntil > time) && !u.toHeal && (u.cmdT || -99) === t.cmd;
+        if (idle) t.idleLen += d;
+        if (time - t.t0 >= 10) {
+          const span = Math.hypot(t.x1 - t.x0, t.y1 - t.y0);
+          if (t.len > 160 && span < 60 && t.mv > t.n * 0.6 && t.fight < t.n * 0.2 && !isMachine(u)) window.__note('circling ' + u.type + ' ' + u.team + ' ' + u.order, { at: [Math.round(u.x), Math.round(u.y)], walked: Math.round(t.len), span: Math.round(span), sub: u.sub || '', t: Math.round(time) });
+          if (t.idleLen > 40) window.__note('idle wandering ' + u.type + ' ' + u.team, { at: [Math.round(u.x), Math.round(u.y)], moved: Math.round(t.idleLen), t: Math.round(time), guard: !!u.guardOf });
+          window.__tr.set(u, { x: u.x, y: u.y, len: 0, x0: u.x, x1: u.x, y0: u.y, y1: u.y, t0: time, mv: 0, n: 0, fight: 0, idleLen: 0, cmd: u.cmdT });
+        }
+      }
+    };
     window.__issues = {}; window.__note = (k, v) => { const o = window.__issues[k] = window.__issues[k] || { n: 0, ex: [] }; o.n++; if (o.ex.length < 4) o.ex.push(v); };
     window.__hist = new Map(); window.__fp = 0; const fp0 = window.findPath; window.findPath = (...a) => { window.__fp++; return fp0(...a); };
     window.__check = () => {
