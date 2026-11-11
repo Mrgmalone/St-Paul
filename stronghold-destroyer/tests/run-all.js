@@ -10,7 +10,7 @@ const slow = n => /3d|Tg|Art3d/.test(n);
 const run = n => new Promise(res => {
   const t0 = Date.now(), p = spawn(process.execPath, [path.join(__dirname, n + '.js'), SP], { cwd: SP }); let out = '';
   p.stdout.on('data', d => out += d); p.stderr.on('data', d => out += d);
-  const timer = setTimeout(() => p.kill('SIGKILL'), slow(n) ? 900000 : 500000);
+  const timer = setTimeout(() => p.kill('SIGKILL'), slow(n) ? 1200000 : 1200000);
   p.on('close', code => { clearTimeout(timer); fs.writeFileSync(path.join(SP, n + '.log'), out);
     const errs = /errors \[\]/.test(out) && !/errors \[\s*['"]/.test(out); res({ n, ok: code === 0 && errs, code, secs: Math.round((Date.now() - t0) / 1000) }); });
 });
@@ -18,6 +18,6 @@ const run = n => new Promise(res => {
   fs.mkdirSync(SP, { recursive: true });
   const fast = pick.filter(n => !slow(n)), heavy = pick.filter(slow), results = [];
   const pool = async (list, k) => { const q = list.slice(); await Promise.all(Array.from({ length: k }, async () => { while (q.length) { const r = await run(q.shift()); results.push(r); console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.n.padEnd(10)} ${r.secs}s${r.ok ? '' : '  (see tests/.work/' + r.n + '.log)'}`); } })); };
-  await pool(fast, 4); await pool(heavy, 1);
+  await pool(fast, 3); await pool(heavy, 1);
   const bad = results.filter(r => !r.ok); console.log(`\n${results.length - bad.length} of ${results.length} passed`); process.exit(bad.length ? 1 : 0);
 })();

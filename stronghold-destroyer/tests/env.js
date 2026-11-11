@@ -11,7 +11,10 @@ if (!fs.existsSync(THREE)) {
 // The game is 3D only: every test feeds it the local three.js and runs Chromium with software 3D graphics.
 const LAUNCH = { args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] };
 const LIB = path.join(SP, 'lib/three/package');
-async function use3d(page) {
+async function use3d(page, opts = {}) {
+  page.setDefaultTimeout(300000);
+  // software 3D is slow: draw every third frame so game time keeps pace (the game itself always draws every frame)
+  if (opts.drawEvery !== 1) await page.addInitScript(n => { window.__drawEvery = n; }, opts.drawEvery || 3);
   const js = f => r => r.fulfill({ body: fs.readFileSync(path.join(LIB, f)), contentType: 'application/javascript' });
   await page.route('**/three.min.js', js('build/three.min.js'));
   await page.route('**/GLTFLoader.js', js('examples/js/loaders/GLTFLoader.js'));

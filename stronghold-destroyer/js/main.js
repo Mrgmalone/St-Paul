@@ -105,7 +105,7 @@ function drawWeatherFx(g) {
   b.onclick = () => { WEATHER.on = !WEATHER.on; try { localStorage.setItem('sd-weather', WEATHER.on ? 'on' : 'off'); } catch (e) {} if (WEATHER.on) WEATHER.t = Math.min(WEATHER.t, 30); show(); }; show();
 })();
 // ---------- main loop ----------
-let last = performance.now(), time = 0, lastSel = 0, lastRaiders = 0, frameDt = 0.016;
+let frameNo = 0, last = performance.now(), time = 0, lastSel = 0, lastRaiders = 0, frameDt = 0.016;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   // reading a menu (help, mood, goods, a building's panel) pauses the game, unless enemies are close
@@ -161,7 +161,7 @@ function frame(now) {
   const overRes = civSel && !hover && mouse.inside ? pickResourceScreen(mouse.x, mouse.y) : null;
   canvas.style.cursor = placing ? 'crosshair' : hover && hover.team === 'enemy' && selection.size ? 'crosshair' : (isMine(hover) || overRes) ? 'pointer' : 'default';
 
-  render();
+  frameNo++; if (!window.__drawEvery || frameNo % window.__drawEvery === 0) render();   // (__drawEvery: tests only)
   hudT -= dt; if (hudT <= 0) { hudT = 0.2; updateHud(); UI.drawMini(); }
   {
     const fire = fires.filter(f => f.x > cam.x - 100 && f.x < cam.x + vw / cam.z + 100 && f.y > cam.y - 100 && f.y < cam.y + vh / cam.z + 100);

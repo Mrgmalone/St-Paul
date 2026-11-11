@@ -868,27 +868,66 @@ const R3D = (() => {
     obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     info.inner.add(obj); return true;
   }
-  function spriteUnitModel(u, sp) {
-    const root = new T.Group(), body = new T.Group(); root.add(body);
-    const pivot = new T.Group(); body.add(pivot);
-    const H = (u.type === 'king' ? 47 : u.type === 'knight' ? 46 : 44) * 1.12, cw = sp.img.width / sp.n, W = H * cw / sp.img.height;
-    const tex = new T.Texture(sp.img); tex.encoding = T.sRGBEncoding; tex.needsUpdate = true; tex.repeat.set(1 / sp.n, 1); tex.anisotropy = 4;
-    const mat = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.45, side: T.DoubleSide, toneMapped: false });
-    const geo = new T.PlaneGeometry(W, H); geo.translate(0, H / 2 - 1.5, 0);
-    const card = new T.Mesh(geo, mat); pivot.add(card);
-    const sh = new T.Mesh(new T.CircleGeometry(W * 0.36, 16), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.4; sh.scale.set(1, 0.55, 1); root.add(sh);
-    return { root, body, pivot, card, tex, sp, sprite: true, mats: [mat], m: {}, heading: u.facing < 0 ? -Math.PI / 2 : Math.PI / 2, spVer: ART.ver };
+  // ---------- units from Gerald's sheet: a picture card standing on the ground, turned to the camera ----------
+  // One shared texture per team (the recoloured atlas); each view's card shape is made once and shared.
+  const artTexOf = {}, artMatOf = {}, silMatOf = {}, flashMatOf = {}, artGeo = new Map();
+  function artMaterials(team) {
+    if (artMatOf[team]) return;
+    const tex = new T.CanvasTexture(teamAtlas(team)); tex.encoding = T.sRGBEncoding; tex.anisotropy = 4;
+    artTexOf[team] = tex;
+    artMatOf[team] = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.5, transparent: true, side: T.DoubleSide, toneMapped: false });
+    flashMatOf[team] = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.5, transparent: true, side: T.DoubleSide, toneMapped: false, color: new T.Color(2.2, 2.0, 1.8) });
+    // the outline: drawn only where something nearer (a wall, a tower, a tree) already covers the unit
+    const st = new T.CanvasTexture(silAtlas(team));
+    silMatOf[team] = new T.MeshBasicMaterial({ map: st, alphaTest: 0.5, transparent: true, opacity: 0.62, depthWrite: false, depthFunc: T.GreaterDepth, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6, side: T.DoubleSide, toneMapped: false, fog: false });
   }
-  function animateSprite(u, md, dt) {
+  function artGeometry(name, view, big) {
+    const key = name + '/' + view + '/' + big; let geo = artGeo.get(key); if (geo) return geo;
+    const f = ATLAS.frames[name + '/' + view], ref = ATLAS.frames[name + '/front'], s = (ART_H[name] || 52) / ref.h * big;
+    const W = ATLAS.img.width, H = ATLAS.img.height;
+    // the foot point (ax, ay on the picture) sits on the ground at the model's origin
+    geo = new T.PlaneGeometry(f.w * s, f.h * s); geo.translate((f.w / 2 - f.ax) * s, (f.ay - f.h / 2) * s, 0);
+    const uv = geo.attributes.uv, u0 = f.x / W, u1 = (f.x + f.w) / W, v0 = 1 - (f.y + f.h) / H, v1 = 1 - f.y / H;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) < 0.5 ? u0 : u1, uv.getY(i) < 0.5 ? v0 : v1);
+    artGeo.set(key, geo); return geo;
+  }
+  function artUnitModel(u, name) {
+    const team = TEAM_KEY(u); artMaterials(team);
+    const root = new T.Group(), body = new T.Group(); root.add(body);
+    const pivot = new T.Group(); body.add(pivot); const tilt = new T.Group(); pivot.add(tilt);
+    const big = u.type === 'king' ? 1.12 : u.lord ? 1.2 : 1;
+    // outlines are drawn before any unit card, so only buildings, walls, trees and the ground can hide a unit, not other units
+    const card = new T.Mesh(artGeometry(name, 'front', big), artMatOf[team]); card.castShadow = true; card.renderOrder = 40; tilt.add(card);
+    const sil = new T.Mesh(card.geometry, silMatOf[team]); sil.renderOrder = 35; card.add(sil);
+    const f = ATLAS.frames[name + '/front'], fw = f.w * (ART_H[name] || 52) / f.h;
+    const sh = new T.Mesh(new T.CircleGeometry(Math.max(7, Math.min(24, fw * 0.36)), 18), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }));
+    sh.rotation.x = -Math.PI / 2; sh.position.y = 0.5; sh.scale.set(1, 0.6, 1); body.add(sh);
+    let crown = null;
+    if (u.type === 'king' || u.lord) { crown = new T.Mesh(new T.CylinderGeometry(4.2, 3.6, 3.2, 8, 1, true), new T.MeshStandardMaterial({ color: C(u.lord ? '#c87a2a' : '#f2c84a'), metalness: 0.8, roughness: 0.3, side: T.DoubleSide })); crown.position.y = ART_H[name] * big * 0.99; tilt.add(crown); }
+    return { root, body, pivot, tilt, card, sil, name, team, big, artModel: true, mats: [], m: {}, heading: u.facing < 0 ? -Math.PI / 2 : Math.PI / 2, view: 'front', flip: false };
+  }
+  // which view: front when coming toward the camera, the side view when walking across (right is the left view
+  // mirrored, as the sheet asks), and the side view also stands in for walking away, as there is no back view yet
+  function animateArt(u, md, dt) {
     const cp = camera.position, camDir = Math.atan2(cp.x - u.x, cp.z - u.y);
-    let rel = md.heading - camDir; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
-    const [idx, flip] = spriteView(md.sp, rel), n = md.sp.n;
-    md.tex.repeat.x = (flip ? -1 : 1) / n; md.tex.offset.x = (flip ? idx + 1 : idx) / n;
-    md.pivot.rotation.y = camDir - md.heading;   // the card always faces the viewer
-    const mv = u.moving && !u.dead, ph = u.walkPhase || 0;
-    md.card.position.y = mv ? Math.abs(Math.sin(ph)) * 1.6 : Math.sin(time * 1.6 + (u.seed || 0)) * 0.15;
-    md.card.rotation.z = mv ? Math.sin(ph) * 0.045 : 0;
-    md.card.rotation.x = u.attackAnim > 0 ? -Math.sin(u.attackAnim * Math.PI) * 0.22 : 0;
+    md.pivot.rotation.y = camDir - md.heading;   // the card always turns to the viewer...
+    const horiz = Math.max(1, Math.hypot(cp.x - u.x, cp.z - u.y)), elev = Math.atan2(cp.y - md.root.position.y, horiz);
+    md.tilt.rotation.x = -elev;                  // ...and leans back so the camera looking down sees it whole
+    let rel = md.heading - camDir; rel = Math.atan2(Math.sin(rel), Math.cos(rel));   // 0 = facing us, + = turned to our right
+    const moving = u.moving && !u.dead, fighting = u.attackAnim > 0 || (u.order === 'attack' && u.target && !u.moving);
+    let view = 'front', flip = false;
+    if (moving || fighting) { const a = Math.abs(rel); if (a > 0.75) { view = 'left'; flip = Math.sin(rel) < 0; } }
+    if (view !== md.view) { md.card.geometry = artGeometry(md.name, view, md.big); md.sil.geometry = md.card.geometry; md.view = view; }
+    md.card.scale.x = flip ? -1 : 1; md.flip = flip;
+    const machine = isMachine(u), ph = u.walkPhase || 0, side = view === 'left' ? (flip ? 1 : -1) : 0, a = u.attackAnim > 0 ? Math.sin(u.attackAnim * Math.PI) : 0;
+    md.card.position.y = moving && !machine ? Math.abs(Math.sin(ph)) * 1.7 : 0;
+    md.card.rotation.z = (moving && !machine ? 0.05 * -side : 0) - (machine ? 0 : a * 0.15 * (side || 1));
+    md.card.material = u.flash > 0 ? flashMatOf[md.team] : (md.deadMat || artMatOf[md.team]);
+    md.sil.visible = outlinesOn && !u.dead && !u.inside;
+    if (u.dead) {
+      const k = Math.min(1, u.deathT / 0.45); md.card.rotation.z = -k * Math.PI / 2 * 0.92 * (side >= 0 ? 1 : -1);
+      if (u.deathT > 7) { if (!md.deadMat) { md.deadMat = artMatOf[md.team].clone(); md.deadMat.transparent = true; } md.deadMat.opacity = Math.max(0, 1 - (u.deathT - 7) / 3); }
+    }
   }
   function personModel(u) {
     const P = u.pal, soldier = (swordish(u) || u.type === 'spear'), lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
@@ -1479,8 +1518,8 @@ const R3D = (() => {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); const sp = art3d ? spriteOf(u) : null; return sp ? spriteUnitModel(u, sp) : personModel(u); })(); addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
-      else if (!u.dead && (md.sprite ? !art3d : (!md.glb && !md.machine && !md.ram && art3d && md.spVer !== ART.ver && spriteOf(u)))) { scene.remove(md.root); unitModels.delete(u.id); continue; }
+      if (!md) { md = artOf(u) ? artUnitModel(u, artOf(u)) : u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); return personModel(u); })(); if (!md.artModel) addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
+      else if (!u.dead && !md.artModel && !md.glb && artOf(u)) { scene.remove(md.root); unitModels.delete(u.id); continue; }   // the pictures arrived after this unit was made
       else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
       seen.add(u.id);
@@ -1505,13 +1544,13 @@ const R3D = (() => {
         if (md.log) md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
         if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
-      } else if (md.glb) animateGlb(u, md, dt); else if (md.sprite) animateSprite(u, md, dt); else animatePerson(u, md, dt);
+      } else if (md.glb) animateGlb(u, md, dt); else if (md.artModel) animateArt(u, md, dt); else animatePerson(u, md, dt);
       // hit flash, falling, fading
       const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
       for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk, fk, fk); }
       if (u.dead) {
         let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f);
-        if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; }
+        if (md.artModel) {} else if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; }
         const al = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1;
         if (al < 1) for (const mt of md.mats) { mt.transparent = true; mt.opacity = al; }
       }
