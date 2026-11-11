@@ -6,47 +6,20 @@
 const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
 let vw = 800, vh = 600, dpr = 1;
 const cam = { x: 0, y: 0, z: 1 };
-function minZoom() { return Math.max(vw / MW, vh / MH); }
 let resized = false;
 function resize() {
   const r = canvas.parentElement.getBoundingClientRect();
   dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const ocx = cam.x + vw / cam.z / 2, ocy = cam.y + vh / cam.z / 2;   // keep the same spot in the middle when the panel opens or closes
+  const c = resized ? toWorld(vw / 2, vh / 2) : null;   // keep the same spot in the middle when the panel opens or closes
   vw = Math.max(200, r.width); vh = Math.max(150, r.height);
   canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
-  let a3 = false; try { a3 = R3D.active; } catch (e) {}
-  if (!a3) cam.z = clamp(cam.z, minZoom(), 2.4);
-  if (resized) { cam.x = ocx - vw / cam.z / 2; cam.y = ocy - vh / cam.z / 2; } resized = true;
+  cam.z = clamp(cam.z, minZoom(), MAX_Z);
+  if (c) centerOn(c.x, c.y); resized = true;
   clampCam();
-}
-function clampCam() {
-  let a3 = false; try { a3 = R3D.active; } catch (e) {}
-  if (a3) { const hw = vw / cam.z / 2, hh = vh / cam.z / 2, cx = clamp(cam.x + hw, -200, MW + 200), cy = clamp(cam.y + hh, -200, MH + 200); cam.x = cx - hw; cam.y = cy - hh; return; }
-  cam.x = clamp(cam.x, 0, Math.max(0, MW - vw / cam.z)); cam.y = clamp(cam.y, 0, Math.max(0, MH - vh / cam.z));
-}
-const toWorld = (sx, sy) => (typeof R3D !== 'undefined' && R3D.active) ? R3D.groundAt(sx, sy) : ({ x: sx / cam.z + cam.x, y: sy / cam.z + cam.y });
-const screenOf = (x, y, h = 0) => (typeof R3D !== 'undefined' && R3D.active) ? R3D.project(x, h, y) : { x: (x - cam.x) * cam.z, y: (y - h - cam.y) * cam.z, ok: true };
-function pickScreen(sx, sy) { if (R3D.active) return R3D.pick(sx, sy); const w = toWorld(sx, sy); return pickAt(w.x, w.y); }
-function pickResourceScreen(sx, sy) { if (R3D.active) return R3D.pickResource(sx, sy); const w = toWorld(sx, sy); return pickResource(w.x, w.y); }
-function centerOn(x, y) { cam.x = x - vw / cam.z / 2; cam.y = y - vh / cam.z / 2; clampCam(); }
-
-function pickAt(wx, wy, radius = 19) {
-  let best = null, bd = radius;
-  for (const u of units) { if (u.dead || u.inside) continue; const d = Math.hypot(u.x - wx, (u.y - 21 - elev2D(u)) - wy); if (d < bd + 4) { if (d < bd || !best) { bd = d; best = u; } } }
-  if (best) return best;
-  for (const s of structures) { if (s.dead) continue; const hw = (s.x1 - s.x0) / 2 + 6, top = s.topH; if (wx > s.x - hw && wx < s.x + hw && wy > s.y - top && wy < s.y + 2) return s; }
-  return null;
 }
 const selectedList = () => [...selection].filter(alive);
 function selectOnly(list) { selection = new Set(list.filter(u => u.kind === 'unit' && u.team === 'player' && !u.dead && !u.inside && u.type !== 'oxcart')); }
 const isMine = h => h && h.kind === 'unit' && h.team === 'player';
-function pickResource(wx, wy) {
-  for (const b of bushes) if (Math.hypot(wx - b.x, wy - (b.y - 7)) < 17) return b;
-  for (const fm of farms) if (wx > fm.x0 && wx < fm.x1 && wy > fm.y0 && wy < fm.y1) return fm;
-  for (const t of trees) if (Math.abs(wx - t.x) < 15 * t.s && wy < t.y + 6 && wy > t.y - 50 * t.s) return t;
-  for (const r of rocks) if (!r.iron && !r.gone && Math.hypot(wx - r.x, wy - (r.y - 8)) < 16 * r.s) return r;
-  return null;
-}
 const STORE_KINDS = { stockpile: 1, granary: 1, armory: 1, keep: 1 };
 let storeShown = null;
 const OUTPUT = { woodhut: 'wood', farm: 'food (crops)', wheatfarm: 'wheat', hopfarm: 'hops', quarry: 'stone' };
@@ -124,7 +97,7 @@ function showStore(b) {
   html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
   setBox(p, html); p.dataset.site = ''; p.hidden = false;
 }
-function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && !u.inside && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
+function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && !u.inside && onView(u.x, u.y, 0)); }
 
 function issueAt(sx, sy) {
   const sel = selectedList().filter(u => u.type !== 'oxcart'); if (!sel.length) return false;
@@ -159,7 +132,7 @@ function issueAt(sx, sy) {
 }
 
 const pointers = new Map();
-let drag = null, pinch = null, mouse = { x: -1, y: -1, inside: false }, hover = null, lastClick = { t: 0, x: 0, y: 0 }, orbit = null;
+let drag = null, pinch = null, mouse = { x: -1, y: -1, inside: false }, hover = null, lastClick = { t: 0, x: 0, y: 0 };
 const edge = { x: -1, y: -1, on: false, held: 0, touchUntil: 0 };
 // edge scrolling is for a real mouse only: touch screens can send stray 'mouse' positions (often the corner), which must not drag the view
 window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && performance.now() > edge.touchUntil && (e.movementX || e.movementY || edge.on)) { edge.x = e.clientX; edge.y = e.clientY; edge.on = true; } });
@@ -173,7 +146,6 @@ canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse') {
     if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
-    if (e.button === 0 && e.altKey && R3D.active) { orbit = { x: p.x, y: p.y }; return; }
     if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
     else if (e.button === 2) { if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
@@ -184,8 +156,7 @@ const TOUCH = { mode: null, sx: 0, sy: 0, lx: 0, ly: 0, t0: 0, vx: 0, vy: 0, lt:
 const fling = { x: 0, y: 0 };
 function twoInfo() { const [a, b] = [...pointers.values()]; return { d: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; }
 function panBy(x0, y0, x1, y1) {   // move the view so the ground under the finger follows the finger
-  const w0 = toWorld(x0, y0), w1 = toWorld(x1, y1); if (!w0 || !w1) return { x: 0, y: 0 };
-  const dx = w1.x - w0.x, dy = w1.y - w0.y; cam.x -= dx; cam.y -= dy; clampCam(); return { x: dx, y: dy };
+  const dx = (x1 - x0) / cam.z, dy = (y1 - y0) / cam.z; cam.x -= dx; cam.y -= dy; clampCam(); return { x: dx, y: dy };
 }
 function touchDown(p) {
   document.body.classList.add('touch'); fling.x = fling.y = 0; clearTimeout(TOUCH.hold);
@@ -202,9 +173,7 @@ function touchMove(p) {
   } else if (TOUCH.mode === 'box') { TOUCH.lx = p.x; TOUCH.ly = p.y; if (drag) { drag.x = p.x; drag.y = p.y; } }
   else if (TOUCH.mode === 'two' && pointers.size >= 2) {
     const t = twoInfo();
-    const nz = clamp(TOUCH.z0 * t.d / TOUCH.d0, R3D.active ? 0.45 : minZoom(), 2.4);
-    if (R3D.active) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = nz; centerOn(cx, cy); R3D.turn(-(t.ang - TOUCH.ang)); }
-    else { const w = toWorld(t.mx, t.my); cam.z = nz; cam.x = w.x - t.mx / cam.z; cam.y = w.y - t.my / cam.z; clampCam(); }
+    zoomAt(t.mx, t.my, TOUCH.z0 * t.d / TOUCH.d0);
     panBy(TOUCH.mx, TOUCH.my, t.mx, t.my);
     TOUCH.ang = t.ang; TOUCH.mx = t.mx; TOUCH.my = t.my;
   }
@@ -217,7 +186,7 @@ function touchUp(p) {
   if (mode === 'pan') { if (performance.now() - TOUCH.lt < 160) { fling.x = clamp(TOUCH.vx, -2400, 2400); fling.y = clamp(TOUCH.vy, -2400, 2400); } return; }
   if (mode === 'box') {
     const bx0 = Math.min(TOUCH.sx, p.x) - 10, bx1 = Math.max(TOUCH.sx, p.x) + 10, by0 = Math.min(TOUCH.sy, p.y) - 12, by1 = Math.max(TOUCH.sy, p.y) + 12;
-    const inBox = units.filter(u => { if (u.team !== 'player' || u.dead || u.inside) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
+    const inBox = unitsInScreenBox(bx0, by0, bx1, by1);
     if (TOUCH.add) inBox.forEach(u => selection.add(u)); else selectOnly(inBox);
     drag = null; return;
   }
@@ -249,26 +218,22 @@ canvas.addEventListener('pointermove', e => {
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
   if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
-  if (orbit) { R3D.turn(-(p.x - orbit.x) * 0.007); R3D.tilt((p.y - orbit.y) * 0.004); orbit.x = p.x; orbit.y = p.y; return; }
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
     const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    if (R3D.active) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = clamp(pinch.z * d / Math.max(10, pinch.d), 0.45, 2.4); centerOn(cx, cy); return; }
-    cam.z = clamp(pinch.z * d / Math.max(10, pinch.d), minZoom(), 2.4);
-    cam.x = pinch.wm.x - mx / cam.z; cam.y = pinch.wm.y - my / cam.z; clampCam(); return;
+    zoomAt(mx, my, pinch.z * d / Math.max(10, pinch.d)); return;
   }
   if (drag) { drag.x = p.x; drag.y = p.y; if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) drag.box = true; }
 });
 function endPointer(e) {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { pointers.delete(e.pointerId); touchUp(p); pinch = null; return; }
-  if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && tearing && !drag.box) { tearAt(p.x, p.y); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && placing && !drag.box) { placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId)) {
     if (drag.box) {
       const bx0 = Math.min(drag.sx, p.x) - 8, bx1 = Math.max(drag.sx, p.x) + 8, by0 = Math.min(drag.sy, p.y) - 10, by1 = Math.max(drag.sy, p.y) + 10;
-      const inBox = units.filter(u => { if (u.team !== 'player' || u.dead || u.inside) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
+      const inBox = unitsInScreenBox(bx0, by0, bx1, by1);
       if (drag.shift && !drag.touch) inBox.forEach(u => selection.add(u)); else selectOnly(inBox);
     } else {
       const hit = pickScreen(p.x, p.y);
@@ -285,7 +250,7 @@ function endPointer(e) {
         else if (hit && hit.team === 'player' && HALLS[hit.kind]) showInside(hit);
         else if (hit && hit.team === 'player' && hit.kind === 'market') showMarket(hit);
         else if (hit && hit.team === 'player' && hit.x0 !== undefined) showBasic(hit);
-        else if (!hit && pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) && isField((pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y) || {}).kind) && !selection.size) showSite(pickResource(toWorld(p.x, p.y).x, toWorld(p.x, p.y).y));
+        else if (!hit && isField((pickResourceScreen(p.x, p.y) || {}).kind) && !selection.size) showSite(pickResourceScreen(p.x, p.y));
         else if (!drag.shift) { selection.clear(); document.getElementById('storePop').hidden = true; storeShown = null; }
         lastClick = { t: now, x: p.x, y: p.y };
       }
@@ -300,9 +265,8 @@ canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); dr
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse.inside = false; });
 canvas.addEventListener('wheel', e => {
   e.preventDefault(); const p = localPos(e), w = toWorld(p.x, p.y);
-  if (R3D.active && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.2 && !e.ctrlKey) { R3D.turn(e.deltaX * 0.004); return; }
   const base = zoomAnim ? zoomAnim.z : cam.z, dz = clamp(e.deltaY, -120, 120);
-  zoomAnim = { z: clamp(base * Math.exp(-dz * 0.0018), R3D.active ? 0.45 : minZoom(), 2.4), sx: p.x, sy: p.y };
+  zoomAnim = { z: clamp(base * Math.exp(-dz * 0.0018), minZoom(), MAX_Z), sx: p.x, sy: p.y };
 }, { passive: false });
 const keys = {};
 window.addEventListener('keydown', e => {
@@ -314,13 +278,8 @@ window.addEventListener('keydown', e => {
   if (e.key === 'h' || e.key === 'H') toggleHelp();
   if (e.key === 'p' || e.key === 'P') setPaused(!paused);
   if ((e.key === 'z' || e.key === 'Z') && storeShown && JOBS[storeShown.kind]) siteAction(storeShown, 'sleep');
-  if (e.key === 'q' || e.key === 'Q') R3D.rotate(-1);
-  if (e.key === 'e' || e.key === 'E') R3D.rotate(1);
   if (placing && !isLine(placing.kind) && ['r', 'R', 't', 'T'].includes(e.key)) turnPlacing();
-  else if (e.key === 'r' || e.key === 'R') R3D.tilt(0.12);
-  if (e.key === 'f' || e.key === 'F') R3D.tilt(-0.12);
   if (e.key === ' ' && started) { e.preventDefault(); goHome(); }
-  if (e.key === 'v' || e.key === 'V') setView(!R3D.active);
   if (e.key === 'm' || e.key === 'M') { const anyOn = AudioSys.isOn('music') || AudioSys.isOn('sfx'); AudioSys.setOn('music', !anyOn); AudioSys.setOn('sfx', !anyOn); refreshSoundButtons(); }
   if (e.key === 's' || e.key === 'S') commandStop(selectedList());
   if (e.key.startsWith('Arrow')) e.preventDefault();

@@ -78,7 +78,7 @@ const AudioSys = (() => {
     const now = ac.currentTime; if (last[name] && now - last[name] < (MIN_GAP[name] || 0.05)) return; last[name] = now;
     let pan = 0, v = vol;
     if (x !== undefined) {
-      const sx = (x - cam.x) * cam.z, sy = (y - cam.y) * cam.z, m = 240;
+      const so = screenOf(x, y), sx = so.x, sy = so.y, m = 240;
       if (sx < -m || sx > vw + m || sy < -m || sy > vh + m) return;   // only what is near the screen
       const off = Math.max(0, -sx, sx - vw, -sy, sy - vh); v *= 1 - off / m * 0.8; pan = clamp(sx / vw * 2 - 1, -0.8, 0.8) ;
       v *= clamp(0.55 + cam.z * 0.4, 0.5, 1.1);

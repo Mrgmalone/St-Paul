@@ -5,7 +5,7 @@
 # usage, from the stronghold-destroyer folder:   python3 tools/cut_units.py
 # writes:  sprites/units/<unit>_<view>.png   (each view as drawn, dark background removed, for checking by eye)
 #          sprites/units_atlas.png            (all 30 views packed into one picture: the sprite atlas)
-#          sprites/units_mask.png             (same layout: which pixels are team cloth, gold trim, steel and shield emblem,
+#          sprites/units_mask.png             (same layout, twice as tall: which pixels are team cloth, gold trim, steel, and below them the shield emblem,
 #                                              so the game can recolour each team at load time without new art)
 #          sprites/atlas.js                   (the atlas, the mask and the frame list embedded for the game)
 # The right view on the sheet is used as drawn; the game mirrors the left view when it needs a matching pair.
@@ -117,7 +117,7 @@ def smooth(m, r=0.8):
     return np.asarray(Image.fromarray((np.clip(m, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(r))).astype(np.float32) / 255
 
 def mask_of(img):
-    """R: team cloth (the sheet's blue, and its green trim cloth)  G: gold trim  B: bright steel  A: the pale emblem on a blue shield or tabard"""
+    """R: team cloth (the sheet's blue, and its green trim cloth)  G: gold trim  B: bright steel;  second picture: the pale emblem on a blue shield or tabard"""
     a = np.asarray(img).astype(np.float32); h, s, v = to_hsv(a[..., :3])
     blue = (h > 190) & (h < 262) & (s > 0.22) & (v > 0.12)
     green = (h > 68) & (h < 170) & (s > 0.2) & (v > 0.1)
@@ -127,9 +127,11 @@ def mask_of(img):
     blue_share = smooth(blue.astype(np.float32), 4)
     emblem = (s < 0.3) & (v > 0.62) & near_blue & (blue_share > 0.35)
     cloth = np.clip(smooth(blue | green) * 1.25, 0, 1)
-    m = np.dstack([cloth, np.clip(smooth(gold, 0.6) * 1.25, 0, 1), smooth(steel & ~emblem, 0.6), np.clip(smooth(emblem, 0.6) * 1.3, 0, 1)])
-    m = m * (a[..., 3:4] / 255)
-    return Image.fromarray((m * 255).astype(np.uint8), 'RGBA')
+    m = np.dstack([cloth, np.clip(smooth(gold, 0.6) * 1.25, 0, 1), smooth(steel & ~emblem, 0.6)]) * (a[..., 3:4] / 255)
+    e = np.clip(smooth(emblem, 0.6) * 1.3, 0, 1) * (a[..., 3] / 255)
+    # browsers drop the colour of fully transparent pixels, so the mask is opaque: cloth, trim and steel in one
+    # picture, and the emblem in a second band below it (the mask atlas is twice as tall as the art atlas)
+    return Image.fromarray((m * 255).astype(np.uint8), 'RGB'), Image.fromarray((np.dstack([e, e, e]) * 255).astype(np.uint8), 'RGB')
 
 def data_uri(img):
     b = io.BytesIO(); img.save(b, 'PNG', optimize=True); return 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
@@ -148,14 +150,14 @@ if __name__ == '__main__':
     for name, view, im in order:
         if x + im.width + 2 > W: x = 0; y += rowh + 2; rowh = 0
         place.append((name, view, im, x, y)); x += im.width + 2; rowh = max(rowh, im.height)
-    H = y + rowh; atlas = Image.new('RGBA', (W, H)); mask = Image.new('RGBA', (W, H))
+    H = y + rowh; atlas = Image.new('RGBA', (W, H)); mask = Image.new('RGB', (W, H * 2))
     frames = {}
     for name, view, im, x, y in place:
-        atlas.alpha_composite(im, (x, y)); mask.paste(mask_of(im), (x, y))
+        atlas.alpha_composite(im, (x, y)); mrgb, memb = mask_of(im); mask.paste(mrgb, (x, y)); mask.paste(memb, (x, y + H))
         al = np.asarray(im)[..., 3]; rows_ = np.where(al.max(1) > 40)[0]; foot = int(rows_[-1]) if len(rows_) else im.height - 1
         cols_ = np.where(al[max(0, foot - 6):foot + 1].max(0) > 40)[0]; fx = int((cols_[0] + cols_[-1]) / 2) if len(cols_) else im.width // 2
         frames[f'{name}/{view}'] = {'x': x, 'y': y, 'w': im.width, 'h': im.height, 'ax': fx, 'ay': foot}
-    atlas = atlas.crop((0, 0, max(f['x'] + f['w'] for f in frames.values()) + 1, H)); mask = mask.crop((0, 0, atlas.width, H))
+    Wc = max(f['x'] + f['w'] for f in frames.values()) + 1; atlas = atlas.crop((0, 0, Wc, H)); mask = mask.crop((0, 0, Wc, H * 2))
     atlas.save('sprites/units_atlas.png', optimize=True); mask.save('sprites/units_mask.png', optimize=True)
     with open('sprites/atlas.js', 'w') as f:
         f.write('// Unit sprite atlas cut from design/sheet4-military-units.png by tools/cut_units.py. Do not edit by hand.\n')

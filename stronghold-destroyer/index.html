@@ -48,8 +48,6 @@
   </div></div>
   <canvas id="mini" title="Map: click or drag to move the view"></canvas>
   <div id="camCtl">
-    <div class="cg c3"><div class="row"><button id="camL" title="Turn left (Q). Hold to keep turning.">&#10226;</button><button id="camR" title="Turn right (E). Hold to keep turning.">&#10227;</button></div><span>Turn</span></div>
-    <div class="cg c3"><div class="row"><button id="camUp" title="Look down from above (R)">&#9650;</button><button id="camDn" title="Tilt toward a side view (F)">&#9660;</button></div><span>Tilt</span></div>
     <div class="cg tonly"><div class="row"><button id="camAdd" title="Add mode: tap people to add them to your group">&#65291;</button></div><span>Add</span></div>
     <div class="cg"><div class="row"><button id="camHome" title="Back to your castle (Space)">&#8962;</button></div><span>Castle</span></div>
   </div>
@@ -59,11 +57,8 @@
   <div id="menuPop" class="pop" hidden>
     <h3>MENU</h3>
     <button id="btnHelp">Help and controls (H)</button>
-    <div class="row"><button id="btnTrees">Trees: Detailed</button><span style="font-size:14px;color:#d9c9a3">Simple runs faster on slower computers</span></div>
     <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
-    <div class="row"><button id="btnArt3d">Soldiers in 3D: Models</button><span style="font-size:14px;color:#d9c9a3">or your pictures from the design sheet</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
-    <div class="row"><button id="btnView">View: 3D</button><span style="font-size:14px;color:#d9c9a3">V switches &middot; Q and E turn the camera</span></div>
     <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
     <div class="row"><button id="btnSound">Sound: On</button><label class="vol">Sound volume<input type="range" id="volSound" min="0" max="100"></label></div>
   </div>
@@ -191,11 +186,12 @@
 </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="sprites/atlas.js"></script>
+<script src="sprites/materials.js"></script>
 <script src="js/core.js"></script>
 <script src="js/units.js"></script>
+<script src="js/iso.js"></script>
+<script src="js/sprites.js"></script>
 <script src="js/draw2d.js"></script>
 <script src="js/input.js"></script>
 <script src="js/rivals.js"></script>
@@ -203,7 +199,8 @@
 <script src="js/castle.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>
-<script src="js/world3d.js"></script>
+<script src="js/view.js"></script>
+<script src="js/hud.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
