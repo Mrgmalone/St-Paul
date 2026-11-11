@@ -86,7 +86,8 @@ function enemyWorker(u, dt) {
     if (site) { u.ejob = site; u.sub = 'toSite'; u.order = 'build'; u.path = []; }
     else {
       const wantFood = Math.random() < 0.4, list = wantFood ? bushes.filter(b => b.amount >= 10) : trees.filter(t => !t.gone && t.amount > 0);
-      let best = null, bd = 900; for (const n of list) { const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140; if (d < bd) { bd = d; best = n; } }
+      const on = new Map(); for (const o of units) if (o !== u && !o.dead && o.team === 'enemy' && o.enode && (o.sub === 'toNode' || o.sub === 'work')) on.set(o.enode, (on.get(o.enode) || 0) + 1);
+      let best = null, bd = 900; for (const n of list) { const k = on.get(n) || 0; if (k >= 3) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < bd) { bd = d; best = n; } }
       if (!best) { u.order = 'idle'; u.moving = false; return; }
       u.enode = best; u.task = { type: wantFood ? 'food' : 'wood', node: best }; u.sub = 'toNode'; u.order = 'gather'; u.path = [];
     }
