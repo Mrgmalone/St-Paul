@@ -90,7 +90,7 @@ function mountStep(u, dt) {
   const b = u.mountTarget;
   if (!canMount(b)) { u.order = 'idle'; return; }
   const via = wallAccess(b); if (!via) { u.order = 'idle'; return; }
-  if (edgeDist(u, via) <= 10) { mountOn(u, b); return; }
+  if (edgeDist(u, via) <= 10 || stalled(u) && edgeDist(u, via) <= 30) { mountOn(u, b); return; }
   if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, via); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 1.5; }
   followPath(u, dt);
 }
@@ -108,7 +108,7 @@ function followPath(u, dt) {
   if (!u.path.length) { u.moving = false; return; }
   const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
   if (d <= Math.max(step, 2.5)) {
-    if (!circleBlocked(wp.x, wp.y, u.radius * 0.8)) { u.x = wp.x; u.y = wp.y; }
+    if (!circleBlocked(wp.x, wp.y, Math.min(7, u.radius * 0.8))) { u.x = wp.x; u.y = wp.y; }
     u.path.shift();
     if (!u.path.length) { u.moving = false; return; }
   } else {
@@ -137,7 +137,7 @@ function roadEntry() {
 }
 function moveBy(u, mx, my) {
   curTeam = u.team;
-  const r = u.radius * 0.8, trapped = blockedAt(u.x, u.y);   // someone standing right inside a tree or a wall may always step out
+  const r = Math.min(7, u.radius * 0.8), trapped = blockedAt(u.x, u.y);   // the same width the route planner allows, so a planned route always fits   // someone standing right inside a tree or a wall may always step out
   if (trapped || !circleBlocked(u.x + mx, u.y, r)) u.x += mx;
   if (trapped || !circleBlocked(u.x, u.y + my, r)) u.y += my;
   u.x = clamp(u.x, 10, MW - 10); u.y = clamp(u.y, 10, MH - 10);
@@ -588,8 +588,7 @@ function separate() {   // people standing on each other step apart; only neighb
     if (aFixed && bFixed) continue;
     // someone standing still holds their ground; the one walking gives way and steps around (no drifting crowds)
     const aStill = !a.moving && (a.order === 'idle' || a.order === 'hold'), bStill = !b.moving && (b.order === 'idle' || b.order === 'hold');
-    const aPost = aStill && a.guardOf && !bStill, bPost = bStill && b.guardOf && !aStill;   // a guard on watch does not budge for passers-by
-    const wa = aFixed || aPost ? 0 : bFixed || bPost ? 1 : aStill && !bStill ? 0.06 : bStill && !aStill ? 0.94 : 0.5, wb = 1 - wa;
+    const wa = aFixed ? 0 : bFixed ? 1 : aStill && !bStill ? 0.12 : bStill && !aStill ? 0.88 : 0.5, wb = 1 - wa;
     moveBy(a, -nx * push * wa, -ny * push * wa);
     moveBy(b, nx * push * wb, ny * push * wb);
     // someone walking into a person who stands still steps around them, instead of being pushed straight back forever
