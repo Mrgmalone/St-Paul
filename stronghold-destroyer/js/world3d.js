@@ -326,6 +326,7 @@ const R3D = (() => {
   }
   function syncWater(dt) {
     if (leafDecid) { const se = WEATHER.season, tgt = [[1.0, 1.08, 0.86], [0.92, 1.0, 0.86], [1.75, 0.78, 0.28], [0.82, 0.72, 0.6]][se]; const c = leafDecid.color, kk = Math.min(1, dt * 0.35); c.r += (tgt[0] - c.r) * kk; c.g += (tgt[1] - c.g) * kk; c.b += (tgt[2] - c.b) * kk; }
+    if (canopyOakMat && leafDecid) canopyOakMat.color.copy(leafDecid.color);   // the simple crowns turn with the seasons too
     windU.value = time; windAmt.value = 0.38 + WEATHER.wind * 1.2 + WEATHER.rain * 0.2; windDir.value.set(Math.cos(WEATHER.ang), Math.sin(WEATHER.ang));
     if (clouds3) { const t = clouds3.material.alphaMap; t.offset.x = time * 0.0022; t.offset.y = time * 0.0012; }
     if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; if (water.material.map) { water.material.map.offset.x = time * 0.006; water.material.map.offset.y = Math.sin(time * 0.3) * 0.02; } }
@@ -334,7 +335,7 @@ const R3D = (() => {
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
   let setTreeDetail = null, treeDetailWant = true; try { treeDetailWant = localStorage.getItem('sd-trees') !== 'simple'; } catch (e) {}
-  const treeMeshes = [];
+  const treeMeshes = []; let canopyOakMat = null;
   let oakMesh, oakTrunks, pineMesh, pineTrunks, birchMesh, birchTrunks, leafDecid, rockMesh, treeList = [];
   const bushModels = new Map(), stumpSeen = new Set();
   function buildScenery() {
@@ -483,10 +484,20 @@ const R3D = (() => {
     const simpleMat = leafMat.clone(); swayLeaves(simpleMat, 28);
     const CHK = 620, chunks = [], birchBark = std('#e6e2d6', { roughness: 0.8, map: barkMat.map });
     const view = geo => { const g = new T.BufferGeometry(); g.attributes = geo.attributes; g.index = geo.index; g.groups = geo.groups; g.boundingSphere = new T.Sphere(new T.Vector3(0, 40, 0), CHK * 0.72 + 90); return g; };
+    // inside a wood, a tree with trees on its two sides toward the camera is mostly hidden by its neighbours: it gets a simple
+    // solid crown (no see-through leaf cards) and casts no shadow of its own. Trees at the edge of a wood keep full detail.
+    const tset = new Set(trees.map(t => t.c + ',' + t.r)), inner = t => tset.has((t.c + 1) + ',' + t.r) && tset.has(t.c + ',' + (t.r + 1));   // the two sides toward the camera are covered
+    const canopyOak = merge([[0, 44, 0, 17], [-10, 40, 5, 13], [10, 41, -4, 13], [0, 56, 0, 13], [3, 40, 11, 11]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') })));
+    const canopyPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(15 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#1c3d20', '#5a9654') })));
+    canopyOakMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); swayLeaves(canopyOakMat, 28);
+    const canopyPineMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
+    const edgeOaks = oaks.filter(t => !inner(t)), edgeBirches = birches.filter(t => !inner(t)), edgePines = pines.filter(t => !inner(t));
     const KINDS3 = [
-      { list: oaks, det: oakGeo, simp: oakBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 8), trunkMat: barkMat, trunkY: 18 },
-      { list: pines, det: pineCardGeo, simp: pineGeo, matDet: () => needleMat, matSimp: () => leafMat, depth: needleDepth, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 7), trunkMat: barkMat, trunkY: 11 },
-      { list: birches, det: birchGeo, simp: birchBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(1.3, 2.1, 46, 8), trunkMat: birchBark, trunkY: 23 }
+      { list: oaks.filter(inner).concat(birches.filter(inner)), det: canopyOak, simp: canopyOak, matDet: () => canopyOakMat, matSimp: () => canopyOakMat, depth: undefined, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 5), trunkMat: barkMat, trunkY: 18, noShadow: true },
+      { list: pines.filter(inner), det: canopyPine, simp: canopyPine, matDet: () => canopyPineMat, matSimp: () => canopyPineMat, depth: undefined, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 5), trunkMat: barkMat, trunkY: 11, noShadow: true },
+      { list: edgeOaks, det: oakGeo, simp: oakBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 8), trunkMat: barkMat, trunkY: 18 },
+      { list: edgePines, det: pineCardGeo, simp: pineGeo, matDet: () => needleMat, matSimp: () => leafMat, depth: needleDepth, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 7), trunkMat: barkMat, trunkY: 11 },
+      { list: edgeBirches, det: birchGeo, simp: birchBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(1.3, 2.1, 46, 8), trunkMat: birchBark, trunkY: 23 }
     ];
     let detailedNow = treeDetailWant !== false;
     for (const K of KINDS3) {
@@ -502,7 +513,7 @@ const R3D = (() => {
           crown.setColorAt(i, new T.Color().setHSL(0.25 + (t.tone - 0.5) * 0.09, 0.22 + v2 * 0.14, 0.46 + t.tone * 0.16).multiplyScalar(1.7));
           treeList.push({ t, crown, trunk, i });
         });
-        for (const m of [crown, trunk]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); treeMeshes.push(m); }
+        for (const m of [crown, trunk]) { m.castShadow = !K.noShadow; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); treeMeshes.push(m); }
         chunks.push({ K, crown, gd, gs });
       }
     }
@@ -2116,7 +2127,8 @@ const R3D = (() => {
     if (o.units !== undefined) for (const [, md] of unitModels) md.root.visible = o.units;
     if (o.shadows !== undefined) { renderer.shadowMap.enabled = o.shadows; scene.traverse(x => { if (x.material) { (Array.isArray(x.material) ? x.material : [x.material]).forEach(m => { m.needsUpdate = true; }); } }); }
     if (o.pixelRatio !== undefined) { renderer.setPixelRatio(o.pixelRatio); renderer.setSize(vw, vh, false); }
-    return { trees: treeMeshes.length, treeCount: trees.length, grassChunks: grass ? grass.length : 0, calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
+    const per = {}; for (const m of treeMeshes) { const n = m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3, k = Math.round(n); per[k] = (per[k] || 0) + m.count; }
+    return { per, trees: treeMeshes.length, treeCount: trees.length, grassChunks: grass ? grass.length : 0, calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
   }
   return { debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
