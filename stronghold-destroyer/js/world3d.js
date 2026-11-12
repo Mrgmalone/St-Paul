@@ -488,6 +488,10 @@ const R3D = (() => {
     // solid crown (no see-through leaf cards) and casts no shadow of its own. Trees at the edge of a wood keep full detail.
     const tset = new Set(trees.map(t => t.c + ',' + t.r)), inner = t => tset.has((t.c + 1) + ',' + t.r) && tset.has(t.c + ',' + (t.r + 1));   // the two sides toward the camera are covered
     const canopyOak = merge([[0, 44, 0, 17], [-10, 40, 5, 13], [10, 41, -4, 13], [0, 56, 0, 13], [3, 40, 11, 11]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') })));
+    { // round, soft shading for the simple crown: every point lit as if on one big ball of leaves, so no flat facets show
+      const pp = canopyOak.attributes.position, nn = canopyOak.attributes.normal, v = new T.Vector3();
+      for (let i = 0; i < pp.count; i++) { v.set(pp.getX(i), (pp.getY(i) - 46) * 1.3, pp.getZ(i)).normalize(); const f = new T.Vector3(nn.getX(i), nn.getY(i), nn.getZ(i)); v.lerp(f, 0.25).normalize(); nn.setXYZ(i, v.x, v.y, v.z); }
+      nn.needsUpdate = true; }
     const canopyPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(15 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#1c3d20', '#5a9654') })));
     canopyOakMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); swayLeaves(canopyOakMat, 28);
     const canopyPineMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
