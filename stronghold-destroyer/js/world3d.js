@@ -667,7 +667,7 @@ const R3D = (() => {
       }
       for (const [x, z] of [[-31, -31], [31, -31], [-31, 31], [31, 31]]) add(cyl(2, 2, 30, wood, x, 140, z, 6));
       const roof = mesh(new T.ConeGeometry(58, 38, 4, 1), thatchM(60, 40), 0, 174, 0); roof.rotation.y = Math.PI / 4; add(roof);
-      info.flags.push(pole(inner, 0, 190, 0, 26, '#b8302a'));
+      info.flags.push(pole(inner, 0, 190, 0, 26, b.team === 'enemy' ? ENEMY_TRIM : teamCol));
       info.archer = towerArcher('enemy'); info.archer.root.position.set(6, 104, 14); add(info.archer.root);
     } else if (b.kind === 'house') {
       add(box(52, 5, 46, stoneM(52, 5), 0, 2.5, 0));
@@ -705,7 +705,7 @@ const R3D = (() => {
       if (!nb(0, -1)) for (const x of [-9.5, 6.5]) add(box(9, 8, 6, mm, x, 34, -13));
       if (!nb(1, 0)) for (const z of [-9.5, 6.5]) add(box(6, 8, 9, mm, 13, 34, z));
       if (!nb(-1, 0)) for (const z of [-9.5, 6.5]) add(box(6, 8, 9, mm, -13, 34, z));
-      if (enemy) { if (!nb(0, 1)) add(box(9, 12, 1, std('#8a2622'), 0, 16, 16.4)); else if (!nb(1, 0)) add(box(1, 12, 9, std('#8a2622'), 16.4, 16, 0)); }
+      if (enemy) { if (!nb(0, 1)) add(box(9, 12, 1, std(ENEMY_TRIM), 0, 16, 16.4)); else if (!nb(1, 0)) add(box(1, 12, 9, std(ENEMY_TRIM), 16.4, 16, 0)); }   // Black Stone hangings in ember
     } else if (b.kind === 'gate') {
       for (const x of [-12, 12]) add(box(8, 42, 30, stoneM(8, 42), x, 21, 0));
       add(box(32, 7, 30, stoneM(32, 7), 0, 45, 0));
