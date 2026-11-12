@@ -973,6 +973,7 @@ const R3D = (() => {
   }
   // ---------- units from Gerald's sheet: a picture card standing on the ground, turned to the camera ----------
   // One shared texture per team (the recoloured atlas); each view's card shape is made once and shared.
+  let silTexShared = null;
   const artTexOf = {}, artMatOf = {}, silMatOf = {}, flashMatOf = {}, artGeo = new Map();
   function artMaterials(team) {
     if (artMatOf[team]) return;
@@ -980,9 +981,11 @@ const R3D = (() => {
     artTexOf[team] = tex;
     artMatOf[team] = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.5, transparent: true, side: T.DoubleSide, toneMapped: false });
     flashMatOf[team] = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.5, transparent: true, side: T.DoubleSide, toneMapped: false, color: new T.Color(2.2, 2.0, 1.8) });
-    // the outline: drawn only where something nearer (a wall, a tower, a tree) already covers the unit
-    const st = new T.CanvasTexture(silAtlas(team));
-    silMatOf[team] = new T.MeshBasicMaterial({ map: st, alphaTest: 0.5, transparent: true, opacity: 0.62, depthWrite: false, depthFunc: T.GreaterDepth, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6, side: T.DoubleSide, toneMapped: false, fog: false });
+    // the outline: drawn over everything first; the unit's own picture is drawn next and covers it wherever the unit
+    // can be seen, so it stays visible only where a wall, a tower, a tree or the ground hides the unit.
+    // One white silhouette picture serves every team, tinted by the material.
+    const st = silTexShared || (silTexShared = new T.CanvasTexture(silAtlas('white')));
+    silMatOf[team] = new T.MeshBasicMaterial({ map: st, color: new T.Color(team === 'player' ? '#e0445a' : '#ff8a3a'), alphaTest: 0.5, transparent: true, opacity: 0.62, depthWrite: false, depthTest: false, side: T.DoubleSide, toneMapped: false, fog: false });
   }
   function artGeometry(name, view, big) {
     const key = name + '/' + view + '/' + big; let geo = artGeo.get(key); if (geo) return geo;
@@ -1465,7 +1468,7 @@ const R3D = (() => {
       uniforms: { col: { value: c }, pull: { value: 9 } },
       vertexShader: 'uniform float pull; varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vec3 toCam = normalize(-mv.xyz); mv.xyz += toCam * pull; vN = normalize(normalMatrix * normal); vV = toCam; gl_Position = projectionMatrix * mv; }',
       fragmentShader: 'uniform vec3 col; varying vec3 vN; varying vec3 vV; void main(){ float f = 1.0 - abs(dot(normalize(vN), normalize(vV))); float a = 0.52 + 0.4 * f * f; gl_FragColor = vec4(col * (0.85 + 0.55 * f), a); }',
-      transparent: true, depthWrite: false, depthFunc: T.GreaterDepth
+      transparent: true, depthWrite: false, depthTest: false   // shown only while the game finds the person behind a building
     });
   }
   function addGhost(md, u) { const gm = new T.Mesh(ghostGeometry(u.type), ghostMat(u.team)); gm.renderOrder = 10; gm.castShadow = false; gm.receiveShadow = false; gm.frustumCulled = true; md.root.add(gm); md.ghost = gm; }
@@ -1907,13 +1910,16 @@ const R3D = (() => {
   function applyQuality() {
     renderer.setPixelRatio(quality >= 1 ? 1 : dpr); renderer.setSize(vw, vh, false);
     if (quality >= 2 && sun.shadow.mapSize.x > 1024) { sun.shadow.mapSize.set(1024, 1024); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
-    if (quality >= 3) { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+    // lowest detail: smaller, softer shadows rather than none, so no material has to be rebuilt (a moment's freeze)
+    if (quality >= 3 && sun.shadow.mapSize.x > 512) { sun.shadow.mapSize.set(512, 512); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   }
   function render(g, dt) {
     if (!ready) init();
     const pr = quality >= 1 ? 1 : dpr, W = Math.round(vw * pr), H = Math.round(vh * pr);
     if (glCanvas.width !== W || glCanvas.height !== H) { renderer.setPixelRatio(pr); renderer.setSize(vw, vh, false); }
     adapt();
+    const P = window.__prof; if (P) { const t = (k, f) => { const a = performance.now(); f(); const d = performance.now() - a; if (d > (P[k] || 0)) P[k] = d; };   // tests: the slowest time of each step
+      t('camera', () => placeCamera(dt)); t('water', () => syncWater(dt)); t('scenery', syncScenery); t('buildings', () => syncBuildings(dt)); t('units', () => syncUnits(dt)); t('rally', syncRally); t('fx', syncFx); t('life', () => syncLife(dt)); t('draw', () => renderer.render(scene, camera)); t('overlay', () => overlay(g)); return; }
     placeCamera(dt); syncWater(dt); syncScenery(); syncBuildings(dt); syncUnits(dt); syncRally(); syncFx(); syncLife(dt);
     renderer.render(scene, camera);
     overlay(g);

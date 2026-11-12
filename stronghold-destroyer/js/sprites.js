@@ -61,7 +61,7 @@ function teamAtlas(key) { return ATLAS.team[key] || (ATLAS.team[key] = recolorAt
 function silAtlas(key) {
   if (ATLAS.sil[key]) return ATLAS.sil[key];
   const c = document.createElement('canvas'); c.width = ATLAS.img.width; c.height = ATLAS.img.height; const g = c.getContext('2d');
-  g.drawImage(ATLAS.img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = key === 'player' ? '#e0445a' : '#ff8a3a'; g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(ATLAS.img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = key === 'player' ? '#e0445a' : key === 'white' ? '#ffffff' : '#ff8a3a'; g.fillRect(0, 0, c.width, c.height);
   return (ATLAS.sil[key] = c);
 }
 function loadAtlas() {

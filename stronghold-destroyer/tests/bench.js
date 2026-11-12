@@ -14,7 +14,9 @@ const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.leng
     await p.goto(GAME);
     await p.evaluate(() => { window.__raf.splice(0).forEach(f => f(0)); window.__now = 0; });
     await p.click('.civ[data-civ="legion"]');
-    if (process.env.LOGIC) await p.evaluate(() => { window.__logicOnly = true; });
+    if (process.env.LOGIC) await p.evaluate(() => { window.__logicOnly = true; }); if (process.env.PROF) await p.evaluate(() => { window.__prof = {}; });
+    // wait for the graphics to finish each frame, so a frame's time includes its drawing (otherwise unfinished drawing piles up)
+    await p.evaluate(() => { const c = document.querySelector('canvas#gl') || document.querySelector('#view canvas'); const buf = new Uint8Array(4); window.__gpuSync = () => { const cv = document.getElementById('gl'); if (!cv) return; const gl = cv.getContext('webgl2') || cv.getContext('webgl'); if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf); }; }); if (process.env.EVAL) await p.evaluate(process.env.EVAL); if (process.env.SKIP) await p.evaluate(n => { window.__skip = n; }, +process.env.SKIP);
     const r = await p.evaluate(([N, NF]) => {
       SD.setRaid(99999); SD.WEATHER.on = false; document.getElementById('banner').style.opacity = 0;
       Object.assign(SD.res, { wood: 99999, stone: 99999, gold: 99999, food: 99999 }); SD.res.food = 99999;
@@ -25,11 +27,12 @@ const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.leng
       SD.cam.z = 1.0; SD.camWorld(k.x - 200, k.y - 200);
       const orig = window.render; let rt = 0; window.render = window.__logicOnly ? function () {} : function () { const t = performance.now(); orig(); rt += performance.now() - t; };
       const times = [], rts = []; let last = 0;
-      for (let i = 0; i < NF; i++) { window.__now += 33; const t0 = performance.now(); rt = 0; window.__raf.splice(0).forEach(f => f(window.__now)); times.push(performance.now() - t0); rts.push(rt); }
+      for (let i = 0; i < NF; i++) { window.__now += 33; const t0 = performance.now(); rt = 0; window.__raf.splice(0).forEach(f => f(window.__now)); if (window.__gpuSync) window.__gpuSync(); times.push(performance.now() - t0); rts.push(rt); }
       window.render = orig;
-      const sl = times.slice(60), rs = rts.slice(60), avg = a => a.reduce((s, x) => s + x, 0) / a.length;
+      const SK = +(window.__skip || 60), sl = times.slice(SK), rs = rts.slice(SK), avg = a => a.reduce((s, x) => s + x, 0) / a.length;
       const sorted = sl.slice().sort((a, c) => a - c);
-      return { N, alive: units.filter(u => !u.dead).length, frame: +avg(sl).toFixed(2), p95: +sorted[Math.floor(sorted.length * 0.95)].toFixed(2), draw: +avg(rs).toFixed(2), logic: +(avg(sl) - avg(rs)).toFixed(2) };
+      const mx = Math.max(...sl);
+      return { prof: window.__prof && Object.fromEntries(Object.entries(window.__prof).map(([k, v]) => [k, typeof v === 'number' ? Math.round(v) : v])), N, worst: Math.round(mx), worstAt: SK + sl.indexOf(mx), alive: units.filter(u => !u.dead).length, frame: +avg(sl).toFixed(2), p95: +sorted[Math.floor(sorted.length * 0.95)].toFixed(2), draw: +avg(rs).toFixed(2), logic: +(avg(sl) - avg(rs)).toFixed(2) };
     }, [N, +(process.env.FRAMES || 900)]);
     r.errors = errs.length; rows.push(r); console.log(JSON.stringify(r)); await p.close();
   }
