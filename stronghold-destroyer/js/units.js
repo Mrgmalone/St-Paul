@@ -24,7 +24,7 @@ function commandMove(list, x, y) {
     free.forEach((u, i) => { const d = (u.x - s.x) ** 2 + (u.y - s.y) ** 2; if (d < bd) { bd = d; bi = i; } });
     const u = free.splice(bi, 1)[0];
     if (u.onWall) dismount(u);
-    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; if (u.type === 'civ') u.task = null;
+    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; u.bestD = undefined; u.rerouted = false; u.progT = 0; if (u.type === 'civ') u.task = null;
     u.path = findPath(u.x, u.y, s.x, s.y);
   }
   markers.push({ x, y, t: 0, col: '120,255,140' });
@@ -147,7 +147,7 @@ function aggro(u, r) {
   for (const o of nearUnits(u.x, u.y, r + 40)) { if (o.dead || o.inside || o.team === u.team || (o.onWall && u.type !== 'archer')) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
   return best;
 }
-function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
+function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u._pd = null; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
 function attackStep(u, dt) {
   // breaking through a wall: every second, check whether a way to the real target has opened
   if (u.goal && isWall(u.target) && alive(u.goal)) {
@@ -564,7 +564,12 @@ function updateUnit(u, dt) {
     const d = Math.hypot(u.dest.x - u.x, u.dest.y - u.y);
     const movedSq = (u.x - u.lastX) ** 2 + (u.y - u.lastY) ** 2;
     u.stuckT = movedSq < 0.04 ? u.stuckT + dt : 0;
-    if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5) { u.order = 'idle'; u.path = []; u.moving = false; }
+    // jiggling in a crowd resets the timer above, so also watch real progress toward the destination:
+    // 3 seconds without getting 6 pixels closer, look for a new way; 3 more, stop where you are
+    if (u._pd !== u.dest) { u._pd = u.dest; u.bestD = undefined; u.rerouted = false; u.progT = 0; }   // a new destination starts afresh
+    if (u.bestD === undefined || d < u.bestD - 6) { u.bestD = d; u.progT = 0; } else u.progT = (u.progT || 0) + dt;
+    if (u.progT > 3 && !u.rerouted) { u.rerouted = true; u.progT = 0; u.bestD = d; const pth = findPath(u.x, u.y, u.dest.x, u.dest.y); if (pth.length) u.path = pth; }
+    if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5 || (u.progT > 3 && u.rerouted)) { u.order = 'idle'; u.path = []; u.moving = false; u.bestD = undefined; u.rerouted = false; u.progT = 0; }
   } else if (u.order === 'attack') attackStep(u, dt);
   else if (u.order === 'mount') mountStep(u, dt);
   else if (u.order === 'raid') followPath(u, dt);
