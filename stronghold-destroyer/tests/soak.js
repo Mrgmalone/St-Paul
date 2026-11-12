@@ -5,7 +5,7 @@ const CIV = process.argv[2] || 'harvest', MINUTES = +(process.argv[3] || 20);
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack||'').split('\n').slice(1,3).join(' ')));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
   await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
-  await p.goto(require('./env').GAME);
+  await p.goto(process.env.ARMY ? require('./env').GAME : require('./env').GAME_REAL);   // the real game (no starting army); ARMY=1 for the old start
   await p.evaluate(() => { const fs = window.__raf.splice(0); fs.forEach(f => f(0)); window.__now = 0; });
   await p.click(`.civ[data-civ="${CIV}"]`);
   await p.evaluate(() => { window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); if (i % 10 === 9) window.__track(); } };
