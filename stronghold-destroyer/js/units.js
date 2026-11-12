@@ -603,7 +603,8 @@ function separate() {   // people standing on each other step apart; only neighb
     if (aFixed && bFixed) continue;
     // someone standing still holds their ground; the one walking gives way and steps around (no drifting crowds)
     const aStill = !a.moving && (a.order === 'idle' || a.order === 'hold'), bStill = !b.moving && (b.order === 'idle' || b.order === 'hold');
-    const wa = aFixed ? 0 : bFixed ? 1 : aStill && !bStill ? 0.12 : bStill && !aStill ? 0.88 : 0.5, wb = 1 - wa;
+    // a guard standing at its post gives way only a little (3%), so passers-by do not slowly shove it away from the door
+    const wa = aFixed ? 0 : bFixed ? 1 : aStill && !bStill ? (a.guardOf ? 0.03 : 0.12) : bStill && !aStill ? (b.guardOf ? 0.97 : 0.88) : 0.5, wb = 1 - wa;
     moveBy(a, -nx * push * wa, -ny * push * wa);
     moveBy(b, nx * push * wb, ny * push * wb);
     // someone walking into a person who stands still steps around them, instead of being pushed straight back forever
