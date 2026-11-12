@@ -1925,7 +1925,7 @@ const R3D = (() => {
       const c = PCOL[q.type] || [1, 1, 1];
       const alpha = q.type === 'smoke' ? a * 0.45 : q.type === 'dust' ? a * 0.35 : a * 0.9;
       set.geo.attributes.rgba.setXYZW(k, c[0], c[1], c[2], alpha);
-      const sz = q.type === 'smoke' ? q.size * (1 + t * 1.6) * 2 : q.type === 'dust' ? q.size * (1 + t) * 2 : q.type === 'fire' ? q.size * 1.6 : q.size * 1.3;
+      const sz = q.type === 'smoke' ? q.size * (1 + t * 1.6) * 2 : q.type === 'dust' ? q.size * (1 + t) * 2 : q.type === 'fire' ? q.size * 1.6 : q.type === 'spark' || q.type === 'sparkR' ? q.size * 3.5 * renderer.getPixelRatio() : q.size * 1.3;   // sparks: big enough to see at any zoom, and not halved on sharp (iPad) screens
       set.geo.attributes.size.setX(k, sz);
       counts[add ? 1 : 0]++;
     }
