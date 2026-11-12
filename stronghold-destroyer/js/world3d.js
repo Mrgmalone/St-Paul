@@ -487,7 +487,7 @@ const R3D = (() => {
     // inside a wood, a tree with trees on its two sides toward the camera is mostly hidden by its neighbours: it gets a simple
     // solid crown (no see-through leaf cards) and casts no shadow of its own. Trees at the edge of a wood keep full detail.
     const tset = new Set(trees.map(t => t.c + ',' + t.r)), inner = t => tset.has((t.c + 1) + ',' + t.r) && tset.has(t.c + ',' + (t.r + 1));   // the two sides toward the camera are covered
-    const lumpy = r => { const g = new T.IcosahedronGeometry(r, 1), ps = g.attributes.position, v = new T.Vector3();   // a round ball of leaves with soft bumps, so the outline is never a hard polygon
+    const lumpy = r => { const g = new T.IcosahedronGeometry(r, 0), ps = g.attributes.position, v = new T.Vector3();   // gentle bumps; a rounder outline (more faces) cost too much speed
       for (let i = 0; i < ps.count; i++) { v.set(ps.getX(i), ps.getY(i), ps.getZ(i)); const d = v.clone().normalize(), k = 1 + 0.09 * Math.sin(d.x * 7.1 + d.y * 3.3) * Math.cos(d.z * 6.7 - d.y * 2.9) + 0.05 * Math.sin(d.x * 13 + d.z * 11); v.multiplyScalar(k); ps.setXYZ(i, v.x, v.y, v.z); }
       g.computeVertexNormals(); return g; };
     const canopyOak = merge([[0, 44, 0, 17], [-10, 40, 5, 13], [10, 41, -4, 13], [0, 56, 0, 13], [3, 40, 11, 11]].map(([x, y, z, r]) => ({ geo: lumpy(r), m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') })));
@@ -497,11 +497,10 @@ const R3D = (() => {
       nn.needsUpdate = true; }
     const canopyPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(15 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#1c3d20', '#5a9654') })));
     const fineLeaf = (() => { const t = leafTex().clone(); t.needsUpdate = true; t.repeat.set(2.2, 2.2); return t; })();   // its own copy: the detailed crowns keep theirs
-    // light worked out at the corners of the shape, not at every pixel (the simple crowns fill much of the screen, so this keeps the speed of Phase 1); on round, soft crowns it looks the same
-    canopyOakMat = new T.MeshLambertMaterial({ vertexColors: true, map: fineLeaf }); swayLeaves(canopyOakMat, 28);
-    const canopyPineMat = new T.MeshLambertMaterial({ vertexColors: true, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
+    canopyOakMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: fineLeaf }); swayLeaves(canopyOakMat, 28);
+    const canopyPineMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
     const innerAt = (c, r) => tset.has((c + 1) + ',' + r) && tset.has(c + ',' + (r + 1));
-    const bandDet = t => inner(t) && (!innerAt(t.c + 1, t.r) || !innerAt(t.c, t.r + 1)) && ((t.seed * 5.37) % 1) < 0.5;   // first row behind the edge, every other tree or so
+    const bandDet = t => inner(t) && (!innerAt(t.c + 1, t.r) || !innerAt(t.c, t.r + 1)) && ((t.seed * 5.37) % 1) < 0.25;   // a quarter of the first row behind the edge (more cost too much speed)
     const simple = t => inner(t) && !bandDet(t);
     const edgeOaks = oaks.filter(t => !inner(t)), edgeBirches = birches.filter(t => !inner(t)), edgePines = pines.filter(t => !inner(t));
     const bandOaks = oaks.filter(bandDet), bandBirches = birches.filter(bandDet), bandPines = pines.filter(bandDet);
