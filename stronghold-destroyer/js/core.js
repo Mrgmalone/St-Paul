@@ -611,7 +611,8 @@ function doHit(u) {
     t.wobble = 1;
     for (let i = 0; i < 6; i++) spawn('chip', c.x, c.y, t.y);
   } else {
-    for (let i = 0; i < 6; i++) spawn(i % 2 ? 'spark' : 'sparkR', c.x, c.y, t.y);   // red and yellow sparks on every hit, no blood
+    const dx = u.x - t.x, dy = u.y - t.y, d = Math.hypot(dx, dy) || 1, k = Math.min(9, d * 0.4) / d, ox = dx * k, oy = dy * k;   // where the blow lands: the struck side of the body, so the body does not hide the sparks
+    for (let i = 0; i < 6; i++) spawn(i % 2 ? 'spark' : 'sparkR', c.x + ox, c.y + oy, t.y + oy);   // red and yellow sparks on every hit, no blood
     t.facing = u.x > t.x ? 1 : -1;
     t.lastHurt = time;
   }
