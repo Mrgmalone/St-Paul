@@ -497,8 +497,9 @@ const R3D = (() => {
       nn.needsUpdate = true; }
     const canopyPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(15 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#1c3d20', '#5a9654') })));
     const fineLeaf = (() => { const t = leafTex().clone(); t.needsUpdate = true; t.repeat.set(2.2, 2.2); return t; })();   // its own copy: the detailed crowns keep theirs
-    canopyOakMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: fineLeaf, bumpMap: fineLeaf, bumpScale: 1.3 }); swayLeaves(canopyOakMat, 28);
-    const canopyPineMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
+    // light worked out at the corners of the shape, not at every pixel (the simple crowns fill much of the screen, so this keeps the speed of Phase 1); on round, soft crowns it looks the same
+    canopyOakMat = new T.MeshLambertMaterial({ vertexColors: true, map: fineLeaf }); swayLeaves(canopyOakMat, 28);
+    const canopyPineMat = new T.MeshLambertMaterial({ vertexColors: true, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
     const innerAt = (c, r) => tset.has((c + 1) + ',' + r) && tset.has(c + ',' + (r + 1));
     const bandDet = t => inner(t) && (!innerAt(t.c + 1, t.r) || !innerAt(t.c, t.r + 1)) && ((t.seed * 5.37) % 1) < 0.5;   // first row behind the edge, every other tree or so
     const simple = t => inner(t) && !bandDet(t);
