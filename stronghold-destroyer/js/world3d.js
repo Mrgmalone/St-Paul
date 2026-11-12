@@ -334,6 +334,7 @@ const R3D = (() => {
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
   let setTreeDetail = null, treeDetailWant = true; try { treeDetailWant = localStorage.getItem('sd-trees') !== 'simple'; } catch (e) {}
+  const treeMeshes = [];
   let oakMesh, oakTrunks, pineMesh, pineTrunks, birchMesh, birchTrunks, leafDecid, rockMesh, treeList = [];
   const bushModels = new Map(), stumpSeen = new Set();
   function buildScenery() {
@@ -501,7 +502,7 @@ const R3D = (() => {
           crown.setColorAt(i, new T.Color().setHSL(0.25 + (t.tone - 0.5) * 0.09, 0.22 + v2 * 0.14, 0.46 + t.tone * 0.16).multiplyScalar(1.7));
           treeList.push({ t, crown, trunk, i });
         });
-        for (const m of [crown, trunk]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); }
+        for (const m of [crown, trunk]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); treeMeshes.push(m); }
         chunks.push({ K, crown, gd, gs });
       }
     }
@@ -2107,7 +2108,17 @@ const R3D = (() => {
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
   const borderInfo = () => ({ sea: !!seaMesh, band: BAND, seaLevel: SEA, black: scene && scene.background && scene.background.getHex() === 0 });
   const modelOf = b => { const md = bModels.get(b.id); return md ? { x: Math.round(md.g.position.x), z: Math.round(md.g.position.z), par: !!md.g.parent, vis: md.g.visible, y: +md.g.position.y.toFixed(1), kids: md.g.children.length, inner: md.g.children[0] ? md.g.children[0].children.length : 0, sy: +md.g.scale.y.toFixed(2) } : null; };   // tests
-  return { modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  // tests only: switch parts of the scene off to see what the drawing time is spent on
+  function debugView(o) {
+    if (o.trees !== undefined) for (const m of treeMeshes) m.visible = o.trees;
+    if (o.treeShadows !== undefined) for (const m of treeMeshes) m.castShadow = o.treeShadows;
+    if (o.grass !== undefined && grass) for (const m of grass) m.visible = o.grass;
+    if (o.units !== undefined) for (const [, md] of unitModels) md.root.visible = o.units;
+    if (o.shadows !== undefined) { renderer.shadowMap.enabled = o.shadows; scene.traverse(x => { if (x.material) { (Array.isArray(x.material) ? x.material : [x.material]).forEach(m => { m.needsUpdate = true; }); } }); }
+    if (o.pixelRatio !== undefined) { renderer.setPixelRatio(o.pixelRatio); renderer.setSize(vw, vh, false); }
+    return { trees: treeMeshes.length, treeCount: trees.length, grassChunks: grass ? grass.length : 0, calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
+  }
+  return { debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];
