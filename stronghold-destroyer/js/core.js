@@ -589,8 +589,7 @@ function doHit(u) {
     t.wobble = 1;
     for (let i = 0; i < 6; i++) spawn('chip', c.x, c.y, t.y);
   } else {
-    for (let i = 0; i < 5; i++) spawn('spark', c.x, c.y, t.y);
-    for (let i = 0; i < 3; i++) spawn('blood', c.x, c.y + 4, t.y);
+    for (let i = 0; i < 6; i++) spawn(i % 2 ? 'spark' : 'sparkR', c.x, c.y, t.y);   // red and yellow sparks on every hit, no blood
     t.facing = u.x > t.x ? 1 : -1;
     t.lastHurt = time;
   }
@@ -648,7 +647,8 @@ function kill(t) {
 // ---------- particles ----------
 function spawn(type, x, y, gy) {
   const p = { type, x, y, gy: gy === undefined ? y : gy, vx: 0, vy: 0, life: 0, max: 1, size: 2, g: 0 };
-  if (type === 'spark') { p.vx = RR(-90, 90); p.vy = RR(-120, -30); p.g = 300; p.max = RR(0.2, 0.4); p.size = RR(1, 2); }
+  if (type === 'sparkR') { p.vx = RR(-110, 110); p.vy = RR(-140, -30); p.g = 300; p.max = RR(0.25, 0.45); p.size = RR(1.2, 2.2); }
+  else if (type === 'spark') { p.vx = RR(-90, 90); p.vy = RR(-120, -30); p.g = 300; p.max = RR(0.2, 0.4); p.size = RR(1, 2); }
   else if (type === 'blood') { p.vx = RR(-40, 40); p.vy = RR(-60, -10); p.g = 260; p.max = RR(0.3, 0.5); p.size = RR(1.2, 2.2); }
   else if (type === 'chip') { p.vx = RR(-110, 110); p.vy = RR(-160, -40); p.g = 380; p.max = RR(0.5, 0.9); p.size = RR(1.5, 3.2); p.rot = RR(0, 6); }
   else if (type === 'dust') { p.vx = RR(-12, 12); p.vy = RR(-14, -4); p.max = RR(0.5, 0.8); p.size = RR(2, 4); }

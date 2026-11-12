@@ -210,7 +210,7 @@ function updateTraps(dt) {
     for (const u of units) {
       if (u.dead || u.team === b.team || u.onWall || u.x < b.x0 + 2 || u.x > b.x1 - 2 || u.y < b.y0 + 2 || u.y > b.y1 + 4) continue;
       const dmg = isMachine(u) ? 120 : 60; u.hp -= dmg; u.flash = 1; u.lastHurt = time;
-      for (let k = 0; k < 6; k++) spawn('blood', u.x, u.y - 10, u.y); for (let k = 0; k < 6; k++) spawn('chip', b.x, b.y - 10, b.y);
+      for (let k = 0; k < 6; k++) spawn(k % 2 ? 'spark' : 'sparkR', u.x, u.y - 10, u.y); for (let k = 0; k < 6; k++) spawn('chip', b.x, b.y - 10, b.y);
       AudioSys.play('stab', u.x, u.y); floatText(b.x, b.y - 40, 'Spike pit!', '#ff9d86');
       b.charges--; b.sprung = 2.5; b.cool = 1.2;
       if (u.hp <= 0) kill(u);
@@ -269,7 +269,7 @@ function updateWar(dt) {
     if (a.kind === 'bolt' && alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 24)) {
       t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * 0.25)) : t.x0 !== undefined ? Math.round(a.dmg * 0.5) : t.onWall ? Math.round(a.dmg * 0.7) : a.dmg; t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16);
-      if (t.x0 === undefined) for (let k = 0; k < 4; k++) spawn('blood', t.x, t.y - 18, t.y); else for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
+      if (t.x0 === undefined) for (let k = 0; k < 4; k++) spawn(k % 2 ? 'spark' : 'sparkR', t.x, t.y - 18, t.y); else for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
       if (t.hp <= 0) kill(t); else reactToHit(t, a.from);
       continue;
     }
@@ -279,7 +279,7 @@ function updateWar(dt) {
       t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : Math.round((t.onWall ? a.dmg * 0.5 : a.dmg) * armorMul(t, a.from)); t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
       if (t.x0 !== undefined) for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
-      else for (let k = 0; k < 3; k++) spawn('blood', t.x, t.y - 18, t.y);
+      else for (let k = 0; k < 3; k++) spawn(k % 2 ? 'spark' : 'sparkR', t.x, t.y - 18, t.y);
       if (t.hp <= 0) kill(t);
       else reactToHit(t, a.from);
     } else stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0 });

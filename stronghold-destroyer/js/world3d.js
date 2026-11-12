@@ -60,7 +60,7 @@ const R3D = (() => {
   const sheetTex = {};
   function texMat(name, rx, ry, tint, o = {}) {
     const sheet = MATS.ready && BRICK[name] && MATS.img[BRICK[name]];
-    if (sheet) { rx *= name === 'stone' ? 72 / 120 : 40 / 120; ry *= name === 'stone' ? 54 / 36 : 40 / 36; name = BRICK[name]; tint = null; }
+    if (sheet) { const f = { stone: [72, 54], plaster: [40, 40], woodV: [24, 64], woodH: [64, 24] }[name]; rx *= f[0] / 120; ry *= f[1] / 36; name = BRICK[name]; tint = null; }
     const key = name + rx.toFixed(2) + ry.toFixed(2) + (tint || '');
     if (matCache[key]) return matCache[key];
     if (sheet) {
@@ -570,9 +570,11 @@ const R3D = (() => {
     const fu = { kind: 'unit', type: 'archer', team, pal: PAL[team], skin: '#d9a57a', hair: '#3a2414', seed: 1, look: { beard: true, longHair: false, w: 1, h: 1 }, order: 'attack' };
     const m = personModel(fu); m.root.scale.setScalar(scale); m.root.userData.archer = m; return m;
   }
-  function buildingModel(b) {
+  // (the brick choice applies only while one building is being built: trees and tools keep their timber)
+  function buildingModel(b) { try { return buildingModel0(b); } finally { BRICK = { stone: 'brick_gray', plaster: 'brick_brown' }; } }
+  function buildingModel0(b) {
     const teamCol = b.team === 'enemy' ? ENEMY_COL : PAL.player.tunic, teamSide = b.team === 'enemy' ? 'enemy' : 'player';
-    BRICK = b.team === 'enemy' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
+    BRICK = b.team === 'enemy' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen', woodV: 'brick_blackgreen', woodH: 'brick_blackgreen' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
     const g = new T.Group(), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2, gy = heightAt(cx, cz);
     g.position.set(cx, gy - 1, cz);
     const inner = new T.Group(); g.add(inner);
@@ -580,13 +582,21 @@ const R3D = (() => {
     const add = o => { inner.add(o); return o; };
     if (glbBuilding(b, info)) { /* Gerald's model for this building */ }
     else if (b.kind === 'keep') {
-      add(box(90, 104, 90, stoneM(90, 104), 0, 52, 0));
-      add(box(94, 4, 94, stoneM(94, 4), 0, 104, 0));
-      addMerlons(inner, -47, -47, 94, 94, 106, 13.5, 8, 9);
-      door(inner, 0, 0, 45, 26, 30);
-      for (const x of [-25, 25]) add(box(3, 14, 1, std('#16110c'), x, 70, 45.6));
-      info.flags.push(pole(inner, 40, 106, -40, 42, teamCol));
-      info.archer = towerArcher(teamSide); info.archer.root.position.set(8, 106, 30); add(info.archer.root);
+      // stage 1 of the castle: a log shack in the woods with a thatched roof, and a rough lookout stand over the porch
+      const logs = woodHM(88, 32), post = woodVM(4, 60), thatch = thatchM(96, 40);
+      add(box(88, 32, 50, logs, 0, 16, -19));
+      { const roof = mesh(new T.CylinderGeometry(0.5, 66, 30, 4, 1), thatch, 0, 47, -19); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.62); add(roof); }
+      door(inner, 22, 0, 6.5, 14, 22);
+      add(box(7, 9, 1, std('#16110c'), -20, 18, 6.3));
+      add(box(6, 16, 6, stoneM(6, 16), 34, 46, -30));   // a fieldstone chimney
+      for (const [x, z] of [[-32, -10], [8, -10], [-32, 26], [8, 26]]) add(cyl(1.9, 2.2, 60, post, x, 30, z, 7));
+      add(box(46, 3, 42, woodHM(46, 3), -12, 60, 8));
+      for (const [x, z, w, d] of [[-12, 28, 46, 2], [-34, 8, 2, 42], [10, 8, 2, 42]]) add(box(w, 2, d, woodHM(w + d, 2), x, 70, z));
+      for (const [x, z] of [[-34, 28], [10, 28], [-34, -12], [10, -12]]) add(cyl(1.2, 1.2, 12, post, x, 66, z, 6));
+      for (let k = 0; k < 6; k++) add(box(8, 1, 1, post, -12, 6 + k * 9, 29.5));   // ladder rungs
+      for (const x of [-16, -8]) add(cyl(0.7, 0.7, 60, post, x, 30, 29.5, 5));
+      info.flags.push(pole(inner, 8, 70, 26, 26, teamCol));
+      info.archer = towerArcher(teamSide); info.archer.root.position.set(0, 61.5, 14); add(info.archer.root);
     } else if (b.kind === 'tower') {
       const wood = woodVM(6, 100);
       for (const [x, z] of [[-28, -28], [28, -28], [-28, 28], [28, 28]]) add(cyl(3.2, 3.6, 100, wood, x, 50, z, 8));
@@ -1035,8 +1045,37 @@ const R3D = (() => {
       if (u.deathT > 7) { if (!md.deadMat) { md.deadMat = artMatOf[md.team].clone(); md.deadMat.transparent = true; } md.deadMat.opacity = Math.max(0, 1 - (u.deathT - 7) / 3); }
     }
   }
+  // a horse: barrel body, arched neck, four jointed legs that trot in diagonal pairs, and a long cloth caparison
+  function horseModel(team, m) {
+    const g = new T.Group(), coat = std(team === 'enemy' ? '#2a2422' : '#7a5232', { roughness: 0.8 }), dark = std('#1e1612', { roughness: 0.8 });
+    const cloth = new T.MeshStandardMaterial({ color: C(team === 'enemy' ? '#34302e' : PAL.player.tunic), roughness: 0.85, side: T.DoubleSide, map: fabricTex() });
+    const bodyM = sph(1, coat, 0, 25, 0, 16); bodyM.scale.set(6.6, 7.2, 15.5); g.add(bodyM);
+    const neck = new T.Group(); neck.position.set(0, 29, 12); g.add(neck);
+    const nk = capsule(3.6, 2.9, 13, coat, 10); nk.rotation.x = Math.PI - 0.75; neck.add(nk);
+    const head = new T.Group(); head.position.set(0, 9.5, 9); neck.add(head);
+    const hd = sph(1, coat, 0, 0, 1.5, 12); hd.scale.set(2.6, 3.0, 5.6); hd.rotation.x = 0.75; head.add(hd);
+    for (const sx of [-1, 1]) { const ear = mesh(new T.ConeGeometry(0.8, 2.6, 5), coat, sx * 1.5, 3.4, -1.2); head.add(ear); head.add(sph(0.45, dark, sx * 2.0, 1.1, 2.2, 6)); }
+    const mane = box(1.0, 12, 3.2, dark, 0, 4.5, 3.0); mane.rotation.x = 0.82; neck.add(mane);
+    const tail = capsule(1.3, 0.5, 13, dark, 8); tail.position.set(0, 28, -15); tail.rotation.x = -0.35; g.add(tail);
+    // the caparison: a drape over the back and a long panel down each flank, with the gold lion
+    const drape = sph(1, cloth, 0, 25.6, -1, 16); drape.scale.set(7.1, 7.4, 13.5); g.add(drape);
+    for (const sx of [-1, 1]) { const pn = mesh(new T.PlaneGeometry(25, 14), cloth, sx * 7.0, 19, -1); pn.rotation.y = sx * Math.PI / 2; g.add(pn);
+      const em = mesh(new T.PlaneGeometry(8, 8), m.lion, sx * 7.2, 19.5, -1); em.rotation.y = sx * Math.PI / 2; g.add(em);
+      const hem = mesh(new T.PlaneGeometry(25, 1.2), m.trimG, sx * 7.15, 12.4, -1); hem.rotation.y = sx * Math.PI / 2; g.add(hem); }
+    g.add(box(8.5, 1.6, 9, std('#4a3020', { roughness: 0.6 }), 0, 32.3, -1));   // saddle
+    const legs = [];
+    for (const [sx, sz, lead] of [[-1, 1, 0], [1, 1, 1], [-1, -1, 1], [1, -1, 0]]) {
+      const hip = new T.Group(); hip.position.set(sx * 3.9, 21, sz * 10.5); g.add(hip);
+      hip.add(capsule(2.3, 1.5, 10.5, coat, 8));
+      const knee = new T.Group(); knee.position.set(0, -10.5, 0); hip.add(knee);
+      knee.add(capsule(1.35, 1.0, 9.2, coat, 8)); knee.add(cyl(1.5, 1.7, 1.6, dark, 0, -9.6, 0.2, 8));
+      legs.push({ hip, knee, lead, front: sz > 0 });
+    }
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    return { g, legs, neck, head, tail };
+  }
   function personModel(u) {
-    const P = u.pal, soldier = (swordish(u) || u.type === 'spear'), lk = u.look || { beard: false, longHair: false, w: 1, h: 1 };
+    const kit = u.kit || null, P = kit === 'berserker' ? Object.assign({}, u.pal, { tunic: '#5a4030', tunicDark: '#3a2a1e', pants: '#4a3828', boot: '#6a5038' }) : u.pal, soldier = (swordish(u) || u.type === 'spear') && kit !== 'berserker', lk = kit === 'berserker' ? { beard: true, longHair: true, w: 1.08, h: 1.04 } : u.look || { beard: false, longHair: false, w: 1, h: 1 };
     const m = {
       skin: std(u.skin, { roughness: 0.62 }), pants: std(P.pants, { map: fabricTex() }), boot: std(P.boot, { roughness: 0.55 }),
       cloth: std(P.tunic, { map: fabricTex(), bumpMap: fabricTex(), bumpScale: 0.25 }), dark: std(P.tunicDark, { map: fabricTex() }),
@@ -1056,8 +1095,9 @@ const R3D = (() => {
       m.plate = std(team === 'enemy' ? '#5d6168' : '#d5dbe1', { metalness: 0.92, roughness: team === 'enemy' ? 0.36 : 0.24, map: steelTex(), bumpMap: steelTex(), bumpScale: 0.12 });
       m.mail = std('#8b9197', { metalness: 0.6, roughness: 0.4, map: mailTex(), bumpMap: mailTex(), bumpScale: 0.35 }); m.mail.map = mailTex().clone(); m.mail.map.needsUpdate = true; m.mail.map.repeat.set(3, 3); m.mail.bumpMap = m.mail.map;
       m.belt = std('#5a3a20', { roughness: 0.6, map: leatherTex() });
+      m.helmP = m.plate;
+      if (u.type === 'spear' && kit !== 'heavyspear') m.plate = std(team === 'enemy' ? '#3a3230' : '#7a5a38', { roughness: 0.7, map: leatherTex() });
       m.pants = m.plate; m.boot = m.plate; m.glove = m.plate;
-      if (u.type === 'sword' && team === 'player') lk.beard = true;   // the swordsman: bare-headed and bearded
     }
     const shieldFace = (rx, ry, ox, oy) => { const t = emblemTex(team).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T.ClampToEdgeWrapping; t.repeat.set(rx, ry); t.offset.set(ox, oy); return new T.MeshStandardMaterial({ map: t, roughness: 0.7 }); };
     const root = new T.Group(), body = new T.Group(); root.add(body);
@@ -1126,11 +1166,11 @@ const R3D = (() => {
     if (lk.beard && !lk.female) { const bd = mesh(new T.SphereGeometry(2.42, 16, 10, -Math.PI * 0.62, Math.PI * 1.24, Math.PI * 0.42, Math.PI * 0.5), m.hair, 0, -0.9, 0.35); bd.scale.set(0.98, 1.05, 1.06); head.add(bd); const ch2 = sph(1.05, m.hair, 0, -2.85, 1.85, 10); ch2.scale.set(1.2, 1.15, 0.8); head.add(ch2);
       for (const sd of [-1, 1]) { const ms = capsule(0.32, 0.26, 1.3, m.hair, 6); ms.position.set(sd * 0.75, -1.05, 2.55); ms.rotation.z = sd * 1.25; head.add(ms); const sb = sph(0.9, m.hair, sd * 2.0, -0.9, 0.9, 8); sb.scale.set(0.6, 1.2, 0.9); head.add(sb); } }
     if (soldier) {
-      const t = u.type, bare = (t === 'sword' && team === 'player') || t === 'king' || t === 'knight';
-      if (t === 'spear') {   // a rounded open-faced kettle helm with a flared brim and a gold band
-        head.add(lathe([[3.85, 0.55], [3.35, 1.15], [3.1, 2.4], [2.55, 3.75], [1.4, 4.65], [0, 4.95]], m.plate, 22));
+      const t = u.type, bare = t === 'knight';
+      if (t === 'spear' || t === 'sword' || t === 'king') {   // a rounded open-faced kettle helm with a flared brim and a gold band
+        head.add(lathe([[3.85, 0.55], [3.35, 1.15], [3.1, 2.4], [2.55, 3.75], [1.4, 4.65], [0, 4.95]], m.helmP, 22));
         const band = mesh(new T.TorusGeometry(3.14, 0.2, 6, 22), m.trimG, 0, 1.45, 0); band.rotation.x = Math.PI / 2; head.add(band);
-        for (const sd of [-1, 1]) head.add(box(0.45, 2.8, 2.3, m.plate, sd * 2.95, -0.7, 0.55));
+        for (const sd of [-1, 1]) head.add(box(0.45, 2.8, 2.3, m.helmP, sd * 2.95, -0.7, 0.55));
       } else if (!bare) {    // a closed, rounded armet with a visor slit and a crest ridge
         head.add(lathe([[2.7, -3.1], [3.2, -1.6], [3.4, 0.4], [3.25, 2.1], [2.75, 3.4], [1.8, 4.3], [0.8, 4.75], [0, 4.85]], m.plate, 22));
         const slit = mesh(new T.TorusGeometry(3.43, 0.22, 4, 14, Math.PI * 0.62), std('#141010'), 0, 0.85, 0.05); slit.rotation.set(Math.PI / 2, 0, Math.PI * 0.19); head.add(slit);
@@ -1139,13 +1179,18 @@ const R3D = (() => {
       if (P.plume && !bare) { const pl = sph(1.0, std(P.plume), 0, 5.2, -1.2, 8); pl.scale.set(0.8, 1.4, 3.2); head.add(pl); }
       const gorget = lathe([[1.75, 36.3], [2.05, 35.6], [2.9, 34.6], [3.7, 33.9]], m.mailSkirt, 18, true); gorget.scale.set(1, 1, 0.85); body.add(gorget);
       // the great cape, crimson with the gold lion, hanging from the shoulders so it swings and blows from the top
-      if (t !== 'king') { const cg = new T.PlaneGeometry(12.4, 23.5, 12, 12); cg.translate(0, -11.75, 0); { const ps = cg.attributes.position; for (let i = 0; i < ps.count; i++) { const x = ps.getX(i), y = ps.getY(i), dn = -y / 23.5; ps.setZ(i, Math.sin(x * 1.15 + 0.4) * 0.55 * dn + (1 - Math.cos(x / 6.2 * Math.PI / 2)) * 1.6 + (dn < 0.12 ? (0.12 - dn) * 22 * (1 - Math.abs(x) / 6.2 * 0.4) : 0)); ps.setX(i, x * (1 + dn * 0.22)); } cg.computeVertexNormals(); } const cloak = mesh(cg, m.lion, 0, 34.0, -3.6); body.add(cloak); m.cloak = cloak; m.cloakM = cloak.material; }
+      if (false) { const cg = new T.PlaneGeometry(12.4, 23.5, 12, 12); cg.translate(0, -11.75, 0); { const ps = cg.attributes.position; for (let i = 0; i < ps.count; i++) { const x = ps.getX(i), y = ps.getY(i), dn = -y / 23.5; ps.setZ(i, Math.sin(x * 1.15 + 0.4) * 0.55 * dn + (1 - Math.cos(x / 6.2 * Math.PI / 2)) * 1.6 + (dn < 0.12 ? (0.12 - dn) * 22 * (1 - Math.abs(x) / 6.2 * 0.4) : 0)); ps.setX(i, x * (1 + dn * 0.22)); } cg.computeVertexNormals(); } const cloak = mesh(cg, m.lion, 0, 34.0, -3.6); body.add(cloak); m.cloak = cloak; m.cloakM = cloak.material; }
+    } else if (u.type === 'archer' && (kit === 'crossbow' || kit === 'flame')) {
+      const hp = std(team === 'enemy' ? '#5d6168' : '#d5dbe1', { metalness: 0.9, roughness: 0.28 });
+      head.add(lathe([[3.85, 0.55], [3.35, 1.15], [3.1, 2.4], [2.55, 3.75], [1.4, 4.65], [0, 4.95]], hp, 22));
+      const tb = mesh(new T.CylinderGeometry(5.6, 6.3, 15, 12, 1, true, -0.72, 1.44), m.lion, 0, 21, 0); tb.scale.set(1.0, 1, 0.86); body.add(tb);
+      const tbk = mesh(new T.CylinderGeometry(5.4, 6.0, 15, 12, 1, true, Math.PI - 0.72, 1.44), m.skirt, 0, 21, 0); tbk.scale.set(1.02, 1, 0.8); body.add(tbk);
     } else if (u.type === 'archer') {
       // hood falling to the shoulders
-      const hood = lathe([[3.2, -1.0], [3.3, 1.0], [2.9, 2.8], [1.8, 4.0], [0, 4.4]], std('#5e4a2c', { roughness: 0.95, side: T.DoubleSide }), 16); hood.scale.set(1, 1, 1.05); hood.position.z = -0.3; head.add(hood); m.hood = hood.material;
+      const hood = lathe([[3.2, -1.0], [3.3, 1.0], [2.9, 2.8], [1.8, 4.0], [0, 4.4]], std(team === 'enemy' ? '#34302e' : shade(P.tunic, -0.12), { roughness: 0.95, side: T.DoubleSide }), 16); hood.scale.set(1, 1, 1.05); hood.position.z = -0.3; head.add(hood); m.hood = hood.material;
       const cowl = lathe([[3.3, -0.8], [3.8, -2.6], [5.2, -4.6]], m.hood, 16, true); cowl.scale.set(1, 1, 0.8); cowl.position.z = -0.35; head.add(cowl);
       const fe = box(0.35, 5, 0.3, m.cloth, -2.0, 4.2, -1.6); fe.rotation.z = 0.7; head.add(fe);
-      const cgA = new T.PlaneGeometry(9.6, 19, 2, 6); cgA.translate(0, -9.5, 0); const cape = mesh(cgA, m.lion, 0, 33, -4.1); body.add(cape); m.cloak = cape; m.cloakM = cape.material;
+      
     } else {
       const hairCap = mesh(new T.SphereGeometry(3.0, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.75), m.hair, 0, 0.5, -0.25); hairCap.scale.set(0.95, 1.05, 1.05); head.add(hairCap);
       const cap = mesh(new T.SphereGeometry(3.15, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2.7), std(u.team === 'enemy' ? ENEMY_COL : PAL.player.tunic), 0, 1.25, -0.1); head.add(cap); m.cap = cap.material;
@@ -1184,6 +1229,10 @@ const R3D = (() => {
       sw.add(box(5.2, 0.7, 0.9, m.gold, 0, 1.3, 0));
       sw.add(cyl(0.42, 0.42, 2.6, m.belt, 0, -0.2, 0, 8)); sw.add(sph(0.75, m.gold, 0, -1.7, 0, 8));
       tools.sword = sw;
+      if (kit === 'berserker') {   // a bearded axe and a fur collar
+        sw.clear(); sw.add(cyl(0.5, 0.55, 12, m.wood, 0, 4, 0, 7)); const ax = box(0.5, 4.6, 5.2, m.steel, 0, 9.2, 2.4); sw.add(ax);
+        const fur = sph(5.6, std('#8a765a', { roughness: 1 }), 0, 32.6, -0.4, 12); fur.scale.set(1.25, 0.42, 0.95); body.add(fur);
+      } else
       if (u.type === 'maceman') {   // a mace: a short haft and a flanged iron head
         sw.clear(); sw.add(cyl(0.5, 0.55, 9, m.wood, 0, 3, 0, 7)); const hd = sph(1.9, std('#4d5359', { metalness: 0.7, roughness: 0.4 }), 0, 8.4, 0, 10); sw.add(hd);
         for (let f = 0; f < 6; f++) { const fl = box(0.5, 2.6, 1.4, std('#5d636a', { metalness: 0.7, roughness: 0.4 }), Math.cos(f) * 1.7, 8.4, Math.sin(f) * 1.7); fl.rotation.y = -f; sw.add(fl); }
@@ -1193,7 +1242,8 @@ const R3D = (() => {
         const gh = lathe([[3.05, -2.6], [3.35, -1.2], [3.4, 0.6], [3.25, 2.0], [2.8, 3.2], [2.0, 4.1], [1.0, 4.6], [0, 4.75]], plate, 20); gh.position.set(0, 0, 0.1); head.add(gh);   // a rounded great helm
         const slit = mesh(new T.TorusGeometry(3.42, 0.24, 4, 14, Math.PI * 0.62), std('#16110c'), 0, 0.85, 0.1); slit.rotation.set(Math.PI / 2, 0, Math.PI * 0.19); head.add(slit);
       }
-      if (u.type === 'king') {   // a gold crown and a fur-trimmed royal cloak
+      if (u.type === 'king') {   // a gold crown on a gold-banded helm, a bigger sword and a fur-trimmed royal cloak
+        sw.scale.setScalar(1.3);
         const crown = cyl(3.1, 3.0, 1.6, m.gold, 0, 3.2, 0, 16); head.add(crown);
         for (let f = 0; f < 6; f++) { const a = f / 6 * Math.PI * 2; head.add(mesh(new T.ConeGeometry(0.55, 1.8, 5), m.gold, Math.sin(a) * 3, 4.8, Math.cos(a) * 3)); }
         const cape = mesh(new T.PlaneGeometry(11, 24, 1, 4), new T.MeshStandardMaterial({ color: C('#6a1e7a'), side: T.DoubleSide, roughness: 0.8, map: fabricTex() }), 0, 21, -5); body.add(cape); m.cloak = cape;
@@ -1213,7 +1263,7 @@ const R3D = (() => {
       spear.add(cyl(0.7, 0.62, 1.6, m.belt, 0, 36.4, 0, 8));
       // round shield on the left arm
       const lg = grip(L); tools.shieldGrip = lg;
-      const shield = new T.Group(); shield.position.set(-1.2, 0.4, 2.0); lg.add(shield);
+      const shield = new T.Group(); shield.position.set(-1.2, 0.4, 2.0); if (kit === 'heavyspear') { lg.add(shield); shield.scale.set(1.05, 1.75, 1); }
       const face = cyl(5.8, 5.8, 0.8, [m.shieldF, m.lion, m.shieldF], 0, 0, 0, 24); face.rotation.x = Math.PI / 2; face.rotation.y = Math.PI; shield.add(face);
       const rim = mesh(new T.TorusGeometry(5.8, 0.45, 6, 24), m.rim, 0, 0, 0.3); shield.add(rim);
     } else if (u.type === 'archer') {
@@ -1280,9 +1330,21 @@ const R3D = (() => {
     }
     for (const k of ['basket', 'pack', 'berries', 'sack', 'logs', 'pick', 'sickle', 'barrow', 'stool']) if (tools[k]) { tools[k].userData.keep = true; tools[k].traverse(o => o.userData.keep = true); }
     if (m.cloak) m.cloak.userData.keep = true;
+    if (kit === 'berserker' && tools.shieldGrip) L.hand.remove(tools.shieldGrip);
+    if (kit === 'longbow' && tools.bow) tools.bow.scale.setScalar(1.3);
+    if ((kit === 'crossbow' || kit === 'flame') && tools.bow) {   // the bow gives way to a crossbow, or to the fire tube and its tank
+      tools.bow.children[0].visible = false; const gun = new T.Group(); gun.userData.keep = true; tools.bow.add(gun);
+      if (kit === 'crossbow') { gun.add(box(1.1, 1.3, 13, m.wood, 0, 0, 3)); const arms = box(13, 0.7, 0.9, m.steel, 0, 0.4, 8.5); gun.add(arms); gun.add(box(0.2, 0.2, 9, m.string, 0, 0.5, 4.6)); }
+      else { gun.add(cyl(0.9, 0.9, 15, std('#4d5359', { metalness: 0.7, roughness: 0.4 }), 0, 0, 5, 8)).rotation.x = Math.PI / 2; const fl = mesh(new T.ConeGeometry(2.6, 12, 8), new T.MeshBasicMaterial({ color: 0xffa030, transparent: true, opacity: 0.85 }), 0, 0, 18); fl.rotation.x = -Math.PI / 2; fl.visible = false; gun.add(fl); tools.flame = fl;
+        const tank = cyl(3.2, 3.2, 9, std('#6a6e74', { metalness: 0.7, roughness: 0.45 }), 0, 27, -5.2, 12); tank.userData.keep = true; body.add(tank); }
+      gun.traverse(o => { o.userData.keep = true; });
+    }
     compact(root);
+    // the knight rides: a horse in a caparison of the team's cloth, the rider lifted into the saddle
+    let horse = null;
+    if (u.type === 'knight' && kit !== 'foot') { horse = horseModel(team, m); const seat = new T.Group(); seat.position.set(0, 15.5, -1); root.remove(body); seat.add(body); root.add(seat); root.add(horse.g); }
     const allMats = []; root.traverse(o => { if (o.isMesh && o.material && o.material.emissive && !allMats.includes(o.material)) allMats.push(o.material); });
-    return { root, body, legs, arms, tools, head, mats: allMats, m, cloth, torso, belly, tail, sm: { fR: 0, bR: 0.2, fL: 0, bL: 0.2, tw: 0 }, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
+    return { horse, root, body, legs, arms, tools, head, mats: allMats, m, cloth, torso, belly, tail, sm: { fR: 0, bR: 0.2, fL: 0, bL: 0.2, tw: 0 }, heading: u.facing > 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 
   function machineCrew(u, spots, body) {
@@ -1584,7 +1646,7 @@ const R3D = (() => {
       if (pose === 'prone') md.body.position.y = 3.2 * kk + md.body.position.y * (1 - kk);
       md.head.rotation.y = Math.sin(time * 0.45 + (u.seed || 0) * 3) * 0.55 * kk;   // looking out over the land, or chatting to the next man
       md.head.rotation.x = pose === 'prone' ? -1.2 * kk : 0;
-    } else { md.body.rotation.x = 0; md.body.position.z = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
+    } else { md.body.rotation.x = u.flash > 0 && !u.dead ? -Math.min(1, u.flash) * 0.24 : 0; md.body.position.z = 0; md.head.rotation.x = 0; for (const g of md.legs) g.hip.rotation.z = 0; }
     if (md.tools.stool) md.tools.stool.visible = pose === 'sit' && !!u.stool && k > 0.5;
     // seated people fold their arms, or rest their hands on their knees
     let fold = 0;
@@ -1618,14 +1680,21 @@ const R3D = (() => {
       const drawn = u.type === 'archer' && (a > 0 || u.order === 'attack') ? (a > 0 && a < 0.55 ? ease(a / 0.55) : a > 0 ? Math.max(0, 1 - (a - 0.55) * 6) : 0.15) : 0;
       const pz = tl.tipX - drawn * 7; const ps = tl.string.attributes.position; ps.setX(1, pz); ps.needsUpdate = true;
     }
+    if (md.tools.flame) md.tools.flame.visible = a > 0.25 && a < 0.9;
+    if (md.horse) {
+      const H = md.horse;
+      for (const l of H.legs) { const p = ph + (l.lead ? Math.PI : 0), sw = Math.sin(p); l.hip.rotation.x = moving ? -sw * 0.55 : 0; l.knee.rotation.x = moving ? Math.max(0, Math.cos(p) + 0.2) * (l.front ? -0.9 : 0.9) : 0; }
+      H.g.position.y = moving ? Math.abs(Math.sin(ph)) * 1.1 : 0; H.neck.rotation.x = moving ? Math.sin(ph * 2) * 0.05 : Math.sin(time * 0.7 + sd) * 0.04; H.tail.rotation.z = Math.sin(time * 2 + sd) * 0.2;
+      for (const l of md.legs) { l.hip.rotation.x = -1.0; l.hip.rotation.z = l.side * 0.52; l.knee.rotation.x = 1.15; }   // astride
+      md.body.position.y = (moving ? Math.abs(Math.sin(ph)) * 1.1 : 0); md.body.position.x = 0; md.body.rotation.z = 0;
+    }
     if (md.m.cloak) md.m.cloak.rotation.x = 0.12 + (moving ? 0.25 + Math.sin(ph * 0.5) * 0.08 : Math.sin(time * 1.3 + u.seed) * (0.04 + 0.08 * (typeof WEATHER !== 'undefined' ? WEATHER.wind : 0.2))) + ((u.poseK || 0) > 0 && u.pose !== 'prone' ? 0.5 * u.poseK : 0);
   }
   function syncUnits(dt) {
     const seen = new Set();
     for (const u of units) {
       let md = unitModels.get(u.id);
-      if (!md) { md = artOf(u) ? artUnitModel(u, artOf(u)) : u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); return personModel(u); })(); if (!md.artModel) addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
-      else if (!u.dead && !md.artModel && !md.glb && artOf(u)) { scene.remove(md.root); unitModels.delete(u.id); continue; }   // the pictures arrived after this unit was made
+      if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); return personModel(u); })(); if (!md.artModel) addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
       else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
       if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
       seen.add(u.id);
@@ -1650,13 +1719,20 @@ const R3D = (() => {
         if (md.log) md.log.position.z = 4 + (a > 0 ? (a < 0.45 ? lerp(0, -7, ease(a / 0.45)) : a < 0.6 ? lerp(-7, 11, ease((a - 0.45) / 0.15)) : lerp(11, 0, ease((a - 0.6) / 0.4))) : 0);
         for (const w of md.wheels) w.rotation.x = u.walkPhase * 0.6;
         if (md.crew) for (const c of md.crew) animatePerson({ type: 'civ', moving: u.moving && !u.dead, walkPhase: u.walkPhase, attackAnim: 0, order: 'idle', seed: 1 }, c, dt);
-      } else if (md.glb) animateGlb(u, md, dt); else if (md.artModel) animateArt(u, md, dt); else animatePerson(u, md, dt);
+      } else if (md.glb) animateGlb(u, md, dt); else if (md.artModel) animateArt(u, md, dt);
+      else {
+        // only people who are walking, fighting, hit or falling are animated every frame; someone standing or sitting
+        // still settles for a moment and is then touched only every eighth frame (the slow look-about of the head)
+        const busy = u.moving || u.attackAnim > 0 || u.dead || u.flash > 0 || u.carry > 0;
+        md.stillT = busy ? 0 : (md.stillT || 0) + dt;
+        if (md.stillT < 1.5 || (frameNo + u.id) % 8 === 0) { animatePerson(u, md, md.stillT < 1.5 ? dt : dt * 8); md.animated = frameNo; }
+      }
       // hit flash, falling, fading
       const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
       for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk, fk, fk); }
       if (u.dead) {
         let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f);
-        if (md.artModel) {} else if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; }
+        if (md.artModel) {} else if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; if (md.horse) { md.horse.g.rotation.z = f * 1.45; md.horse.g.position.y = f * 5; md.body.position.y = -f * 12; } }
         const al = u.deathT > 7 ? Math.max(0, 1 - (u.deathT - 7) / 3) : 1;
         if (al < 1) for (const mt of md.mats) { mt.transparent = true; mt.opacity = al; }
       }
@@ -1713,7 +1789,7 @@ const R3D = (() => {
       // smoke and fire from damage, chimney smoke from houses
       const hp = b.hp / b.maxHp;
       if ((b.kind === 'tower' || b.kind === 'keep' || b.kind === 'gtower') && hp < 0.4) {
-        const top = b.kind === 'tower' ? 120 : b.kind === 'keep' ? 100 : 88;
+        const top = b.kind === 'tower' ? 120 : b.kind === 'keep' ? 46 : 88;
         if (Math.random() < 0.5) spawn('fire', b.x + RR(-30, 30), b.y - top + RR(-10, 10), b.y);
         if (Math.random() < 0.2) spawn('smoke', b.x + RR(-25, 25), b.y - top - RR(10, 30), b.y);
       }
@@ -1760,7 +1836,7 @@ const R3D = (() => {
       const p = new T.Points(geo, mat); p.frustumCulled = false; scene.add(p); pts.push({ p, geo, N });
     }
   }
-  const PCOL = { spark: [1, 0.85, 0.5], blood: [0.47, 0.06, 0.05], chip: [0.48, 0.34, 0.19], dust: [0.59, 0.51, 0.37], smoke: [0.3, 0.29, 0.27], fire: [1, 0.55, 0.15] };
+  const PCOL = { spark: [1, 0.86, 0.25], sparkR: [1, 0.22, 0.1], blood: [0.47, 0.06, 0.05], chip: [0.48, 0.34, 0.19], dust: [0.59, 0.51, 0.37], smoke: [0.3, 0.29, 0.27], fire: [1, 0.55, 0.15] };
   function syncFx() {
     const counts = [0, 0];
     for (const q of particles) {
@@ -1782,7 +1858,7 @@ const R3D = (() => {
     for (const a of arrows) {
       if (a.t < 0) continue;
       const k = a.t / a.dur, from = a.from, to = a.target;
-      const sx = from.x0 !== undefined ? from.x + 6 : from.x, sz = from.x0 !== undefined ? (from.y0 + from.y1) / 2 : from.y, sh = from.x0 !== undefined ? (from.archerY || 110) - 4 : 30;
+      const sx = from.x0 !== undefined ? from.x + 6 : from.x, sz = from.x0 !== undefined ? (from.y0 + from.y1) / 2 : from.y, sh = from.x0 !== undefined ? (from.kind === 'keep' ? 68 : (from.archerY || 110) - 4) : 30;
       const ex = a.x1, ez = to && to.y !== undefined ? to.y : a.y1 + 16, eh = to && to.x0 !== undefined ? 30 : 20;
       const x = lerp(sx, ex, k), z = lerp(sz, ez, k), hgt = lerp(sh, eh, k) + a.h * 1.4 * 4 * k * (1 - k);
       const k2 = Math.min(1, k + 0.02), x2 = lerp(sx, ex, k2), z2 = lerp(sz, ez, k2), h2 = lerp(sh, eh, k2) + a.h * 1.4 * 4 * k2 * (1 - k2);
@@ -1965,9 +2041,11 @@ const R3D = (() => {
     for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);   // the picture comes out upside down
     g.putImageData(im, 0, 0); iconCache.set(key, cv); return cv;
   }
+  // tests: how a unit's figure is posed right now
+  function poseOf(u) { const md = unitModels.get(u.id); if (!md || !md.legs) return null; return { hipL: md.legs[0].hip.rotation.x, hipR: md.legs[1].hip.rotation.x, armR: md.arms[1].sh.rotation.x, bodyX: md.body.rotation.x, bodyY: md.body.position.y, heading: md.heading, horse: md.horse ? md.horse.legs[0].hip.rotation.x : null, animated: md.animated, flat: !!md.artModel }; }
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
   const borderInfo = () => ({ sea: !!seaMesh, band: BAND, seaLevel: SEA, black: scene && scene.background && scene.background.getHex() === 0 });
-  return { prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  return { poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];

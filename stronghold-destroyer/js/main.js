@@ -191,15 +191,24 @@ cam.z = clamp(Math.min(1.25, Math.max(vw / 1150, vh / 760)), minZoom(), 2.4);
 centerOn(PLAYER_START.x + 160, PLAYER_START.y - 120);
 document.getElementById('banner').style.opacity = 0; document.getElementById('banner').classList.remove('shown');
 let palVer = 0;
+// stage 1: a small wooden palisade on the north and west of the shack, the sides toward the woods.
+// South and east stay open, so nobody's way is blocked. Trees standing in the line simply leave a gap.
+function startPalisade() {
+  if (!keep || structures.some(b => b.startPalisade)) return;
+  const c = keep.c, r = keep.r, line = [];
+  for (let x = c - 2; x <= c + 4; x++) line.push([x, r - 2]);
+  for (let y = r - 1; y <= r + 4; y++) line.push([c - 2, y]);
+  for (const [x, y] of line) { if (!canPlace('wall', x, y)) continue; const w = createBuilding('wall', x, y); finishBuilding(w); w.hp = w.maxHp; w.startPalisade = true; }
+}
 function startGame(key) {
   palVer++;   // team colours change: 3D buildings made before this are rebuilt in the new colours
   AudioSys.init(); AudioSys.setTheme(key);
   CIV = CIVS[key];
   Object.assign(PAL.player, { tunic: ARMY.crimson, tunicDark: ARMY.crimsonDark, shield: ARMY.crimson });   // every civilisation's army wears Gerald's crimson and gold
   PAL.civ.trim = CIV.color;
-  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 30;
+  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 0;   // stage 1: a shack in the woods, only wood and food
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
-  spawnPlayerPeople(); spawnKing(); if (keep) giftKnight(keep, '');
+  spawnPlayerPeople(); spawnKing(); if (keep) giftKnight(keep, ''); startPalisade();
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
@@ -245,4 +254,7 @@ updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
 // test hook
-window.SD = { sayLine, talkTo, speeches, cheer, moodReasons, showTower, updateGuards, armorMul, recipeOf, leftCountOf: () => leftCount, showSite, siteAction, staffOf, maxStaff, LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, scr: (x, y, h = 0) => { if (R3D.active) R3D.prepare(); return screenOf(x, y, h); }, camWorld: (x, y) => centerOn(x + vw / cam.z / 2, y + vh / cam.z / 2), centerOn, goHome, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };
+// the sheet's other soldiers, for tests and later phases: the same rules as their base unit, a different outfit
+const KIT_BASE = { longbow: 'archer', crossbow: 'archer', flame: 'archer', berserker: 'maceman', heavyspear: 'spear' }, KIT_NAME = { longbow: 'Longbowman', crossbow: 'Crossbowman', flame: 'Flame Trooper', berserker: 'Berserker', heavyspear: 'Heavy Spearman' };
+function makeKit(team, kit, x, y) { const u = makeUnit(team, KIT_BASE[kit], x, y); u.kit = kit; u.name = KIT_NAME[kit]; return u; }
+window.SD = { makeKit, sayLine, talkTo, speeches, cheer, moodReasons, showTower, updateGuards, armorMul, recipeOf, leftCountOf: () => leftCount, showSite, siteAction, staffOf, maxStaff, LORD, spawnLord, WEATHER, setWeather, weatherRange, weatherSpeed, ENEMY, DIFFS, setDiff: k => { DIFF = DIFFS[k]; }, diff: () => DIFF, enemyCamp, raidRoutes, rally, rallyFor, queuedOf, whyNotTrain, buyWeapon, BUY, foodKinds, foodVariety, addFood, CRAFT, WEAPON, weaponRoute, R3D, setView, scr: (x, y, h = 0) => { if (R3D.active) R3D.prepare(); return screenOf(x, y, h); }, camWorld: (x, y) => centerOn(x + vw / cam.z / 2, y + vh / cam.z / 2), centerOn, goHome, AudioSys, buildEnemyWalls, enemyWalls: () => structures.filter(b => b.team === 'enemy' && b.kind === 'wall'), wallPlan: () => enemyWallPlan.length, mood: () => mood, setMood: v => { mood = v; }, rule: () => [ration, tax], farms, BUILD, createBuilding, canPlace, assignBuilders, startPlacing, placeAt, placing: () => placing, gate, startGame, civ: () => CIV, res, bushes, trees, keep: () => keep, trainUnit, trainQueue, commandGather, units, structures, arrows, raid: () => raidTimer, setRaid: v => { raidTimer = v; }, spawnRaid, selection: () => selection, selectOnly, commandMove, commandAttack, cam, toWorld, findPath };

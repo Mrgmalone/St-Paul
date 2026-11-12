@@ -61,15 +61,16 @@ I pick one at the start and it changes how I build. The computer plays the rival
 - Gives timely tips based on the situation (high ground, traps, which direction raiders come from, build a tower here). Short, in your own words, credited to Sun Tzu's The Art of War. One tip at a time, not constant.
 
 ## Phases
-1. Foundation: save tests, split the one big file, fix idle behavior and circling, measure speed and the people cap. No look changes.
-2. One isometric view, the new art, UI redesign, list of missing images.
-3. Big map, random starts, fog of war.
-4. Castle stages, growth, absorbing buildings, unit unlocks, new buildings, tower weapons.
-5. Four peoples, start screen, rival AI, trading friend.
-6. Raids, combat effects and sounds, difficulty.
-7. Art of War advisor and final polish.
+1. Foundation: save tests, split the one big file, fix idle behavior and circling, measure speed and the people cap. No look changes. (Done.)
+2. The new look and interface: true 3D with a fixed camera, the sheet's art direction, team colours, picture-first buttons, wider map with the gold frame, living water. (Done.)
+3. Fix-up (Gerald's list after Phase 2): soldiers rebuilt as moving, fighting 3D figures in the sheet's look (no flat pictures); the enemy in the Black Stone look; my start as a shack in the woods with a small wooden palisade; ground, roads, water, stone bridge and brick walls rebuilt in the sheet's style; dense forests with clear roads; the old menu, help screen and building panels restyled to match the new interface.
+4. The four peoples, rival factions (start screen, rival AI, trading friend), and the wildlife and detail effects.
+5. Big map, random starts, fog of war.
+6. Castle stages, growth, absorbing buildings, unit unlocks, new buildings, tower weapons.
+7. Raids, combat effects and sounds, difficulty.
+8. Art of War advisor and final polish.
 
 ## Where we left off
 - Phase 1 (foundation) is done: tests saved, one big file split into modules, calm idle people, no circling or stuck units in the long games, people cap 400.
 - Phase 2 (look and interface) is done, as changed by Gerald's follow-up: true 3D with a fixed camera (45 degrees round, 40 degrees down) and zoom only; the sheet's units as picture cards with team colours (crimson and gold with a gold lion; Black Stone charcoal and ember) from one recolour system ready for the four peoples; buildings and ground in the sheet's bricks, grass, dirt and water; team-coloured outlines behind buildings, walls, towers and trees; picture-first side buttons; a wider map ending in water and a gold frame; living water and small wildlife. The list of pictures still to make is design/MISSING-ART.md.
-- Next is Phase 3: big map with random starts and fog of war. Not started.
+- Phase 3 is now the fix-up phase (see the phase list). Gerald will not make more art in an image generator: every unit is built in code from the sheet.

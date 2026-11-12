@@ -43,7 +43,7 @@ function commandDeposit(list) {
 }
 // archers can climb onto your walls and towers: farther shots, half damage from arrows, out of reach of blades
 const WALL_INFO = { wall: { posts: 2, e2: 30, e3: 31.5, rng: 1.35 }, gtower: { posts: 4, e2: 92, e3: 96, rng: 1.35 }, highwall: { posts: 2, e2: 88, e3: 97, rng: 1.5 },
-  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, lookout: { posts: 3, e2: 239, e3: 255, rng: 1.8 }, roundtower: { posts: 6, e2: 136, e3: 150, rng: 1.6 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 }, keep: { posts: 1, e2: 112, e3: 106, rng: 1 } };
+  stower: { posts: 5, e2: 128, e3: 141, rng: 1.55 }, lookout: { posts: 3, e2: 239, e3: 255, rng: 1.8 }, roundtower: { posts: 6, e2: 136, e3: 150, rng: 1.6 }, greattower: { posts: 8, e2: 150, e3: 166, rng: 1.65 }, keep: { posts: 1, e2: 112, e3: 60, rng: 1 } };
 const WALL_POSTS = Object.fromEntries(Object.entries(WALL_INFO).map(([k, v]) => [k, v.posts]));
 const elev2D = u => u.onWall ? WALL_INFO[u.onWall.kind].e2 : 0;
 const elev3D = u => u.onWall ? WALL_INFO[u.onWall.kind].e3 : 0;
