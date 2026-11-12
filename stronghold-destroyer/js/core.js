@@ -472,12 +472,14 @@ function setupWorld() {
   paintTerrain();
   // player army: 3 swordsmen, 2 spearmen
 }
-function spawnPlayerPeople() {
-  [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
+// No side starts with an army (Gerald's design): you begin with a few civilians, and the enemy with its lord and its workers.
+// `army` is only for the older tests, written when both sides began with soldiers (index.html?testArmy=1); the game never passes it.
+function spawnPlayerPeople(army) {
+  if (army) [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
     .forEach(([k, x, y]) => makeUnit('player', k, x + HOME.dx, y + HOME.dy));
   [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058]].forEach(([x, y]) => makeUnit('player', 'civ', x + HOME.dx, y + HOME.dy));
-  // enemy guards at their posts
-  [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
+  // (tests only) enemy guards at their posts
+  if (army) [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
     .forEach(([k, x, y]) => { const g = makeUnit('enemy', k, x + EXP, y); g.maxHp = g.hp = Math.round(g.hp * 0.85); });
 }
 

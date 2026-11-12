@@ -21,4 +21,7 @@ async function use3d(page, opts = {}) {
   await page.route('**/SkeletonUtils.js', js('examples/js/utils/SkeletonUtils.js'));
   await page.route('**/fonts.g*/**', r => r.abort());
 }
-module.exports = { SP, LAUNCH, use3d, GAME: 'file://' + path.resolve(__dirname, '../index.html') };
+// GAME: the older tests were written when both sides began with soldiers, so they ask the game for those (testArmy=1).
+// GAME_REAL: the game exactly as a player gets it, with no starting army on either side.
+const PAGE = 'file://' + path.resolve(__dirname, '../index.html');
+module.exports = { SP, LAUNCH, use3d, GAME: PAGE + '?testArmy=1', GAME_REAL: PAGE };

@@ -202,15 +202,16 @@ function startPalisade() {
   for (const [x, y] of line) { if (!canPlace('wall', x, y)) continue; const w = createBuilding('wall', x, y); finishBuilding(w); w.hp = w.maxHp; w.startPalisade = true; }
   floats.length = n0;   // it was there from the start: no 'built' notices
 }
+const testArmy = /[?&]testArmy=1/.test(location.search);   // older tests only: start both sides with the soldiers they had before (see spawnPlayerPeople)
 function startGame(key) {
   palVer++;   // team colours change: 3D buildings made before this are rebuilt in the new colours
   AudioSys.init(); AudioSys.setTheme(key);
   CIV = CIVS[key];
   Object.assign(PAL.player, { tunic: ARMY.crimson, tunicDark: ARMY.crimsonDark, shield: ARMY.crimson });   // every civilisation's army wears Gerald's crimson and gold
   PAL.civ.trim = CIV.color;
-  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = 2; res.bow = 2; res.stone = 0;   // stage 1: a shack in the woods, only wood and food
+  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = testArmy ? 2 : 0; res.bow = testArmy ? 2 : 0; res.stone = 0;   // stage 1: a shack in the woods, only wood and food
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
-  spawnPlayerPeople(); spawnKing(); if (keep) giftKnight(keep, ''); startPalisade();
+  spawnPlayerPeople(testArmy); spawnKing(); if (testArmy && keep) giftKnight(keep, ''); startPalisade();   // the king is the only fighter you start with, on foot
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);

@@ -1,11 +1,20 @@
-// The start: a shack in the woods with a small wooden palisade, a king, a few civilians, wood and food only.
+// The start: a shack in the woods with a small wooden palisade, a king on foot, a few civilians, wood and food only, and no army on either side.
 // Also the land: dense forest with clear roads, nobody standing inside the trees, a river with a bridge at every road,
 // and a walkable way from your shack to the enemy camp.
 const { chromium } = require('playwright'); const env = require('./env'); const SP = env.SP;
 (async () => {
   const b = await chromium.launch(env.LAUNCH); const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await env.use3d(p, { drawMs: 0 });
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack || '').split('\n')[1]));
-  await p.goto(env.GAME); await p.waitForTimeout(600); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(2500);
+  // no faction starts with an army, whichever people you pick: the king (on foot) is your only fighter, the lord is theirs
+  for (const civ of ['legion', 'wardens', 'harvest']) {
+    await p.goto(env.GAME_REAL); await p.waitForTimeout(600); await p.click(`.civ[data-civ="${civ}"]`); await p.waitForTimeout(2500);
+    const a = await p.evaluate(() => { const live = SD.units.filter(u => !u.dead), mine = live.filter(u => u.team === 'player'), theirs = live.filter(u => u.team === 'enemy'), king = mine.find(u => u.type === 'king');
+      return { soldiers: mine.filter(u => u.type !== 'civ' && u.type !== 'king').map(u => u.type), foes: theirs.filter(u => u.type !== 'civ' && !u.lord).map(u => u.type), lord: theirs.filter(u => u.lord).length,
+        weapons: SD.res.spear + SD.res.bow + SD.res.sword + SD.res.mace + SD.res.armor, gold: SD.res.gold, stone: SD.res.stone, king: !!king, kingHorse: king ? (SD.R3D.poseOf(king) || {}).horse != null : null }; });
+    console.log(civ, JSON.stringify(a));
+    if (a.soldiers.length || a.foes.length || !a.king || a.kingHorse || a.weapons || a.gold || a.stone) throw new Error(civ + ': the start should hold no army, no weapons, no gold or stone, and a king on foot');
+  }
+  await p.goto(env.GAME_REAL); await p.waitForTimeout(600); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(2500);
   const r = await p.evaluate(() => { document.getElementById('banner').style.display = 'none'; SD.setRaid(9999);
     const k = SD.keep(), mine = SD.units.filter(u => u.team === 'player' && !u.dead), pal = SD.structures.filter(s => s.startPalisade);
     const inTrees = SD.units.filter(u => !u.dead && !u.onWall && blocked[Math.floor(u.y / TILE) * COLS + Math.floor(u.x / TILE)]).length;
