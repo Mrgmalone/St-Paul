@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 (async () => { const b = await chromium.launch(require('./env').LAUNCH); const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); await require('./env').use3d(p);
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(require('./env').GAME); await p.waitForTimeout(500); await p.click('.civ[data-civ="harvest"]'); await p.waitForTimeout(600);
-  const r = await p.evaluate(()=>{ SD.setRaid(9999); const k = SD.keep(); const scr = (c, r) => [SD.scr((c + 0.5) * 32, (r + 0.5) * 32).x, SD.scr((c + 0.5) * 32, (r + 0.5) * 32).y];
+  const r = await p.evaluate(()=>{ SD.setRaid(9999); SD.res.stone = 30;   /* the start has no stone now (stage 1: wood and food only); this check needs the old 30 */ const k = SD.keep(); const scr = (c, r) => [SD.scr((c + 0.5) * 32, (r + 0.5) * 32).x, SD.scr((c + 0.5) * 32, (r + 0.5) * 32).y];
     centerOn(k.x + 100, k.y + 80); const out = { before: SD.res.stone };
     SD.startPlacing('highwall'); const a = scr(k.c + 4, k.r + 5), e = scr(k.c + 7, k.r + 5); SD.placeAt(a[0], a[1]); SD.placeAt(e[0], e[1]);
     out.after = SD.res.stone; out.walls = SD.structures.filter(s => s.kind === 'highwall').length;
