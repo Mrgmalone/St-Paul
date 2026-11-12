@@ -120,7 +120,7 @@ const R3D = (() => {
       envCube.encoding = T.sRGBEncoding; envCube.needsUpdate = true;
     } catch (e) { envCube = null; }
     sun = new T.DirectionalLight(C('#fff0d2'), 1.75); sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 3400 });
+    sun.shadow.mapSize.set(1536, 1536);   // sharp enough for people and buildings, a good deal cheaper than 2048 Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 3400 });
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6;
     scene.add(sun); scene.add(sun.target);
     fill = new T.DirectionalLight(C('#a9bfe0'), 0.38); scene.add(fill); scene.add(fill.target);
@@ -391,14 +391,14 @@ const R3D = (() => {
       cardMat.onBeforeCompile = sh => { sway(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', '#include <alphatest_fragment>\n  #ifdef USE_UV\n  if (vUv.x > 0.045) { vec3 fn = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))); if (abs(dot(fn, normalize(vViewPosition))) < 0.28) discard; }\n  #endif'); }; }
     const cardDepth = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: cardTex, alphaTest: 0.5 });
     const oakBlobGeo = merge(oakParts);
-    const oakGeo = cardCrown(blobs, lightCol('#24461c', '#8cb655'), 99, 11, 8.6, 47);
+    const oakGeo = cardCrown(blobs, lightCol('#24461c', '#8cb655'), 99, 7, 10.4, 47);   // 7 larger leaf cards per cluster (was 11 smaller): the same full look for less drawing
     const birchParts = [], Rb2 = mulberry32(512);
     for (const [x, y, z, r] of [[0, 52, 0, 9], [-6, 46, 3, 7], [6, 47, -2, 7], [2, 58, 4, 7], [-3, 63, -2, 6.5], [0, 69, 1, 5.5], [4, 41, 5, 6], [-5, 40, -5, 6], [3, 55, -6, 6]]) {
       const geo = new T.IcosahedronGeometry(r, 1), pp = geo.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 + (Rb2() - 0.5) * 0.25; pp.setXYZ(i, pp.getX(i) * k * 0.85, pp.getY(i) * k * 1.25, pp.getZ(i) * k * 0.85); }
       birchParts.push({ geo, m: M4(x, y, z), color: lightCol('#3f6a24', '#a8c860') });
     }
     const birchBlobGeo = merge(birchParts);
-    const birchGeo = cardCrown([[0, 52, 0, 9], [-6, 46, 3, 7], [6, 47, -2, 7], [2, 58, 4, 7], [-3, 63, -2, 6.5], [0, 69, 1, 5.5], [4, 41, 5, 6], [-5, 40, -5, 6], [3, 55, -6, 6]], lightCol('#3f6a24', '#a8c860'), 512, 10, 6.0, 54);
+    const birchGeo = cardCrown([[0, 52, 0, 9], [-6, 46, 3, 7], [6, 47, -2, 7], [2, 58, 4, 7], [-3, 63, -2, 6.5], [0, 69, 1, 5.5], [4, 41, 5, 6], [-5, 40, -5, 6], [3, 55, -6, 6]], lightCol('#3f6a24', '#a8c860'), 512, 7, 7.0, 54);
     const pineParts = [];
     for (let k = 0; k < 6; k++) {
       const geo = new T.ConeGeometry(17 - k * 2.5, 19, 14, 2, true), pp = geo.attributes.position, Rp = mulberry32(300 + k);
