@@ -20,7 +20,8 @@ const CIV = process.argv[2] || 'harvest', MINUTES = +(process.argv[3] || 20);
         t.x0 = Math.min(t.x0, u.x); t.x1 = Math.max(t.x1, u.x); t.y0 = Math.min(t.y0, u.y); t.y1 = Math.max(t.y1, u.y);
         t.n++; if (u.moving) t.mv++; if (u.combatT > 0 || u.attackAnim > 0 || (u.order === 'attack' && u.target && edgeDist(u, u.target) < 60)) t.fight++;
         const idle = u.order === 'idle' && !u.job && !(u.breakUntil > time) && !u.toHeal && (u.cmdT || -99) === t.cmd;
-        if (idle) t.idleLen += d;
+        if (idle && t.prevIdle) t.idleLen += d;   // only movement while idle the whole time (a guard who chased a raider and just went idle again is not wandering)
+        t.prevIdle = idle;
         if (time - t.t0 >= 10) {
           const span = Math.hypot(t.x1 - t.x0, t.y1 - t.y0);
           if (t.len > 160 && span < 60 && t.mv > t.n * 0.6 && t.fight < t.n * 0.2 && !isMachine(u)) window.__note('circling ' + u.type + ' ' + u.team + ' ' + u.order, { at: [Math.round(u.x), Math.round(u.y)], walked: Math.round(t.len), span: Math.round(span), sub: u.sub || '', t: Math.round(time) });

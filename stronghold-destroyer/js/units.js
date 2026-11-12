@@ -210,7 +210,14 @@ function siegeBrain(u) {
   if (u.order === 'idle' || (u.order === 'raid' && !(u.route && u.route.length))) {
     const t = siegeTarget(u, u.team === 'player' ? u.range + 10 : u.range + 60);
     if (t) { u.order = 'attack'; u.target = t; u.repath = 0; u.moving = false; return true; }
-    if (u.order === 'raid') { const k = playerKeep(); if (k && (!u.path.length || u.repath <= 0)) { const ap = approachPoint(u, k); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; } return false; }
+    if (u.order === 'raid') { const k = playerKeep();
+      // no headway toward your keep for 4 seconds (hemmed in by its own camp, say): a nudge and a fresh way; after two tries it stays and guards where it is
+      if (k) { const ap = approachPoint(u, k), d = Math.hypot(ap.x - u.x, ap.y - u.y);
+        if (u._sd === undefined || d < u._sd - 8) { u._sd = d; u._st = 0; }
+        else if ((u._st += frameDt) > 4) { u._st = 0; u._sd = d; u._tries = (u._tries || 0) + 1;
+          if (u._tries >= 2) { u.order = 'idle'; u.raider = false; u.path = []; u.moving = false; return true; }
+          const a = Math.random() * Math.PI * 2; moveBy(u, Math.cos(a) * 9, Math.sin(a) * 9); u.path = []; u.repath = 0; } }
+      if (k && (!u.path.length || u.repath <= 0)) { const ap = approachPoint(u, k); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; } return false; }
     u.moving = false; return true;
   }
   return false;
