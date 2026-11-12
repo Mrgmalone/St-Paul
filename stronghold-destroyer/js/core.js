@@ -88,13 +88,33 @@ const CAMP = { x: 1640 + EXP, y: 440 };
 const trees = [], rocks = [], units = [], structures = [], fires = [], particles = [], markers = [];
 let selection = new Set();
 
+// ---------- the river: it winds from the north shore to the south shore between the two camps ----------
+// Water squares cannot be walked; where a road meets the river a stone bridge carries it across.
+const RIVER = [], RIVER_HALF = 44, riverTile = new Uint8Array(COLS * ROWS);   // riverTile: 1 water, 2 bridge
+function riverDist(x, y) { let m = 1e9; for (const p of RIVER) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < m) m = d; } return Math.sqrt(m); }
+const BRIDGES = [];
+function placeRiver() {
+  const RNo = makeNoise(808);
+  for (let y = -60; y <= MH + 60; y += 16) RIVER.push({ x: 1236 + Math.sin(y / 250) * 95 + (RNo(y / 180, 3) - 0.5) * 120, y });
+  for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
+    const x = c * TILE + 16, y = r * TILE + 16; if (riverDist(x, y) > RIVER_HALF) continue;
+    if (roadDist(x, y) < 66) riverTile[r * COLS + c] = 2; else { riverTile[r * COLS + c] = 1; setBlock(c, r, 1); }
+  }
+  // one bridge for each place a road crosses: where the road's own points come nearest the river
+  for (const rd of ROADS) { let best = null, bd = 1e9; rd.forEach((p, i) => { const d = riverDist(p.x, p.y); if (d < bd) { bd = d; best = i; } });
+    if (best === null || bd > 40) continue; const a = rd[Math.max(0, best - 3)], b = rd[Math.min(rd.length - 1, best + 3)];
+    BRIDGES.push({ x: rd[best].x, y: rd[best].y, ang: Math.atan2(b.y - a.y, b.x - a.x) }); }
+}
 function placeObstacles() {
+  const OUTCROPS = [[PLAYER_START.x + 330, PLAYER_START.y - 230], [PLAYER_START.x - 250, PLAYER_START.y + 260], [1440, 560], [1500, 1320], [2050, 900]];
   const ok = (c, r) => {
     const x = c * TILE + 16, y = r * TILE + 16;
     if (tileBlocked(c, r)) return false;
-    if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 230) return false;
-    if (Math.hypot(x - CAMP.x, y - CAMP.y) < 240) return false;
-    if (roadDist(x, y) < 50) return false;
+    if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 290) return false;
+    if (Math.hypot(x - CAMP.x, y - CAMP.y) < 280) return false;
+    if (roadDist(x, y) < 62) return false;
+    for (const [ox, oy] of OUTCROPS) if (Math.hypot(x - ox, y - oy) < 115) return false;   // room to quarry
+    if (riverDist(x, y) < RIVER_HALF + 40) return false;   // open banks
     return true;
   };
   const addTree = (c, r) => {
@@ -105,13 +125,13 @@ function placeObstacles() {
   // forest frame along the map edges
   for (let c = 0; c < COLS; c++) for (const r of [0, 1, ROWS - 2, ROWS - 1]) if (srand() < (r === 0 || r === ROWS - 1 ? 0.85 : 0.45)) addTree(c, r);
   for (let r = 0; r < ROWS; r++) for (const c of [0, 1, COLS - 2, COLS - 1]) if (srand() < (c === 0 || c === COLS - 1 ? 0.85 : 0.45)) addTree(c, r);
-  // groves
-  // forest belts the north and south roads cut through, and woods behind the enemy camp
-  const belt = (c0, c1, r0, r1, dens) => { for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) if (srand() < dens) addTree(c, r); };
-  belt(24, 70, 3, 8, 0.62); belt(36, 76, 41, 50, 0.6); belt(88, 93, 3, 24, 0.6); belt(3, 9, 3, 14, 0.5); belt(60, 74, 24, 34, 0.45); belt(10, 22, 40, 52, 0.55); belt(28, 38, 14, 22, 0.5);
-  for (let k = 0; k < Math.round(17 * AF); k++) {
+  // the woods: dense forest in large patches (thick enough that people must cut their way through), with open
+  // meadows between. Roads, both camps and the stone outcrops stay clear, so nobody starts or gets shut inside the trees.
+  const FN = makeNoise(321), wooded = (c, r) => FN(c / 9, r / 9) * 0.65 + FN(c / 4 + 7, r / 4 + 3) * 0.35 > 0.5;
+  for (let c = 2; c < COLS - 2; c++) for (let r = 2; r < ROWS - 2; r++) if (wooded(c, r) && srand() < 0.8) addTree(c, r);
+  for (let k = 0; k < Math.round(10 * AF); k++) {   // a few lone copses in the meadows
     const cc = Math.floor(SR(5, COLS - 5)), cr = Math.floor(SR(4, ROWS - 4));
-    const n = Math.floor(SR(4, 10));
+    const n = Math.floor(SR(3, 7));
     for (let i = 0; i < n; i++) addTree(cc + Math.round(SR(-2.4, 2.4)), cr + Math.round(SR(-2, 2)));
   }
   // rocks
@@ -122,9 +142,9 @@ function placeObstacles() {
     rocks.push({ kind: 'rock', x: c * TILE + 16 + SR(-3, 3), y: r * TILE + 22, s: SR(0.8, 1.25), seed: srand() * 10, amount: 60 });
   }
   // stone outcrops: clusters of grey rock near your castle and out in the field, for gathering stone
-  for (const [ox, oy] of [[PLAYER_START.x + 330, PLAYER_START.y - 230], [PLAYER_START.x - 250, PLAYER_START.y + 260], [1250, 560], [1500, 1320], [2050, 900]]) {
+  for (const [ox, oy] of OUTCROPS) {
     let n = 0;
-    for (let t2 = 0; t2 < 40 && n < 6; t2++) { const c = Math.floor((ox + SR(-70, 70)) / TILE), r = Math.floor((oy + SR(-55, 55)) / TILE); if (!ok(c, r)) continue; setBlock(c, r, 1); rocks.push({ kind: 'rock', x: c * TILE + 16 + SR(-3, 3), y: r * TILE + 22, s: SR(0.95, 1.4), seed: srand() * 10, amount: 60 }); n++; }
+    for (let t2 = 0; t2 < 40 && n < 6; t2++) { const c = Math.floor((ox + SR(-70, 70)) / TILE), r = Math.floor((oy + SR(-55, 55)) / TILE); if (tileBlocked(c, r) || roadDist(c * TILE + 16, r * TILE + 16) < 50) continue; setBlock(c, r, 1); rocks.push({ kind: 'rock', x: c * TILE + 16 + SR(-3, 3), y: r * TILE + 22, s: SR(0.95, 1.4), seed: srand() * 10, amount: 60 }); n++; }
   }
 }
 
@@ -421,8 +441,9 @@ function buildElevation() {
     for (const M of MOUNTAINS) { const dx = x - M.x, dy = y - M.y, c = Math.cos(M.ang), s2 = Math.sin(M.ang), u = dx * c + dy * s2, v = -dx * s2 + dy * c, d = (u / M.len) ** 2 + (v / M.w) ** 2; if (d < 5) m = Math.max(m, M.h * Math.exp(-d * 1.5) * (0.72 + 0.55 * TN(x / 55 + M.x, y / 55))); }
     // keep the ground flat where people build and walk the roads
     const fk = clamp((Math.hypot(x - kx, y - ky) - 520) / 260, 0, 1), fc = clamp((Math.hypot(x - CAMP.x, y - CAMP.y) - 420) / 240, 0, 1), fr = clamp((roadDist(x, y) - 50) / 120, 0, 1);
-    const f = fk * fc * fr;
-    ELEV[j * EW + i] = h * f + m * f; MOUNT[j * EW + i] = m * f;
+    const f = fk * fc * fr * clamp((riverDist(x, y) - 70) / 150, 0, 1);   // level ground along the river
+    const rvd = riverDist(x, y), bed = rvd < 56 ? 13 * ease(1 - rvd / 56) * clamp((roadDist(x, y) - 56) / 26, 0, 1) : 0;   // the river bed, except under the bridges
+    ELEV[j * EW + i] = h * f + m * f - bed; MOUNT[j * EW + i] = m * f;
   }
   // mountain slopes too steep to cross block the way
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (mountAt(c * TILE + 16, r * TILE + 16) > 40) setBlock(c, r, 1);
@@ -441,6 +462,7 @@ function setupWorld() {
   fires.push({ kind: 'fire', x: 1584 + EXP, y: 442 });
   playerFire = { kind: 'fire', x: 236 + HOME.dx, y: 1104 + HOME.dy, player: true }; fires.push(playerFire); setBlock(Math.floor(playerFire.x / TILE), Math.floor(playerFire.y / TILE), 1);
   setBlock(49 + EX, 13, 1);
+  placeRiver();
   buildElevation();
   placeObstacles();
   placePond();

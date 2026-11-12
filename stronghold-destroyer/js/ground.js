@@ -28,6 +28,12 @@ function paintTerrainArt() {
     path(); g.strokeStyle = pat('dirt', 0.6); g.lineWidth = 46; g.stroke();
     for (const off of [-9, 9]) { g.save(); g.translate(off * 0.35, off * 0.35); path(); g.strokeStyle = 'rgba(70,50,28,0.35)'; g.lineWidth = 3; g.stroke(); g.restore(); }
   }
+  // the river: muddy banks and the sheet's water (the 3D view lays moving water and the stone bridges over this)
+  if (RIVER.length) { const path = () => { g.beginPath(); RIVER.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); }; g.lineCap = 'butt'; g.lineJoin = 'round';
+    path(); g.strokeStyle = 'rgba(84,70,44,0.8)'; g.lineWidth = RIVER_HALF * 2 + 26; g.stroke();
+    path(); g.strokeStyle = pat('water', 0.6); g.lineWidth = RIVER_HALF * 2 + 6; g.stroke();
+    path(); g.strokeStyle = 'rgba(10,40,70,0.25)'; g.lineWidth = RIVER_HALF * 2 + 6; g.stroke();
+    for (const B of BRIDGES) { g.save(); g.translate(B.x, B.y); g.rotate(B.ang); g.fillStyle = '#8d8a83'; g.fillRect(-RIVER_HALF - 22, -59, RIVER_HALF * 2 + 44, 118); g.restore(); } }
   // 4. the pond: river water with a muddy, reedy shore
   if (pond) {
     g.save(); g.translate(pond.x, pond.y);

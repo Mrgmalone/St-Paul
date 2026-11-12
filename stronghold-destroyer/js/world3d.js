@@ -52,7 +52,9 @@ const R3D = (() => {
       d[i] = 128 + dx * 160; d[i + 1] = 128 + dy * 160; d[i + 2] = 255; d[i + 3] = 255; }
     g.putImageData(img, 0, 0); }, 6);
   let envCube = null, gmatRef = null, groundTex = null;
-  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(0.5, 0.68, 0.78); water.material.specular.set(C('#3a4c54')); water.material.shininess = 30; water.material.needsUpdate = true; } if (seaMesh && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set((MW + 2 * BAND) / 210, (MH + 2 * BAND) / 70); t.encoding = T.sRGBEncoding; seaMesh.material.map = t; seaMesh.material.color.setRGB(0.3, 0.48, 0.6); seaMesh.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
+  function repaintGround() { try { paintTerrainArt(); if (groundTex) groundTex.needsUpdate = true; if (water && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(6, 6); t.encoding = T.sRGBEncoding; water.material.map = t; water.material.color.setRGB(0.5, 0.68, 0.78); water.material.specular.set(C('#3a4c54')); water.material.shininess = 30; water.material.needsUpdate = true; } if (riverMesh && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(1, 0.6); t.encoding = T.sRGBEncoding; riverMesh.material.map = t; riverMesh.material.color.setRGB(0.5, 0.7, 0.82); riverMesh.material.needsUpdate = true; }
+    if (gmatRef && gmatRef.userData.sh && MATS.img.grass) { const t = new T.Texture(MATS.img.grass); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; gmatRef.userData.sh.uniforms.detailMap.value = t; gmatRef.userData.sh.uniforms.detailRep.value.set(MW / 70, MH / 34); }
+    if (seaMesh && MATS.img.water) { const t = new T.Texture(MATS.img.water); t.needsUpdate = true; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set((MW + 2 * BAND) / 210, (MH + 2 * BAND) / 70); t.encoding = T.sRGBEncoding; seaMesh.material.map = t; seaMesh.material.color.setRGB(0.3, 0.48, 0.6); seaMesh.material.needsUpdate = true; } UI.rebuildMini && UI.rebuildMini(); } catch (e) { console.warn('ground', e); } }
   function std(hex, o = {}) { const m = new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: 0.85, metalness: 0 }, o)); if (envCube && (o.metalness || 0) >= 0.45) { m.envMap = envCube; m.envMapIntensity = 0.85; } return m; }
   // walls of stone and of plaster are built from the sheet's brick sets: gray stone for your castle, brown brick for
   // your houses and workshops, green for the house of prayer, black-gray-green for everything the Black Stone builds
@@ -65,7 +67,7 @@ const R3D = (() => {
     if (matCache[key]) return matCache[key];
     if (sheet) {
       const tex = new T.Texture(MATS.img[name]); tex.needsUpdate = true; tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(rx, ry); tex.encoding = T.sRGBEncoding; tex.anisotropy = 8;
-      return matCache[key] = new T.MeshStandardMaterial(Object.assign({ map: tex, bumpMap: tex, bumpScale: 0.8, roughness: 0.9 }, o));
+      return matCache[key] = new T.MeshStandardMaterial(Object.assign({ map: tex, roughness: 0.97, color: new T.Color(1.3, 1.3, 1.3) }, o));
     }
     const M = mats(), tex = new T.CanvasTexture(M[name]._canvas);
     tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(rx, ry); tex.encoding = T.sRGBEncoding; tex.anisotropy = 8;
@@ -78,8 +80,11 @@ const R3D = (() => {
   const plasterM = (w, h) => texMat('plaster', Math.max(1, w / 40), Math.max(1, h / 40));
   function mesh(geo, mat, x = 0, y = 0, z = 0, cast = true) { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; return m; }
   const box = (w, h, d, mat, x, y, z) => mesh(new T.BoxGeometry(w, h, d), mat, x, y, z);
-  const cyl = (rt, rb, h, mat, x, y, z, seg = 10) => mesh(new T.CylinderGeometry(rt, rb, h, seg), mat, x, y, z);
-  const sph = (r, mat, x, y, z, seg = 12) => mesh(new T.SphereGeometry(r, seg, Math.max(6, seg * 0.7 | 0)), mat, x, y, z);
+  // SEGK: people are built with fewer facets than buildings (0.55 of the round steps): at the size they are seen
+  // the difference does not show, and a large army costs about a third as much to draw
+  let SEGK = 1; const sg = n => SEGK === 1 ? n : Math.max(5, Math.round(n * SEGK));
+  const cyl = (rt, rb, h, mat, x, y, z, seg = 10) => mesh(new T.CylinderGeometry(rt, rb, h, sg(seg)), mat, x, y, z);
+  const sph = (r, mat, x, y, z, seg = 12) => mesh(new T.SphereGeometry(r, sg(seg), Math.max(SEGK === 1 ? 6 : 4, sg(seg) * 0.7 | 0)), mat, x, y, z);
   // merge several geometries (with transforms and colours) into one, for instanced scenery
   function merge(parts) {
     const pos = [], nor = [], col = [], uvs = [];
@@ -124,7 +129,7 @@ const R3D = (() => {
       vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
       fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h, 0.0, 1.0), 0.55)) : bot; gl_FragColor = vec4(c, 1.0); }' }));
     sky.renderOrder = -1;   // (kept for the sky colours; the world beyond the frame is plain black, so it is not shown)
-    buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass(); buildLife();
+    buildGround(); buildScenery(); buildFx(); buildWater(); buildGrass(); buildLife(); if (MATS.ready) buildRiver();
     ready = true; setTimeout(() => { try { UI.paintIcons(); } catch (e) {} }, 0);
   }
   function buildGround() {
@@ -206,7 +211,7 @@ const R3D = (() => {
   }
   const isSea = (x, z) => (x < -20 || z < -20 || x > MW + 20 || z > MH + 20) && x > -BAND + 10 && z > -BAND + 10 && x < MW + BAND - 10 && z < MH + BAND - 10;
   const inPond = (x, z) => pond && Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry) < 0.85;
-  function waterSpot(c, R) { for (let i = 0; i < 14; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (isSea(x, z)) return { x, z, y: SEA + 1 }; if (inPond(x, z)) return { x, z, y: water.position.y + 0.6 }; } return null; }
+  function waterSpot(c, R) { for (let i = 0; i < 14; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (isSea(x, z)) return { x, z, y: SEA + 1 }; if (x > 0 && z > 0 && x < MW && z < MH && riverTile[Math.floor(z / TILE) * COLS + Math.floor(x / TILE)] === 1 && riverDist(x, z) < RIVER_HALF - 12) return { x, z, y: -2.6 }; if (inPond(x, z)) return { x, z, y: water.position.y + 0.6 }; } return null; }
   function landSpot(c, R) { for (let i = 0; i < 10; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (x > 20 && z > 20 && x < MW - 20 && z < MH - 20 && !blockedAt(x, z) && !inPond(x, z)) return { x, z }; } return null; }
   function shoreSpot(c, R) {
     for (let i = 0; i < 12; i++) {
@@ -250,6 +255,27 @@ const R3D = (() => {
       const pearl = new T.Mesh(new T.SphereGeometry(5, 8, 6), gold); pearl.position.set(Math.cos(a + Math.PI / 8) * 34, 15, Math.sin(a + Math.PI / 8) * 34); g.add(pearl); }
     g.traverse(o => { o.castShadow = false; }); scene.add(g);
   }
+  // ---------- the river and its stone bridges ----------
+  let riverMesh = null;
+  function buildRiver() {
+    if (!RIVER.length) return;
+    const pos = [], uv = [], idx = [], W = RIVER_HALF + 10;
+    RIVER.forEach((p, i) => { const a = RIVER[Math.max(0, i - 1)], b = RIVER[Math.min(RIVER.length - 1, i + 1)], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+      pos.push(p.x + nx * W, -3.2, p.y + ny * W, p.x - nx * W, -3.2, p.y - ny * W); uv.push(0, i / 5, 1, i / 5); if (i) { const k = i * 2; idx.push(k - 2, k, k - 1, k - 1, k, k + 1); } });
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new T.MeshPhongMaterial({ color: C('#2a6a8c'), specular: C('#55707c'), shininess: 38, emissive: C('#04121c'), normalMap: waterNormal(), normalScale: new T.Vector2(0.5, 0.5), side: T.DoubleSide });
+    riverMesh = new T.Mesh(g, m); riverMesh.receiveShadow = true; scene.add(riverMesh);
+    // each bridge: a stone deck level with the road, low parapets of gray brick, and three arches showing at the waterline
+    for (const B of BRIDGES) {
+      const g2 = new T.Group(); g2.position.set(B.x, 0, B.y); g2.rotation.y = -B.ang; const L = RIVER_HALF * 2 + 44, Wd = 118;
+      BRICK = { stone: 'brick_gray', plaster: 'brick_gray' };
+      g2.add(box(L, 4, Wd, stoneM(L, Wd), 0, -1.2, 0));
+      for (const sz of [-1, 1]) { g2.add(box(L + 10, 13, 7, stoneM(L, 13), 0, 6, sz * (Wd / 2 - 2))); for (const sx of [-1, 1]) g2.add(box(10, 19, 10, stoneM(10, 19), sx * (L / 2 + 2), 8, sz * (Wd / 2 - 2)));
+        for (let k = -1; k <= 1; k++) { const ar = mesh(new T.TorusGeometry(13, 3.4, 6, 14, Math.PI), stoneM(40, 8), k * 34, -9, sz * (Wd / 2 + 0.5)); g2.add(ar); const pier = box(8, 12, 5, stoneM(8, 12), k * 34 + 17, -9, sz * (Wd / 2)); g2.add(pier); } }
+      g2.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); scene.add(g2);
+    }
+    BRICK = { stone: 'brick_gray', plaster: 'brick_brown' };
+  }
   // ---------- water and grass ----------
   let water = null, grass = null, grassPos = [], windU = { value: 0 }, windAmt = { value: 0.3 }, windDir = { value: T ? new T.Vector2(1, 0) : null };   // (no 3D library: the flat view still runs)
   function swayLeaves(mat, lift) {   // tree crowns bend with the wind: more at the top, each tree in its own rhythm
@@ -276,30 +302,34 @@ const R3D = (() => {
     const nrm = geo.attributes.normal; for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
     const mat = new T.MeshStandardMaterial({ vertexColors: true, side: T.FrontSide, roughness: 1 });
     mat.onBeforeCompile = sh => { sh.uniforms.uWind = windU; sh.uniforms.uWindAmt = windAmt; sh.uniforms.uWindDir = windDir; sh.vertexShader = 'uniform float uWind; uniform float uWindAmt; uniform vec2 uWindDir;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  float ph = instanceMatrix[3].x * 0.05 + instanceMatrix[3].z * 0.037;\n  transformed.x += (sin(uWind * 1.6 + ph) * 0.5 + uWindDir.x * 0.7) * position.y * 0.16 * uWindAmt * 2.2;\n  transformed.z += (cos(uWind * 1.2 + ph) * 0.5 + uWindDir.y * 0.7) * position.y * 0.12 * uWindAmt * 2.2;'); };
-    const N = 9000; grass = new T.InstancedMesh(geo, mat, N); grass.receiveShadow = true; grass.castShadow = false;
-    let k = 0, tries = 0;
+    // grass tufts are grouped in squares of land too, so only the squares in view are drawn
+    const N = 9000, CHK = 620, by = new Map(); let k = 0, tries = 0;
     while (k < N && tries++ < N * 4) {
       const x = Rg() * MW, z = Rg() * MH;
       if (blockedAt(x, z) || roadDist(x, z) < 22 || Math.hypot(x - CAMP.x, z - CAMP.y) < 150 || mountAt(x, z) > 18) continue;
       if (pond && Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry) < 1.05) continue;
-      const s = 0.6 + Rg() * 0.6;
-      grass.setMatrixAt(k, M4(x, heightAt(x, z) - 0.2, z, s, s * (0.8 + Rg() * 0.4), s, Rg() * 6.28));
-      grass.setColorAt(k, new T.Color().setHSL(0.23 + Rg() * 0.06, 0.35, 0.55 + Rg() * 0.12).multiplyScalar(1.25));
-      grassPos.push([x, z]); k++;
+      const s = 0.6 + Rg() * 0.6, key = Math.floor(x / CHK) + ',' + Math.floor(z / CHK); if (!by.has(key)) by.set(key, []);
+      by.get(key).push({ x, z, y: heightAt(x, z) - 0.2, s, sy: s * (0.8 + Rg() * 0.4), ry: Rg() * 6.28, col: new T.Color().setHSL(0.23 + Rg() * 0.06, 0.35, 0.55 + Rg() * 0.12).multiplyScalar(1.25) }); k++;
     }
-    grass.count = k; if (grass.instanceColor) grass.instanceColor.needsUpdate = true;
-    scene.add(grass);
+    grass = [];
+    for (const [key, list] of by) {
+      const [kx, kz] = key.split(',').map(Number), cx = (kx + 0.5) * CHK, cz = (kz + 0.5) * CHK;
+      const g2 = new T.BufferGeometry(); g2.attributes = geo.attributes; g2.index = geo.index; g2.boundingSphere = new T.Sphere(new T.Vector3(0, 0, 0), CHK * 0.72 + 40);
+      const m = new T.InstancedMesh(g2, mat, list.length); m.position.set(cx, 0, cz); m.receiveShadow = true; m.castShadow = false;
+      list.forEach((q, i) => { m.setMatrixAt(i, M4(q.x - cx, q.y, q.z - cz, q.s, q.sy, q.s, q.ry)); m.setColorAt(i, q.col); grassPos.push([q.x, q.z, m, i]); });
+      if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); grass.push(m);
+    }
   }
   function hideGrass(x0, z0, x1, z1) {
-    if (!grass) return; const zero = new T.Matrix4().makeScale(0, 0, 0); let hit = false;
-    grassPos.forEach(([x, z], i) => { if (x > x0 - 2 && x < x1 + 2 && z > z0 - 2 && z < z1 + 2) { grass.setMatrixAt(i, zero); hit = true; } });
-    if (hit) grass.instanceMatrix.needsUpdate = true;
+    if (!grass) return; const zero = new T.Matrix4().makeScale(0, 0, 0);
+    for (const [x, z, m, i] of grassPos) if (x > x0 - 2 && x < x1 + 2 && z > z0 - 2 && z < z1 + 2) { m.setMatrixAt(i, zero); m.instanceMatrix.needsUpdate = true; }
   }
   function syncWater(dt) {
     if (leafDecid) { const se = WEATHER.season, tgt = [[1.0, 1.08, 0.86], [0.92, 1.0, 0.86], [1.75, 0.78, 0.28], [0.82, 0.72, 0.6]][se]; const c = leafDecid.color, kk = Math.min(1, dt * 0.35); c.r += (tgt[0] - c.r) * kk; c.g += (tgt[1] - c.g) * kk; c.b += (tgt[2] - c.b) * kk; }
     windU.value = time; windAmt.value = 0.38 + WEATHER.wind * 1.2 + WEATHER.rain * 0.2; windDir.value.set(Math.cos(WEATHER.ang), Math.sin(WEATHER.ang));
     if (clouds3) { const t = clouds3.material.alphaMap; t.offset.x = time * 0.0022; t.offset.y = time * 0.0012; }
     if (water) { const t = water.material.normalMap; t.offset.x = time * 0.012; t.offset.y = time * 0.008; if (water.material.map) { water.material.map.offset.x = time * 0.006; water.material.map.offset.y = Math.sin(time * 0.3) * 0.02; } }
+    if (riverMesh) { const n = riverMesh.material.normalMap; if (riverMesh.material.map) riverMesh.material.map.offset.y = -time * 0.05; }
     waveU.value = time; if (seaMesh) { const n = seaMesh.material.normalMap; n.offset.x = -time * 0.01; n.offset.y = time * 0.007; if (seaMesh.material.map) seaMesh.material.map.offset.set(time * 0.004, -time * 0.003); }
   }
   // ---------- scenery: instanced trees and rocks, bushes, campfire ----------
@@ -447,28 +477,38 @@ const R3D = (() => {
       bp.forEach((t, i) => { const z = t.r * TILE + 16; mp.setMatrixAt(i, M4(t.x, heightAt(t.x, z), z, t.s, t.s, t.s, t.seed)); });
       for (const m of [mo, mp]) { m.castShadow = false; m.receiveShadow = true; scene.add(m); }
     }
-    oakMesh = new T.InstancedMesh(oakGeo, leafMat, oaks.length); oakTrunks = new T.InstancedMesh(new T.CylinderGeometry(2.4, 3.8, 36, 8), barkMat, oaks.length);
-    leafDecid = cardMat; oakMesh.material = cardMat; oakMesh.customDepthMaterial = cardDepth;
+    // the forest is drawn in squares of land, so only the squares in view cost anything (a dense wood has thousands of trees)
+    leafDecid = cardMat;
     const simpleMat = leafMat.clone(); swayLeaves(simpleMat, 28);
+    const CHK = 620, chunks = [], birchBark = std('#e6e2d6', { roughness: 0.8, map: barkMat.map });
+    const view = geo => { const g = new T.BufferGeometry(); g.attributes = geo.attributes; g.index = geo.index; g.groups = geo.groups; g.boundingSphere = new T.Sphere(new T.Vector3(0, 40, 0), CHK * 0.72 + 90); return g; };
+    const KINDS3 = [
+      { list: oaks, det: oakGeo, simp: oakBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 8), trunkMat: barkMat, trunkY: 18 },
+      { list: pines, det: pineCardGeo, simp: pineGeo, matDet: () => needleMat, matSimp: () => leafMat, depth: needleDepth, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 7), trunkMat: barkMat, trunkY: 11 },
+      { list: birches, det: birchGeo, simp: birchBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(1.3, 2.1, 46, 8), trunkMat: birchBark, trunkY: 23 }
+    ];
+    let detailedNow = treeDetailWant !== false;
+    for (const K of KINDS3) {
+      const by = new Map(); for (const t of K.list) { const key = Math.floor(t.x / CHK) + ',' + Math.floor((t.r * TILE + 16) / CHK); if (!by.has(key)) by.set(key, []); by.get(key).push(t); }
+      for (const [key, list] of by) {
+        const [kx, kz] = key.split(',').map(Number), cx = (kx + 0.5) * CHK, cz = (kz + 0.5) * CHK;
+        const gd = view(K.det), gs = view(K.simp), crown = new T.InstancedMesh(detailedNow ? gd : gs, detailedNow ? K.matDet() : K.matSimp(), list.length), trunk = new T.InstancedMesh(view(K.trunk), K.trunkMat, list.length);
+        crown.customDepthMaterial = detailedNow ? K.depth : undefined; crown.position.set(cx, 0, cz); trunk.position.set(cx, 0, cz);
+        list.forEach((t, i) => {
+          const x = t.x, z = t.r * TILE + 16, y = heightAt(x, z), s = t.s * 1.05, ry = t.seed * 2.1, v1 = (t.seed * 3.31) % 1, v2 = (t.seed * 7.77) % 1;
+          crown.setMatrixAt(i, new T.Matrix4().compose(new T.Vector3(x - cx, y, z - cz), new T.Quaternion().setFromEuler(new T.Euler((v1 - 0.5) * 0.12, ry, (v2 - 0.5) * 0.12)), new T.Vector3(s * (0.85 + v1 * 0.3), s * (0.85 + (t.seed % 1) * 0.4), s * (0.85 + v2 * 0.3))));
+          trunk.setMatrixAt(i, M4(x - cx, y + K.trunkY * s, z - cz, s, s, s));
+          crown.setColorAt(i, new T.Color().setHSL(0.25 + (t.tone - 0.5) * 0.09, 0.22 + v2 * 0.14, 0.46 + t.tone * 0.16).multiplyScalar(1.7));
+          treeList.push({ t, crown, trunk, i });
+        });
+        for (const m of [crown, trunk]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); }
+        chunks.push({ K, crown, gd, gs });
+      }
+    }
     setTreeDetail = detailed => {   // detailed leaf crowns, or the older solid ones for slower computers
-      oakMesh.geometry = detailed ? oakGeo : oakBlobGeo; birchMesh.geometry = detailed ? birchGeo : birchBlobGeo;
-      if (pineMesh) { pineMesh.geometry = detailed ? pineCardGeo : pineGeo; pineMesh.material = detailed ? needleMat : leafMat; pineMesh.customDepthMaterial = detailed ? needleDepth : undefined; }
-      const mt = detailed ? cardMat : simpleMat; oakMesh.material = birchMesh.material = mt; simpleMat.color.copy(cardMat.color); leafDecid = mt;
-      oakMesh.customDepthMaterial = birchMesh.customDepthMaterial = detailed ? cardDepth : undefined;
+      detailedNow = detailed; for (const c of chunks) { c.crown.geometry = detailed ? c.gd : c.gs; c.crown.material = detailed ? c.K.matDet() : c.K.matSimp(); c.crown.customDepthMaterial = detailed ? c.K.depth : undefined; }
+      simpleMat.color.copy(cardMat.color); leafDecid = detailed ? cardMat : simpleMat;
     };
-    if (treeDetailWant === false) setTreeDetail(false);
-    birchMesh = new T.InstancedMesh(birchGeo, leafDecid, birches.length); birchMesh.customDepthMaterial = cardDepth; birchTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.3, 2.1, 46, 8), std('#e6e2d6', { roughness: 0.8, map: barkMat.map }), birches.length);
-    pineMesh = new T.InstancedMesh(treeDetailWant !== false ? pineCardGeo : pineGeo, treeDetailWant !== false ? needleMat : leafMat, pines.length); if (treeDetailWant !== false) pineMesh.customDepthMaterial = needleDepth; pineTrunks = new T.InstancedMesh(new T.CylinderGeometry(1.8, 2.6, 22, 7), barkMat, pines.length);
-    const place = (list, crown, trunk, trunkY) => list.forEach((t, i) => {
-      const x = t.c * TILE + 16 + (t.x - (t.c * TILE + 16)), z = t.r * TILE + 16, y = heightAt(x, z), s = t.s * 1.05, ry = t.seed * 2.1;
-      const v1 = (t.seed * 3.31) % 1, v2 = (t.seed * 7.77) % 1;
-      crown.setMatrixAt(i, new T.Matrix4().compose(new T.Vector3(x, y, z), new T.Quaternion().setFromEuler(new T.Euler((v1 - 0.5) * 0.12, ry, (v2 - 0.5) * 0.12)), new T.Vector3(s * (0.85 + v1 * 0.3), s * (0.85 + (t.seed % 1) * 0.4), s * (0.85 + v2 * 0.3))));
-      trunk.setMatrixAt(i, M4(x, y + trunkY * s, z, s, s, s));
-      crown.setColorAt(i, new T.Color().setHSL(0.25 + (t.tone - 0.5) * 0.09, 0.22 + v2 * 0.14, 0.46 + t.tone * 0.16).multiplyScalar(1.7));
-      treeList.push({ t, crown, trunk, i });
-    });
-    place(oaks, oakMesh, oakTrunks, 18); place(pines, pineMesh, pineTrunks, 11); place(birches, birchMesh, birchTrunks, 23);
-    for (const m of [oakMesh, oakTrunks, pineMesh, pineTrunks, birchMesh, birchTrunks]) { m.castShadow = true; m.receiveShadow = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); }
     // rocks
     const rg = new T.IcosahedronGeometry(1, 0); const rp = rg.attributes.position;
     for (let i = 0; i < rp.count; i++) { const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i), k = 0.8 + ((Math.sin(x * 12.9 + y * 78.2 + z * 37.7) * 43758.5) % 1 + 1) % 1 * 0.4; rp.setXYZ(i, x * k, y * k, z * k); }
@@ -634,6 +674,12 @@ const R3D = (() => {
       add(cyl(1.8, 1.8, 62, woodHM(62, 4), 0, 64.5, 0, 8)).rotation.z = Math.PI / 2;
       add(box(8, 30, 8, stoneM(8, 30), 14, 62, -9)); add(box(9.5, 2, 9.5, texMat('stoneDark', 1, 1), 14, 77, -9));
       info.chimney = { x: cx + 14, z: cz - 9, y: gy + 80 };
+    } else if (b.kind === 'wall' && b.team !== 'enemy') {
+      // your wall is a wooden palisade: sharpened logs set side by side along the run of the wall
+      const nbw = (dc, dr) => structures.some(o => !o.dead && (o.kind === 'wall' || o.kind === 'gate') && o.c === b.c + dc && o.r === b.r + dr && o.team === b.team);
+      const ew = nbw(1, 0) || nbw(-1, 0), ns = nbw(0, 1) || nbw(0, -1), logM = woodVM(8, 34), R = mulberry32(b.c * 131 + b.r * 17);
+      const row = (alongX) => { for (let i = 0; i < 5; i++) { const o = -12.8 + i * 6.4, h = 31 + R() * 6, lg = cyl(3.1, 3.4, h, logM, alongX ? o : 0, h / 2, alongX ? 0 : o, 7); add(lg); const tip = mesh(new T.ConeGeometry(3.1, 5, 7), logM, alongX ? o : 0, h + 2.5, alongX ? 0 : o); add(tip); } add(box(alongX ? 32 : 2, 2.4, alongX ? 2 : 32, woodHM(32, 3), alongX ? 0 : 3.4, 20, alongX ? 3.4 : 0)); };
+      if (ew || !ns) row(true); if (ns) row(false);
     } else if (b.kind === 'wall') {
       add(box(32, 30, 32, stoneM(32, 30), 0, 15, 0));
       add(box(32, 1.5, 22, texMat('stoneDark', 1, 1), 0, 30.4, 0));
@@ -883,13 +929,13 @@ const R3D = (() => {
   const mailM = () => std('#8b9197', { metalness: 0.55, roughness: 0.45 });
   // smooth, rounded body parts made by spinning a profile (no boxy limbs)
   function capsule(rTop, rBot, len, mat, seg = 12) {
-    seg = Math.max(seg, 16); const pts = [];
-    for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + (i / 5) * Math.PI / 2; pts.push(new T.Vector2(Math.max(0.001, Math.cos(a) * rBot), -len + Math.sin(a) * rBot)); }
-    for (let i = 0; i <= 5; i++) { const a = (i / 5) * Math.PI / 2; pts.push(new T.Vector2(Math.max(0.001, Math.cos(a) * rTop), Math.sin(a) * rTop)); }
+    seg = sg(Math.max(seg, 16)); const pts = [], NP = SEGK === 1 ? 5 : 3;
+    for (let i = 0; i <= NP; i++) { const a = -Math.PI / 2 + (i / NP) * Math.PI / 2; pts.push(new T.Vector2(Math.max(0.001, Math.cos(a) * rBot), -len + Math.sin(a) * rBot)); }
+    for (let i = 0; i <= NP; i++) { const a = (i / NP) * Math.PI / 2; pts.push(new T.Vector2(Math.max(0.001, Math.cos(a) * rTop), Math.sin(a) * rTop)); }
     return mesh(new T.LatheGeometry(pts, seg), mat);
   }
   function lathe(profile, mat, seg = 16, open = false) {
-    const g = new T.LatheGeometry(profile.map(([r, y]) => new T.Vector2(Math.max(0.001, r), y)), seg);
+    const g = new T.LatheGeometry(profile.map(([r, y]) => new T.Vector2(Math.max(0.001, r), y)), sg(seg));
     const o = mesh(g, mat); if (open) o.material.side = T.DoubleSide; return o;
   }
   // join a group's same-material parts into one mesh each, so a person costs far fewer draw calls
@@ -1074,7 +1120,21 @@ const R3D = (() => {
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     return { g, legs, neck, head, tail };
   }
+  // in a big crowd (more than 140 people on the map) figures stop casting true shadows and get a soft round one instead
+  let crowdMode = false, blobGeo = null, blobMat = null;
+  function applyCrowd(md) {
+    if (!md.blob) return;
+    md.root.traverse(o => { if (o.isMesh && o !== md.blob) { if (o.userData.cs === undefined) o.userData.cs = o.castShadow; o.castShadow = crowdMode ? false : o.userData.cs; } });
+    md.blob.visible = crowdMode;
+  }
   function personModel(u) {
+    SEGK = 0.55; let md; try { md = personModel0(u); } finally { SEGK = 1; }
+    if (!blobGeo) { blobGeo = new T.CircleGeometry(8, 14); blobGeo.rotateX(-Math.PI / 2); blobMat = new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }); }
+    md.blob = new T.Mesh(blobGeo, blobMat); md.blob.position.y = 0.6; if (md.horse) md.blob.scale.set(1.5, 1, 2.4); md.blob.visible = false; md.root.add(md.blob);
+    if (crowdMode) applyCrowd(md);
+    return md;
+  }
+  function personModel0(u) {
     const kit = u.kit || null, P = kit === 'berserker' ? Object.assign({}, u.pal, { tunic: '#5a4030', tunicDark: '#3a2a1e', pants: '#4a3828', boot: '#6a5038' }) : u.pal, soldier = (swordish(u) || u.type === 'spear') && kit !== 'berserker', lk = kit === 'berserker' ? { beard: true, longHair: true, w: 1.08, h: 1.04 } : u.look || { beard: false, longHair: false, w: 1, h: 1 };
     const m = {
       skin: std(u.skin, { roughness: 0.62 }), pants: std(P.pants, { map: fabricTex() }), boot: std(P.boot, { roughness: 0.55 }),
@@ -1692,6 +1752,7 @@ const R3D = (() => {
   }
   function syncUnits(dt) {
     const seen = new Set();
+    { const crowd = units.length > (crowdMode ? 120 : 140); if (crowd !== crowdMode) { crowdMode = crowd; for (const [, md] of unitModels) applyCrowd(md); } }
     for (const u of units) {
       let md = unitModels.get(u.id);
       if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); return personModel(u); })(); if (!md.artModel) addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
@@ -1743,7 +1804,7 @@ const R3D = (() => {
   let sheetBricks = false;
   function syncBuildings(dt) {
     // the sheet's materials arrive a moment after start: build every building again in them once
-    if (MATS.ready && !sheetBricks) { sheetBricks = true; for (const [, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); } bModels.clear(); for (const k in matCache) delete matCache[k]; if (MATS.ready) repaintGround(); iconCache.clear(); setTimeout(() => { try { UI.paintIcons(); } catch (e) {} }, 0); }
+    if (MATS.ready && !sheetBricks) { sheetBricks = true; for (const [, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); } bModels.clear(); for (const k in matCache) delete matCache[k]; if (MATS.ready) { repaintGround(); if (!riverMesh) buildRiver(); } iconCache.clear(); setTimeout(() => { try { UI.paintIcons(); } catch (e) {} }, 0); }
     const all = structures.concat(farms), seen = new Set();
     for (const b of all) {
       seen.add(b.id);
@@ -2045,7 +2106,8 @@ const R3D = (() => {
   function poseOf(u) { const md = unitModels.get(u.id); if (!md || !md.legs) return null; return { hipL: md.legs[0].hip.rotation.x, hipR: md.legs[1].hip.rotation.x, armR: md.arms[1].sh.rotation.x, bodyX: md.body.rotation.x, bodyY: md.body.position.y, heading: md.heading, horse: md.horse ? md.horse.legs[0].hip.rotation.x : null, animated: md.animated, flat: !!md.artModel }; }
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
   const borderInfo = () => ({ sea: !!seaMesh, band: BAND, seaLevel: SEA, black: scene && scene.background && scene.background.getHex() === 0 });
-  return { poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  const modelOf = b => { const md = bModels.get(b.id); return md ? { x: Math.round(md.g.position.x), z: Math.round(md.g.position.z), par: !!md.g.parent, vis: md.g.visible, y: +md.g.position.y.toFixed(1), kids: md.g.children.length, inner: md.g.children[0] ? md.g.children[0].children.length : 0, sy: +md.g.scale.y.toFixed(2) } : null; };   // tests
+  return { modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
 })();
 
 const speeches = [];
