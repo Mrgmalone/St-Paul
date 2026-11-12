@@ -78,7 +78,14 @@ function updateEnemyBase(dt) {
 function enemyWorker(u, dt) {
   const camp = enemyCamp();
   if (!camp) { u.order = 'idle'; u.moving = false; u.path = []; return; }
-  const walk = (x, y) => { if ((!u.path.length && !(u.noPathT > time)) || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length) u.noPathT = time + 2; } followPath(u, dt); };
+  const walk = (x, y) => {
+    // no real progress toward the goal for 6 seconds (stuck in a crowd or a gap): drop this job and choose again
+    const d = Math.hypot(x - u.x, y - u.y), key = u.sub + ':' + (u.sub === 'toSite' && u.ejob ? u.ejob.id : u.sub === 'toNode' && u.enode ? Math.round(u.enode.x || 0) + ',' + Math.round(u.enode.y || 0) : '');
+    if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; }
+    else if ((u._wt += dt) > 6) { u._wt = 0; u._wd = d;
+      if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') u.ebad = u.enode; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
+      u.path = []; u.repath = 0; }   // carrying home or fleeing: look for a fresh way
+    if ((!u.path.length && !(u.noPathT > time)) || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length) u.noPathT = time + 2; } followPath(u, dt); };
   if (time - u.lastHurt < 3 && u.sub !== 'flee') { u.sub = 'flee'; u.path = []; u.order = 'move'; }
   if (u.sub === 'flee') { const ap = approachPoint(u, camp); if (Math.hypot(u.x - ap.x, u.y - ap.y) < 20 || time - u.lastHurt > 8) { u.sub = null; } else { walk(ap.x, ap.y); return; } }
   if (!u.sub) {

@@ -13,7 +13,7 @@ const THREE_JS = fs.readFileSync(SP + '/lib/three/package/build/three.min.js');
     const tree = SD.trees.sort((a, b) => Math.hypot(a.x - k.x, a.y - k.y) - Math.hypot(b.x - k.x, b.y - k.y))[0], bush = SD.bushes[0];
     SD.commandGather([civs[0], civs[1]], rock); SD.commandGather([civs[2]], tree); SD.commandGather([civs[3]], bush); window.__c = civs; window.__rock = rock; });
   await p.waitForTimeout(500);
-  console.log('gear on the way:', await p.evaluate(()=>window.__c.slice(0, 4).map(u => u.task.type + '->' + gearOf(u)).join(' ')));
+  console.log('gear on the way:', await p.evaluate(()=>window.__c.slice(0, 4).map(u => (u.task ? u.task.type : 'none') + '->' + gearOf(u)).join(' ')));
   const s0 = await p.evaluate(()=>SD.res.stone);
   await p.waitForTimeout(USE3D ? 15000 : 40000);
   console.log('stone', s0, '->', await p.evaluate(()=>SD.res.stone), '| rock left', await p.evaluate(()=>window.__rock.amount), '| carrying:', await p.evaluate(()=>window.__c.slice(0, 4).map(u => (u.carryType || '-') + u.carry + '/' + u.sub).join(' ')));
