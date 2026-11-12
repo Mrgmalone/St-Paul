@@ -294,3 +294,5 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #banner{background:rgba(22,21,20,.92);border:1px solid var(--gold);color:var(--ink)}
 #pauseNote,#leftNote,#menuNote{background:rgba(22,21,20,.94);border:1px solid var(--gold);color:var(--ink)}
 #btnFix,#btnTurn{background:#26221e;color:var(--ink);border:1px solid var(--gold);min-height:var(--tap)}
+/* the big round X on every pop-up, never stretched by the big menu buttons */
+.pop .xbtn,#menuPop .xbtn{min-width:48px;width:48px;height:48px;min-height:48px;padding:0;margin:0;font-size:30px;line-height:44px;text-align:center;border-radius:50%}

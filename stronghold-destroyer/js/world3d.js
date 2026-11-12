@@ -201,8 +201,8 @@ const R3D = (() => {
     for (let i = 0; i < LIFE_CAP.splash; i++) { const m = new T.Mesh(new T.RingGeometry(0.6, 1, 20), white.clone()); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); life.splash.push({ m, on: false }); }
     const fishMat = new T.MeshStandardMaterial({ color: C('#c8d2d8'), metalness: 0.6, roughness: 0.35 });
     for (let i = 0; i < LIFE_CAP.fish; i++) { const g = new T.Group(), b = new T.Mesh(new T.SphereGeometry(1, 10, 6), fishMat); b.scale.set(6, 2.2, 1.6); g.add(b); const tail = new T.Mesh(new T.ConeGeometry(2, 4, 4), fishMat); tail.rotation.z = Math.PI / 2; tail.position.x = -7; g.add(tail); g.visible = false; scene.add(g); life.fish.push({ g, on: false }); }
-    const birdMat = new T.MeshBasicMaterial({ color: 0x1c1a18, side: T.DoubleSide });
-    const wingGeo = new T.BufferGeometry(); wingGeo.setAttribute('position', new T.Float32BufferAttribute([0, 0, 0, 0, 0, 5, 12, 0, 1.5], 3));
+    const birdMat = new T.MeshBasicMaterial({ color: 0x2a2420, side: T.DoubleSide });
+    const wingGeo = new T.BufferGeometry(); wingGeo.setAttribute('position', new T.Float32BufferAttribute([0, 0, -1.5, 0, 0, 2.5, 7, 0, 0.2], 3));   // a slim swept wing
     for (let i = 0; i < LIFE_CAP.flock; i++) { const g = new T.Group(), birds = []; for (let k = 0; k < 5; k++) { const b = new T.Group(), l = new T.Mesh(wingGeo, birdMat), r = new T.Mesh(wingGeo, birdMat); r.scale.x = -1; b.add(l); b.add(r); b.position.set(-k * 14, (k % 2) * 4, (k % 2 ? 1 : -1) * k * 9); g.add(b); birds.push({ b, l, r }); } g.visible = false; scene.add(g); life.flock.push({ g, birds, on: false }); }
     const wingCols = ['#f2c84a', '#f4f1e6', '#e88a3a', '#9ab8f0', '#d86aa8'];
     for (let i = 0; i < LIFE_CAP.fly; i++) { const g = new T.Group(), mat = new T.MeshBasicMaterial({ color: C(wingCols[i % wingCols.length]), side: T.DoubleSide }), wg = new T.PlaneGeometry(5.5, 4.4); wg.translate(2.75, 0, 0); const l = new T.Mesh(wg, mat), r = new T.Mesh(wg, mat); r.scale.x = -1; g.add(l); g.add(r); g.visible = false; scene.add(g); life.fly.push({ g, l, r, on: false }); }
@@ -233,7 +233,7 @@ const R3D = (() => {
     if (due('fish', 14)) { const w = waterSpot(c, R), f = life.fish.find(q => !q.on); if (w && f) { const a = Math.random() * 6.28; Object.assign(f, { on: true, t: 0, x: w.x, y: w.y, z: w.z, dx: Math.cos(a), dz: Math.sin(a) }); f.g.visible = true; f.g.rotation.y = -a; splashAt(w.x, w.y, w.z, false); } }
     for (const f of life.fish) if (f.on) { f.t += dt; const k = f.t / 0.9; if (k >= 1) { f.on = false; f.g.visible = false; splashAt(f.x + f.dx * 26, f.y, f.z + f.dz * 26, true); continue; } f.g.position.set(f.x + f.dx * 26 * k, f.y + Math.sin(k * Math.PI) * 16 - 2, f.z + f.dz * 26 * k); f.g.rotation.z = (0.5 - k) * 2.2; }
     // a few birds fly over, high up, flapping
-    if (due('flock', 22)) { const fl = life.flock.find(q => !q.on); if (fl) { const a = Math.random() * 6.28; Object.assign(fl, { on: true, t: 0, x: c.x - Math.cos(a) * R * 1.4, z: c.z - Math.sin(a) * R * 1.4, dx: Math.cos(a), dz: Math.sin(a), y: heightAt(c.x, c.z) + 230 + Math.random() * 80 }); fl.g.visible = true; fl.g.rotation.y = -a; } }
+    if (due('flock', 22)) { const fl = life.flock.find(q => !q.on); if (fl) { const a = Math.random() * 6.28; Object.assign(fl, { on: true, t: 0, x: c.x - Math.cos(a) * R * 1.4, z: c.z - Math.sin(a) * R * 1.4, dx: Math.cos(a), dz: Math.sin(a), y: heightAt(c.x, c.z) + 120 + Math.random() * 40 }); fl.g.visible = true; fl.g.rotation.y = -a; } }
     for (const fl of life.flock) if (fl.on) { fl.t += dt; if (fl.t > (R * 2.8) / 70) { fl.on = false; fl.g.visible = false; continue; } fl.g.position.set(fl.x + fl.dx * 70 * fl.t, fl.y, fl.z + fl.dz * 70 * fl.t); fl.birds.forEach((b, i) => { const f = Math.sin(time * 9 + i * 1.3) * 0.7; b.l.rotation.x = f; b.r.rotation.x = f; }); }
     // butterflies flutter over the grass for a while
     if (due('fly', 3.5)) { const p = landSpot(c, R * 0.8), b = life.fly.find(q => !q.on); if (p && b) { Object.assign(b, { on: true, t: 0, life: 8 + Math.random() * 8, x: p.x, z: p.z, a: Math.random() * 6.28 }); b.g.visible = true; } }
@@ -1805,8 +1805,9 @@ const R3D = (() => {
         if (md.stillT < 1.5 || (frameNo + u.id) % 8 === 0) { animatePerson(u, md, md.stillT < 1.5 ? dt : dt * 8); md.animated = frameNo; }
       }
       // hit flash, falling, fading
-      const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) * 0.6 : 0;
-      for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk, fk, fk); }
+      // a hit: a brief warm glow, not a white-out (the jointed figures have many bright plates)
+      const fk = u.flash > 0 ? Math.min(1, u.flash * 1.4) : 0;
+      for (const mt of md.mats) if (mt.emissive) { mt.emissive.setRGB(fk * 0.1, fk * 0.05, fk * 0.02); }
       if (u.dead) {
         let f = Math.min(1, u.deathT / 0.45); f = 1 - (1 - f) * (1 - f);
         if (md.artModel) {} else if (!(md.glb && md.acts.die)) { md.body.rotation.x = -f * Math.PI / 2 * 0.94; md.body.position.y = f * 2; if (md.horse) { md.horse.g.rotation.z = f * 1.45; md.horse.g.position.y = f * 5; md.body.position.y = -f * 12; } }
@@ -2119,7 +2120,7 @@ const R3D = (() => {
     g.putImageData(im, 0, 0); iconCache.set(key, cv); return cv;
   }
   // tests: how a unit's figure is posed right now
-  function poseOf(u) { const md = unitModels.get(u.id); if (!md || !md.legs) return null; return { hipL: md.legs[0].hip.rotation.x, hipR: md.legs[1].hip.rotation.x, armR: md.arms[1].sh.rotation.x, bodyX: md.body.rotation.x, bodyY: md.body.position.y, heading: md.heading, horse: md.horse ? md.horse.legs[0].hip.rotation.x : null, animated: md.animated, flat: !!md.artModel }; }
+  function poseOf(u) { const md = unitModels.get(u.id); if (!md || !md.legs) return null; return { hipL: md.legs[0].hip.rotation.x, hipR: md.legs[1].hip.rotation.x, armR: md.arms[1].sh.rotation.x, bodyX: md.body.rotation.x, bodyY: md.body.position.y, heading: md.heading, horse: md.horse ? md.horse.legs[0].hip.rotation.x : null, animated: md.animated, flat: !!md.artModel, ghost: md.ghost ? md.ghost.visible : null, emis: md.mats[0] && md.mats[0].emissive ? md.mats[0].emissive.r : null }; }
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
   const borderInfo = () => ({ sea: !!seaMesh, band: BAND, seaLevel: SEA, black: scene && scene.background && scene.background.getHex() === 0 });
   const modelOf = b => { const md = bModels.get(b.id); return md ? { x: Math.round(md.g.position.x), z: Math.round(md.g.position.z), par: !!md.g.parent, vis: md.g.visible, y: +md.g.position.y.toFixed(1), kids: md.g.children.length, inner: md.g.children[0] ? md.g.children[0].children.length : 0, sy: +md.g.scale.y.toFixed(2) } : null; };   // tests
