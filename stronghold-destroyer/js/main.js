@@ -240,6 +240,15 @@ document.getElementById('volSound').value = Math.round(AudioSys.vol('sfx') * 100
 refreshSoundButtons();
 UI.paintIcons(); UI.drawMini();
 // picture buttons: the name shows in a small label above the button when you tap it or point at it
+// building panels: the building's own picture at the top
+(function panelPictures() {
+  const sp = document.getElementById('storePop');
+  new MutationObserver(() => {
+    if (sp.hidden || sp.querySelector('.popPic') || !storeShown || !storeShown.kind || !BUILD[storeShown.kind]) return;
+    let pic = null; try { pic = R3D.available && R3D.isReady() && R3D.iconOf('b:' + storeShown.kind); } catch (e) {} if (!pic) return;
+    const c = document.createElement('canvas'); c.className = 'popPic'; c.width = c.height = 240; c.getContext('2d').drawImage(pic, 0, 0, 240, 240); sp.insertBefore(c, sp.firstChild);
+  }).observe(sp, { childList: true });
+})();
 (function buttonLabels() {
   const L = document.getElementById('ibLabel');
   document.querySelectorAll('.ib').forEach(b => {

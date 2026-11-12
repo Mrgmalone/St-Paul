@@ -259,3 +259,38 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #banner{top:118px}
 @media (max-width:760px){ :root{--tile:110px} #cmdbar{right:10px;bottom:150px} #tips{width:200px} }
 .tab.active .key{color:var(--gold);border-color:var(--gold)}
+
+/* ===================== Phase 3: the menu, the help screen and the building panels in the same dark style ===================== */
+.pop{background:rgba(22,21,20,.97);border:1px solid var(--gold);border-radius:14px;color:var(--ink);font-size:16px;box-shadow:0 8px 26px rgba(0,0,0,.7);padding:14px 60px 14px 16px!important}
+.pop h3{color:var(--gold);font-size:18px;letter-spacing:2px;margin:0 0 10px}
+.pop button{min-height:var(--tap);min-width:var(--tap);padding:8px 14px;font-size:16px;margin:3px 2px}
+.pop .ln{padding:3px 0;border-bottom:1px solid rgba(217,180,90,.12)}
+.pop .popPic{display:block;width:120px;height:120px;margin:0 auto 8px;border-radius:12px;background:radial-gradient(circle at 50% 38%,#3a352e,#1f1d1b 72%);border:1px solid var(--line)}
+.xbtn{background:#26221e;color:var(--ink);border:1px solid var(--gold);width:48px;height:48px;line-height:44px;font-size:30px;top:6px;right:6px}
+.xbtn:hover{background:#3a2f22}
+/* the menu: big tiles, a picture first and its name and setting beneath */
+#menuPop{gap:8px;min-width:300px}
+#menuPop .row{gap:10px}
+#menuPop button{min-width:150px;min-height:56px;text-align:left;font-size:17px}
+#menuPop .row span{color:var(--dim)!important}
+#menuPop button::before{font-size:24px;margin-right:10px;vertical-align:-3px}
+#btnHelp::before{content:"\2753"} #btnTrees::before{content:"\1F332"} #btnWeather::before{content:"\26C5"} #btnOutline::before{content:"\1F464"} #btnMusic::before{content:"\266B"} #btnSound::before{content:"\1F50A"}
+.vol{color:var(--gold)} .vol input{height:var(--tap);width:150px}
+/* the help screen */
+#help{background:rgba(0,0,0,.7)}
+#help .box{background:#1a1918;border:1px solid var(--gold);border-radius:16px;color:var(--ink);font-size:17px;line-height:1.55;padding:18px 66px 18px 22px;max-width:760px}
+#help h3{color:var(--gold);font-size:22px;letter-spacing:3px}
+#help b{color:var(--gold)}
+#help p{margin:0 0 10px}
+#btnHelpClose{min-height:52px;min-width:140px;font-size:18px}
+/* the start screen and the end screen */
+#pick{background:rgba(0,0,0,.82)}
+#pick h1,#win h1{color:var(--gold)}
+.civ{background:#1c1b1a;border:1px solid var(--line);border-radius:14px;color:var(--ink)}
+.civ:hover,.civ:focus{border-color:var(--gold)}
+#diff .dbtn{min-height:var(--tap);background:linear-gradient(#34302b,#24211e);color:var(--ink)}
+#diff .dbtn.on{background:linear-gradient(#4a3c22,#33290f);color:var(--gold);outline:2px solid var(--gold)}
+#win .box{background:#1a1918;border:1px solid var(--gold);border-radius:16px;color:var(--ink)}
+#banner{background:rgba(22,21,20,.92);border:1px solid var(--gold);color:var(--ink)}
+#pauseNote,#leftNote,#menuNote{background:rgba(22,21,20,.94);border:1px solid var(--gold);color:var(--ink)}
+#btnFix,#btnTurn{background:#26221e;color:var(--ink);border:1px solid var(--gold);min-height:var(--tap)}
