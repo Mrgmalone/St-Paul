@@ -27,8 +27,8 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
     const ph = await p.evaluate(() => { const ib = [...document.querySelectorAll('.pane.active .ib')].map(b => b.getBoundingClientRect()), side = document.getElementById('side').getBoundingClientRect();
       const tiny = [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.closest('#pick') && !b.closest('.chip')).map(b => b.getBoundingClientRect()).filter(r => r.width && (r.width < 43.5 || r.height < 43.5)).length;
       return { n: ib.length, w: ib.length ? Math.round(ib[0].width) : 0, h: ib.length ? Math.round(ib[0].height) : 0, side: Math.round(side.width), tiny }; });
-    console.log(`phone ${w}x${h}:`, JSON.stringify(ph)); if (!ph.n || Math.abs(ph.w - 64) > 3 || Math.abs(ph.h - 64) > 3 || ph.tiny) bad.push({ phone: [w, h], ph });
-    if (w > h) await p.screenshot({ path: SP + '/buttons_phone.png' });
+    console.log(`phone ${w}x${h}:`, JSON.stringify(ph)); if (!ph.n || Math.abs(ph.w - 64) > 3 || Math.abs(ph.h - 64) > 3 || ph.tiny || ph.side > 190) bad.push({ phone: [w, h], ph });
+    await p.screenshot({ path: SP + (w > h ? '/buttons_phone.png' : '/buttons_phone_upright.png') });
   }
   if (bad.length) { console.log('bad', JSON.stringify(bad.slice(0, 8))); throw new Error('button rules broken'); }
   console.log('errors', errs.slice(0, 5)); await b.close();

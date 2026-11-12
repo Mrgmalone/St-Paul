@@ -260,7 +260,7 @@ body:not(.touch) #cmdbar .tonly{display:none}
 @media (max-width:760px){ :root{--tile:110px} #cmdbar{right:10px;bottom:150px} #tips{width:200px} }
 /* phones (a short side under about 500 points; every iPad's is 744 or more): picture buttons 64 points, about a centimetre,
    still well above the 44-point tap minimum. On an iPad they stay 130 points (about an inch). */
-@media (max-width:600px), (max-height:500px){ :root{--tile:64px} .ib .cnt{right:3px;top:3px;font-size:13px} .ib .why{font-size:10px} }
+@media (max-width:600px), (max-height:500px){ :root{--tile:64px} .ib .cnt{right:3px;top:3px;font-size:13px} .ib .why{font-size:10px} #side{width:calc(var(--tile) * 2 + 48px)} }   /* the slide-over panel only as wide as its two columns */
 .tab.active .key{color:var(--gold);border-color:var(--gold)}
 
 /* ===================== Phase 3: the menu, the help screen and the building panels in the same dark style ===================== */
