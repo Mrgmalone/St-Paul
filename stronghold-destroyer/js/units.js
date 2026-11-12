@@ -91,6 +91,9 @@ function mountStep(u, dt) {
   if (!canMount(b)) { u.order = 'idle'; return; }
   const via = wallAccess(b); if (!via) { u.order = 'idle'; return; }
   if (edgeDist(u, via) <= 10 || stalled(u) && edgeDist(u, via) <= 30) { mountOn(u, b); return; }
+  // no headway toward the way up for 5 seconds (trees or buildings round its door): give up, and the tower is
+  // left out of the automatic archer posting for half a minute
+  { const d = edgeDist(u, via); if (u._mk !== b.id || d < u._md - 6) { u._mk = b.id; u._md = d; u._mt = 0; } else if ((u._mt += dt) > 5) { u._mk = null; b.noMountUntil = time + 30; u.order = 'idle'; u.path = []; u.moving = false; return; } }
   if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, via); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 1.5; }
   followPath(u, dt);
 }
@@ -503,7 +506,7 @@ function updateGuards(dt) {
     let have = units.filter(u => !u.dead && u.guardOf === t).length;
     for (const u of units) { if (have >= 2) break; if ((u.type === 'knight' || u.type === 'maceman' || u.type === 'spear') && !u.guardOf && free(u)) { u.guardOf = t; have++; floatText(u.x, u.y - 60, 'I will guard the tower door', '#9fe8a8'); } }
     // and at least one archer on top
-    if (units.filter(o => o.onWall === t && !o.dead).length === 0) { const a = units.find(o => o.type === 'archer' && o.team === 'player' && free(o)); if (a) { commandMount([a], t); a.cmdT = -99; } }
+    if (!(t.noMountUntil > time) && units.filter(o => o.onWall === t && !o.dead).length === 0) { const a = units.find(o => o.type === 'archer' && o.team === 'player' && free(o)); if (a) { commandMount([a], t); a.cmdT = -99; } }
   }
   // guards walk back to their post when idle
   for (const u of units) {
