@@ -196,8 +196,8 @@ let palVer = 0;
 function startPalisade() {
   if (!keep || structures.some(b => b.startPalisade)) return;
   const c = keep.c, r = keep.r, line = [];
-  for (let x = c - 2; x <= c + 4; x++) line.push([x, r - 2]);
-  for (let y = r - 1; y <= r + 4; y++) line.push([c - 2, y]);
+  for (let x = c - 3; x <= c + 5; x++) line.push([x, r - 3]);   // two squares clear of the shack, so people pass easily
+  for (let y = r - 2; y <= r + 4; y++) line.push([c - 3, y]);
   const n0 = floats.length;
   for (const [x, y] of line) { if (!canPlace('wall', x, y)) continue; const w = createBuilding('wall', x, y); finishBuilding(w); w.hp = w.maxHp; w.startPalisade = true; }
   floats.length = n0;   // it was there from the start: no 'built' notices

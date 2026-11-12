@@ -110,7 +110,7 @@ function placeObstacles() {
   const ok = (c, r) => {
     const x = c * TILE + 16, y = r * TILE + 16;
     if (tileBlocked(c, r)) return false;
-    if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 290) return false;
+    if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 430) return false;   // an open meadow round your start, room to build
     if (Math.hypot(x - CAMP.x, y - CAMP.y) < 280) return false;
     if (roadDist(x, y) < 62) return false;
     for (const [ox, oy] of OUTCROPS) if (Math.hypot(x - ox, y - oy) < 115) return false;   // room to quarry

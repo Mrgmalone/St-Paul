@@ -272,6 +272,11 @@ function enemyBrain(u, dt) {
     }
     const movedSq = (u.x - (u.rlx || 0)) ** 2 + (u.y - (u.rly || 0)) ** 2; u.rlx = u.x; u.rly = u.y; u.rstuck = movedSq < 0.05 ? (u.rstuck || 0) + dt : 0;
     if (u.rstuck > (isMachine(u) ? 3 : 1.6) && u.type !== 'ram') { let best = null, bd = isMachine(u) ? 64 : 46; for (const t of trees) { if (t.gone) continue; const d = Math.hypot(t.x - u.x, t.y - u.y); if (d < bd && ((t.x - u.x) * (w.x - u.x) + (t.y - u.y) * (w.y - u.y)) > 0) { bd = d; best = t; } } if (best) { u.chopTree = best; u.chopT = 3.5; u.rstuck = 0; return; } }
+    // jostling in a crowd keeps the 'standing still' timer above from ever running out, so also watch real headway
+    // toward this way-point: 3 seconds with none, cut a tree in the way if there is one, otherwise go on to the next way-point
+    { const d = Math.hypot(w.x - u.x, w.y - u.y); if (u._rw !== w || d < u._rd - 6) { u._rw = w; u._rd = d; u._rt = 0; }
+      else if ((u._rt += dt) > 3) { u._rt = 0; u._rd = d; let best = null, bd = isMachine(u) ? 70 : 52; if (u.type !== 'ram') for (const t of trees) { if (t.gone) continue; const dd = Math.hypot(t.x - u.x, t.y - u.y); if (dd < bd && ((t.x - u.x) * (w.x - u.x) + (t.y - u.y) * (w.y - u.y)) > 0) { bd = dd; best = t; } }
+        if (best) { u.chopTree = best; u.chopT = isMachine(u) ? 2.5 : 3.5; u.path = []; return; } u.route.shift(); u.path = []; u.repath = 0; return; } }
     if (Math.hypot(w.x - u.x, w.y - u.y) < 70) { u.route.shift(); u.path = []; u.repath = 0; }
     else if (u.repath <= 0 || !u.path.length) { u.path = findPath(u.x, u.y, w.x, w.y); u.repath = 4; if (!u.path.length) u.route.shift(); }
     return;
