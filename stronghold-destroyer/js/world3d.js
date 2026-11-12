@@ -487,21 +487,32 @@ const R3D = (() => {
     // inside a wood, a tree with trees on its two sides toward the camera is mostly hidden by its neighbours: it gets a simple
     // solid crown (no see-through leaf cards) and casts no shadow of its own. Trees at the edge of a wood keep full detail.
     const tset = new Set(trees.map(t => t.c + ',' + t.r)), inner = t => tset.has((t.c + 1) + ',' + t.r) && tset.has(t.c + ',' + (t.r + 1));   // the two sides toward the camera are covered
-    const canopyOak = merge([[0, 44, 0, 17], [-10, 40, 5, 13], [10, 41, -4, 13], [0, 56, 0, 13], [3, 40, 11, 11]].map(([x, y, z, r]) => ({ geo: new T.IcosahedronGeometry(r, 0), m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') })));
+    const lumpy = r => { const g = new T.IcosahedronGeometry(r, 1), ps = g.attributes.position, v = new T.Vector3();   // a round ball of leaves with soft bumps, so the outline is never a hard polygon
+      for (let i = 0; i < ps.count; i++) { v.set(ps.getX(i), ps.getY(i), ps.getZ(i)); const d = v.clone().normalize(), k = 1 + 0.09 * Math.sin(d.x * 7.1 + d.y * 3.3) * Math.cos(d.z * 6.7 - d.y * 2.9) + 0.05 * Math.sin(d.x * 13 + d.z * 11); v.multiplyScalar(k); ps.setXYZ(i, v.x, v.y, v.z); }
+      g.computeVertexNormals(); return g; };
+    const canopyOak = merge([[0, 44, 0, 17], [-10, 40, 5, 13], [10, 41, -4, 13], [0, 56, 0, 13], [3, 40, 11, 11]].map(([x, y, z, r]) => ({ geo: lumpy(r), m: M4(x, y, z), color: lightCol('#24461c', '#8cb655') })));
     { // round, soft shading for the simple crown: every point lit as if on one big ball of leaves, so no flat facets show
       const pp = canopyOak.attributes.position, nn = canopyOak.attributes.normal, v = new T.Vector3();
       for (let i = 0; i < pp.count; i++) { v.set(pp.getX(i), (pp.getY(i) - 46) * 1.3, pp.getZ(i)).normalize(); const f = new T.Vector3(nn.getX(i), nn.getY(i), nn.getZ(i)); v.lerp(f, 0.25).normalize(); nn.setXYZ(i, v.x, v.y, v.z); }
       nn.needsUpdate = true; }
     const canopyPine = merge([0, 1, 2, 3].map(k => ({ geo: new T.ConeGeometry(15 - k * 3, 20, 7), m: M4(0, 18 + k * 11, 0), color: lightCol('#1c3d20', '#5a9654') })));
-    canopyOakMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); swayLeaves(canopyOakMat, 28);
+    const fineLeaf = (() => { const t = leafTex().clone(); t.needsUpdate = true; t.repeat.set(2.2, 2.2); return t; })();   // its own copy: the detailed crowns keep theirs
+    canopyOakMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: fineLeaf, bumpMap: fineLeaf, bumpScale: 1.3 }); swayLeaves(canopyOakMat, 28);
     const canopyPineMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, map: leafTex() }); canopyPineMat.color.setRGB(1.25, 1.25, 1.15); swayLeaves(canopyPineMat, 20);
+    const innerAt = (c, r) => tset.has((c + 1) + ',' + r) && tset.has(c + ',' + (r + 1));
+    const bandDet = t => inner(t) && (!innerAt(t.c + 1, t.r) || !innerAt(t.c, t.r + 1)) && ((t.seed * 5.37) % 1) < 0.5;   // first row behind the edge, every other tree or so
+    const simple = t => inner(t) && !bandDet(t);
     const edgeOaks = oaks.filter(t => !inner(t)), edgeBirches = birches.filter(t => !inner(t)), edgePines = pines.filter(t => !inner(t));
+    const bandOaks = oaks.filter(bandDet), bandBirches = birches.filter(bandDet), bandPines = pines.filter(bandDet);
     const KINDS3 = [
-      { list: oaks.filter(inner).concat(birches.filter(inner)), det: canopyOak, simp: canopyOak, matDet: () => canopyOakMat, matSimp: () => canopyOakMat, depth: undefined, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 5), trunkMat: barkMat, trunkY: 18, noShadow: true },
-      { list: pines.filter(inner), det: canopyPine, simp: canopyPine, matDet: () => canopyPineMat, matSimp: () => canopyPineMat, depth: undefined, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 5), trunkMat: barkMat, trunkY: 11, noShadow: true },
+      { list: oaks.filter(simple).concat(birches.filter(simple)), det: canopyOak, simp: canopyOak, matDet: () => canopyOakMat, matSimp: () => canopyOakMat, depth: undefined, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 5), trunkMat: barkMat, trunkY: 18, noShadow: true },
+      { list: pines.filter(simple), det: canopyPine, simp: canopyPine, matDet: () => canopyPineMat, matSimp: () => canopyPineMat, depth: undefined, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 5), trunkMat: barkMat, trunkY: 11, noShadow: true },
       { list: edgeOaks, det: oakGeo, simp: oakBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 8), trunkMat: barkMat, trunkY: 18 },
       { list: edgePines, det: pineCardGeo, simp: pineGeo, matDet: () => needleMat, matSimp: () => leafMat, depth: needleDepth, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 7), trunkMat: barkMat, trunkY: 11 },
-      { list: edgeBirches, det: birchGeo, simp: birchBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(1.3, 2.1, 46, 8), trunkMat: birchBark, trunkY: 23 }
+      { list: edgeBirches, det: birchGeo, simp: birchBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(1.3, 2.1, 46, 8), trunkMat: birchBark, trunkY: 23 },
+      { list: bandOaks, det: oakGeo, simp: oakBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(2.4, 3.8, 36, 5), trunkMat: barkMat, trunkY: 18, noShadow: true },
+      { list: bandPines, det: pineCardGeo, simp: pineGeo, matDet: () => needleMat, matSimp: () => leafMat, depth: needleDepth, trunk: new T.CylinderGeometry(1.8, 2.6, 22, 5), trunkMat: barkMat, trunkY: 11, noShadow: true },
+      { list: bandBirches, det: birchGeo, simp: birchBlobGeo, matDet: () => cardMat, matSimp: () => simpleMat, depth: cardDepth, trunk: new T.CylinderGeometry(1.3, 2.1, 46, 5), trunkMat: birchBark, trunkY: 23, noShadow: true }
     ];
     let detailedNow = treeDetailWant !== false;
     for (const K of KINDS3) {
@@ -1124,6 +1135,10 @@ const R3D = (() => {
     for (const sx of [-1, 1]) { const pn = mesh(new T.PlaneGeometry(25, 14), cloth, sx * 7.0, 19, -1); pn.rotation.y = sx * Math.PI / 2; g.add(pn);
       const em = mesh(new T.PlaneGeometry(8, 8), m.lion, sx * 7.2, 19.5, -1); em.rotation.y = sx * Math.PI / 2; g.add(em);
       const hem = mesh(new T.PlaneGeometry(25, 1.2), m.trimG, sx * 7.15, 12.4, -1); hem.rotation.y = sx * Math.PI / 2; g.add(hem); }
+    { // the rear panel, so the cloth reads from behind too (the camera often sees a knight riding away)
+      const rp = mesh(new T.PlaneGeometry(14.2, 13.6), cloth, 0, 19.2, -13.6); rp.rotation.y = Math.PI; g.add(rp);
+      const rh = mesh(new T.PlaneGeometry(14.2, 1.2), m.trimG, 0, 12.4, -13.75); rh.rotation.y = Math.PI; g.add(rh);
+      const re = mesh(new T.PlaneGeometry(6, 6), m.lion, 0, 19.6, -13.75); re.rotation.y = Math.PI; g.add(re); }
     g.add(box(8.5, 1.6, 9, std('#4a3020', { roughness: 0.6 }), 0, 32.3, -1));   // saddle
     const legs = [];
     for (const [sx, sz, lead] of [[-1, 1, 0], [1, 1, 1], [-1, -1, 1], [1, -1, 0]]) {
@@ -1175,6 +1190,18 @@ const R3D = (() => {
       if (u.type === 'spear' && kit !== 'heavyspear') m.plate = std(team === 'enemy' ? '#3a3230' : '#7a5a38', { roughness: 0.7, map: leatherTex() });
       m.pants = m.plate; m.boot = m.plate; m.glove = m.plate;
     }
+    if (u.type === 'civ') {   // Gerald's sheet (citizens and workers): linen shirts, leather vests, laced bodices, long skirts; the team shows in the sash at the waist
+      const v = Math.floor(((u.seed || 0) * 7.31) % 3), foe = team === 'enemy';
+      const shirt = foe ? ['#6e6a64', '#625e58', '#76716a'][v] : ['#b9a886', '#ae9c7c', '#c2b292'][v];   // linen: darker than it looks on the sheet, so it does not glare white in the sun
+      const vest = foe ? ['#34302e', '#3e3936', '#2c2826'][v] : lk.female ? ['#4f5a32', '#6a3a2a', '#4a5560'][v] : ['#6b4a2c', '#5a4a3a', '#7a5634'][v];
+      const lower = foe ? ['#3a3430', '#443c36', '#32302e'][v] : lk.female ? ['#9a8060', '#7a5a3e', '#8a5a3a'][v] : vest;   // a man's vest runs down into his tunic
+      m.cloth = std(shirt, { map: fabricTex(), bumpMap: fabricTex(), bumpScale: 0.25 });
+      m.vest = std(vest, { map: lk.female ? fabricTex() : leatherTex(), roughness: 0.78 });
+      m.skirt = new T.MeshStandardMaterial({ color: C(lower), map: lk.female ? fabricTex() : leatherTex(), roughness: 0.85, side: T.DoubleSide });
+      m.pants = std(foe ? '#2e2a28' : '#4a3c30', { map: fabricTex() }); m.boot = std(foe ? '#2a2420' : '#5a4030', { roughness: 0.6 });
+      m.sash = std(foe ? ENEMY_TRIM : ARMY.crimson, { map: fabricTex(), roughness: 0.8 });
+      m.apron = new T.MeshStandardMaterial({ color: C(foe ? '#5e5a54' : '#c9bea4'), map: fabricTex(), roughness: 0.9, side: T.DoubleSide });
+    }
     const shieldFace = (rx, ry, ox, oy) => { const t = emblemTex(team).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T.ClampToEdgeWrapping; t.repeat.set(rx, ry); t.offset.set(ox, oy); return new T.MeshStandardMaterial({ map: t, roughness: 0.7 }); };
     const root = new T.Group(), body = new T.Group(); root.add(body);
     const sleeve = soldier ? m.mail : m.cloth, gloved = soldier || u.type === 'archer';
@@ -1197,10 +1224,16 @@ const R3D = (() => {
     // rounded shoulders: a sloping trapezius from the neck to each shoulder, so the outline is never square
     for (const side of [-1, 1]) { const tr = capsule(1.7, 1.5, 3.6, soldier ? m.mail : m.cloth, 12); tr.position.set(side * 1.7, 33.4, -0.3); tr.rotation.z = side * 1.25; body.add(tr); }
     // a belly that grows when they eat well
-    const belly = sph(4.3, soldier ? m.mail : m.cloth, 0, 21.8, 1.6, 16); belly.scale.set(1, 0.9, 0.9); body.add(belly); belly.userData.keep = true;
-    if (lk.female) for (const side of [-1, 1]) { const ch = sph(1.55, m.cloth, side * 1.75, 27.6, 3.1, 10); ch.scale.set(1, 0.9, 0.75); body.add(ch); }
+    const belly = sph(4.3, soldier ? m.mail : m.vest || m.cloth, 0, 21.8, 1.6, 16);   // under a civilian's vest, so it takes the vest's colour belly.scale.set(1, 0.9, 0.9); body.add(belly); belly.userData.keep = true;
+    if (m.vest) {   // the vest (a laced bodice for a woman) over the shirt; the shirt shows at the shoulders, the sleeves and down the open front
+      const top = lk.female ? 29.4 : 32.6, prof = [[4.32, 20.3], [4.62, 23.5], [5.33, 27], [5.48, 29.6], [5.02, 31.2], [4.0, 32.6]].filter(q => q[1] <= top + 0.3);
+      const vs = lathe(prof, m.vest, 24, true); vs.scale.set(1, 1, 0.72); body.add(vs);
+      body.add(box(lk.female ? 0.5 : 1.3, top - 22.6, 0.4, lk.female ? m.belt : m.cloth, 0, (top + 22.6) / 2, 3.95));   // lacing, or the shirt in the open front
+    }
+    if (lk.female) for (const side of [-1, 1]) { const ch = sph(1.55, m.vest || m.cloth, side * 1.75, 27.6, 3.1, 10); ch.scale.set(1, 0.9, 0.75); body.add(ch); }
     // tunic skirt or mail skirt flaring over the thighs
     const sk = lathe(lk.female && !soldier ? [[4.75, 20.2], [5.1, 17], [5.8, 11], [6.6, 4.5], [6.9, 2.6]] : [[4.75, 20.2], [5.0, 18], [5.5, 15], [5.9, 12.2]], soldier ? m.mailSkirt : m.skirt, 22, true); sk.scale.set(1, 1, 0.78); sk.geometry.translate(0, -20.2, 0); sk.position.y = 20.2; body.add(sk); sk.userData.keep = true; const cloth = [sk];
+    if (m.apron && lk.female) { const ap = mesh(new T.CylinderGeometry(5.3, 6.85, 14, 10, 1, true, -0.62, 1.24), m.apron, 0, -8.6, 0); sk.add(ap); }
     if (soldier) {
       // surcoat in the team colour, front and back, with a belt and a gold badge
       const bp = lathe([[4.7, 31.6], [5.5, 29], [5.5, 25.4], [4.95, 22]], m.plate, 24, true); bp.scale.set(1.04, 1, 0.8); body.add(bp);
@@ -1212,9 +1245,9 @@ const R3D = (() => {
         const tbk = mesh(new T.CylinderGeometry(5.75, 6.25, 15.5, 12, 1, true, Math.PI - 0.72, 1.44), m.skirt, 0, 20.4, 0); tbk.scale.set(1.02, 1, 0.8); body.add(tbk); }
     }
     if (u.type === 'archer') { m.skirt = std('#5a3e26', { map: fabricTex(), roughness: 0.75, side: T.DoubleSide }); const lb = cyl(1.2, 1.2, 0.4, [m.trimG, m.lion, m.trimG], -1.6, 28, 3.9, 14); lb.rotation.x = Math.PI / 2; body.add(lb); const jk = lathe([[5.0, 30.5], [5.4, 27.5], [4.7, 22.5], [5.2, 17.5], [5.8, 14.2]], m.skirt, 22, true); jk.scale.set(1.02, 1, 0.74); body.add(jk); }
-    const belt = cyl(4.75, 4.75, 1.4, m.belt, 0, 20.3, 0, 18); belt.scale.set(1, 1, 0.74); body.add(belt); body.add(box(1.6, 1.6, 0.6, m.gold, 0.6, 20.3, 3.55));
+    const belt = cyl(4.75, 4.75, m.sash ? 1.7 : 1.4, m.sash || m.belt, 0, 20.3, 0, 18); belt.scale.set(1, 1, 0.74); body.add(belt); if (m.sash) { const kn = box(1.1, 3.2, 0.5, m.sash, -2.6, 18.9, 3.1); kn.rotation.z = 0.25; body.add(kn); } else body.add(box(1.6, 1.6, 0.6, m.gold, 0.6, 20.3, 3.55));
     { const pouch = sph(1.3, m.belt, 3.9, 18.6, 1.6, 10); pouch.scale.set(0.8, 1, 0.55); body.add(pouch); }
-    if (!soldier) { const hem = lathe([[5.95, 12.6], [5.9, 12.0]], std(u.type === 'civ' ? (u.team === 'enemy' ? ENEMY_COL : PAL.player.tunic) : P.tunicDark, { side: T.DoubleSide }), 22, true); hem.scale.set(1, 1, 0.78); body.add(hem); }
+    if (!soldier && u.type !== 'civ') { const hem = lathe([[5.95, 12.6], [5.9, 12.0]], std(u.type === 'civ' ? (u.team === 'enemy' ? ENEMY_COL : PAL.player.tunic) : P.tunicDark, { side: T.DoubleSide }), 22, true); hem.scale.set(1, 1, 0.78); body.add(hem); }
     // neck and head with jaw, nose, eyes, brows, ears and mouth
     const neck = capsule(1.45, 1.6, 2.6, m.skin, 10); neck.position.set(0, 35.6, 0.15); body.add(neck);
     const head = new T.Group(); head.position.set(0, 38.4, 0.25); body.add(head);
@@ -1270,8 +1303,9 @@ const R3D = (() => {
     } else {
       const hairCap = mesh(new T.SphereGeometry(3.0, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.75), m.hair, 0, 0.5, -0.25); hairCap.scale.set(0.95, 1.05, 1.05); head.add(hairCap);
       const cap = mesh(new T.SphereGeometry(3.15, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2.7), std(u.team === 'enemy' ? ENEMY_COL : PAL.player.tunic), 0, 1.25, -0.1); head.add(cap); m.cap = cap.material;
+      if (u.type === 'civ') { cap.visible = false; if (!lk.female && ((u.seed || 0) * 13.7) % 1 < 0.3) { const hm = std(team === 'enemy' ? '#2c2826' : '#4e3a28', { roughness: 0.9, map: fabricTex() }); const crown = lathe([[2.95, 1.0], [2.9, 2.4], [2.4, 3.6], [0, 3.9]], hm, 14); head.add(crown); const brim = cyl(4.6, 4.6, 0.35, hm, 0, 1.15, 0, 16); head.add(brim); } }
       if (lk.longHair) { const lh = sph(2.6, m.hair, 0, -1.6, -1.9, 10); lh.scale.set(1.05, 1.3, 0.6); head.add(lh); }
-      if (lk.female) { cap.visible = false; const scarf = mesh(new T.SphereGeometry(3.2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.9), std(['#c8b68a', '#8a3a30', '#5a6a8a'][lk.hairStyle || 0], { map: fabricTex() }), 0, 0.6, -0.3); head.add(scarf); }
+      if (lk.female) { cap.visible = false; const scarf = mesh(new T.SphereGeometry(3.2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 1.9), std(team === 'enemy' ? '#4a4440' : ['#c9bea4', '#7a3448', '#b8a47e'][lk.hairStyle || 0], { map: fabricTex() }), 0, 0.6, -0.3); head.add(scarf); }
     }
     // arms: shoulder ball, upper arm, elbow, forearm, and a hand with a thumb
     // a lock of hair or a braid that swings and blows in the wind
