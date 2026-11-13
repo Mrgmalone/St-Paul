@@ -45,7 +45,7 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
         if (u.inside && selection.has(u)) N('selected while inside', u.type);
         if (u.order === 'attack' && !u.target) N('attack without target ' + u.type, u.team);
         if (u.look && !Number.isFinite(u.fat || 0)) N('fat NaN', u.fat);
-        if (!isMachine(u) && !u.onWall) for (const s of structures) { if (s.dead || s.done === false || s.kind === 'moat' || s.kind === 'stairs' || s.kind === 'gate') continue; if (u.x > s.x0 + 4 && u.x < s.x1 - 4 && u.y > s.y0 + 4 && u.y < s.y1 - 4) { N('inside ' + s.kind + ' ' + u.type + ' ' + u.order, [Math.round(u.x), Math.round(u.y)]); break; } }
+        if (!isMachine(u) && !u.onWall) for (const s of structures) { if (s.dead || s.done === false || s.kind === 'moat' || s.kind === 'stairs' || s.kind === 'gate') continue; if (u.x > s.x0 + 4 && u.x < s.x1 - 4 && u.y > s.y0 + 4 && u.y < s.y1 - 4) { N('inside ' + s.kind + ' ' + u.type + ' ' + u.order, [Math.round(u.x), Math.round(u.y), u.team, u.owner, u.sub, u.job && u.job.kind, u.inside && u.inside.kind, s.id, s.team, s.rebuilt ? 'rebuilt' : '', s.owner, Math.round(time), u.id, u.hp | 0]); break; } }
         // stuck: wants to move but has not moved for 25s (not counted once the game is over: then nothing moves on purpose)
         if (won) { window.__hist.delete(u); continue; }
         const h = window.__hist.get(u) || { x: u.x, y: u.y, t: time, o: u.order };
@@ -66,16 +66,17 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
       if (units.length > 400) N('units leak', units.length);
     };
   });
-  const bot = async (min) => p.evaluate((min) => {
+  const bot = async (min) => p.evaluate(([min, process_env_ARMY]) => {
     SD.res.wood += 150; SD.res.stone += 60; SD.res.gold += 40; SD.res.food += 60;
     const k = SD.keep(); if (!k) return 'no keep';
     const plan = [['house', -6, 6], ['house', -8, 6], ['woodhut', -10, 2], ['farm', 6, 8], ['house', -6, 9], ['lookout', 10, 4], ['quarry', -4, -8], ['gtower', 12, -4], ['house', -9, 9], ['roundtower', -12, 4], ['farm', 9, 10], ['smithy', 6, -4]];
+    if (!process_env_ARMY) plan.splice(2, 0, ['granary', 8, -6], ['waterpot', -3, 5], ['alehouse', 9, 6], ['wheatfarm', -12, 10]);   /* the real game: a granary (or food spoils), a water pot, an alehouse, a wheat field */
     const it = plan[min % plan.length]; let msg = 'cannot place ' + it[0];
     try { outer: for (let rad = 0; rad < 14; rad++) for (let a = 0; a < 16; a++) { const c = k.c + it[1] + Math.round(Math.cos(a / 16 * 6.283) * rad), r = k.r + it[2] + Math.round(Math.sin(a / 16 * 6.283) * rad); if (SD.canPlace(it[0], c, r)) { SD.createBuilding(it[0], c, r); msg = 'placed ' + it[0]; break outer; } } } catch (e) { msg = 'place err ' + e.message; }
     try { for (const t of ['sword', 'archer', 'spear']) { SD.res[t === 'archer' ? 'bow' : t] = (SD.res[t === 'archer' ? 'bow' : t] || 0) + 1; SD.trainUnit(t); } } catch (e) { msg += ' train err ' + e.message; }
     if (min % 5 === 2) { const r = SD.rule(); try { document.querySelectorAll('#ration button, #tax button'); } catch (e) {} }
     return msg;
-  }, min);
+  }, [min, !!process.env.ARMY]);
   await p.evaluate(() => SD.setRaid(150));
   const log = [];
   for (let m = 0; m < MINUTES; m++) {
