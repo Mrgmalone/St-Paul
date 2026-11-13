@@ -271,7 +271,8 @@ function enemyBrain(u, dt) {
   if ((u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') && !(u.order === 'raid' && u.route && u.route.length)) { siegeBrain(u); return; }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = aggro(u, 170);
-    if (n) { u.target = n; u.repath = 0; }
+    if (n && IND() && !u.raider && u.post && Math.hypot(n.x - u.post.x, n.y - u.post.y) > 360) { sendHome(u); }
+    else if (n) { u.target = n; u.repath = 0; }
     else if (u.raider) { u.order = 'raid'; u.target = null; u.path = []; u.repath = 0; }
     else sendHome(u);
   }
@@ -279,7 +280,8 @@ function enemyBrain(u, dt) {
   if (!u.raider && u.order === 'attack' && Math.hypot(u.x - u.post.x, u.y - u.post.y) > 380) sendHome(u);
   if ((u.order === 'idle' || u.order === 'raid') && u.think <= 0) {
     u.think = 0.3;
-    const n = aggro(u, u.raider ? 190 : 150);
+    let n = aggro(u, u.raider ? 190 : 150);
+    if (n && IND() && !u.raider && u.post && Math.hypot(n.x - u.post.x, n.y - u.post.y) > 360) n = null;   /* a guard does not chase out past his leash (chase, give up, turn home, chase again: going round and round) */
     if (n) { u.order = 'attack'; u.target = n; u.repath = 0; alertAllies(u, n, 230); }
   }
   if (u.order === 'raid' && u.route && u.route.length) {

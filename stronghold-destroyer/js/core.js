@@ -662,7 +662,7 @@ function flee(u) {
 function alertAllies(src, foe, radius) {
   for (const o of units) {
     if (o.dead || o.team !== src.team || o === src || o.team === 'player') continue;
-    if ((o.order === 'idle' || o.order === 'return') && Math.hypot(o.x - src.x, o.y - src.y) < radius) { o.order = 'attack'; o.target = foe; o.repath = 0; }
+    if ((o.order === 'idle' || o.order === 'return') && Math.hypot(o.x - src.x, o.y - src.y) < radius && !(IND() && !o.raider && o.post && Math.hypot(foe.x - o.post.x, foe.y - o.post.y) > 360)) { o.order = 'attack'; o.target = foe; o.repath = 0; }   /* a guard answers only inside his own ground */
   }
 }
 function underAttackAlert(u) {

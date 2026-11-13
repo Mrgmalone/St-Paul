@@ -87,7 +87,7 @@ function enemyWorker(u, dt) {
     /* and plainly: much walking but staying in one small patch for 7 seconds (going round and round) means give this spot up */
     if (u._cx === undefined) { u._cx = u.x; u._cy = u.y; u._ct = 0; u._cw = 0; }
     u._ct += dt; u._cw += stepD;
-    if (u._ct > 4) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 90 && disp < 40 || disp < 8) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
+    if (u._ct > 4) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 90 && disp < 40 || disp < 16) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
       if (round && u.sub === "toCamp") { const cd = edgeDist(u, camp); if (cd < 170) { u.campFails = 9; } u.path = []; u.repath = 0; }   /* going home round and round: close enough, put the load down (else a fresh way) */
       else if (round) { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; } }
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }

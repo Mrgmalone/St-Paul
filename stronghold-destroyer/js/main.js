@@ -144,6 +144,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
+  if (won && arrows.length) arrows.length = 0;   /* the game is over: nothing lands any more, so nothing stays in the air */
   if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); updateCitizens(dt); updateSoldiers(dt); updateFireRepair(dt); updateFog(dt); updateRivals4b(dt); updateAdvisor(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
