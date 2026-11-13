@@ -83,7 +83,8 @@ function enemyWorker(u, dt) {
     const d = Math.hypot(x - u.x, y - u.y), key = u.sub + ':' + (u.sub === 'toSite' && u.ejob ? u.ejob.id : u.sub === 'toNode' && u.enode ? Math.round(u.enode.x || 0) + ',' + Math.round(u.enode.y || 0) : '');
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; }
     else if ((u._wt += dt) > 6) { u._wt = 0; u._wd = d;
-      if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') u.ebad = u.enode; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
+      if (u.sub === 'toCamp') u.campFails = (u.campFails || 0) + 1;
+      if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } /* nobody tries that spot again for a while */ u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
       u.path = []; u.repath = 0; }   // carrying home or fleeing: look for a fresh way
     if ((!u.path.length && !(u.noPathT > time)) || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length) u.noPathT = time + 2; } followPath(u, dt); };
   if (time - u.lastHurt < 3 && u.sub !== 'flee') { u.sub = 'flee'; u.path = []; u.order = 'move'; }
@@ -94,7 +95,7 @@ function enemyWorker(u, dt) {
     else {
       const wantFood = Math.random() < 0.4, list = wantFood ? bushes.filter(b => b.amount >= 10).concat(RV ? farms.filter(f => mine(f) && f.kind === 'farm' && f.amount >= 10) : []) : trees.filter(t => !t.gone && t.amount > 0);
       const on = new Map(); for (const o of units) if (o !== u && !o.dead && o.team === u.team && o.owner === u.owner && o.enode && (o.sub === 'toNode' || o.sub === 'work')) on.set(o.enode, (on.get(o.enode) || 0) + 1);
-      let best = null, bd = 900; for (const n of list) { const k = on.get(n) || 0; if (k >= 3 || n === u.ebad) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < bd) { bd = d; best = n; } }
+      let best = null, bd = 900; for (const n of list) { const k = on.get(n) || 0; if (k >= 3 || n === u.ebad || n.unreachT > time) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < bd) { bd = d; best = n; } }
       if (!best) { u.order = 'idle'; u.moving = false; return; }
       u.enode = best; u.task = { type: wantFood ? 'food' : 'wood', node: best }; u.sub = 'toNode'; u.order = 'gather'; u.path = [];
     }
@@ -136,7 +137,8 @@ function enemyWorker(u, dt) {
   }
   if (u.sub === 'toCamp') {
     const ap = approachPoint(u, camp);
-    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || stalled(u) && edgeDist(u, camp) <= 36) { if (RV) RV.res[u.carryType === 'food' ? 'food' : 'wood'] += u.carry; else ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
+    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || stalled(u) && edgeDist(u, camp) <= 36 || (u.campFails || 0) >= 2 && edgeDist(u, camp) < 170) {   // a crowded camp: after two tries, the load goes down at its edge
+      u.campFails = 0; if (RV) RV.res[u.carryType === 'food' ? 'food' : 'wood'] += u.carry; else ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
     else walk(ap.x, ap.y);
   }
 }
