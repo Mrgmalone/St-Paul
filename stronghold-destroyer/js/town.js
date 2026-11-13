@@ -23,6 +23,7 @@ function moodReasons() {
   const r = [];
   if (starving) r.push('there is no food: they are starving');
   if (ration === 0) r.push('rations are lean');
+  if (wagesUnpaid) r.push('the soldiers are unpaid');
   if (tax === 2) r.push('taxes are high');
   else if (tax === 1) r.push('they pay taxes');
   if (crowdPen) r.push('the houses are crowded');
@@ -45,13 +46,13 @@ function updateMood(dt, people) {
   fearGood = 2 * countOf('garden'); fearHard = -2 * countOf('stocks');
   fullGranary = !starving && res.food > 300 ? 4 : 0;
   { const fats = people.filter(u => u.fat > 0.45).length, sick = people.filter(u => u.sick).length; fatBonus = people.length && fats / people.length > 0.3 ? 3 : 0; sickPen = -Math.min(8, sick * 2); }
-  moodRate = (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard + fullGranary + fatBonus + sickPen;
+  moodRate = (wagesUnpaid ? ECONOMY.unpaidMood : 0) + (starving ? -20 : RATIONS[ration].mood) + TAXES[tax].mood + aleBonus + (starving ? 0 : varietyBonus) + relBonus + crowdPen + fearGood + fearHard + fullGranary + fatBonus + sickPen;
   const holdsUp = time < contentUntil && moodRate < 0;   // after a feast or a new comfort, spirits stay up for a while
   mood = clamp(mood + (holdsUp ? 0 : moodRate) * dt / 60, 0, 100);
   // people who left come back when the town is happy again
   if (leftCount > 0 && mood >= 55 && k0()) { returnT -= dt; if (returnT <= 0) { returnT = 20; if (people.length + trainQueue.length < popCap()) { leftCount--; const en = roadEntry(); const u = makeUnit('player', 'civ', en.x, en.y); const kk = k0(); commandMove([u], kk.x1 + 40, kk.y1 + 30); showBanner('A citizen who left has come back to your town!', 3.5); AudioSys.ui('bell'); } } }
   // taxes: gold per person every 20 seconds
-  goldT += people.length * TAXES[tax].gold * dt / 20;
+  goldT += people.length * TAXES[tax].gold * taxStageMul() * dt / 20;   // a bigger castle's people pay a little more
   while (goldT >= 1) { goldT -= 1; res.gold += 1; }
   const k = playerKeep();
   // happy towns draw new settlers along the road
@@ -198,6 +199,7 @@ function canTrain(kind) {
   return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap() || (kind !== 'civ' && draftable())) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
+  if (!unlocked(kind, true)) { showBanner(`${KINDS[kind].name}s come at stage ${stageOfItem(kind, true)}, the ${stageName(stageOfItem(kind, true))}.`, 3); return; }
   if (!canTrain(kind)) {
     const c = COSTS[kind];
     if (WEAPON[kind] && NEEDS[kind].some(w => res[w] < 1)) showBanner(`You need ${NEEDS[kind].map(w => w === 'armor' ? 'armor' : 'a ' + w).join(' and ')} to train ${/^[AEIOU]/.test(KINDS[kind].name) ? 'an' : 'a'} ${KINDS[kind].name}. Make one in a workshop or buy one at the armory.`, 3.5);

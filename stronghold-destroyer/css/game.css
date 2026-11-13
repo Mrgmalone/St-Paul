@@ -331,3 +331,11 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #oldCards[hidden]{display:none!important}
 .fac .fhd{font-size:15px}
 #pick{background:#121110}
+/* stage locks: a button for something your castle's stage does not allow yet is not shown */
+.locked{display:none!important}
+#stagePop{left:50%;top:70px;transform:translateX(-50%);min-width:320px;max-width:min(520px,94vw)}
+#stagePop .sttab{border-collapse:collapse;margin:6px 0;font-size:17px;width:100%}
+#stagePop .sttab td{padding:5px 8px;border-bottom:1px solid rgba(217,180,90,.18)}
+#stagePop .sttab tr.ok td:first-child{color:#8fe39a;font-size:20px}#stagePop .sttab tr.no td:first-child{color:#ff9d86;font-size:20px}
+#stagePop .sttab td:last-child{text-align:right;white-space:nowrap}
+#stagePop .stnext{font-size:16px;margin:6px 0;color:var(--ink)}

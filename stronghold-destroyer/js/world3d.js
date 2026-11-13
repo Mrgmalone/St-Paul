@@ -641,14 +641,37 @@ const R3D = (() => {
   function buildingModel(b) { try { return buildingModel0(b); } finally { BRICK = { stone: 'brick_gray', plaster: 'brick_brown' }; } }
   function buildingModel0(b) {
     const teamCol = b.team === 'enemy' ? ENEMY_COL : PAL.player.tunic, teamSide = b.team === 'enemy' ? 'enemy' : 'player';
-    BRICK = b.team === 'enemy' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen', woodV: 'brick_blackgreen', woodH: 'brick_blackgreen' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
+    BRICK = b.team === 'enemy' && b.mat !== 'wood' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen', woodV: 'brick_blackgreen', woodH: 'brick_blackgreen' } : b.mat === 'brick' ? { stone: 'brick_brown', plaster: 'brick_brown' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
     const g = new T.Group(), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2, gy = heightAt(cx, cz);
     g.position.set(cx, gy - 1, cz);
     const inner = new T.Group(); g.add(inner);
     const info = { g, inner, flags: [], archer: null, mats: [], kind: b.kind };
     const add = o => { inner.add(o); return o; };
     if (glbBuilding(b, info)) { /* Gerald's model for this building */ }
-    else if (b.kind === 'keep') {
+    else if (b.kind === 'keep' && (b.stage || 1) === 2) {
+      // stage 2, the Homestead: a long timber hall on a brick footing, a thatched roof, and a tall lookout at the front corner
+      const thatch = thatchM(96, 40), post = woodVM(4, 90);
+      add(box(92, 10, 60, plasterM(92, 10), 0, 5, -14));
+      add(box(88, 32, 56, woodHM(88, 32), 0, 26, -14));
+      { const roof = mesh(new T.CylinderGeometry(0.5, 70, 32, 4, 1), thatch, 0, 58, -14); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.66); add(roof); }
+      door(inner, 0, 0, 14.5, 18, 24); add(box(8, 9, 1, std('#16110c'), -26, 24, 14.6)); add(box(8, 9, 1, std('#16110c'), 26, 24, 14.6));
+      add(box(8, 30, 8, stoneM(8, 30), 34, 56, -30));
+      for (const [x, z] of [[24, 18], [44, 18], [24, 38], [44, 38]]) add(cyl(2, 2.4, 84, post, x, 42, z, 7));
+      add(box(26, 3, 26, woodHM(26, 3), 34, 84, 28)); for (const [x, z, w, d] of [[34, 41, 26, 2], [21, 28, 2, 26], [47, 28, 2, 26]]) add(box(w, 6, d, woodHM(w + d, 6), x, 89, z));
+      info.flags.push(pole(inner, 44, 86, 38, 26, teamCol));
+      info.archer = towerArcher(teamSide); info.archer.root.position.set(34, 85.5, 28); add(info.archer.root);
+    } else if (b.kind === 'keep' && (b.stage || 1) >= 3) {
+      // a stone keep: the Hold (small), the Castle (full, with two towers at the front), the Stronghold (great, a round tower at each corner)
+      const st = b.stage, W = st === 3 ? 72 : st === 4 ? 88 : 94, H = st === 3 ? 78 : st === 4 ? 104 : 124;
+      add(box(W, H, W, stoneM(W, H), 0, H / 2, 0)); add(box(W + 4, 4, W + 4, stoneM(W + 4, 4), 0, H, 0));
+      addMerlons(inner, -(W + 4) / 2, -(W + 4) / 2, W + 4, W + 4, H + 2, 13.5, 8, 9);
+      door(inner, 0, 0, W / 2, 26, 30); for (const x of [-W / 4, W / 4]) for (const y of [H * 0.55, H * 0.8]) add(box(3, 12, 1, std('#16110c'), x, y, W / 2 + 0.6));
+      const turrets = st === 4 ? [[-1, 1], [1, 1]] : st >= 5 ? [[-1, 1], [1, 1], [-1, -1], [1, -1]] : [];
+      for (const [sx, sz] of turrets) { const tx = sx * W / 2, tz = sz * W / 2, th = H + 26; add(cyl(13, 14, th, stoneM(80, th), tx, th / 2, tz, 14));
+        add(mesh(new T.ConeGeometry(16, 26, 14), texMat('stoneDark', 1, 1), tx, th + 13, tz)); }
+      info.flags.push(pole(inner, W / 2 - 6, H + 2, -W / 2 + 6, 42, teamCol));
+      info.archer = towerArcher(teamSide); info.archer.root.position.set(8, H + 2, W / 2 - 14); add(info.archer.root);
+    } else if (b.kind === 'keep') {
       // stage 1 of the castle: a log shack in the woods with a thatched roof, and a rough lookout stand over the porch
       const logs = woodHM(88, 32), post = woodVM(4, 60), thatch = thatchM(96, 40);
       add(box(88, 32, 50, logs, 0, 16, -19));
@@ -701,7 +724,7 @@ const R3D = (() => {
       add(cyl(1.8, 1.8, 62, woodHM(62, 4), 0, 64.5, 0, 8)).rotation.z = Math.PI / 2;
       add(box(8, 30, 8, stoneM(8, 30), 14, 62, -9)); add(box(9.5, 2, 9.5, texMat('stoneDark', 1, 1), 14, 77, -9));
       info.chimney = { x: cx + 14, z: cz - 9, y: gy + 80 };
-    } else if (b.kind === 'wall' && b.team !== 'enemy') {
+    } else if (b.kind === 'wall' && (b.mat ? b.mat === 'wood' : b.team !== 'enemy')) {
       // your wall is a wooden palisade: sharpened logs set side by side along the run of the wall
       const nbw = (dc, dr) => structures.some(o => !o.dead && (o.kind === 'wall' || o.kind === 'gate') && o.c === b.c + dc && o.r === b.r + dr && o.team === b.team);
       const ew = nbw(1, 0) || nbw(-1, 0), ns = nbw(0, 1) || nbw(0, -1), logM = woodVM(8, 34), R = mulberry32(b.c * 131 + b.r * 17);
@@ -938,6 +961,7 @@ const R3D = (() => {
       for (let y = 12; y < H; y += 16) { sc.add(box(hw * 2, 1, 1, pm, 0, y, hd)); sc.add(box(hw * 2, 1, 1, pm, 0, y, -hd)); }
       g.add(sc); info.scaffold = sc;
     }
+    if (b.kind === 'wall' && b.mat === 'thick') inner.scale.set(1, 1.45, 1); else if (b.kind === 'wall' && b.mat === 'stone') inner.scale.set(1, 1.15, 1);   // the castle ring gets taller as it grows
     inner.traverse(o => { if (o.isMesh && o.material && !info.mats.includes(o.material) && o.material.emissive) info.mats.push(o.material); });
     scene.add(g);
     return info;

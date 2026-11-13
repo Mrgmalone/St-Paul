@@ -142,7 +142,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
-  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);
@@ -199,7 +199,7 @@ function startPalisade() {
   for (let x = c - 3; x <= c + 5; x++) line.push([x, r - 3]);   // two squares clear of the shack, so people pass easily
   for (let y = r - 2; y <= r + 4; y++) line.push([c - 3, y]);
   const n0 = floats.length;
-  for (const [x, y] of line) { if (!canPlace('wall', x, y)) continue; const w = createBuilding('wall', x, y); finishBuilding(w); w.hp = w.maxHp; w.startPalisade = true; }
+  for (const [x, y] of line) { if (!canPlace('wall', x, y)) continue; const w = createBuilding('wall', x, y); finishBuilding(w); w.hp = w.maxHp; Object.assign(w, { startPalisade: true, castleRing: true, ringOf: keep, mat: 'wood', name: 'Palisade' }); }
   floats.length = n0;   // it was there from the start: no 'built' notices
 }
 const testArmy = LEGACY;   // older tests only: start both sides with the soldiers they had before (see spawnPlayerPeople)
@@ -209,7 +209,8 @@ function startGame(key) {
   const fac = FACTIONS[key] ? key : null; FACKEY = fac;
   AudioSys.init(); AudioSys.setTheme(fac ? FAC_THEME[fac] : key);
   CIV = fac ? factionCiv(fac) : CIVS[key];
-  document.getElementById('btnBell').hidden = fac !== 'hekaranok';   // the healers' bell
+  document.getElementById('btnBell').hidden = fac !== 'hekaranok';
+  stageN = 1; keep.stage = 1; if (fac) keep.maxHp = keep.hp = STAGES[0].keepHp;   // the healers' bell
   if (fac) {   // your faction's own costs: the marketers' expensive market, the healers' stronger abbey (stand-in: House of Prayer)
     BUILD.market.wood = Math.round(BUILD.market.wood * myRule('marketCostMul', 1));
     BUILD.chapel.hp = Math.round(BUILD.chapel.hp * myRule('abbeyHpMul', 1));
@@ -226,7 +227,7 @@ function startGame(key) {
   LORD.unit = null; LORD.said = {}; LORD.broken = false; spawnLord();
   setTimeout(() => lordSay('hello', 'So, a new lord in the west. Enjoy your little keep while it stands.'), 22000);
   { const camp = enemyCamp(); for (let i = 0; i < 4; i++) { const f = nearestFree(Math.floor((camp.x - 70 + i * 22) / TILE), Math.floor((camp.y + 40) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); } }
-  started = true;
+  started = true; applyStageLocks();
   document.getElementById('pick').style.display = 'none';
   UI.paintIcons();
   showBanner(`${DIFF.name} difficulty. <b>${Math.round(raidTimer / 60)} minutes of peace</b> to build before the war begins. Press Pause (P) any time to plan your castle.<br>You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);

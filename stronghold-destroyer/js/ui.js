@@ -123,12 +123,15 @@ const UI = (() => {
       <span class="chip" title="Gold"><canvas data-icon="r:gold"></canvas><b id="vGold"></b></span>
       <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b><small id="vIdle"></small></span>
       <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
+      <button class="chip" id="cStage" title="Your castle's stage: click to see what the next stage needs"><b id="vStage">Stage 1</b></button>
       <span class="chip" title="Enemies left"><canvas data-icon="r:foes"></canvas><b id="vFoes"></b></span>
       <button class="chip" id="cGoods" title="Goods: click for the list"><canvas data-icon="r:goods"></canvas><b id="vGoods"></b></button>
       <span class="chip" title="Weather and wind"><b id="vWeather">☀ Clear</b><i id="vWind" style="display:inline-block;font-style:normal;color:#cfe3ff;transition:transform 1s">➤</i></span>
       <span class="chip" title="Next enemy raid"><canvas data-icon="r:raid"></canvas><b id="vRaid"></b></span>`;
     paintIcons(statusEl); built = true;
     $('cMood').onclick = () => toggle('moodPop');
+    $('cStage').onclick = () => { const p = $('stagePop'); if (p.hidden) showStagePop(); else p.hidden = true; };
+    $('cStage').hidden = LEGACY;
     $('cGoods').onclick = () => { const p = $('goodsPop'); p.hidden = !p.hidden; if (!p.hidden) p.innerHTML = goodsReport(); };
   }
   let moodBand = -1;

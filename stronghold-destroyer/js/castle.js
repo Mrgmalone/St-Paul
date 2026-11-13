@@ -105,7 +105,8 @@ function giftKnight(b, msg) {
   const home = keep && keep !== b ? keep : { x: b.x, y: b.y + 999 }, mx = (b.x0 + b.x1) / 2, my = (b.y0 + b.y1) / 2;
   const spots = [[mx, b.y1 + 14], [mx, b.y0 - 14], [b.x0 - 14, my], [b.x1 + 14, my]].filter(([x, y]) => !circleBlocked(x, y, 6)).sort((p, q) => Math.hypot(p[0] - home.x, p[1] - home.y) - Math.hypot(q[0] - home.x, q[1] - home.y));
   const sp = spots[0] || [mx, b.y1 + 14];
-  const u = makeUnit('player', 'knight', sp[0], sp[1]);
+  // the door guard that comes with a tower fits your stage: a spearman, then a maceman (until foot knights come), then a knight
+  const u = makeUnit('player', FACKEY && !LEGACY ? (stageN >= 4 ? 'knight' : stageN >= 3 ? 'maceman' : 'spear') : 'knight', sp[0], sp[1]);
   u.gift = true; u.guardOf = b; u.cmdT = -99; u.guardSpot = { x: sp[0], y: sp[1] };
   if (msg) floatText(b.x, (b.y1 !== undefined ? b.y1 : b.y) - 30, msg, '#9fe8a8');
   return u;
@@ -145,6 +146,7 @@ const lacking = d => res.wood < (d.wood || 0) ? 'wood' : res.stone < (d.stone ||
 const isLine = k => k === 'wall' || k === 'highwall' || k === 'moat';
 function startPlacing(kind) {
   if (!started || won) return;
+  if (!unlocked(kind, false)) { showBanner(`The ${BUILD[kind].name} comes at stage ${stageOfItem(kind, false)}, the ${stageName(stageOfItem(kind, false))}.`, 3); return; }
   if (!afford(BUILD[kind])) { showBanner(`Not enough ${lacking(BUILD[kind])} for a ${BUILD[kind].name}.${lacking(BUILD[kind]) === 'stone' ? ' Build a Quarry beside a grey rock.' : ''}`, 3); return; }
   if ((kind === 'garden' || kind === 'stocks') && structures.filter(b => b.kind === kind && !b.dead && b.team === 'player').length >= 3) { showBanner(`You can have at most 3 ${kind === 'garden' ? 'gardens' : 'sets of stocks'}.`, 2.5); return; }
   tearing = false; tearButton();
