@@ -272,7 +272,8 @@ has a cap (LIFE_CAP), and fewer appear when the game lowers its detail to stay s
 (strikes by unit type), tOrders (patrols, Guard, each rally flag, the army following), tPhone (the phone sheet folding,
 Settings, Help, Quit, taxes, hints; phone held both ways and iPad), tMatch (setup with 1, 2, 3 and 4 rivals, twelve random
 games in a row, the winning rule by count), tFrame (the table, globes, the glass and its fading under a low frame rate),
-tWater.
+tWater, and tTablet (the touch round by finger on an iPad and on a phone: choose and send, a finger box, a patrol, a
+house dragged into place, citizens filling a moat, then the way straight over the filled square and round a wall).
 
 **Speed (Phase 4C, measured alone, the same way as before; frame time in a software-drawn test browser, lower is faster,
 so only the comparison matters):** 100 people: Phase 3 2,269 (two runs averaged), 4B 2,008, 4C 2,232. 800 people: Phase 3

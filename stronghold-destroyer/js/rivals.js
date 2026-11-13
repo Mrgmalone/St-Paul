@@ -111,9 +111,16 @@ function enemyWorker(u, dt) {
       const wantFood = Math.random() < 0.4, list = wantFood ? bushes.filter(b => b.amount >= 10).concat(RV ? farms.filter(f => mine(f) && f.kind === 'farm' && f.amount >= 10) : []) : trees.filter(t => !t.gone && t.amount > 0);
       /* everyone at or heading for a bush or tree counts, whoever they belong to (a crowded one makes newcomers go round and round it) */
       const on = new Map(); for (const o of units) { if (o === u || o.dead || o.type !== 'civ') continue; const n = o.enode && (o.sub === 'toNode' || o.sub === 'work') ? o.enode : o.task && o.task.node && o.order === 'gather' ? o.task.node : null; if (n) on.set(n, (on.get(n) || 0) + 1); }
-      let best = null, bd = 900; for (const n of list) { const k = on.get(n) || 0; if (k >= 3 || n === u.ebad || n.unreachT > time) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < bd) { bd = d; best = n; } }
-      if (!best) { u.order = 'idle'; u.moving = false; return; }
-      u.enode = best; u.task = { type: wantFood ? 'food' : 'wood', node: best }; u.sub = 'toNode'; u.order = 'gather'; u.path = [];
+      const cands = []; for (const n of list) { const k = on.get(n) || 0; if (k >= 3 || n === u.ebad || n.unreachT > time) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < 900) cands.push([d, n]); }
+      cands.sort((a, b) => a[0] - b[0]);
+      /* (4C) before setting off, make sure a way really reaches it (a tree deep in a thicket cannot be reached: walking at it,
+         giving up and choosing the next one kept a worker going back and forth in one small patch); four tries at most */
+      let best = null, way = null;
+      for (const [, n] of cands.slice(0, 4)) { const c = nodeCenter(n), pth = findPath(u.x, u.y, c.x, c.y), e = pth[pth.length - 1];
+        if (pth.length && Math.hypot(e.x - c.x, e.y - c.y) <= nodeReach(n) + 24) { best = n; way = pth; break; } n.unreachT = time + 120; }
+      if (!best && cands.length && Math.hypot(nodeCenter(cands[0][1]).x - u.x, nodeCenter(cands[0][1]).y - u.y) <= nodeReach(cands[0][1]) + 24) best = cands[0][1];   // already beside it
+      if (!best) { u.order = 'idle'; u.moving = false; u.pauseT = time + 6; return; }   // nothing within reach just now: wait a little (rather than shuffle)
+      u.enode = best; u.task = { type: wantFood ? 'food' : 'wood', node: best }; u.sub = 'toNode'; u.order = 'gather'; u.path = way || []; u.repath = 3;
     }
   }
   if (u.sub === 'toSite') {
