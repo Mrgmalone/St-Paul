@@ -418,6 +418,10 @@ function civBrain(u, dt) {
       u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
       return;
     }
+    // no headway toward the store for 5 seconds (its way in is crowded or shut): close by, put the load down; otherwise a fresh way
+    const dd = edgeDist(u, drop);
+    if (u._kdrop !== drop || u._kd === undefined || dd < u._kd - 6) { u._kdrop = drop; u._kd = dd; u._kt = 0; }
+    else if ((u._kt += dt) > 5) { u._kt = 0; u._kd = dd; if (dd < 120) { if (u.carry > 0) { if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; } u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear(); return; } u.path = []; u.repath = 0; }
     if (!u.path.length || u.repath <= 0) { const ap = approachPoint(u, drop); u.path = findPath(u.x, u.y, ap.x, ap.y); u.repath = 3; }
     followPath(u, dt);
   }

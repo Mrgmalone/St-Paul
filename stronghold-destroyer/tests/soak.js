@@ -9,7 +9,7 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
   await p.evaluate(() => { const fs = window.__raf.splice(0); fs.forEach(f => f(0)); window.__now = 0; });
   if (process.env.ARMY) await p.click(`.civ[data-civ="${CIV}"]`);   // the old peoples (older tests)
   else { const F = { legion: 'psychana', harvest: 'cyyoung', wardens: 'hekaranok' }[CIV] || CIV; await p.click(`.fac[data-fac="${F}"]`); await p.click(`.fac[data-fac="${F}"] .fgo`); }   // the four factions
-  await p.evaluate(() => { window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); if (i % 10 === 9) window.__track(); } };
+  await p.evaluate(() => { window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); for (const u of units) if (u.order !== 'idle') u._busyT = time; if (i % 10 === 9) window.__track(); } };   // _busyT: any other order, even for a moment
     // circling: lots of walking in 10 seconds without getting anywhere; idle wandering: people with nothing to do moving about
     window.__tr = new Map();
     window.__track = () => {
@@ -20,7 +20,7 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
         const d = Math.hypot(u.x - t.x, u.y - t.y); t.len += d; t.x = u.x; t.y = u.y;
         t.x0 = Math.min(t.x0, u.x); t.x1 = Math.max(t.x1, u.x); t.y0 = Math.min(t.y0, u.y); t.y1 = Math.max(t.y1, u.y);
         t.n++; if (u.moving) t.mv++; if (u.combatT > 0 || u.attackAnim > 0 || (u.order === 'attack' && u.target && edgeDist(u, u.target) < 60)) t.fight++;
-        const idle = u.order === 'idle' && !u.job && !(u.breakUntil > time) && !u.toHeal && (u.cmdT || -99) === t.cmd;
+        const idle = u.order === 'idle' && !u.job && !(u.breakUntil > time) && !u.toHeal && (u.cmdT || -99) === t.cmd && !(u._busyT > time - 0.55);   // idle the whole time since the last look
         if (idle && t.prevIdle) t.idleLen += d;   // only movement while idle the whole time (a guard who chased a raider and just went idle again is not wandering)
         t.prevIdle = idle;
         if (time - t.t0 >= 10) {

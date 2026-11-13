@@ -121,7 +121,7 @@ function enemyWorker(u, dt) {
     else {
       walk(c.x, c.y);
       // the route ends as close as the ground allows: work from there if it is next to the node, otherwise give it up and choose another
-      if (!u.path.length) { if (dn <= nodeReach(n) + 24) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.moving = false; } else { u.ebad = n; u.sub = null; } }
+      if (!u.path.length) { if (dn <= nodeReach(n) + 24) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.moving = false; } else { u.ebad = n; n.unreachT = time + 90; u.sub = null; } }
     }
     return;
   }
