@@ -176,7 +176,15 @@ school, apothecary, church, abbey, engineer's hut, stable, alehouse, water pot, 
 chapel and hop-farm shapes); a proper horse-and-wagon for the yard; flamethrower, crossbowman and longbowman figures of
 their own; and the face for the People button.
 
-**Status**: B1 to B8 built and saved (branch upgrade-v2); each step has its own check (tIndustry, tGroups, tCitizens, tVeterans, tFire, tFog, tRivals4b). Full checks, long games and speed: see the next note.
+**Status**: B1 to B8 built and saved (branch upgrade-v2); each step has its own check (tIndustry, tGroups, tCitizens, tVeterans, tFire, tFog, tRivals4b). Full checks, long games and speed below.
+
+**Checks, long games and speed (final 4B, play link version 49)**: all 50 checks pass in one run (43 older, 7 new). Long
+games (15 minutes each, all four factions, several rounds while fixing): no crashes, nobody frozen; the last round had one
+brief item in three of the four games (a rival worker jostled in a crowd for about 10 seconds, or one of your idle
+soldiers nudged about 46 to 51 points where the check allows 40), and one game clean. The test player in those games never
+fights back, and the rivals are clearly stronger than in 4A (lessons, longbows, crossbows, mounted knights, ballistas,
+raids from new sides), so its town shrinks; a player who defends does far better. Speed (lower is faster; 4B measured from
+the west start like 4A): 100 people Phase 3 2,265, 4A 2,028, 4B 1,980; 800 people Phase 3 3,740, 4A 3,537, 4B 3,412.
 
 ## Where we left off (for a fresh session)
 
