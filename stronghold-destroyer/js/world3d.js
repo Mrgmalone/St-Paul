@@ -1185,8 +1185,24 @@ const R3D = (() => {
       for (const [x, z, col, s] of [[-22, -11, '#f2ece0', 1], [-12, -8, '#5a3a24', 1], [-24, -5, '#e0a0a0', 0.6], [-8, -13, '#e8b0b0', 0.6]]) { add(box(9 * s, 5 * s, 4.5 * s, std(col, { roughness: 1 }), x, 4 * s + 1, z)); add(box(3 * s, 3 * s, 3 * s, std(col, { roughness: 1 }), x + 5.5 * s, 6 * s + 1, z)); }
     }
     if (b.kind === 'woodhut' && (b.lvl || 1) >= 3) {   // the hitching area: a wagon and its horse
-      add(box(16, 5, 9, woodHM(16, 5), -30, 6, 22)); for (const x of [-36, -24]) { const wh = cyl(3.2, 3.2, 1.4, std('#3a2a18'), x, 3.2, 27, 10); wh.rotation.x = Math.PI / 2; add(wh); }
-      add(box(12, 6, 5, std('#7a5034', { roughness: 1 }), -14, 9, 22)); add(box(4, 5, 4, std('#7a5034', { roughness: 1 }), -7, 12, 22)); for (const x of [-18, -10]) for (const z of [20.5, 23.5]) add(cyl(0.8, 0.8, 7, std('#5a3a24'), x, 3.5, z, 5));
+      // (4D) a four-wheeled wagon loaded with logs, its shafts, and a brown work horse in harness, standing ready
+      const W = new T.Group(); W.position.set(-24, 0, 24); W.scale.setScalar(0.62); inner.add(W); const wa = o => { W.add(o); return o; };
+      const plank = woodHM(26, 2), iron = std('#2b2824', { metalness: 0.5, roughness: 0.6 }), wheelM = std('#4a3220', { roughness: 0.9 });
+      wa(box(26, 2.2, 13, plank, -6, 8, 0)); for (const s of [-1, 1]) wa(box(26, 3.4, 0.9, plank, -6, 10.6, s * 6.2)); for (const x of [-18.6, 6.6]) wa(box(0.9, 3.4, 13, plank, x, 10.6, 0));
+      for (const x of [-15, 3]) for (const s of [-1, 1]) { const wh = wa(cyl(4.2, 4.2, 1.3, wheelM, x, 4.2, s * 7.2, 12)); wh.rotation.x = Math.PI / 2; const rim = wa(mesh(new T.TorusGeometry(4.2, 0.35, 5, 14), iron, x, 4.2, s * 7.9)); void rim; wa(cyl(0.9, 0.9, 1.6, iron, x, 4.2, s * 7.4, 8)).rotation.x = Math.PI / 2; }
+      const bark = woodVM(4, 24); for (const [y, z] of [[11.5, -3.4], [11.5, 0], [11.5, 3.4], [14.2, -1.7], [14.2, 1.7]]) { const lg = wa(cyl(1.7, 1.7, 23, bark, -6, y, z, 9)); lg.rotation.z = Math.PI / 2; }
+      for (const s of [-1, 1]) { const sh = wa(box(16, 0.9, 0.9, std('#6b4a2a'), 14, 7.5, s * 4.2)); sh.rotation.z = 0.12; }
+      // the horse: body, neck and head, mane and tail, four legs, a collar and a little blanket
+      const coat = std('#7a5232', { roughness: 0.8 }), dark = std('#2a1c12', { roughness: 0.85 }), H = new T.Group(); H.position.set(30, 0, 0); H.rotation.y = Math.PI / 2; W.add(H);
+      const hb = sph(1, coat, 0, 19, 0, 14); hb.scale.set(5.2, 5.8, 11.5); H.add(hb);
+      for (const [x, z] of [[-3, 7.5], [3, 7.5], [-3, -7.5], [3, -7.5]]) { H.add(cyl(1.3, 1.0, 14, coat, x, 7, z, 7)); H.add(cyl(1.25, 1.35, 1.6, dark, x, 0.8, z, 7)); }
+      const nk = capsule(2.8, 2.3, 10, coat, 8); nk.position.set(0, 25, 9.5); nk.rotation.x = 0.75; H.add(nk);
+      const hd = sph(1, coat, 0, 31, 14.5, 10); hd.scale.set(2.1, 2.4, 4.4); hd.rotation.x = 0.8; H.add(hd);
+      for (const sx of [-1, 1]) H.add(mesh(new T.ConeGeometry(0.6, 2, 5), coat, sx * 1.2, 34.6, 12.4));
+      const mn = box(0.9, 10, 2.4, dark, 0, 28.5, 9.4); mn.rotation.x = 0.75; H.add(mn);
+      const tl = capsule(1.0, 0.4, 10, dark, 6); tl.position.set(0, 19, -12.5); tl.rotation.x = -0.4; H.add(tl);
+      const collar = mesh(new T.TorusGeometry(3.2, 0.9, 6, 14), std('#5a3a20', { roughness: 0.7 }), 0, 24.5, 7.6); collar.rotation.x = 0.75; H.add(collar);
+      const blanket = mesh(new T.CylinderGeometry(6, 6, 9, 12, 1, true, -1.1, 2.2), std(PAL.player.tunic, { roughness: 0.9, side: T.DoubleSide }), 0, 22, -1); blanket.rotation.x = Math.PI / 2; H.add(blanket);
     }
     if (b.kind === 'wall' && b.mat === 'thick') inner.scale.set(1, 1.45, 1); else if (b.kind === 'wall' && b.mat === 'stone') inner.scale.set(1, 1.15, 1);   // the castle ring gets taller as it grows
     inner.traverse(o => { if (o.isMesh && o.material && !info.mats.includes(o.material) && o.material.emissive) info.mats.push(o.material); });
@@ -1692,12 +1708,17 @@ const R3D = (() => {
     for (const k of ['basket', 'pack', 'berries', 'sack', 'logs', 'pick', 'sickle', 'barrow', 'stool']) if (tools[k]) { tools[k].userData.keep = true; tools[k].traverse(o => o.userData.keep = true); }
     if (m.cloak) m.cloak.userData.keep = true;
     if (kit === 'berserker' && tools.shieldGrip) L.hand.remove(tools.shieldGrip);
-    if (kit === 'longbow' && tools.bow) tools.bow.scale.setScalar(1.3);
+    if (kit === 'longbow' && tools.bow) tools.bow.scale.setScalar(1.62);   // (4D: a yew longbow about as tall as the archer, as the sheet draws it)
     if ((kit === 'crossbow' || kit === 'flame') && tools.bow) {   // the bow gives way to a crossbow, or to the fire tube and its tank
       tools.bow.children[0].visible = false; const gun = new T.Group(); gun.userData.keep = true; tools.bow.add(gun);
       if (kit === 'crossbow') { gun.add(box(1.1, 1.3, 13, m.wood, 0, 0, 3)); const arms = box(13, 0.7, 0.9, m.steel, 0, 0.4, 8.5); gun.add(arms); gun.add(box(0.2, 0.2, 9, m.string, 0, 0.5, 4.6)); }
       else { gun.add(cyl(0.9, 0.9, 15, std('#4d5359', { metalness: 0.7, roughness: 0.4 }), 0, 0, 5, 8)).rotation.x = Math.PI / 2; const fl = mesh(new T.ConeGeometry(2.6, 12, 8), new T.MeshBasicMaterial({ color: 0xffa030, transparent: true, opacity: 0.85 }), 0, 0, 18); fl.rotation.x = -Math.PI / 2; fl.visible = false; gun.add(fl); tools.flame = fl;
-        const tank = cyl(3.2, 3.2, 9, std('#6a6e74', { metalness: 0.7, roughness: 0.45 }), 0, 27, -5.2, 12); tank.userData.keep = true; body.add(tank); }
+        // (4D) a riveted copper fire-pot on the back with brass bands, a hose over the shoulder, and a small pilot flame at the nozzle
+        const copper = std('#b4683a', { metalness: 0.75, roughness: 0.35 }), brass = std('#d8b04a', { metalness: 0.8, roughness: 0.3 });
+        const tank = new T.Group(); tank.position.set(0, 27, -5.6); tank.add(cyl(3.3, 3.3, 10, copper, 0, 0, 0, 14)); tank.add(sph(3.3, copper, 0, 5, 0, 12)); for (const y of [-3.4, 3.4]) { const band = mesh(new T.TorusGeometry(3.35, 0.35, 5, 16), brass, 0, y, 0); band.rotation.x = Math.PI / 2; tank.add(band); }
+        tank.add(cyl(0.5, 0.5, 2.4, brass, 0, 8.8, 0, 6)); tank.traverse(o => { o.userData.keep = true; }); body.add(tank);
+        const hose = mesh(new T.TorusGeometry(5.2, 0.55, 5, 12, Math.PI * 0.9), std('#2b2420', { roughness: 0.8 }), 3.6, 29, -1.2); hose.rotation.set(0, Math.PI / 2, 0.4); hose.userData.keep = true; body.add(hose);
+        const pilot = mesh(new T.SphereGeometry(0.9, 8, 6), new T.MeshBasicMaterial({ color: 0xffb040 }), 0, 0, 13.2); pilot.userData.keep = true; gun.add(pilot); }
       gun.traverse(o => { o.userData.keep = true; });
     }
     // Phase 4C: the sheet's soldiers get figures of their own (on the archer's and maceman's frames)
@@ -2440,6 +2461,30 @@ const R3D = (() => {
     for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);   // the picture comes out upside down
     g.putImageData(im, 0, 0); iconCache.set(key, cv); return cv;
   }
+  // (4D: the flat view) a picture of a soldier's 3D figure in its team's colours, facing right, always at the same scale:
+  // CARD.span world units across the picture, the feet at CARD.foot pixels down. Used where the flat drawings have no
+  // figure of their own (the longbowman, crossbowman, flame trooper, berserker and the mounted knight).
+  const CARD = { size: 192, span: 120, aimY: 32 }; CARD.foot = CARD.size / 2 + CARD.aimY * Math.cos(0.7) * CARD.size / CARD.span;
+  const cardCache = new Map(); let cardCam = null, cardRT = null;
+  function unitCard(u) {
+    if (!available) return null; if (!ready) init();
+    const kit = u.kit || null, key = [u.type, kit, u.team, (u.pal && u.pal.tunic) || '', u.lord ? 'L' : ''].join('|');
+    if (cardCache.has(key)) return cardCache.get(key);
+    if (!iconScene) iconOf('u:spear');   // (makes the little picture studio)
+    if (!cardCam) { const h = CARD.span / 2; cardCam = new T.OrthographicCamera(-h, h, h, -h, 1, 4000); cardRT = new T.WebGLRenderTarget(CARD.size, CARD.size); cardRT.texture.encoding = T.sRGBEncoding; }
+    let obj = null;
+    try { const f = { kind: 'unit', type: u.type, kit, team: u.team, owner: u.owner, x: 0, y: 0, pal: u.pal, skin: u.skin || '#d9a57a', hair: u.hair || '#4a2e18', seed: 1, facing: 1, walkPhase: 0, look: u.look || { w: 1, h: 1 }, order: 'idle', lord: u.lord, mounted: u.mounted, horseHp: u.horseHp };
+      const md = personModel(f); md.root.rotation.y = Math.PI / 2; obj = md.root; } catch (e) { return null; }
+    iconScene.add(obj); obj.updateMatrixWorld(true);
+    const p = 0.7, d = 1000; cardCam.position.set(0, CARD.aimY + Math.sin(p) * d, Math.cos(p) * d); cardCam.lookAt(0, CARD.aimY, 0); cardCam.updateProjectionMatrix();
+    const S = CARD.size, old = renderer.getRenderTarget(), oc = renderer.getClearColor(new T.Color()), oa = renderer.getClearAlpha(), sh = renderer.shadowMap.enabled;
+    renderer.shadowMap.enabled = false; renderer.setRenderTarget(cardRT); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(iconScene, cardCam);
+    const px = new Uint8Array(S * S * 4); renderer.readRenderTargetPixels(cardRT, 0, 0, S, S, px);
+    renderer.setRenderTarget(old); renderer.setClearColor(oc, oa); renderer.shadowMap.enabled = sh; iconScene.remove(obj);
+    const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'), im = g.createImageData(S, S);
+    for (let y = 0; y < S; y++) im.data.set(px.subarray((S - 1 - y) * S * 4, (S - y) * S * 4), y * S * 4);
+    g.putImageData(im, 0, 0); const out = { img: cv, span: CARD.span, foot: CARD.foot, size: S }; cardCache.set(key, out); return out;
+  }
   // tests: how a unit's figure is posed right now
   function poseOf(u) { const md = unitModels.get(u.id); if (!md || !md.legs) return null; return { hipL: md.legs[0].hip.rotation.x, hipR: md.legs[1].hip.rotation.x, armR: md.arms[1].sh.rotation.x, bodyX: md.body.rotation.x, bodyY: md.body.position.y, heading: md.heading, horse: md.horse ? md.horse.legs[0].hip.rotation.x : null, animated: md.animated, flat: !!md.artModel, ghost: md.ghost ? md.ghost.visible : null, emis: md.mats[0] && md.mats[0].emissive ? md.mats[0].emissive.r : null }; }
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
@@ -2466,7 +2511,7 @@ const R3D = (() => {
   const waterInfo = () => { const off = m => m && m.normalMap ? [+m.normalMap.offset.x.toFixed(4), +m.normalMap.offset.y.toFixed(4)] : null; return { sea: off(seaMesh && seaMesh.material), river: off(riverMesh && riverMesh.material), pond: off(water && water.material), moat: off(moatWater), seaWave: waveU.value }; };
   // (4D: a loaded game: every person and building is made again)
   const resetModels = () => { for (const [, md] of unitModels) scene.remove(md.root); unitModels.clear(); for (const [, md] of bModels) { scene.remove(md.g); if (md.rubble) scene.remove(md.rubble); } bModels.clear(); joined.clear(); };
-  return { resetModels, lifeSpots, waterInfo, glassInfo, glassForce, glassFeed, debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
+  return { unitCard, resetModels, lifeSpots, waterInfo, glassInfo, glassForce, glassFeed, debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
 })();
 
 const speeches = [];

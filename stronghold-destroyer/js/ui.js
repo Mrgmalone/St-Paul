@@ -109,7 +109,9 @@ const UI = (() => {
     c.width = w * 2; c.height = h * 2; const g = c.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, w, h);
     const [kind, name] = id.split(':');
     // picture buttons: the sheet's art for units that have it, otherwise a photo of the 3D model (a stand-in in the same style)
-    if (big && (kind === 'b' || kind === 'u')) { const name2 = kind === 'u' && ATLAS.ready && ART_UNIT[name], f = name2 && ATLAS.frames[name2 + '/front'];
+    if (big && (kind === 'b' || kind === 'u')) { const file = ARTFILES.get(`art/${kind === 'b' ? 'buildings' : 'units'}/${name}.png`, true, () => paintIcon(c));   /* (a painted picture, when one has been added) */
+      if (file) { const sc = Math.min(w / file.width, h / file.height); g.drawImage(file, w / 2 - file.width * sc / 2, h / 2 - file.height * sc / 2, file.width * sc, file.height * sc); return; }
+      const name2 = kind === 'u' && ATLAS.ready && ART_UNIT[name], f = name2 && ATLAS.frames[name2 + '/front'];
       if (f) { const sc = Math.min((h - 6) / f.h, (w - 6) / f.w); g.drawImage(teamAtlas('player'), f.x, f.y, f.w, f.h, w / 2 - f.w * sc / 2, h - 3 - f.h * sc, f.w * sc, f.h * sc); return; }
       let pic = null; try { pic = R3D.available && R3D.isReady() && R3D.iconOf(kind + ':' + name); } catch (e) {} if (pic) { g.drawImage(pic, 0, 0, w, h); return; } }
     try { if (kind === 'b') iconBuilding(g, name, w, h); else if (kind === 'u') iconUnit(g, name, w, h); else if (kind === 'w') iconWeapon(g, name, w, h); else iconRes(g, name, w, h); } catch (e) {}

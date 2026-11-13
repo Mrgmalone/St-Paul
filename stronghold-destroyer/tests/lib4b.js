@@ -6,7 +6,7 @@ async function start(fac, opts = {}) {
   const errs = [], fails = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack || '').split('\n')[1]));
   const need = (ok, what) => { if (!ok) fails.push(what); };
   await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
-  await p.goto(env.GAME_REAL + (opts.start !== undefined ? '?start=' + opts.start + (opts.query ? '&' + opts.query : '') : opts.query ? '?' + opts.query : '')); await p.waitForTimeout(600);   // opts.start pins the starting place
+  await p.goto((opts.base || env.GAME_REAL) + (opts.start !== undefined ? '?start=' + opts.start + (opts.query ? '&' + opts.query : '') : opts.query ? '?' + opts.query : '')); await p.waitForTimeout(600);   // opts.start pins the starting place
   await p.evaluate(() => { window.__now = 0; window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); } }; window.__step(2); });
   await p.click(`.fac[data-fac="${fac}"]`); await p.click(`.fac[data-fac="${fac}"] .fgo`);
   await p.evaluate(() => { window.__step(3); document.getElementById('banner').style.display = 'none'; SD.setRaid(99999); REALM.rogueT = 1e9; for (const R of REALM.rivals) { R.raidT = 1e9; R.scoutT = 1e9; }   /* (no raids, bandits or scouts unless a check asks for them) */

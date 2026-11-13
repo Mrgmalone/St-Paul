@@ -22,6 +22,21 @@ const INSIDE = (() => {
     for (let i = 0; i < 12; i++) rect(g, 'rgba(0,0,0,0.12)', i * 42, 140, 2, 50);
     if (warm) { const glow = g.createRadialGradient(120, 120, 10, 120, 120, 220); glow.addColorStop(0, 'rgba(255,190,110,0.35)'); glow.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = glow; g.fillRect(0, 0, W, H); }
   }
+  // (4D) painted touches: a shaft of light from the window, darker corners, and a little grain in the paint
+  function finish(g, outdoor) {
+    if (!outdoor) { g.save(); g.globalCompositeOperation = 'lighter'; const sh = g.createLinearGradient(395, 50, 250, 190); sh.addColorStop(0, 'rgba(255,236,190,0.22)'); sh.addColorStop(1, 'rgba(255,236,190,0)');
+      g.fillStyle = sh; g.beginPath(); g.moveTo(364, 48); g.lineTo(426, 48); g.lineTo(330, 190); g.lineTo(190, 190); g.closePath(); g.fill(); g.restore(); }
+    const v = g.createRadialGradient(W * 0.42, H * 0.45, 60, W * 0.5, H * 0.5, W * 0.62); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(10,6,2,0.55)'); g.fillStyle = v; g.fillRect(0, 0, W, H);
+    const R = mulberry32(7); for (let i = 0; i < 900; i++) { g.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.05)'; g.fillRect(R() * W, R() * H, 2 + R() * 3, 1 + R() * 2); }
+  }
+  function outside(g, lvl, kind) {   // fields, the quarry and the orchard are outdoors: sky, far hills, grass
+    const sky = g.createLinearGradient(0, 0, 0, 120); sky.addColorStop(0, '#8fbfe8'); sky.addColorStop(1, '#f3e2b4'); g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,0.75)'; for (const [x, y, s] of [[80, 26, 1], [300, 18, 1.3], [420, 34, 0.8]]) { ell(g, 'rgba(255,255,255,0.8)', x, y, 26 * s, 9 * s); ell(g, 'rgba(255,255,255,0.8)', x + 18 * s, y - 6 * s, 18 * s, 9 * s); }
+    g.fillStyle = '#7f9e6a'; g.beginPath(); g.moveTo(0, 110); for (let x = 0; x <= W; x += 40) g.lineTo(x, 96 + Math.sin(x / 70) * 10); g.lineTo(W, 130); g.lineTo(0, 130); g.fill();
+    if (kind === 'quarry' || kind === 'ironmine') { g.fillStyle = kind === 'ironmine' ? '#7a4a3a' : '#9a948a'; g.beginPath(); g.moveTo(0, 30); g.lineTo(140, 20); g.lineTo(230, 50); g.lineTo(260, 120); g.lineTo(0, 130); g.fill(); g.fillStyle = 'rgba(0,0,0,0.18)'; for (let i = 0; i < 6; i++) g.fillRect(10 + i * 38, 40 + (i % 3) * 18, 30, 3); }
+    g.fillStyle = kind === 'quarry' || kind === 'ironmine' ? '#8a7a62' : '#6f9a46'; g.fillRect(0, 124, W, H - 124);
+    for (let i = 0; i < 60; i++) { g.fillStyle = 'rgba(40,70,20,0.35)'; g.fillRect((i * 37) % W, 128 + (i * 13) % 60, 2, 6); }
+  }
   const barrel = (g, x, y) => { rect(g, '#7a5430', x, y, 30, 38); rect(g, '#3a2a1a', x, y + 6, 30, 4); rect(g, '#3a2a1a', x, y + 28, 30, 4); };
   const logs = (g, x, y, n) => { for (let r = 0; r < n; r++) for (let k = 0; k < n - r; k++) { circ(g, '#8a6236', x + k * 22 + r * 11, y - r * 18, 10); circ(g, '#c9a46a', x + k * 22 + r * 11, y - r * 18, 6); } };
   const sack = (g, x, y) => { ell(g, '#d8c69a', x, y, 14, 18); rect(g, '#a88a5a', x - 4, y - 20, 8, 5); };
@@ -33,6 +48,12 @@ const INSIDE = (() => {
   const PROPS = {
     woodhut: (g, l) => { logs(g, 40, 150, 4); rect(g, '#9a7a4a', 150, 118, 60, 8); rect(g, '#cfd5da', 186, 96, 4, 26); /* saw horse and axe */ if (l >= 3) { anvil(g, 260, 118); forge(g, 300, 90); } },
     quarry: (g) => { for (let i = 0; i < 5; i++) rect(g, i % 2 ? '#a8a296' : '#948e84', 30 + i * 46, 118 - (i % 2) * 20, 42, 34); animal(g, 330, 140, '#7a5a3a', 0.9); },
+    ironmine: (g) => {   // timber props at the tunnel mouth, rails, and a cart of red ore
+      rect(g, '#2a1a12', 270, 46, 120, 84); rect(g, '#6b4a2a', 262, 40, 12, 92); rect(g, '#6b4a2a', 384, 40, 12, 92); rect(g, '#7a5532', 258, 34, 142, 12);
+      for (let i = 0; i < 2; i++) rect(g, '#5a5550', 150, 150 + i * 10, 260, 3); for (let i = 0; i < 9; i++) rect(g, '#5a3a20', 152 + i * 30, 148, 8, 18);
+      rect(g, '#4a4440', 190, 116, 74, 32); for (let i = 0; i < 8; i++) circ(g, i % 2 ? '#a0432a' : '#7a2e1c', 198 + i * 8, 114 - (i % 3) * 4, 7); for (const x of [200, 252]) circ(g, '#2b2824', x, 150, 7);
+      rect(g, '#cfd5da', 60, 120, 4, 34); rect(g, '#8a8f94', 50, 116, 24, 6); circ(g, '#ffd27a', 300, 60, 5);
+    },
     farm: (g) => { animal(g, 60, 140, '#f2ece0', 1); animal(g, 180, 145, '#5a3a24', 0.9); animal(g, 280, 155, '#e8b0b0', 0.6); for (let i = 0; i < 3; i++) { ell(g, '#f0e8d8', 330 + i * 24, 166, 8, 6); circ(g, '#d33', 336 + i * 24, 160, 2.5); } },
     stable: (g) => { for (let i = 0; i < 3; i++) rect(g, '#5a3a20', 20 + i * 110, 90, 8, 60); animal(g, 80, 132, '#6b4226', 1.1); rect(g, '#c9a648', 250, 128, 60, 24); },
     wheatfarm: (g) => { for (let i = 0; i < 6; i++) { rect(g, '#d8b450', 30 + i * 40, 100, 10, 50); rect(g, '#c09030', 26 + i * 40, 96, 18, 10); } sack(g, 300, 150); },
@@ -57,13 +78,25 @@ const INSIDE = (() => {
     stockpile: (g) => { logs(g, 40, 150, 3); for (let i = 0; i < 4; i++) rect(g, '#948e84', 200 + i * 34, 120, 30, 30); sack(g, 360, 150); },
     keep: (g, l) => { table(g, 60, 120, 220); rect(g, '#9b1c22', 300, 40, 50, 80); rect(g, '#d9a93a', 318, 60, 14, 30); }
   };
-  PROPS.church = PROPS.abbey = PROPS.chapel; PROPS.ironmine = PROPS.quarry;
+  // (4D) the church and the abbey each look their own: a rose window, rows of pews, an altar with candles; the abbey's tall arches
+  PROPS.church = (g) => { PROPS.chapel(g); circ(g, '#3a2a1a', 240, 46, 26); for (let i = 0; i < 8; i++) { g.fillStyle = ['#c0392b', '#2f63b0', '#d9a93a', '#3f8a3a'][i % 4]; g.beginPath(); g.moveTo(240, 46); g.arc(240, 46, 22, i * Math.PI / 4, (i + 1) * Math.PI / 4); g.fill(); }
+    rect(g, '#e8dcc0', 150, 112, 50, 8); for (const x of [156, 192]) { rect(g, '#f4ecd8', x, 96, 4, 16); circ(g, '#ffd27a', x + 2, 94, 3); } };
+  PROPS.abbey = (g) => { for (let i = 0; i < 4; i++) { const x = 30 + i * 110; rect(g, '#8a8378', x, 30, 18, 112); g.strokeStyle = '#6e685e'; g.lineWidth = 6; g.beginPath(); g.arc(x + 64, 74, 46, Math.PI, 0); g.stroke(); }
+    rect(g, '#c9a14a', 230, 52, 8, 52); rect(g, '#c9a14a', 214, 66, 40, 7); for (let r = 0; r < 2; r++) for (let i = 0; i < 2; i++) rect(g, '#6b4a2a', 50 + i * 230, 132 + r * 22, 150, 9); };
+  PROPS.keep = (g, l) => {   // the great hall: a hearth, a long table, a carved chair and the banners
+    rect(g, '#4a443c', 20, 56, 110, 86); rect(g, '#2a2420', 34, 80, 82, 62); const f = g.createRadialGradient(75, 126, 4, 75, 126, 40); f.addColorStop(0, '#ffe08a'); f.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = f; g.fillRect(36, 92, 78, 50);
+    table(g, 150, 120, 200); rect(g, '#5a3a20', 360, 70, 34, 72); rect(g, '#d9a93a', 364, 64, 26, 8);
+    for (const x of [170, 260]) { rect(g, '#9b1c22', x, 36, 40, 66); rect(g, '#d9a93a', x + 13, 52, 14, 26); } };
   function pic(kind, lvl) {
     if (!PROPS[kind]) return null;
+    // a painted picture of the inside, when one has been added (art/inside/<kind>.jpg), is used at every stage
+    if (typeof ARTFILES !== 'undefined' && ARTFILES.get('art/inside/' + kind + '.jpg', false, () => { shownKey = ''; })) return 'art/inside/' + kind + '.jpg';
     const key = kind + ':' + lvl; if (cache.has(key)) return cache.get(key);
     const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-    room(g, lvl, ['bakery', 'smithy', 'alehouse', 'tavern', 'keep', 'chapel', 'church', 'abbey'].includes(kind));
-    if (!isField(kind)) PROPS[kind](g, lvl); else { rect(g, '#7aa04a', 0, 120, W, 70); PROPS[kind](g, lvl); }
+    const outdoor = isField(kind) || kind === 'quarry' || kind === 'ironmine';
+    if (outdoor) { outside(g, lvl, kind); PROPS[kind](g, lvl); }
+    else { room(g, lvl, ['bakery', 'smithy', 'alehouse', 'tavern', 'keep', 'chapel', 'church', 'abbey'].includes(kind)); PROPS[kind](g, lvl); }
+    finish(g, outdoor);
     const url = c.toDataURL('image/jpeg', 0.8); cache.set(key, url); return url;
   }
   let shownKey = '';

@@ -201,6 +201,7 @@ document.getElementById('peoplePop').addEventListener('click', e => {
   document.getElementById('peoplePop').hidden = true; centerOn(u.x, u.y - 30); selectOnly([u]); showCard(u);
 });
 document.getElementById('personPop').addEventListener('click', e => { if (e.target.closest('[data-card="close"]')) { document.getElementById('personPop').hidden = true; cardOf = null; } });
+{ const pb = document.getElementById('btnPeople'); ARTFILES.get('art/ui/people-face.png', true, pic => { const svg = pb && pb.querySelector('svg'); if (!svg) return; const c = document.createElement('canvas'); c.width = c.height = 68; c.style.width = c.style.height = '34px'; c.getContext('2d').drawImage(pic, 0, 0, 68, 68); svg.replaceWith(c); }); }   // (a painted face, when one has been added)
 document.getElementById('btnPeople').onclick = () => { if (!started) return; const p = document.getElementById('peoplePop'); if (p.hidden) showPeople(); else p.hidden = true; };
 
 // ---------- needs alerts: every person and industry; the most urgent is spoken ----------

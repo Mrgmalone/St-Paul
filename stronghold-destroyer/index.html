@@ -49,7 +49,7 @@
   </div></div>
   <canvas id="mini" title="Map: click or drag to move the view"></canvas>
   <div id="cmdbar">
-    <button id="btnPeople" title="Your people: who they are, their work and their worries" aria-label="Your people"><svg viewBox="0 0 40 40" width="34" height="34"><circle cx="20" cy="20" r="17" fill="#e8c9a0" stroke="#5a3a1a" stroke-width="2"/><circle cx="14" cy="17" r="2.4" fill="#3a2414"/><circle cx="26" cy="17" r="2.4" fill="#3a2414"/><path d="M12 25 Q20 32 28 25" fill="none" stroke="#3a2414" stroke-width="2.4" stroke-linecap="round"/><path d="M5 15 Q8 3 20 3 Q32 3 35 15 Q28 9 20 9 Q12 9 5 15Z" fill="#6a4424"/></svg><span>People</span></button>
+    <button id="btnPeople" title="Your people: who they are, their work and their worries" aria-label="Your people"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><defs><radialGradient id="pfSkin" cx="42%" cy="38%" r="65%"><stop offset="0" stop-color="#f2d2ac"/><stop offset=".7" stop-color="#d9a77a"/><stop offset="1" stop-color="#a8744e"/></radialGradient><linearGradient id="pfHood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f6db0"/><stop offset="1" stop-color="#1f3d6e"/></linearGradient><linearGradient id="pfGold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a6a18"/><stop offset=".5" stop-color="#f0c75e"/><stop offset="1" stop-color="#9a6a18"/></linearGradient></defs><path d="M3 40 Q4 29 13 27 L27 27 Q36 29 37 40Z" fill="url(#pfHood)" stroke="#142846" stroke-width="1"/><path d="M14 27 L20 33 L26 27" fill="none" stroke="url(#pfGold)" stroke-width="2"/><path d="M8 21 Q7 6 20 5 Q33 6 32 21 Q32 27 27 29 L13 29 Q8 27 8 21Z" fill="url(#pfHood)" stroke="#142846" stroke-width="1"/><ellipse cx="20" cy="19.5" rx="8.6" ry="9.6" fill="url(#pfSkin)" stroke="#7a4e2c" stroke-width=".8"/><path d="M11.6 15.5 Q14 9.6 20 9.8 Q26 9.6 28.4 15.5 Q25 12.6 20 13 Q15 12.6 11.6 15.5Z" fill="#6a4424"/><path d="M14.2 17.2 Q16 16.1 17.8 17" fill="none" stroke="#4a2e18" stroke-width="1.1" stroke-linecap="round"/><path d="M22.2 17 Q24 16.1 25.8 17.2" fill="none" stroke="#4a2e18" stroke-width="1.1" stroke-linecap="round"/><ellipse cx="16.1" cy="19.2" rx="1.6" ry="1.2" fill="#fff"/><ellipse cx="23.9" cy="19.2" rx="1.6" ry="1.2" fill="#fff"/><circle cx="16.3" cy="19.3" r=".9" fill="#2c1a0e"/><circle cx="24.1" cy="19.3" r=".9" fill="#2c1a0e"/><path d="M20 19.6 Q19.2 22.4 18.6 23 Q19.6 23.6 20.8 23.1" fill="none" stroke="#9a6440" stroke-width=".9" stroke-linecap="round"/><path d="M16.8 25.2 Q20 27.6 23.2 25.2" fill="none" stroke="#7a3a24" stroke-width="1.2" stroke-linecap="round"/><ellipse cx="14.2" cy="23" rx="1.8" ry="1.1" fill="#e48a74" opacity=".45"/><ellipse cx="25.8" cy="23" rx="1.8" ry="1.1" fill="#e48a74" opacity=".45"/><path d="M12.6 14 Q15 11.2 18 11" fill="none" stroke="#fff" stroke-width=".9" opacity=".35" stroke-linecap="round"/></svg><span>People</span></button>
     <div id="selbox"><span id="selLabel">No soldiers selected</span><div id="selSum"></div><div id="selBar"><i></i></div></div>
     <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnBell" class="sm" hidden title="Ring the bell: every soldier comes home to heal, then walks back to its spot">&#128276; Bell</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button><button id="camAdd" class="sm tonly" title="Add mode: tap people to add them to your group">&#65291; Add</button><button id="camHome" class="sm" title="Back to your castle (Space)">&#8962; Castle</button></div>
   </div>
@@ -216,6 +216,7 @@
 <script src="sprites/atlas.js"></script>
 <script src="sprites/materials.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/artfiles.js"></script>
 <script src="js/core.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/ground.js"></script>
@@ -243,8 +244,9 @@
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/layout4c.js"></script>
-<script src="js/world3d.js"></script>
 <script src="js/trophy.js"></script>
+<script src="js/world3d.js"></script>
+<script src="js/flat2d.js"></script>
 <script src="js/main.js"></script>
 <script src="js/save.js"></script>
 </body>

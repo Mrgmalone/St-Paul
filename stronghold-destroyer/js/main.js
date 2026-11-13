@@ -28,7 +28,9 @@ function setView(want3d) {
   R3D.setActive(want3d);
   document.body.classList.toggle('v3d', R3D.active);
   if (R3D.active && cam.z < 1.05) { const cx = cam.x + vw / cam.z / 2, cy = cam.y + vh / cam.z / 2; cam.z = 1.15; centerOn(cx, cy); }
-  if (!R3D.available) { const n = document.getElementById('banner'); n.innerHTML = 'This game needs 3D graphics (WebGL), which this browser has turned off.'; n.style.opacity = 1; }
+  if (!R3D.available && want3d && started) showBanner('3D graphics are turned off in this browser, so the game shows the flat view.', 4);
+  if (!R3D.active && cam.z < minZoom()) cam.z = minZoom();
+  if (typeof markView === 'function') markView();
   resize();
 }
 
@@ -187,7 +189,7 @@ function frame(now) {
 
 function render() {
   if (R3D.active) { R3D.render(ctx, frameDt); drawWeatherFx(ctx); return; }
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);   // no 3D graphics: nothing to draw
+  render2D();   // the flat view (Settings: View, or V), and the view for browsers without 3D graphics
 }
 
 // ---------- start ----------
@@ -291,7 +293,7 @@ UI.paintIcons(); UI.drawMini();
     b.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') setTimeout(() => { L.hidden = true; }, 1400); });
   });
 })();
-setView(true);
+{ let pref = '3d'; try { pref = localStorage.getItem('sd-view') || '3d'; } catch (e) {} setView(pref !== '2d'); }   // (4D: the flat view is back; the 3D view is the default)
 updateHud();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
