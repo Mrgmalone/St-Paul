@@ -55,23 +55,39 @@ const FACTION_BASE = { sHp: 1, sDmg: 1, sSpeed: 1, train: 1, gather: 1, carry: 1
 // need: what it takes to grow INTO this stage. people, mood (happiness), food are checked; stone and iron are
 // checked and then spent (they become the new walls); buildings must be standing and finished.
 // grow: how many squares the castle grows in every direction; wall: the castle ring's material.
+// Phase 4D (Gerald: far too high before): these are the EASY numbers. Medium and Hard multiply people, food, stone and
+// iron by STAGE_PACE below and ask a little more happiness. The rivals grow by the same table at the same difficulty.
+// (Before Phase 4D: stage 2 people 12, happiness 50, food 150, 3 houses; stage 3 people 22, 55, food 300, stone 150, 5 houses;
+// stage 4 people 35, 60, food 500, stone 300, iron 80; stage 5 people 50, 65, food 800, stone 500, iron 200.)
 const STAGES = [
   { n: 1, name: 'Shack', grow: 0, wall: 'wood', keepHp: 1500,
     unlock: { units: ['civ', 'spear', 'archer'],
       buildings: ['house', 'farm', 'wheatfarm', 'woodhut', 'stockpile', 'granary', 'wall', 'gate', 'gtower', 'pit', 'poleturner', 'bowyer', 'armory', 'garden', 'alehouse', 'waterpot'] } },
   { n: 2, name: 'Homestead', grow: 2, wall: 'brick', keepHp: 2200,
-    need: { people: 12, mood: 50, food: 150, buildings: { house: 3, woodhut: 1, farmAny: 1 } },
+    need: { people: 8, mood: 35, food: 80, buildings: { house: 2, woodhut: 1, farmAny: 1 } },
     unlock: { units: [], buildings: ['quarry', 'tavern', 'brewery', 'hopfarm', 'highwall', 'stairs', 'lookout', 'chapel', 'stocks', 'moat', 'mill', 'apothecary'] } },
   { n: 3, name: 'Hold', grow: 3, wall: 'stone', keepHp: 3200,
-    need: { people: 22, mood: 55, food: 300, stone: 150, buildings: { house: 5, quarry: 1, tavern: 1 } },
+    need: { people: 16, mood: 40, food: 200, stone: 100, buildings: { house: 4, quarry: 1, tavern: 1 } },
     unlock: { units: ['sword', 'maceman', 'ballista', 'knight'], buildings: ['smithy', 'ironmine', 'market', 'bakery', 'stower', 'school', 'engineerhut', 'stable', 'vineyard', 'orchard', 'church'] } },
   { n: 4, name: 'Castle', grow: 2, wall: 'thick', keepHp: 4500,
-    need: { people: 35, mood: 60, food: 500, stone: 300, iron: 80, buildings: { smithy: 1, market: 1, mill: 1, bakery: 1 } },
+    need: { people: 30, mood: 45, food: 250, stone: 360, iron: 70, buildings: { smithy: 1, market: 1, mill: 1, bakery: 1 } },
     unlock: { units: ['ram', 'catapult'], buildings: ['roundtower', 'greattower', 'abbey'] } },
   { n: 5, name: 'Stronghold', grow: 3, wall: 'thick', keepHp: 6500,
-    need: { people: 50, mood: 65, food: 800, stone: 500, iron: 200, buildings: { school: 1, stower: 2 } },   // the school must stand before the Stronghold
+    need: { people: 42, mood: 50, food: 400, stone: 600, iron: 180, buildings: { school: 1, stower: 2, church: 1 } },   // the school must stand before the Stronghold
     unlock: { units: ['trebuchet'], buildings: [] } }
 ];
+
+// how much more Medium and Hard ask than Easy, growing with each stage so the later stages stretch out more: for stage n
+// (2 to 5) food, stone and iron are multiplied by  mul + step x (n - 2)  (rounded), happiness rises by 'mood' points, and
+// people and the counted buildings (houses, stone towers) rise by half as much. (People rise less because more people
+// also means more workers, which makes the goods come faster: the automatic test games showed that.)
+//   Medium: stage 2 x1.15, stage 3 x1.4, stage 4 x1.65, stage 5 x1.9.   Hard: x1.3, x1.75, x2.2, x2.65.
+const STAGE_PACE = { easy: { mul: 1, step: 0, mood: 0 }, medium: { mul: 1.15, step: 0.25, mood: 3 }, hard: { mul: 1.3, step: 0.45, mood: 6 } };
+const STAGE_COUNTED = ['house', 'stower'];
+// the rivals grow by the same table times this, at every difficulty (their difficulty is the speed of their economy,
+// RIVALS.pace), which keeps their growth about where it was before Phase 4D, so lowering your stages does not make
+// their raids come stronger sooner
+const RIVAL_STAGE_MUL = 1.6;
 
 // ---------- wages and taxes ----------
 // wages: gold each soldier is paid every minute. Unpaid soldiers make the people unhappy until the gold is found.

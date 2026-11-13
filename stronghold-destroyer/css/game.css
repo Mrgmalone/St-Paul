@@ -477,3 +477,31 @@ button,#catBar,#cmdbar,#side,#top{touch-action:manipulation}
 #menuPop .scrollRow .sl{width:100%;color:var(--gold)!important;min-width:0}
 #menuPop .scrollRow .sbtn{min-width:84px;min-height:48px;flex:1 1 0;text-align:center;padding:6px 10px}
 #menuPop .scrollRow > span:last-child{width:100%;font-size:14px}
+/* ===================== Phase 4D step D1: the trophy (just below the Settings gear) and its panel ===================== */
+#btnTrophy{position:absolute;left:10px;top:8px;z-index:6;width:56px;height:56px;min-width:56px;min-height:56px;padding:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 40% 35%,#3a2f1a,#1d1810);border:2px solid var(--gold);box-shadow:0 3px 10px rgba(0,0,0,.6)}
+#btnTrophy[hidden]{display:none}
+#btnTrophy[aria-expanded="true"]{background:radial-gradient(circle at 40% 35%,#5a4a22,#2a2212);outline:3px solid #ffe08a}
+#alertBar{top:72px}
+#trophyPop{position:absolute;left:10px;top:72px;width:min(560px,92vw);max-height:calc(100% - 90px);overflow-y:auto;z-index:9;padding:16px 18px!important;background:rgba(18,16,14,.98)!important;color:#fff;font-size:19px;line-height:1.35}
+#trophyPop h3{font-size:20px;color:#ffd77a;margin:0 44px 10px 0;letter-spacing:1px}
+#trophyPop .tnext{font-size:19px;margin:0 0 8px;color:#fff}
+#trophyPop .ttab{width:100%;border-collapse:collapse;font-size:19px}
+#trophyPop .ttab th{font-size:15px;color:#ffd77a;text-align:left;padding:4px 6px;border-bottom:1px solid rgba(255,215,122,.5)}
+#trophyPop .ttab td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.12);color:#fff}
+#trophyPop .ttab td:nth-child(2),#trophyPop .ttab td:nth-child(3){font-weight:700;text-align:center}
+#trophyPop .ttab tr.ok td{color:#c9ffd2}
+#trophyPop .ttab tr.no td:first-child{color:#fff}
+#trophyPop .tk{font-size:24px;text-align:center;width:52px}
+#trophyPop tr.ok .tk{color:#5fe07a} #trophyPop tr.no .tk{color:#ff8a7a}
+#trophyPop .tdo{margin:12px 0 4px;font-size:19px;color:#fff;background:rgba(255,215,122,.12);border-left:4px solid #ffd77a;padding:8px 10px;border-radius:6px}
+#trophyPop .tsm{font-size:15px;color:#e8dcc0;margin:6px 0 0}
+#trophyPop .tfinal{font-size:21px;color:#fff;line-height:1.4}
+#trophyPop .xbtn{position:absolute;right:10px;top:10px}
+@media (max-width:600px), (max-height:500px){
+  #btnTrophy{width:48px;height:48px;min-width:48px;min-height:48px;left:6px;top:6px}
+  #btnTrophy svg{width:28px;height:28px}
+  #trophyPop{left:6px!important;right:6px!important;top:60px!important;width:auto!important;font-size:17px;max-height:calc(100% - 70px)!important}
+  #trophyPop .ttab,#trophyPop .tdo{font-size:17px}
+}
+@media (max-width:600px){ #tips{left:62px} }

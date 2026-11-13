@@ -112,7 +112,7 @@ let frameNo = 0, lastDraw = 0, last = performance.now(), time = 0, lastSel = 0, 
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   // reading a menu (help, mood, goods, a building's panel) pauses the game, unless enemies are close
-  menuT -= dt; if (menuT <= 0) { menuT = 0.25; const open = started && !won && (!document.getElementById('help').classList.contains('hide') || ['menuPop', 'moodPop', 'goodsPop', 'storePop', 'peoplePop', 'personPop'].some(id => !document.getElementById(id).hidden));
+  menuT -= dt; if (menuT <= 0) { menuT = 0.25; const open = started && !won && (!document.getElementById('help').classList.contains('hide') || ['menuPop', 'moodPop', 'goodsPop', 'storePop', 'peoplePop', 'personPop', 'stagePop', 'trophyPop'].some(id => { const el = document.getElementById(id); return el && !el.hidden; }));   /* (4D: the trophy and stage boxes pause too) */
     menuPause = open && !enemiesClose(); document.getElementById('menuNote').hidden = !menuPause || paused; }
   const halted = paused || menuPause;
   if (started && IND()) { INSIDE.update(); citizensFrame(); }   // the inside picture behind an open building box (shown while paused too)

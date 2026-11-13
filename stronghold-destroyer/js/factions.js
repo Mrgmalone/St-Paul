@@ -33,7 +33,7 @@ let sellT = 0;
 function sellSurplus(dt) {
   const ev = myRule('sellEvery', 0); if (!ev) return;
   if ((sellT += dt) < ev) return; sellT = 0;
-  const above = myRule('sellAbove', 200), lot = myRule('sellLot', 10), g = myRule('sellGold', 3);
+  const above = Math.max(myRule('sellAbove', 200), nextStageFood() + 20), lot   /* (4D: what the next stage needs is kept back) */ = myRule('sellLot', 10), g = myRule('sellGold', 3);
   const lots = Math.floor((res.food - above) / lot); if (lots <= 0) return;
   spendFood(lots * lot); res.gold += lots * g;
   const k = playerKeep(); if (k) floatText(k.x, k.y0 - 40, `+${lots * g} gold: ${lots * lot} spare food sold`, '#f2d27a');

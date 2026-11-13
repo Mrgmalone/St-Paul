@@ -2551,12 +2551,12 @@ document.getElementById('leftClose').onclick = () => { document.getElementById('
     win: () => { $('win').style.display = 'none'; }
   };
   for (const [id, close] of Object.entries(closers)) {
-    const el = id === 'help' || id === 'win' ? $(id).querySelector('.box') : $(id);
+    const el = id === 'help' || id === 'win' ? $(id).querySelector('.box') : $(id); if (!el) continue;   /* (the trophy panel is made later and carries its own X) */
     const add = () => { if (el.querySelector(':scope > .xbtn')) return; const x = document.createElement('button'); x.className = 'xbtn'; x.type = 'button'; x.dataset.close = id; x.setAttribute('aria-label', 'Close'); x.title = 'Close'; x.innerHTML = '&times;'; el.prepend(x); };
     add(); new MutationObserver(add).observe(el, { childList: true });
   }
   // the box closes the moment the X is pressed, even if the box redraws itself in between
-  const hit = e => { const x = e.target.closest && e.target.closest('.xbtn[data-close]'); if (!x) return; e.stopPropagation(); e.preventDefault(); if (e.type === 'click' && e.detail > 0) return; closers[x.dataset.close](); try { AudioSys.ui('select'); } catch (er) {} };
+  const hit = e => { const x = e.target.closest && e.target.closest('.xbtn[data-close]'); if (!x || !closers[x.dataset.close]) return; e.stopPropagation(); e.preventDefault(); if (e.type === 'click' && e.detail > 0) return; closers[x.dataset.close](); try { AudioSys.ui('select'); } catch (er) {} };
   document.addEventListener('pointerdown', hit, true); document.addEventListener('click', hit, true);
 })();
 function enemiesClose() {
@@ -2574,3 +2574,4 @@ function setPaused(want) {
 document.getElementById('btnPause').onclick = () => setPaused(!paused);
 document.getElementById('btnResume').onclick = () => setPaused(false);
 let camSpin = 0, zoomAnim = null; const camVel = { x: 0, y: 0 };
+    trophyPop: () => { if (typeof closeTrophy === 'function') closeTrophy(); else $('trophyPop').hidden = true; },

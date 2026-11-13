@@ -88,7 +88,7 @@ function rivalTick(R, dt) {
   R.res.food -= people.length * 2 * dt / 60; if (R.res.food < 0) R.res.food = 0;
   R.res.gold += people.length * 1 * p * dt / 60;
   // Cy Young sell their spare food for gold
-  const sa = facRule(R.fac, 'sellAbove', 0); if (sa && R.res.food > sa) { const lots = Math.floor((R.res.food - sa) / 10); R.res.food -= lots * 10; R.res.gold += lots * facRule(R.fac, 'sellGold', 3); }
+  const sa = facRule(R.fac, 'sellAbove', 0) && Math.max(facRule(R.fac, 'sellAbove', 0), nextStageFood(R) + 20); if (sa && R.res.food > sa) { const lots = Math.floor((R.res.food - sa) / 10); R.res.food -= lots * 10; R.res.gold += lots * facRule(R.fac, 'sellGold', 3); }
   // build: the next thing on this stage's plan (and the stages before) it does not have yet
   if ((R.placeT -= dt) <= 0) { R.placeT = 10 / p; rivalBuild(R); }
   // more workers while there is room and food
@@ -97,7 +97,7 @@ function rivalTick(R, dt) {
   // soldiers
   if ((R.trainT -= dt) <= 0) { R.trainT = 14 / p; rivalTrain(R); }
   // grow a stage when the same needs as yours are met
-  if (R.stage < STAGES.length) { const rows = needRows(R.stage + 1, rivalHave(R)); if (rows.length && rows.every(r => r.ok)) growRival(R); }
+  if (R.stage < STAGES.length) { const rows = needRows(R.stage + 1, rivalHave(R), true); if (rows.length && rows.every(r => r.ok)) growRival(R); }
   // raids (never the trading friend)
   if (!R.friend && (R.raidT -= dt) <= 0) rivalRaid(R);
 }
@@ -146,7 +146,7 @@ function rivalTrain(R) {
 }
 function growRival(R) {
   const st = STAGES[R.stage], q = st.need || {};
-  R.res.stone -= q.stone || 0; R.res.iron -= q.iron || 0; R.stage = st.n;
+  { const mul = stageMul(st.n, true); R.res.stone -= Math.round((q.stone || 0) * mul); R.res.iron -= Math.round((q.iron || 0) * mul); } R.stage = st.n;   /* (the same table and difficulty as yours, times RIVAL_STAGE_MUL) */
   const k = R.keep; k.stage = R.stage; k.maxHp = st.keepHp; k.hp = Math.min(k.maxHp, k.hp + st.keepHp * 0.4); k.name = `${R.name}'s ${st.name}`;
   k.archerY = [0, 128, 92, 86, 110, 130][R.stage]; k.topH = [0, 125, 96, 92, 120, 140][R.stage];
   const n0 = floats.length; raiseRing(k, R.stage, R.team, { owner: R.id, fac: R.fac }); floats.length = n0;
