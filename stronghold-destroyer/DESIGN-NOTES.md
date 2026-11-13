@@ -82,7 +82,7 @@ game (`?testArmy=1`). Steps were built in order B1 to B8 and saved one by one.
   Rest the farms (their workers wait by the fire, no penalty) or sell food.
 - Alehouse (stage 1, 1 person, brews from wheat, serves 8) and tavern (Homestead, serves 15). Price Cheap / Fair / Dear:
   mood +10 / +8 / -6 at full cover; 0.5 / 1 / 1.8 gold per ale drunk; cheap ale makes some workers drunk (half speed, 30 s).
-  In wartime the price goes up a step by itself.
+  In wartime the price goes up half a step by itself (a little more gold, a little grumbling).
 - Feast (Hold): never by itself. Needs 10 grapes (Vineyard), 10 apples (Orchard), 4 chickens, 2 turkeys, 1 cow, 1 sheep, and
   gold of at least 200 and more than all the taxes gathered this game (1.1x). +40 mood for 6 minutes, nothing upsets them,
   twice the work.
@@ -101,8 +101,8 @@ game (`?testArmy=1`). Steps were built in order B1 to B8 and saved one by one.
 quarry's ox cart is a group; each wants a swordsman, spearman or archer (never a flamethrower). The box shows "Group one
 needs a soldier" with an Escort button; a soldier idle for a minute joins a group by himself; your own order takes him off.
 
-**B3 Citizens** (`js/citizens.js`): citizens grow in houses (each house and the keep raise one at a time, 3 to 5 minutes)
-and cannot be bought; the killed are replaced the same way; new ones go to work by themselves; every building gets one
+**B3 Citizens** (`js/citizens.js`): citizens grow in houses (each house and the keep raise one at a time, 3 to 5 minutes,
+until the houses are 85% full, since fuller counts as crowded) and cannot be bought; the killed are replaced the same way; new ones go to work by themselves; every building gets one
 worker before any gets a second; jobless citizens gather within 750 points of the keep; 3 study while the school teaches.
 People tab (face button, bottom left): counts, growing up, in school, work, everyone; scrolls; pauses the game. Quick tap:
 the trade's icon (a soldier: name, stars, health). Hold 1 second: the person speaks and his card opens (happiness and why,
