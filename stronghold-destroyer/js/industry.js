@@ -408,8 +408,10 @@ function updateIndustry(dt) {
 function quarryPairs() {
   for (const q of mineDone('quarry')) {
     const crew = units.filter(u => u.job === q && !u.dead && u.type === 'civ').sort((a, b) => a.id - b.id), carts = oxenOf(q);
-    for (const u of crew) { const c = u.cartPal; if (c && (c.dead || c.home !== q || (c.sub !== 'haul' && edgeDist(c, q) < 30))) { u.cartPal = null; u.path = []; u.order = 'idle'; } }
-    const free = crew.slice(1).filter(u => !u.cartPal && !(u.breakUntil > time));
+    for (const u of crew) { const c = u.cartPal; if (!c) continue; if (c.sub === 'back') u.palBack = true;
+      /* home again: when the cart stops at the quarry, or (when it loads at once and sets off again) when it starts its next trip */
+      if (c.dead || c.home !== q || (c.sub !== 'haul' && edgeDist(c, q) < 30) || (u.palBack && c.sub === 'haul' && edgeDist(c, q) < 70)) { u.cartPal = null; u.palBack = false; u.palRest = time + 15; u.path = []; u.order = 'idle'; } }
+    const free = crew.slice(1).filter(u => !u.cartPal && !(u.breakUntil > time) && !(u.palRest > time));   /* back from a trip: cut stone a while first */
     for (const c of carts) { if (c.sub !== 'haul') continue; const pals = crew.filter(u => u.cartPal === c).length;
       for (const u of free.splice(0, Math.max(0, 2 - pals))) { u.cartPal = c; u.order = 'craft'; u.crafting = null; u.path = []; u.repath = 0; } }
   }
@@ -437,6 +439,6 @@ function updateEngineers(dt) {
     if (e.attackAnim === 0) { e.attackAnim = 0.001; AudioSys.play('hammer', e.x, e.y); }
     tb.t += dt * workMul();
     if (tb.t >= tb.dur) { e.trebBuild = null; const f = nearestFree(Math.floor(hut.x1 / TILE) + 1, Math.floor(hut.y1 / TILE) + 1);
-      const t = makeUnit('player', 'trebuchet', f ? f.c * TILE + 16 : hut.x, f ? f.r * TILE + 16 : hut.y1 + 30); floatText(t.x, t.y - 70, 'Trebuchet built by your engineer', '#9fe8a8'); AudioSys.ui('ready'); }
+      const t = makeUnit('player', 'trebuchet', f ? f.c * TILE + 16 : hut.x, f ? f.r * TILE + 16 : hut.y1 + 30); floatText(t.x, t.y - 70, 'Trebuchet built by your engineer', '#9fe8a8'); AudioSys.ui('ready'); const rp = rallyFor('trebuchet'); if (rp) commandMove([t], rp.x, rp.y); }   /* to the siege rally flag */
   }
 }

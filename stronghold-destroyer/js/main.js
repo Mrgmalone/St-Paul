@@ -3,17 +3,19 @@
 // Loaded in order by index.html; all files share one global scope.
 
 // ---------- rally points: where new soldiers, and new civilians and rams, gather ----------
-const rally = { army: null, town: null }; let settingRally = null;
+const rally = { army: null, town: null, siege: null }; let settingRally = null;   /* three flags: army, citizens (town), siege */
+const RALLY_NAME = { army: 'Army', town: "Citizens'", siege: 'Siege' };
 function rallyFor(kind) {
-  const k = keep, which = (kind === 'civ' || MACHINE[kind]) ? 'town' : 'army';
+  const k = keep, which = kind === 'civ' ? 'town' : MACHINE[kind] ? (IND() ? 'siege' : 'town') : 'army';   /* (the old game kept rams with the town) */
   return rally[which] || { x: k.x1 + 70, y: k.y1 - 10 };
 }
-function startRally(which) { if (!started) return; settingRally = settingRally === which ? null : which; placing = null; showBanner(settingRally ? `Click the ground where ${which === 'army' ? 'new soldiers' : 'new civilians and rams'} should gather. Right-click or Esc cancels.` : 'Rally point unchanged.', 3.5); rallyButtons(); }
-function setRallyAt(sx, sy) { const w = toWorld(sx, sy); if (!w || w.x < 20 || w.y < 20 || w.x > MW - 20 || w.y > MH - 20) return; rally[settingRally] = { x: w.x, y: w.y }; markers.push({ x: w.x, y: w.y, t: 0, col: '255,230,120' }); showBanner(`${settingRally === 'army' ? 'Army' : 'Town'} rally point set.`, 2); AudioSys.ui('place'); settingRally = null; rallyButtons(); }
-function rallyButtons() { document.getElementById('rallyArmy').classList.toggle('on', settingRally === 'army'); document.getElementById('rallyTown').classList.toggle('on', settingRally === 'town'); }
+function startRally(which) { if (!started) return; settingRally = settingRally === which ? null : which; placing = null; showBanner(settingRally ? `Click the ground where ${which === 'army' ? 'new soldiers' : which === 'siege' ? 'new siege engines' : IND() ? 'new citizens' : 'new civilians and rams'} should gather. Right-click or Esc cancels.` : 'Rally point unchanged.', 3.5); rallyButtons(); if (settingRally && typeof orderMode !== 'undefined' && orderMode) { orderMode = null; orderRec = null; orderButtons(); } }
+function setRallyAt(sx, sy) { const w = toWorld(sx, sy); if (!w || w.x < 20 || w.y < 20 || w.x > MW - 20 || w.y > MH - 20) return; rally[settingRally] = { x: w.x, y: w.y }; markers.push({ x: w.x, y: w.y, t: 0, col: '255,230,120' }); showBanner(IND() ? `${RALLY_NAME[settingRally]} rally flag set.` : `${settingRally === 'army' ? 'Army' : 'Town'} rally point set.`, 2); AudioSys.ui('place'); settingRally = null; rallyButtons(); }
+function rallyButtons() { document.getElementById('rallyArmy').classList.toggle('on', settingRally === 'army'); document.getElementById('rallyTown').classList.toggle('on', settingRally === 'town'); document.getElementById('rallySiege').classList.toggle('on', settingRally === 'siege'); }
 document.getElementById('rallyArmy').onclick = () => startRally('army');
 document.getElementById('rallyTown').onclick = () => startRally('town');
-document.getElementById('sendRally').onclick = () => { const rp = rallyFor('sword'), sold = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'civ' && !isMachine(u) && !u.onWall); if (!sold.length) return; commandMove(sold, rp.x, rp.y); showBanner(`${sold.length} soldiers are marching to the rally point.`, 2.5); };
+document.getElementById('rallySiege').onclick = () => startRally('siege');
+document.getElementById('sendRally').onclick = () => { const rp = rallyFor('sword'), sold = units.filter(u => u.team === 'player' && !u.dead && u.type !== 'civ' && !isMachine(u) && !u.onWall); if (!sold.length) return; commandMove(sold, rp.x, rp.y); noteMarch(sold, rp.x, rp.y); showBanner(`${sold.length} soldiers are marching to the rally point.`, 2.5); };
 function goHome() { const k = playerKeep(); if (k) centerOn(k.x + 40, k.y - 20); }
 document.getElementById('camHome').onclick = goHome;
 let outlinesOn = true;
@@ -147,7 +149,7 @@ function frame(now) {
   separate();
   curTeam = 'player';
   if (won && arrows.length) arrows.length = 0;   /* the game is over: nothing lands any more, so nothing stays in the air */
-  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); updateCitizens(dt); updateSoldiers(dt); updateFireRepair(dt); updateFog(dt); updateRivals4b(dt); updateAdvisor(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); updateCitizens(dt); updateSoldiers(dt); updateFireRepair(dt); updateFog(dt); updateRivals4b(dt); updateAdvisor(dt); updateMarch(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);

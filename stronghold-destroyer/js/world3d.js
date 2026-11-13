@@ -1792,13 +1792,20 @@ const R3D = (() => {
   }
   const rallyModels = {};
   function syncRally() {
-    for (const which of ['army', 'town']) {
+    for (const which of ['army', 'town', 'siege']) {
       const r = rally[which]; let md = rallyModels[which];
       if (!r) { if (md) md.g.visible = false; continue; }
       if (!md) {
-        const g = new T.Group(), col = which === 'army' ? ENEMY_PLUME : PAL.player.tunic;
+        const g = new T.Group(), col = IND() ? { army: '#c8342c', town: '#3f8f4a', siege: '#d9862b' }[which] : which === 'army' ? ENEMY_PLUME : PAL.player.tunic;   /* 4C: the same colours as the three buttons */
         const f = pole(g, 0, 0, 0, 46, col); g.add(cyl(5, 6, 2, std('#6b6359'), 0, 1, 0, 10));
-        const ring = mesh(new T.RingGeometry(16, 19, 32), new T.MeshBasicMaterial({ color: C(which === 'army' ? '#ffcf5a' : '#9fe8a8'), transparent: true, opacity: 0.75, side: T.DoubleSide, depthWrite: false }), 0, 1.5, 0, false); ring.rotation.x = -Math.PI / 2; g.add(ring);
+        const ring = mesh(new T.RingGeometry(16, 19, 32), new T.MeshBasicMaterial({ color: C(which === 'army' ? '#ffcf5a' : which === 'siege' ? '#ffb070' : '#9fe8a8'), transparent: true, opacity: 0.75, side: T.DoubleSide, depthWrite: false }), 0, 1.5, 0, false); ring.rotation.x = -Math.PI / 2; g.add(ring);
+        if (IND()) {   /* Phase 4C: each flag has its own sign beside it: a shield (army), a person (citizens), a siege engine (siege) */
+          const prop = new T.Group(); prop.position.set(-24, 0, 8); prop.scale.setScalar(1.9); g.add(prop);
+          if (which === 'army') { const sh = cyl(8, 8, 2.2, std('#9aa6b4', { metalness: 0.5, roughness: 0.4 }), 0, 11, 0, 14); sh.rotation.x = Math.PI / 2 - 0.25; prop.add(sh); const boss = sph(2.4, std('#c9a24a', { metalness: 0.6, roughness: 0.35 }), 0, 11.3, 1.6, 8); prop.add(boss); prop.add(box(1.6, 15, 1.4, std('#7a1f1a'), 0, 11, 1.3)); }
+          else if (which === 'town') { prop.add(cyl(3.2, 4.6, 12, std(PAL.player.tunic), 0, 6, 0, 8)); prop.add(sph(3.2, std('#e8c9a0'), 0, 15, 0, 10)); prop.add(cyl(3.4, 3.4, 1.6, std('#6a4424'), 0, 17.4, 0, 8)); }
+          else { prop.add(box(16, 3, 9, std('#8a5a2b'), 0, 4.5, 0)); for (const sx of [-6, 6]) for (const sz of [-5, 5]) { const w = cyl(2.6, 2.6, 1.4, std('#3a2414'), sx, 2.6, sz, 10); w.rotation.x = Math.PI / 2; prop.add(w); }
+            const arm = box(2, 2, 18, std('#6a4424'), 0, 12, -1); arm.rotation.x = 0.85; prop.add(arm); prop.add(sph(2.6, std('#7a7468'), 0, 18.5, -7.5, 8)); prop.add(box(2, 9, 2, std('#6a4424'), 0, 9, 2.5)); }
+        }
         scene.add(g); md = rallyModels[which] = { g, f, ring };
       }
       md.g.visible = true; md.g.position.set(r.x, heightAt(r.x, r.y), r.y);

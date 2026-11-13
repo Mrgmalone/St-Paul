@@ -127,10 +127,10 @@ function showStore(b) {
 function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && !u.inside && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
 
 // in the real game, a command given ends the selection: send someone somewhere and they are let go at once
-function issueAt(sx, sy) { const ok = issueAt0(sx, sy); if (ok && IND()) { selection.clear(); try { UI.setSelection(selectedList()); } catch (e) {} } return ok; }
+function issueAt(sx, sy) { const list = selectedList(), w = toWorld(sx, sy), ok = issueAt0(sx, sy); if (ok && IND()) { if (w) noteMarch(list, w.x, w.y); selection.clear(); try { UI.setSelection(selectedList()); } catch (e) {} } return ok; }   /* three or more soldiers sent together are the main army: the rest follow (orders.js) */
 function issueAt0(sx, sy) {
   const sel = selectedList().filter(u => u.type !== 'oxcart'); if (!sel.length) return false;
-  for (const u of sel) { u.cmdT = time; if (u.guardOf && u.type !== 'knight') u.guardOf = null; if (u.type === 'king') u.leftKeep = true; }
+  for (const u of sel) { u.cmdT = time; if (u.guardOf && u.type !== 'knight') u.guardOf = null; if (u.type === 'king') u.leftKeep = true; if (IND()) clearDuty(u); }   /* a new order ends a patrol or guard duty */
   AudioSys.ui('ack');
   for (const u of sel) if (u.type === 'civ') { u.job = null; u.manualT = time; }
   const w = toWorld(sx, sy), hit = pickScreen(sx, sy);
@@ -174,6 +174,8 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   const p = localPos(e); canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, p);
   if (e.pointerType === 'mouse') {
+    if (orderMode && e.button === 0) { orderDown(p); return; }   /* drawing a patrol route, or picking the place to guard */
+    if (orderMode && e.button === 2) { cancelOrder(); return; }
     if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
     if (e.button === 0) { drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false }; if (!placing && !tearing) holdStart(p);
@@ -194,6 +196,8 @@ function panBy(x0, y0, x1, y1) {   // move the view so the ground under the fing
 const boxPick = list => IND() && list.some(u => u.type !== 'civ' && u.type !== 'king') ? list.filter(u => u.type !== 'civ' && u.type !== 'king') : list;
 function touchDown(p) {
   document.body.classList.add('touch'); fling.x = fling.y = 0; clearTimeout(TOUCH.hold);
+  if (orderMode && pointers.size === 1) { TOUCH.mode = 'order'; orderDown(p); return; }   /* a patrol route is drawn with one finger */
+  if (TOUCH.mode === 'order' && pointers.size >= 2) { orderRec = null; }
   /* placing a building: one finger drags its outline to where it should go (lifting the finger sets it down); a wall starts where the finger lands */
   if (IND() && placing && pointers.size === 1) { TOUCH.mode = 'place'; mouse.x = p.x; mouse.y = p.y; mouse.inside = true; if (isLine(placing.kind) && !placing.start) placeAt(p.x, p.y, false); return; }
   if (pointers.size === 1) {
@@ -204,6 +208,7 @@ function touchDown(p) {
 function touchMove(p) {
   holdMove(p);
   if (TOUCH.mode === 'place' && pointers.size < 2) recordRoute(p.x, p.y);
+  if (TOUCH.mode === 'order') { if (pointers.size >= 2) { orderRec = null; TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; } else { orderMove(p); return; } }
   if (TOUCH.mode === 'place') { if (pointers.size >= 2) { TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; } else { mouse.x = p.x; mouse.y = p.y; return; } }
   if (TOUCH.mode === 'press' && Math.hypot(p.x - TOUCH.sx, p.y - TOUCH.sy) > 12) { TOUCH.mode = 'pan'; clearTimeout(TOUCH.hold); }
   if (TOUCH.mode === 'pan') {
@@ -222,6 +227,7 @@ function touchMove(p) {
 function touchUp(p) {
   clearTimeout(TOUCH.hold);
   const mode = TOUCH.mode;
+  if (mode === 'order') { TOUCH.mode = null; if (pointers.size === 0) orderUp(p); return; }
   if (mode === 'place' && pointers.size === 0) { TOUCH.mode = null; mouse.inside = false; if (placing) placeAt(p.x, p.y, false); return; }   /* set down where the finger lifts */
   if (pointers.size > 0) { holdEnd(); if (mode === 'two') TOUCH.mode = 'after'; return; }
   TOUCH.mode = null;
@@ -261,7 +267,7 @@ document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; docu
 canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
-  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; holdMove(p); if (drag && placing) recordRoute(p.x, p.y); }
+  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; if (orderRec) { orderMove(p); return; } holdMove(p); if (drag && placing) recordRoute(p.x, p.y); }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
@@ -276,6 +282,7 @@ function endPointer(e) {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { pointers.delete(e.pointerId); touchUp(p); pinch = null; return; }
   if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
+  if (orderRec) { orderUp(p); drag = null; pointers.delete(e.pointerId); return; }
   if (holdEnd()) { drag = null; pointers.delete(e.pointerId); return; }   /* held a person: his card is open */
   if (drag && pointers.has(e.pointerId) && tearing && !drag.box) { tearAt(p.x, p.y); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && placing && !drag.box) { if (!(drag.lineStart && Math.hypot(p.x - drag.sx, p.y - drag.sy) < 12)) placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }   /* a plain click starts a wall and waits for the second click */

@@ -248,6 +248,7 @@ function playerBrain(u) {
   if (u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') { siegeBrain(u); return; }
   if (u.type === 'king') { kingBrain(u); return; }
   if (u.guardOf && time - (u.cmdT || -99) >= 30 && guardPost(u)) return;
+  if ((u.patrol || u.guardArea) && dutyBrain(u, frameDt)) return;   /* on patrol, or guarding an area (orders.js) */
   if (u.escort && escortBrain(u)) return;   // walking with a work group
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
@@ -529,7 +530,7 @@ function updateHealth(dt) {
 }
 function updateGuards(dt) {
   guardT -= dt; if (guardT > 0) return; guardT = 1;
-  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal && !u.noGuard && !u.escort;   /* flamethrowers go to war only */
+  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal && !u.noGuard && !u.escort && !u.patrol && !u.guardArea;   /* flamethrowers go to war only; patrols and area guards keep their own duty */
   const king = units.find(u => u.type === 'king' && u.team === 'player' && !u.dead);
   // up to five knights keep close by the king
   const knights = units.filter(u => u.type === 'knight' && u.team === 'player' && !u.dead);
@@ -646,7 +647,7 @@ function updateUnit(u, dt) {
 // arriving where others already stand: take the nearest open spot beside them instead of squeezing in (squeezing in shoves the
 // whole crowd outward, a little at a time, every time someone arrives)
 function settleSpot(u) {
-  if (!IND() || isMachine(u) || u.onWall || u.inside || u.guardOf || u.type === 'king' || (u.settleT || 0) > time - 4) return;
+  if (!IND() || isMachine(u) || u.onWall || u.inside || u.guardOf || u.patrol || u.type === 'king' || (u.settleT || 0) > time - 4) return;
   const near = nearUnits(u.x, u.y, 30).filter(o => o !== u && !o.dead && !o.onWall && !o.inside && Math.hypot(o.x - u.x, o.y - u.y) < 18);
   if (!near.length) return;
   u.settleT = time;

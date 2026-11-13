@@ -93,7 +93,8 @@
   .ib .why{display:none;font-size:12px;font-weight:bold;color:#fff;background:#8a2a20;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:normal}
   .ib.off .why{display:block}
   .rally{display:flex;gap:6px;grid-column:1 / -1}
-  .rally button{flex:1;font-size:14px;padding:6px 4px}
+  .rally button{flex:1;font-size:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
+  .rally button .rfl{flex:none}
   .rally button.on{outline:3px solid #9fe8a8;background:linear-gradient(#fff0b8,#e2b860)}
   .bb.on{outline:3px solid #9fe8a8}
   #queue{font-size:15px;color:#eadfc4;padding:2px 4px}
