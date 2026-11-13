@@ -34,7 +34,7 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
       while (myPeople() < q.people) { const f = nearestFree(k.c + 2, k.r + 6); makeUnit('player', 'civ', f.c * TILE + 16, f.r * TILE + 16); }
       SD.res.stone = (q.stone || 0) + 5; SD.res.iron = (q.iron || 0) + 5; addFood('crops', Math.max(0, (q.food || 0) + 50 - SD.res.food));
       mood = 90; window.__step(30);
-      out.stage = stageN; out.wallMat = [...new Set(SD.structures.filter(w => w.castleRing && !w.dead).map(w => w.mat))].join(','); out.ring = SD.structures.filter(w => w.castleRing && !w.dead).length;
+      out.stage = stageN; out.wallMat = [...new Set(SD.structures.filter(w => w.castleRing && !w.dead && w.team === 'player').map(w => w.mat))].join(','); out.ring = SD.structures.filter(w => w.castleRing && !w.dead && w.team === 'player').length;   // your ring only (the rivals have their own)
       out.victimSafe = !victim || (!victim.dead && SD.structures.includes(victim) && !wallLine.some(([c, rr]) => c >= victim.c && c < victim.c + victim.w && rr >= victim.r && rr < victim.r + victim.h));
       out.treesIn = SD.trees.filter(t => t.x >= (k.c - R) * TILE && t.x < (k.c + 3 + R) * TILE && t.y >= (k.r - R) * TILE && t.y < (k.r + 3 + R) * TILE).length; out.treesIn0 = treesIn0;
       out.keepHp = k.maxHp; out.stoneLeft = SD.res.stone;
