@@ -473,3 +473,7 @@ button,#catBar,#cmdbar,#side,#top{touch-action:manipulation}
 .scrollRow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .scrollRow .sl{font-weight:700;color:var(--gold);min-width:110px}
 .scrollRow .sbtn.on{outline:2px solid var(--gold);color:var(--gold);background:linear-gradient(#4a3c22,#33290f)}
+#menuPop .scrollRow{flex-wrap:wrap;gap:6px}
+#menuPop .scrollRow .sl{width:100%;color:var(--gold)!important;min-width:0}
+#menuPop .scrollRow .sbtn{min-width:84px;min-height:48px;flex:1 1 0;text-align:center;padding:6px 10px}
+#menuPop .scrollRow > span:last-child{width:100%;font-size:14px}
