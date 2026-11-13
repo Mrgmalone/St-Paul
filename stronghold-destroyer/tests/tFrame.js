@@ -9,7 +9,7 @@ const { start } = require('./lib4b'); const { chromium } = require('playwright')
   const at = (gx, gz) => { const g = b0.glass.globes.find(q => (q[0] < 0) === (gx < 0) && (q[1] < 0) === (gz < 0)); return g && g[2]; };
   console.log('frame', JSON.stringify(b0));
   need(b0.border.sea && b0.border.glass && b0.border.steps === 3 && b0.border.table < b0.border.seaLevel + 1, 'the table, its carved steps and the glass are there, the table below the water band');
-  need(b0.glass.globes.length === 4 && at(-1, -1) === 'northAmerica' && at(1, -1) === 'asia' && at(-1, 1) === 'southAmerica' && at(1, 1) === 'australia', 'the four globes: North America, Asia, South America, Australia (north-west, north-east, south-west, south-east)');
+  need(b0.glass.globes.length === 4 && at(-1, -1) === 'russia' && at(1, -1) === 'unitedStates' && at(-1, 1) === 'australia' && at(1, 1) === 'southAmerica', "the four globes as Gerald set them: Russia top left, the United States top right, Australia bottom left, South America bottom right");
   need(b0.cols >= 148 && b0.MW >= 4736, 'the map is wider (148 squares across, was 128)');
   // the reflection: copies of the picture only while the glass is in view
   const live = await p.evaluate(() => { R3D.glassForce(0.55); const draw = n => { window.__drawMs = 0; for (let i = 0; i < n; i++) window.__step(1); window.__drawMs = 999999; };
@@ -29,7 +29,7 @@ const { start } = require('./lib4b'); const { chromium } = require('playwright')
   await done();
   // the corner layout comes from one setting: change FRAME.globes and the balls follow
   const b = await chromium.launch(env.LAUNCH), pg = await b.newPage({ viewport: { width: 1180, height: 820 } }); await env.use3d(pg, { drawMs: 999999 });
-  await pg.route('**/js/settings.js', async route => { const t = require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'settings.js'), 'utf8'); await route.fulfill({ contentType: 'application/javascript', body: t.replace("globes: { nw: 'northAmerica', ne: 'asia', sw: 'southAmerica', se: 'australia' }", "globes: { nw: 'europe', ne: 'africa', sw: 'plain', se: 'asia' }") }); });
+  await pg.route('**/js/settings.js', async route => { const t = require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'settings.js'), 'utf8'); await route.fulfill({ contentType: 'application/javascript', body: t.replace("globes: { nw: 'russia', ne: 'unitedStates', sw: 'australia', se: 'southAmerica' }", "globes: { nw: 'europe', ne: 'africa', sw: 'plain', se: 'asia' }") }); });
   await pg.goto(env.GAME_REAL + '?start=0'); await pg.waitForTimeout(800);
   await pg.click('.fac[data-fac="cyyoung"]'); await pg.click('.fac[data-fac="cyyoung"] .fgo'); await pg.waitForTimeout(1500);
   const g2 = await pg.evaluate(() => R3D.glassInfo().globes.map(q => q[2]).sort().join(','));

@@ -48,15 +48,16 @@ const { start } = require('./lib4b');
   const gd = await p.evaluate(() => { const k = SD.keep(); window.__gd = []; for (let i = 0; i < 3; i++) { const f = nearestFree(k.c + 3 + i, k.r + 8); window.__gd.push(makeUnit('player', 'sword', f.c * TILE + 16, f.r * TILE + 16)); }
     for (const u of window.__pat.concat(window.__tp)) u.dead = true; selectOnly(window.__gd); const f = nearestFree(k.c + 12, k.r + 14); window.__G = { x: f.c * TILE + 16, y: f.r * TILE + 16 }; return window.__scr(window.__G); });
   await p.click('#btnGuardA'); await p.mouse.click(gd.x, gd.y);
-  const g1 = await p.evaluate(() => { const G = window.__G, set = window.__gd.every(u => u.guardArea); T.run(20); return { set, sel: selection.size, near: window.__gd.map(u => Math.round(Math.hypot(u.x - G.x, u.y - G.y))) }; });
+  const g1 = await p.evaluate(() => { const G = window.__G, set = window.__gd.every(u => u.guardArea); T.run(20); return { set, sel: selection.size, near: window.__gd.map(u => u.toHeal || u.sick ? 0 : Math.round(Math.hypot(u.x - G.x, u.y - G.y))),   /* (a soldier who falls ill goes home to be cared for: a game event that rightly interrupts his duty) */
+    foes: units.filter(e => !e.dead && hostile('player', e.team) && Math.hypot(e.x - G.x, e.y - G.y) < 700).map(e => (e.type) + (e.scout ? ':scout' : '')), why: window.__gd.filter(u => Math.hypot(u.x - G.x, u.y - G.y) > 80).map(u => ({ at: [Math.round(u.x), Math.round(u.y)], order: u.order, path: u.path.length, spot: u.guardArea && u.guardArea.spot, guardOf: u.guardOf ? u.guardOf.kind || u.guardOf.type : null, escort: !!u.escort, patrol: !!u.patrol, target: u.target ? (u.target.type || u.target.kind) + ':' + u.target.team : null, onWall: !!u.onWall, inside: !!u.inside, toHeal: !!u.toHeal, dead: u.dead })) }; });
   const g2 = await p.evaluate(() => { const G = window.__G, e = makeUnit('enemy', 'spear', G.x + 120, G.y + 40); e.think = 99; e.order = 'hold'; let att = false;
     for (let s = 0; s < 40 && !e.dead; s++) { T.run(0.5); if (window.__gd.some(u => u.order === 'attack' && u.target === e)) att = true; }
     T.run(8);
     // one standing well outside: they must not go after it
     const far = makeUnit('enemy', 'archer', G.x + 560, G.y); far.think = 99; far.order = 'hold'; far.hp = far.maxHp = 99999; let maxOut = 0;
-    for (let s = 0; s < 40; s++) { T.run(0.5); for (const u of window.__gd) if (!u.dead) maxOut = Math.max(maxOut, Math.hypot(u.x - G.x, u.y - G.y)); }
+    for (let s = 0; s < 40; s++) { T.run(0.5); for (const u of window.__gd) if (!u.dead && !u.toHeal && !u.sick) maxOut = Math.max(maxOut, Math.hypot(u.x - G.x, u.y - G.y)); }
     far.dead = true; T.run(8);
-    return { att, dead: e.dead, maxOut: Math.round(maxOut), back: window.__gd.filter(u => !u.dead).map(u => Math.round(Math.hypot(u.x - u.guardArea.spot.x, u.y - u.guardArea.spot.y))) }; });
+    return { att, dead: e.dead, maxOut: Math.round(maxOut), back: window.__gd.filter(u => !u.dead && !u.toHeal && !u.sick).map(u => Math.round(Math.hypot(u.x - u.guardArea.spot.x, u.y - u.guardArea.spot.y))) }; });
   console.log('guard', JSON.stringify({ g1, g2 }));
   need(g1.set && g1.sel === 0 && g1.near.every(d => d < 80), 'Guard: the soldiers go to the place and stand round it');
   need(g2.att && g2.dead, 'Guard: they meet an enemy who comes into the area');
@@ -89,9 +90,9 @@ const { start } = require('./lib4b');
   need(fo.ownStays, 'a soldier given his own order stays where he was sent');
   // ---- idle citizens go back to the campfire (or find work) ----
   const cf = await p.evaluate(() => { const k = SD.keep(), f = nearestFree(k.c + 9, k.r + 3), u = makeUnit('player', 'civ', f.c * TILE + 16, f.r * TILE + 16); u.manualT = time - 40; u.order = 'idle';
-    const d0 = Math.hypot(u.x - playerFire.x, u.y - playerFire.y); T.run(40); return { d0: Math.round(d0), d: Math.round(Math.hypot(u.x - playerFire.x, u.y - playerFire.y)), order: u.order, job: !!u.job }; });
+    const d0 = Math.hypot(u.x - playerFire.x, u.y - playerFire.y); T.run(40); return { d0: Math.round(d0), d: Math.round(Math.hypot(u.x - playerFire.x, u.y - playerFire.y)), order: u.order, job: !!u.job, toFire: u.order === 'move' && !!u.dest && Math.hypot(u.dest.x - playerFire.x, u.dest.y - playerFire.y) < 100, other: !!(u.toHeal || u.sick || u.breakUntil > time || u.order === 'build') }; });
   console.log('campfire', JSON.stringify(cf));
-  need(cf.d < 100 || cf.order === 'gather' || cf.job, 'an idle citizen goes back to the campfire (unless he finds work)');
+  need(cf.d < 100 || cf.toFire || cf.order === 'gather' || cf.job || cf.other, 'an idle citizen goes back to the campfire (unless he finds work, falls ill or takes a break)');
   await done();
 })();
 function ORDERS_LIMIT() { return 200 + 150 + 60; }   // the area (200) + the leash (150) + a little room

@@ -36,12 +36,17 @@ async function phone(devName, land) {
   // taxes down and up
   const t0 = await p.evaluate(() => tax); await p.tap('#taxUp'); const t1 = await p.evaluate(() => tax); await p.tap('#taxDown'); await p.tap('#taxDown'); const t2 = await p.evaluate(() => ({ tax, label: document.getElementById('vTax').textContent, downOff: document.getElementById('taxDown').disabled }));
   // hints: compact, always on (no switch anywhere to turn them off)
+  // with Voice off a hint is shown but not spoken; with Voice on it is spoken (Gerald: no speaking when voices are off)
+  const spoken = await p.evaluate(() => { let n = 0; try { window.speechSynthesis.speak = () => { n++; }; window.speechSynthesis.cancel = () => {}; } catch (e) {} const was = VOICE.on;
+    let tipN = 0; pickAdvice = () => 'A fresh test hint ' + (++tipN) + '.';   /* (a hint not said before: a hint is not repeated within 4 minutes) */
+    VOICE.on = false; ADVISOR.at = -999; ADVISOR.shown = ''; ADVISOR.last = {}; updateAdvisor(0); const off = n, shownOff = document.getElementById('tips').textContent.trim().length > 10;
+    VOICE.on = true; ADVISOR.at = -999; ADVISOR.shown = ''; ADVISOR.last = {}; alerts.length = 0; updateAdvisor(0); const on = n - off; VOICE.on = was; return { off, on, shownOff }; });
   const hint = await p.evaluate(() => { const t = document.getElementById('tips'), r = t.getBoundingClientRect(); return { text: t.textContent.trim().length, h: Math.round(r.height), offSwitch: [...document.querySelectorAll('button')].some(b => /(tips|hints|advisor|art of war)/i.test(b.textContent) && /off/i.test(b.textContent)) }; });
   const cmd = await p.evaluate(() => { selection.clear(); updateHud(); const r = document.getElementById('cmdbar').getBoundingClientRect(); return { h: Math.round(r.height), none: document.getElementById('cmdbar').classList.contains('none') }; });
   await p.evaluate(() => { PHONE.openSheet('castle'); }); await p.waitForTimeout(350);
   await p.evaluate(() => { window.__drawMs = 0; window.__step(1); window.__drawMs = 999999; }); await p.screenshot({ path: SP + `/tPhone-${land ? 'land' : 'port'}-sheet.png` });
   const fit = { side: await vis('#side'), bar: await vis('#catBar'), vh: await p.evaluate(() => innerHeight) };
-  console.log(devName, JSON.stringify({ s0, s1, s2, s3, a1: !!a1, a2: !!a2, gear, st, q1, q2, help, t0, t1, t2, hint, cmd, fit }));
+  console.log(devName, JSON.stringify({ spoken: typeof spoken !== 'undefined' ? spoken : null, s0, s1, s2, s3, a1: !!a1, a2: !!a2, gear, st, q1, q2, help, t0, t1, t2, hint, cmd, fit }));
   need(s0.phone && s0.bar && !s0.side && !s0.show, 'phone: the category bar is along the bottom and the panel starts folded away');
   need(s1.side && s1.side.bottom <= s1.bar.top + 2 && s1.panes.join() === 'town' && s1.tabsShown === 0 && s1.on && s1.on.cat === 'town', 'phone: a category opens upward just above the bar, showing only its own buttons');
   need(s2.placing === 'house' && !s2.side, 'phone: choosing a building folds the panel away at once');
@@ -53,6 +58,7 @@ async function phone(devName, land) {
   need(help, 'the ? opens Help');
   need(t1 === Math.min(2, t0 + 1) && t2.tax === Math.max(0, t1 - 2) && /Tax/.test(t2.label) && t2.downOff === (t2.tax === 0), 'taxes go down and up with the arrows');
   need(hint.text > 10 && hint.h < 70 && !hint.offSwitch, 'hints: compact, shown, and no switch to turn them off');
+  need(spoken.off === 0 && spoken.shownOff && spoken.on >= 1, 'with Voice off a hint is shown but not spoken; with Voice on it is spoken');
   need(cmd.none && cmd.h < 80, 'with nobody chosen the selection bar is one slim row');
   need(fit.side && fit.side.top >= 0 && fit.side.bottom <= fit.bar.top + 2 && fit.bar.bottom <= fit.vh + 1, 'the open sheet fits between the top and the bar');
   await done();

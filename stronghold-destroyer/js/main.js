@@ -118,13 +118,14 @@ function frame(now) {
   if (started && IND()) { INSIDE.update(); citizensFrame(); }   // the inside picture behind an open building box (shown while paused too)
   if (!halted) time += dt; frameDt = halted ? 0 : dt;
   // camera scrolling
-  const sp = 620 / cam.z * dt;
+  const sp = 620 / cam.z * dt * (typeof scrollMul === 'function' ? scrollMul() : 1);   /* the player's scroll speed (Settings) */
   let mx = 0, my = 0;
   if (keys.ArrowLeft) mx -= 1; if (keys.ArrowRight) mx += 1; if (keys.ArrowUp) my -= 1; if (keys.ArrowDown) my += 1;
   const modal = !document.getElementById('help').classList.contains('hide') || document.getElementById('pick').style.display !== 'none' && !started;
   let edgeMul = 1;
-  if (edge.on && !pinch && !orbit && !modal && !TOUCH.mode && performance.now() > edge.touchUntil) { const E = CONTROLS.edgeZone, W = window.innerWidth, H = window.innerHeight, depth = d => clamp((E - d) / E, 0, 1);   /* the deeper into the edge band, the faster, up to a gentle limit */
-    const l = depth(edge.x), r = depth(W - 1 - edge.x), t = depth(edge.y), bo = depth(H - 1 - edge.y); mx += r - l; my += bo - t; if (l || r || t || bo) edgeMul = CONTROLS.edgeSpeed / 620; }
+  if (edge.on && !pinch && !orbit && !modal && !TOUCH.mode && performance.now() > edge.touchUntil) { const E = CONTROLS.edgeZone, R = canvas.getBoundingClientRect(), depth = d => clamp((E - d) / E, 0, 1);   /* the deeper into the edge band, the faster, up to a gentle limit */
+    /* (Gerald, 4C) the edges of the game's own picture, not of the monitor or the browser window */
+    const l = depth(edge.x - R.left), r = depth(R.right - 1 - edge.x), t = depth(edge.y - R.top), bo = depth(R.bottom - 1 - edge.y); mx += r - l; my += bo - t; if (l || r || t || bo) edgeMul = CONTROLS.edgeSpeed / 620; }
   edge.held = (mx || my) && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown) ? edge.held + dt : 0;
   const boost = edgeMul < 1 ? edgeMul * (1 + Math.min(1, edge.held / 2) * 0.3) : 1;   // edge scrolling: slow and steady, a little quicker if held
   mx *= boost; my *= boost;

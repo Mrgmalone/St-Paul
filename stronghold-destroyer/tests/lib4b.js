@@ -9,7 +9,7 @@ async function start(fac, opts = {}) {
   await p.goto(env.GAME_REAL + (opts.start !== undefined ? '?start=' + opts.start + (opts.query ? '&' + opts.query : '') : opts.query ? '?' + opts.query : '')); await p.waitForTimeout(600);   // opts.start pins the starting place
   await p.evaluate(() => { window.__now = 0; window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); } }; window.__step(2); });
   await p.click(`.fac[data-fac="${fac}"]`); await p.click(`.fac[data-fac="${fac}"] .fgo`);
-  await p.evaluate(() => { window.__step(3); document.getElementById('banner').style.display = 'none'; SD.setRaid(99999); REALM.rogueT = 1e9; for (const R of REALM.rivals) R.raidT = 1e9;
+  await p.evaluate(() => { window.__step(3); document.getElementById('banner').style.display = 'none'; SD.setRaid(99999); REALM.rogueT = 1e9; for (const R of REALM.rivals) { R.raidT = 1e9; R.scoutT = 1e9; }   /* (no raids, bandits or scouts unless a check asks for them) */
     window.T = {
       put(kind, near) { const k = SD.keep(), o = near || { c: k.c + 1, r: k.r + 1 };
         for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r); finishBuilding(bb); bb.hp = bb.maxHp; return bb;   /* (built and whole) */ } }

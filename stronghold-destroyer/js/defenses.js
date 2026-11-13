@@ -42,7 +42,7 @@ function fillBrain(u, dt) {
 }
 
 // ---------- spikes: lethal to the enemy; knights and armored swordsmen take two strikes; the owner's side is safe ----------
-const spikeArmored = u => SPIKES.armored.includes(u.type) || !!u.lord;
+const spikeArmored = u => SPIKES.armored.includes(u.type) || (!!u.kit && SPIKES.armored.includes(u.kit));   /* knights (on foot or horse) and berserkers; everyone else dies from one strike */
 const spikeSpares = (b, u) => !hostile(b.team, u.team) || (b.owner !== undefined && u.owner === b.owner) || (b.team === 'player' && u.team === 'player');
 function spikeStrike(b, u) {
   if (isMachine(u)) { u.hp -= SPIKES.siegeDamage; return; }

@@ -165,7 +165,7 @@ const pointers = new Map();
 let drag = null, pinch = null, mouse = { x: -1, y: -1, inside: false }, hover = null, lastClick = { t: 0, x: 0, y: 0 }, orbit = null;
 const edge = { x: -1, y: -1, on: false, held: 0, touchUntil: 0 };
 // edge scrolling is for a real mouse only: touch screens can send stray 'mouse' positions (often the corner), which must not drag the view
-window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && performance.now() > edge.touchUntil && (e.movementX || e.movementY || edge.on)) { edge.x = e.clientX; edge.y = e.clientY; edge.on = true; } });
+window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && performance.now() > edge.touchUntil && (e.movementX || e.movementY || edge.on)) { edge.x = e.clientX; edge.y = e.clientY; edge.on = e.target === canvas; } });   /* (Gerald, 4C) only over the game's own picture: on a panel, a button or off the game, it stops */
 window.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { edge.on = false; edge.touchUntil = performance.now() + 1500; } }, true);
 window.addEventListener('blur', () => { edge.on = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) edge.on = false; });
@@ -321,7 +321,7 @@ function endPointer(e) {
 }
 canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); drag = null; pinch = null; clearTimeout(TOUCH.hold); TOUCH.mode = null; });
-canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mouse.inside = false; });
+canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { mouse.inside = false; edge.on = false; } });
 canvas.addEventListener('wheel', e => {
   e.preventDefault(); const p = localPos(e), w = toWorld(p.x, p.y);
   const base = zoomAnim ? zoomAnim.z : cam.z, dz = clamp(e.deltaY, -120, 120);

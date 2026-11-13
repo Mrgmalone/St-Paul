@@ -17,7 +17,9 @@ const CATS = [
   ['rule', 'Rule', '<path d="M4 9 L8 13 L12 6 L16 13 L20 9 L18.5 18 H5.5 Z" fill="currentColor" opacity=".9"/><rect x="5.5" y="19" width="13" height="2.2" fill="currentColor"/>'],
   ['industry', 'Industry', '<path d="M14 4 L20 10 L17.5 12.5 L11.5 6.5 Z" fill="currentColor"/><path d="M13 9.5 L4.5 18 L6 19.5 L14.5 11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="7" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/>']
 ];
-let sheetCat = null;
+let sheetCat = null, scrollPick = CONTROLS.scrollDefault;
+try { const s = localStorage.getItem('sd-scroll'); if (s && CONTROLS.scroll[s]) scrollPick = s; } catch (e) {}
+const scrollMul = () => CONTROLS.scroll[scrollPick] || 1;   // the player's scroll speed (Settings: Slow, Medium, Fast)
 (() => {
   const $ = id => document.getElementById(id), side = $('side'), main = $('main');
   // ---------- the bottom bar ----------
@@ -56,6 +58,13 @@ let sheetCat = null;
   const hb = document.createElement('button'); hb.id = 'btnHelpTop'; hb.title = 'Help and controls (H)'; hb.setAttribute('aria-label', 'Help'); hb.innerHTML = '<b aria-hidden="true">?</b>';
   mb.insertAdjacentElement('afterend', hb); hb.onclick = () => { UI.closePops(); if (onPhone()) closeSheet(); toggleHelp(); };
   const mp = $('menuPop'), h3 = mp.querySelector('h3'); if (h3) h3.textContent = 'SETTINGS';
+  // scroll speed: the player's own choice, remembered
+  const srow = document.createElement('div'); srow.className = 'row scrollRow';
+  srow.innerHTML = '<span class="sl">Scroll speed</span>' + Object.keys(CONTROLS.scroll).map(k => `<button class="sbtn" data-s="${k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('') + '<span style="font-size:14px;color:#d9c9a3">the arrow keys and the edges of the game</span>';
+  mp.appendChild(srow);
+  const markScroll = () => srow.querySelectorAll('.sbtn').forEach(b => { const on = b.dataset.s === scrollPick; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  srow.addEventListener('click', e => { const b = e.target.closest('.sbtn'); if (!b) return; scrollPick = b.dataset.s; try { localStorage.setItem('sd-scroll', scrollPick); } catch (er) {} markScroll(); });
+  markScroll();
   const qrow = document.createElement('div'); qrow.className = 'row quitRow';
   qrow.innerHTML = '<button id="btnQuit">Quit this game</button><span id="quitNote" style="font-size:14px;color:#d9c9a3">back to the start screen</span>';
   mp.appendChild(qrow);

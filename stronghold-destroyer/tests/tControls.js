@@ -6,17 +6,31 @@ const { start } = require('./lib4b');
   const { p, need, done, SP } = await start('cyyoung', { start: 0, viewport: { width: 1180, height: 820 }, page: { hasTouch: true } });
   const cdp = await p.context().newCDPSession(p);
   const touch = async (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
-  // ---- edge scrolling ----
-  const sc = await p.evaluate(() => { const W = innerWidth, H = innerHeight, k = SD.keep(); SD.centerOn(k.x + 300, k.y);
+  // ---- edge scrolling: at the edge of the game's own picture (not the window), slower than the keys, easing in ----
+  const sc = await p.evaluate(() => { const R = document.getElementById('game').getBoundingClientRect(), mid = (R.top + R.bottom) / 2, k = SD.keep(); SD.centerOn(k.x + 300, k.y);
     const run = f => { const x0 = cam.x; f(); const steps = []; for (let i = 0; i < 30; i++) { window.__step(1); steps.push(cam.x); } keys.ArrowRight = false; edge.on = false; return { moved: cam.x - x0, first: steps[0] - x0, steps }; };
     const kb = run(() => { keys.ArrowRight = true; }); SD.centerOn(k.x + 300, k.y); window.__step(30);
-    const ed = run(() => { edge.on = true; edge.x = W - 2; edge.y = H / 2; edge.touchUntil = 0; });
-    SD.centerOn(k.x + 300, k.y); window.__step(30); const half = run(() => { edge.on = true; edge.x = W - CONTROLS.edgeZone / 2; edge.y = H / 2; edge.touchUntil = 0; });
-    return { kb: Math.round(kb.moved), edge: Math.round(ed.moved), half: Math.round(half.moved), edgeFirst: +ed.first.toFixed(2), edgeLast: +(ed.steps[29] - ed.steps[28]).toFixed(2) }; });
+    const ed = run(() => { edge.on = true; edge.x = R.right - 2; edge.y = mid; edge.touchUntil = 0; });
+    SD.centerOn(k.x + 300, k.y); window.__step(30); const half = run(() => { edge.on = true; edge.x = R.right - CONTROLS.edgeZone / 2; edge.y = mid; edge.touchUntil = 0; });
+    return { kb: Math.round(kb.moved), edge: Math.round(ed.moved), half: Math.round(half.moved), edgeFirst: +ed.first.toFixed(2), edgeLast: +(ed.steps[29] - ed.steps[28]).toFixed(2), gameRight: Math.round(R.right), win: innerWidth }; });
   console.log('scroll', JSON.stringify(sc));
   need(sc.edge > 0 && sc.edge < sc.kb * 0.5, 'edge scrolling is much slower than the keys');
   need(sc.half > 0 && sc.half < sc.edge, 'the deeper into the edge band, the faster (up to the limit)');
   need(sc.edgeFirst < sc.edgeLast, 'edge scrolling eases in');
+  // with the real mouse: at the game's right edge (beside the command panel) it scrolls; over the panel, or off the game, it does not
+  const R = await p.evaluate(() => { const r = document.getElementById('game').getBoundingClientRect(); return { right: r.right, top: r.top, bottom: r.bottom, left: r.left }; }), my = (R.top + R.bottom) / 2;
+  const moveAndRun = async (x, y) => { await p.evaluate(() => { edge.on = false; const k = SD.keep(); SD.centerOn(k.x + 300, k.y); window.__step(30); }); await p.mouse.move(x - 6, y); await p.mouse.move(x, y);
+    return p.evaluate(() => { edge.touchUntil = 0; for (let i = 0; i < 20; i++) window.__step(1); const x0 = cam.x; for (let i = 0; i < 30; i++) window.__step(1); return Math.round(cam.x - x0); }); };   /* (after the gentle stop has finished) */
+  const atGameEdge = await moveAndRun(R.right - 3, my), overPanel = await moveAndRun(R.right + 40, my), offWindow = await p.evaluate(() => { edge.on = false; const x0 = cam.x; for (let i = 0; i < 30; i++) window.__step(1); return Math.round(cam.x - x0); });
+  console.log('mouse edge', JSON.stringify({ atGameEdge, overPanel, offWindow }));
+  need(atGameEdge > 0, "the mouse at the edge of the game's picture scrolls that way");
+  need(overPanel === 0 && offWindow === 0, 'over the command panel, or off the game, it does not scroll');
+  // the player's scroll speed in Settings: Fast scrolls further than Slow
+  const speed = await p.evaluate(() => { const R = document.getElementById('game').getBoundingClientRect(), k = SD.keep(), out = {};
+    for (const s of ['slow', 'fast']) { document.querySelector(`#menuPop .sbtn[data-s="${s}"]`).click(); SD.centerOn(k.x + 300, k.y); window.__step(30); const x0 = cam.x; edge.on = true; edge.x = R.right - 2; edge.y = (R.top + R.bottom) / 2; edge.touchUntil = 0; for (let i = 0; i < 30; i++) window.__step(1); edge.on = false; out[s] = Math.round(cam.x - x0); }
+    document.querySelector('#menuPop .sbtn[data-s="medium"]').click(); out.buttons = document.querySelectorAll('#menuPop .sbtn').length; return out; });
+  console.log('scroll speed', JSON.stringify(speed));
+  need(speed.buttons === 3 && speed.fast > speed.slow * 2, 'Settings: the scroll speed (Slow, Medium, Fast) changes how fast it scrolls');
   // ---- box selection picks the soldiers ----
   const box = await p.evaluate(() => { const k = SD.keep(); paused = true; const f = nearestFree(k.c + 6, k.r + 8), x0 = f.c * TILE + 16, y0 = f.r * TILE + 16, made = [];
     ['spear', 'civ', 'archer', 'civ', 'sword', 'civ'].forEach((t, i) => { const u = makeUnit('player', t, x0 + (i % 3) * 30, y0 + Math.floor(i / 3) * 30); u.order = 'hold'; made.push(u); });

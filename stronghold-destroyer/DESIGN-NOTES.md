@@ -294,6 +294,19 @@ so only the comparison matters):** 100 people: Phase 3 2,269 (two runs averaged)
 100 people: the wider map accounts for about 7 of that (4C at the old width: 2,084) and the glass about 1 (4C with the
 reflection off: 2,214; the test's camera sits near the west edge, where the glass is in view).
 
+**Gerald's decisions after Phase 4C (applied, play link version 52):**
+- Hints are not spoken when Voice is off (that was already so; a check now proves it).
+- Moats: flamethrowers, spearmen and the regular soldiers (swordsmen) fill them, with the citizens as before; never knights
+  or anyone on a horse (berserkers, archers and macemen do not either). MOAT_FILLERS in settings.js.
+- Spikes are very strong: anybody who steps on them dies from one strike, except knights, berserkers and mounted knights,
+  who take two (the mounted knight's horse falls at the first). Rival lords and the King now die from one strike too.
+  SPIKES in settings.js.
+- Globes: top left Russia, top right the United States, bottom left Australia, bottom right South America (by the map's
+  corners, north at the top). FRAME.globes in settings.js.
+- Scrolling: the mouse scrolls at the edge of the game's own picture (not the monitor or the window); over the command
+  panel or off the game it does not scroll. Settings has a scroll speed: Slow, Medium or Fast (remembered), which also sets
+  the arrow keys' speed. CONTROLS.scroll in settings.js holds the three speeds.
+
 **Settings to know (all in js/settings.js):** CONTROLS (scrolling), MOAT_FILLERS and MOAT, SPIKES, FRAME (globes,
 reflection strength, fade frame rate, table size), RIVALS (rival defaults; the front page sets the count).
 

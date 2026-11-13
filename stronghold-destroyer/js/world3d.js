@@ -363,6 +363,8 @@ const R3D = (() => {
       [[130,31],[135,34],[140,36],[142,40],[141,45],[139,40],[133,34]], [[-5,50],[-3,56],[-6,58],[-2,58],[1,52]], [[109,1],[117,7],[119,1],[116,-4],[110,-3]], [[95,5],[106,-6],[104,-6],[95,3]]] },
     australia: { at: [134, -26], shapes: [[[114,-22],[113,-26],[115,-34],[118,-35],[124,-33],[131,-31],[135,-35],[138,-35],[141,-38],[147,-38],[150,-37],[153,-32],[153,-25],[150,-22],[146,-19],[145,-15],[142,-11],[141,-13],[136,-12],[136,-15],[130,-12],[126,-14],[122,-17]], [[131,-1],[141,-3],[150,-10],[141,-9]], [[172,-34],[178,-38],[174,-41],[167,-46],[171,-44]], [[145,-41],[148,-41],[147,-43.5]]] }
   };
+  CONTINENTS.russia = { at: [92, 60], shapes: CONTINENTS.asia.shapes };   /* (Gerald: Russia top left, the United States top right) */
+  CONTINENTS.unitedStates = { at: [-98, 40], shapes: CONTINENTS.northAmerica.shapes };
   CONTINENTS.europe.shapes = CONTINENTS.asia.shapes; CONTINENTS.africa.shapes = CONTINENTS.africa.shapes.concat(CONTINENTS.asia.shapes);   // (Europe and Africa share the Old World outlines)
   const cornerGroups = []; let worldMaps = null;
   function globeMaps() {   // one world picture for every ball: polished gold seas, the land pressed in a little deeper and duller

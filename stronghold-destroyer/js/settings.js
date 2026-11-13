@@ -173,27 +173,32 @@ const SOLDIERS = {
 // edgeSpeed: how fast the view slides when the mouse rests at the screen's edge (points a second at normal zoom; the
 // keyboard stays at 620); edgeZone: how wide the edge band is (the deeper in, the faster, up to edgeSpeed); ease: how
 // gently it starts and stops (lower is gentler). boxHold: how long a finger rests before it draws a selection box (ms).
-const CONTROLS = { edgeSpeed: 260, edgeZone: 34, ease: 4.5, boxHold: 300 };
+// The edge is the edge of the game's own picture (not the monitor). scroll: the player's choice in Settings (Slow, Medium,
+// Fast) multiplies both edge scrolling and the arrow keys; scrollDefault is where a new player starts.
+const CONTROLS = { edgeSpeed: 260, edgeZone: 34, ease: 4.5, boxHold: 300, scroll: { slow: 0.6, medium: 1, fast: 1.6 }, scrollDefault: 'medium' };
 
 // ---------- Phase 4C: moats ----------
 // MOAT_FILLERS: who may fill a moat (shovel it full until it is ordinary ground). Use the unit's kind or kit:
-// 'civ' citizens, 'spear' spearmen, 'flame' flamethrowers, 'sword' swordsmen, 'maceman', 'archer', 'longbow', 'crossbow',
-// 'berserker', 'knight' (knights and anyone on a horse are never allowed). Change this one line to change who may fill.
-const MOAT_FILLERS = ['civ', 'spear', 'flame'];
+// 'civ' citizens, 'spear' spearmen, 'flame' flamethrowers, 'sword' swordsmen (the regular soldiers), 'maceman', 'archer',
+// 'longbow', 'crossbow', 'berserker', 'knight' (knights and anyone on a horse are never allowed).
+// Gerald: flamethrowers, spearmen and the regular soldiers; not the knights. Change this one line to change who may fill.
+const MOAT_FILLERS = ['civ', 'spear', 'flame', 'sword'];
 const MOAT = { fillPerSecond: 18 };   // how fast one citizen fills (the moat's strength 160 goes in about 9 seconds)
 
 // ---------- Phase 4C: spikes ----------
-// strikes it takes to kill on active spikes: ordinary people one; these armored kinds two (a mounted knight's first strike
-// kills the horse). The owner's own side walks over them safely.
-const SPIKES = { armored: ['knight', 'sword', 'king'], siegeDamage: 120 };
+// strikes it takes to kill on active spikes (Gerald: spikes are very strong): anybody who steps on them dies from one strike,
+// except these, who take two: knights, berserkers and mounted knights (a mounted knight's first strike brings his horse
+// down). Use the unit's kind or kit. The owner's own side walks over them safely.
+const SPIKES = { armored: ['knight', 'berserker'], siegeDamage: 120 };
 
 // ---------- Phase 4C step C8: the table, the frame and the glass ----------
 // The board sits on a polished wooden table: land, a band of moving water, then a brass and gold bar; where the bar
 // meets the table the wood steps down like crown molding; beyond, dark glass over the wood reflects the board.
 const FRAME = {
-  // the gold ball on each corner and the continent pressed into it, by the map's corners (north is the top of the map):
-  // northAmerica, southAmerica, europe, africa, asia, australia (or 'plain' for a smooth ball)
-  globes: { nw: 'northAmerica', ne: 'asia', sw: 'southAmerica', se: 'australia' },
+  // the gold ball on each corner and the land pressed into it, by the map's corners (north is the top of the map):
+  // russia, unitedStates, northAmerica, southAmerica, europe, africa, asia, australia (or 'plain' for a smooth ball).
+  // Gerald: top left Russia, top right the United States, bottom left Australia, bottom right South America.
+  globes: { nw: 'russia', ne: 'unitedStates', sw: 'australia', se: 'southAmerica' },
   reflection: 0.55,    // how strongly the glass reflects the board (0 turns the reflection off)
   fadeBelowFps: 40,    // the reflection fades away while the game runs slower than this, and comes back when it is smooth
   tablePad: 900        // how far the table (and its glass) reaches beyond the frame; past it, black

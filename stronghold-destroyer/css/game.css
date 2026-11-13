@@ -469,3 +469,7 @@ button,#catBar,#cmdbar,#side,#top{touch-action:manipulation}
 @media (max-width:640px){ #match .ml{min-width:0;width:100%;text-align:center} #match .mrow{font-size:17px} }
 /* Phase 4C step C8: the minimap keeps the map's own shape on the wider map */
 #mini{height:auto!important;aspect-ratio:var(--mapAR,1.6)}
+/* Settings: the player's scroll speed */
+.scrollRow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.scrollRow .sl{font-weight:700;color:var(--gold);min-width:110px}
+.scrollRow .sbtn.on{outline:2px solid var(--gold);color:var(--gold);background:linear-gradient(#4a3c22,#33290f)}
