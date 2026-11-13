@@ -186,11 +186,117 @@ fights back, and the rivals are clearly stronger than in 4A (lessons, longbows, 
 raids from new sides), so its town shrinks; a player who defends does far better. Speed (lower is faster; 4B measured from
 the west start like 4A): 100 people Phase 3 2,265, 4A 2,028, 4B 1,980; 800 people Phase 3 3,740, 4A 3,537, 4B 3,412.
 
+## Phase 4C: controls, defenses, match setup and the table frame (branch upgrade-v2)
+
+**The camera.** The game is a fixed three-quarter view of a 3D world: one fixed angle (it looks like an isometric
+view), with zoom and scrolling. No twist and no tilt. Phase 4C did not change it.
+
+**Gerald's selection rules (step C0, before C1).** No Fix button floats over people in the real game (Remove & rebuild
+stays in every box). A command, a click or tap on the ground or a target, sends the chosen people and lets them go at
+once. One click or tap on a person shows who they are, their work and what they are doing; a double click or double tap
+opens their box.
+
+**C1, the leftovers from 4B.**
+- Real causes found and fixed (not limits raised): idle soldiers were nudged because each new arrival squeezed into the
+  crowd at the gathering spot, shoving everyone out a little; now an arriving person takes the nearest open spot. The
+  rival worker jostle came from workers choosing the same bush or tree without counting the other teams' people there,
+  and noticing "going round" too late; they now count everyone and give a spot up sooner. Also fixed on the way: a rival
+  guard chasing just past his leash and back again, a rival builder shuffling on one spot, arrows piling up after the
+  game ended, a rival worker jostled right beside a tree (he now works from there), and bandits who could not find a way
+  out (they now slip away instead of standing still).
+- The long-game test player now defends itself (it sends its soldiers at anyone who comes near, every 5 seconds).
+- Quarry workers walk out two by two beside each loaded ox cart while one stays at the stone; after a trip the pair
+  works the stone a while before going out again.
+- At the Stronghold with the school's top level, an engineer builds a trebuchet at his hut; it goes to the siege flag.
+- The new soldiers have outfits of their own (longbow cloak and quiver, crossbow kettle hat and quilted coat,
+  flamethrower hood, goggles and apron, berserker horns, war paint and two axes) on the existing jointed figures.
+- The new buildings have models of their own: alehouse, apothecary, school (bell cote), engineer's hut (crane), stable
+  (with a horse), church (tower and spire), abbey (cloister), orchard trees, low vineyard trellises.
+
+**C2, camera, selection and placement.** Mouse-edge scrolling is much slower and eases in and out (an edge band 34 points
+wide; the deeper in, the faster, up to 260 a second against the keys' 620). A box drawn round a crowd picks the soldiers
+(civilians only when there are none). While placing, R or T or the Turn button turns the building; the button says which
+way it faces (toward you, away from you, left, right). One finger drags a building's outline and lifting it sets it
+down; the mouse works the same way. Numbers: CONTROLS in settings.js.
+
+**C3, walls and moats.** Walls, fences and gates follow the exact route drawn (one stroke with the mouse held down or a
+finger, bends and all; two clicks still make a straight line). Trees, loose rocks and berry bushes in the way are
+cleared, never walked round; buildings, fields, water, iron and existing gates are left as openings. The ground is
+blocked at once. Moats stop people and never hurt. **Who may fill a moat is one setting: MOAT_FILLERS in settings.js**
+(today citizens, spearmen and flamethrowers; knights and anyone mounted never). A filled square is ordinary ground for
+everyone, at once. Those filling cannot be hit, and flamethrowers cannot be hit by them.
+
+**C4, spikes.** An enemy crossing active spikes is struck down: ordinary unarmored people and bandits die from one strike;
+knights and armored swordsmen need two; a mounted knight loses his horse to the first. The owner's own people cross
+safely. The rivals stand together against you (one side), so a rival's spikes spare the other rivals' men too.
+Numbers: SPIKES in settings.js.
+
+**C5, patrols, Guard and rally flags.** Patrol: choose soldiers, press Patrol, draw the route with the mouse or a finger;
+they walk it over and over (round and round when the ends meet, otherwise there and back), fight what comes near, and
+carry on. Guard: press Guard, tap a place; they hold that area and never chase far outside it. Any new order ends either
+duty. Three rally flags, each with its own colour, button picture and model on the map: army (red flag beside a shield),
+citizens (green flag beside a person), siege (orange flag beside a catapult; rams, catapults, ballistas, trebuchets).
+When three or more soldiers are sent together, that is the main army: soldiers and siege engines without orders of their
+own follow it there. Idle citizens go back to the campfire (unless they find work).
+
+**C6, phones and tablets.** On phones the five categories sit in a bar along the bottom; a category opens upward as a sheet
+of picture buttons and folds away by itself once a choice needs the map, so the building can be dragged into place.
+Tapping the open category again, or Close, folds it too. Tablets and computers keep the side panel. A gear (Settings)
+replaces Menu, a ? opens Help, and Quit is inside Settings (it asks for a second tap). Taxes have down and up arrows in
+the top bar (with the same consequences as before). The advisor's hints stay on (there is no switch to turn them off),
+one at a time, compact on phones, shown and spoken (speech follows the Voice setting, which also covers alerts).
+
+**C7, match setup and random starts.** On the front page: your faction, how many rivals (1 to 4; three unless you change
+it), each rival's faction or Random, the difficulty, a trading friend (only with two or more rivals), and where you start
+(Random, or west, north, east or south). The choices are remembered. Every game you and each rival start somewhere new:
+places are drawn beside the roads (so nobody starts shut in by forest), clear of the river and the mountains, with room
+between camps, and your last five starting places are never reused. Choosing a part of the map makes the land afresh
+(the page reloads, because the forest grows round the camps). Rivals' camps start hidden in the fog. The winning rule
+follows the count: defeat every rival who is not your trading friend ("To win: defeat all N of your rivals").
+
+**C8, the table, the frame and the glass.** From the inside out: land, the moving water band, a brass bar with a gold
+ridge and studs, three carved wooden steps down to a polished wooden table (like crown molding), then dark glass over the
+wood, and black beyond. A gold ball on each corner has a continent pressed into it: North America (north-west), Asia
+(north-east), South America (south-west), Australia (south-east); **FRAME.globes in settings.js changes them** (also
+Europe, Africa, or plain). The glass reflects the board, the brass and the gold, and shows the wood faintly. The
+reflection is cheap: it reuses a copy of the picture already drawn (the world is not drawn a second time), taken only while
+the glass is in view, every other frame; it fades away when the game runs slower than FRAME.fadeBelowFps (40 a second)
+and comes back when it is smooth. The map is wider: 148 squares across (was 128), with roads and a mountain in the new
+east. (The forests grow in a new arrangement as a result; starting places are random anyway.)
+
+**C9, living water and wildlife.** The sea band rolls in gentle waves; the sea, the river, the pond and every moat carry
+moving ripples; now and then a splash. A fish jumps, birds fly over, butterflies and frogs appear by the water. Each kind
+has a cap (LIFE_CAP), and fewer appear when the game lowers its detail to stay smooth.
+
+**New checks (Phase 4C):** tSelect, tLeftovers, tControls, tWalls (wall routes, gates, moats, the filler setting), tSpikes
+(strikes by unit type), tOrders (patrols, Guard, each rally flag, the army following), tPhone (the phone sheet folding,
+Settings, Help, Quit, taxes, hints; phone held both ways and iPad), tMatch (setup with 1, 2, 3 and 4 rivals, twelve random
+games in a row, the winning rule by count), tFrame (the table, globes, the glass and its fading under a low frame rate),
+tWater.
+
+**Settings to know (all in js/settings.js):** CONTROLS (scrolling), MOAT_FILLERS and MOAT, SPIKES, FRAME (globes,
+reflection strength, fade frame rate, table size), RIVALS (rival defaults; the front page sets the count).
+
+**Assumptions made (Gerald may change any):**
+- Three rivals by default (Gerald said "not four"). One of them is a trading friend unless switched off.
+- The corner globes follow the map's compass corners (as on a world map). The camera looks across the map at an angle,
+  so on screen the map is a diamond; "top-left" was taken to mean north-west.
+- A rival's spikes spare the other rivals, because the rivals fight on one side against you.
+- Soldiers count as "the main army" when three or more are sent together.
+- Choosing a starting place reloads the front page (the land is made round the camps when the page loads).
+- The Voice setting still silences all speech, hints included; the hints themselves cannot be switched off.
+
+**Art still needed** (stand-ins working today): painted, sheet-style figures for the longbowman, crossbowman,
+flamethrower, berserker and mounted knight (today outfits on the existing jointed figures); sheet-quality art for the
+new buildings (today code-built models); the inside pictures for the building boxes and the People button face listed
+in 4B; optionally a more detailed continent relief for the corner globes.
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4B):** branch `upgrade-v2` holds Phase 4A (play link version 48) and Phase 4B steps B1 to B8, all built;
-the Phase 4B section above lists what each step does, the numbers to confirm, the conflicts, what was simplified and
-the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
+**Latest (Phase 4C):** branch `upgrade-v2` holds Phase 4A, Phase 4B and Phase 4C steps C0 to C9, all built and checked;
+the Phase 4C section above lists what each step does, the settings, the assumptions and the art still needed.
+Earlier: Phase 4B steps B1 to B8; its section lists what each step does, the numbers to confirm, the conflicts, what was
+simplified and the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
 
 Gerald asked that, if the conversation runs out of room and restarts, work picks
 up from here. State as of the latest build (artifact version 31 or later,
