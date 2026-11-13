@@ -140,7 +140,8 @@ const WEAPONS = { bow: 1, spear: 1, sword: 1, mace: 1, armor: 1 };
 // a happy town trades on good terms; an upset one pays a market tax. Even at best, buying never gets as cheap as making it yourself,
 // and selling never pays as much as buying.
 const marketMul = () => mood >= 50 ? 1 - (mood - 50) / 50 * 0.25 : 1 + (50 - mood) / 50 * 0.4;   // 0.75 when overjoyed, 1.4 when furious
-const priceOf = row => { const [, , , buy, sell] = row, m = marketMul(); const b = Math.max(Math.ceil(buy * m), Math.ceil(sell * 1.6)); return { buy: b, sell: Math.min(Math.round(sell * (2 - m)), b - 1) }; };
+const priceOf = row => { const [, , , buy, sell] = row, m = marketMul(), fm = myRule('marketBuyMul', 1);   // Ticanologue buys at half price
+  const b = fm < 1 ? Math.max(2, Math.ceil(buy * m * fm)) : Math.max(Math.ceil(buy * m), Math.ceil(sell * 1.6)); return { buy: b, sell: Math.min(Math.round(sell * (2 - m)), b - 1) }; };
 const haveOf = k => Math.floor(k === 'food' ? (foodKinds.crops || 0) + (foodKinds.berries || 0) : k === 'bread' ? (foodKinds.bread || 0) : (res[k] || 0));
 function trade(b, act, key) {
   const row = MARKET.find(r => r[0] === key); if (!row || !b || b.dead || b.done === false) return;
@@ -267,7 +268,8 @@ function craftBrain(u, dt) {
       if (site.stock % 4 === 0) floatText(site.x, site.y - 40, `${site.stock} stone cut, waiting for the ox cart`, '#e9dcbc');
       return;
     }
-    u.carry += rc.n || 1; u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
+    // (Cy Young bakeries make 4.5 times the bread)
+    u.carry += (rc.n || 1) * bakeryMulOf(site); u.carryType = rc.out; if (u.carry >= rc.batch) { u.sub = 'toDrop'; u.path = []; } }
 }
 function nearestDrop(u, type) {
   let best = null, bd = 1e9;

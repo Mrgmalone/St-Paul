@@ -12,7 +12,7 @@
 <div id="top">
   <button id="btnMenu" aria-expanded="false" aria-controls="menuPop" title="Menu: help, music, sound">&#9776;<span class="lbl"> Menu</span></button>
   <button id="btnPause" title="Pause the game to plan and place your castle (P)">&#10074;&#10074;<span class="lbl"> Pause</span></button>
-  <div id="status"><b>Choose your civilization to begin</b></div>
+  <div id="status"><b>Choose your faction to begin</b></div>
   <div id="title">STRONGHOLD DESTROYER</div>
 </div>
 <div id="main">
@@ -25,13 +25,14 @@
   <div id="leftNote" hidden><span id="leftText"></span><button class="sm" id="leftWhy">Why?</button><button class="xbtn" id="leftClose" aria-label="Close" style="position:static;flex:0 0 auto">&times;</button></div>
   <div id="banner">The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.</div>
   <div id="pick"><div class="wrap">
-    <h1>CHOOSE YOUR CIVILIZATION</h1>
-    <p class="sub">Your choice changes how your people work, fight, and defend.</p>
+    <h1>CHOOSE YOUR FACTION</h1>
+    <p class="sub">Each faction plays by its own rules. Tap one to read it, then tap Play.</p>
     <div id="diff"><span>Difficulty:</span>
       <button class="dbtn" data-d="easy" title="The enemy works and builds at about two-thirds of your pace; smaller raids, further apart">Easy</button>
       <button class="dbtn on" data-d="medium" title="The enemy works and builds at your pace">Medium</button>
       <button class="dbtn" data-d="hard" title="The enemy works and builds faster than you; bigger raids, more often">Hard</button></div>
-    <div class="cards">
+    <div id="facCards" class="fcards"></div>
+    <div class="cards" id="oldCards" hidden>
       <button class="civ" data-civ="legion"><div class="nm"><span class="sw" style="background:#2f63b0"></span>Iron Legion</div>
         <div class="tag">A warrior people, born to march.</div>
         <div class="hd good">STRENGTHS</div><ul><li>Soldiers have 20% more health</li><li>Soldiers hit 20% harder</li><li>Soldiers train 30% faster</li></ul>
@@ -188,6 +189,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="sprites/atlas.js"></script>
 <script src="sprites/materials.js"></script>
+<script src="js/settings.js"></script>
 <script src="js/core.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/ground.js"></script>
@@ -197,6 +199,7 @@
 <script src="js/rivals.js"></script>
 <script src="js/town.js"></script>
 <script src="js/castle.js"></script>
+<script src="js/factions.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/world3d.js"></script>

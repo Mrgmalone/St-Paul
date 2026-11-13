@@ -202,16 +202,22 @@ function startPalisade() {
   for (const [x, y] of line) { if (!canPlace('wall', x, y)) continue; const w = createBuilding('wall', x, y); finishBuilding(w); w.hp = w.maxHp; w.startPalisade = true; }
   floats.length = n0;   // it was there from the start: no 'built' notices
 }
-const testArmy = /[?&]testArmy=1/.test(location.search);   // older tests only: start both sides with the soldiers they had before (see spawnPlayerPeople)
+const testArmy = LEGACY;   // older tests only: start both sides with the soldiers they had before (see spawnPlayerPeople)
+const FAC_THEME = { cyyoung: 'harvest', ticanologue: 'legion', hekaranok: 'wardens', psychana: 'legion' };   // music until each faction has its own
 function startGame(key) {
   palVer++;   // team colours change: 3D buildings made before this are rebuilt in the new colours
-  AudioSys.init(); AudioSys.setTheme(key);
-  CIV = CIVS[key];
+  const fac = FACTIONS[key] ? key : null; FACKEY = fac;
+  AudioSys.init(); AudioSys.setTheme(fac ? FAC_THEME[fac] : key);
+  CIV = fac ? factionCiv(fac) : CIVS[key];
+  if (fac) {   // your faction's own costs: the marketers' expensive market, the healers' stronger abbey (stand-in: House of Prayer)
+    BUILD.market.wood = Math.round(BUILD.market.wood * myRule('marketCostMul', 1));
+    BUILD.chapel.hp = Math.round(BUILD.chapel.hp * myRule('abbeyHpMul', 1));
+  }
   Object.assign(PAL.player, { tunic: ARMY.crimson, tunicDark: ARMY.crimsonDark, shield: ARMY.crimson });   // every civilisation's army wears Gerald's crimson and gold
   PAL.civ.trim = CIV.color;
   res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = testArmy ? 2 : 0; res.bow = testArmy ? 2 : 0; res.stone = 0;   // stage 1: a shack in the woods, only wood and food
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
-  spawnPlayerPeople(testArmy); spawnKing(); if (testArmy && keep) giftKnight(keep, ''); startPalisade();   // the king is the only fighter you start with, on foot
+  spawnPlayerPeople(testArmy, fac ? FACTIONS[fac].start.civilians : 5); spawnKing(); if (testArmy && keep) giftKnight(keep, ''); startPalisade();   // the king is the only fighter you start with, on foot
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
   planEnemyWalls(); buildEnemyWalls(16, true);
   planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
@@ -226,6 +232,12 @@ function startGame(key) {
   updateHud();
 }
 document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));
+// the front page: the four factions, drawn from settings.js (the old peoples show only for the older tests)
+// a first tap selects a faction (so all four can be read first); its Play button starts the game
+buildFrontPage(); document.querySelectorAll('.fac').forEach(b => b.onclick = e => {
+  if (b.classList.contains('sel') && e.target.closest('.fgo')) { startGame(b.dataset.fac); return; }
+  document.querySelectorAll('.fac').forEach(o => o.classList.toggle('sel', o === b));
+});
 (function difficulty() {
   let d = 'medium'; try { d = localStorage.getItem('sd-diff') || 'medium'; } catch (e) {}
   const set = k => { DIFF = DIFFS[k] || DIFFS.medium; document.querySelectorAll('.dbtn').forEach(b => b.classList.toggle('on', b.dataset.d === DIFF.key)); try { localStorage.setItem('sd-diff', DIFF.key); } catch (e) {} };

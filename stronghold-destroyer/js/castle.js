@@ -43,7 +43,7 @@ let placing = null;
 // MAX_PEOPLE: the most people you can have, however many houses (proposed 400; the game stays smooth with
 // about 700 people on the map at once, so this leaves room for the rivals' armies too). Each house adds 5 room.
 const MAX_PEOPLE = 400;
-const popCap = () => Math.min(MAX_PEOPLE, CIV.popCap + 5 * structures.filter(b => b.kind === 'house' && b.done && !b.dead && b.team === 'player').length);
+const popCap = () => Math.min(MAX_PEOPLE, (CIV.popCap + 5 * structures.filter(b => b.kind === 'house' && b.done && !b.dead && b.team === 'player').length) * (CIV.popMul || 1));   // Hekaranok: room for twice the people
 // a building can face any of four ways before it is set down: 0 south (toward you), 1 west, 2 north, 3 east
 const DIR_NAME = ['south', 'west', 'north', 'east'], DIR_VEC = [[0, 1], [-1, 0], [0, -1], [1, 0]];
 const dimsOf = (kind, dir = 0) => { const d = BUILD[kind]; return dir % 2 ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; };

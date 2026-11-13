@@ -299,3 +299,35 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #btnFix,#btnTurn{background:#26221e;color:var(--ink);border:1px solid var(--gold);min-height:var(--tap)}
 /* the big round X on every pop-up, never stretched by the big menu buttons */
 .pop .xbtn,#menuPop .xbtn{min-width:48px;width:48px;height:48px;min-height:48px;padding:0;margin:0;font-size:30px;line-height:44px;text-align:center;border-radius:50%}
+/* ===================== Phase 4A: the front page, four factions side by side =====================
+   Large, high-contrast text; each card is one big tap target. Four across on an iPad held sideways,
+   two across upright, one across on a phone (the page scrolls). */
+#pick .wrap{max-width:1500px;width:100%}
+.fcards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:stretch;margin-top:6px}
+.fac{display:flex;flex-direction:column;text-align:left;background:#1c1b1a;color:var(--ink);border:2px solid var(--line);border-radius:14px;padding:14px 14px 12px;
+  font-family:inherit;font-size:17px;line-height:1.4;cursor:pointer;min-height:44px;box-shadow:0 2px 10px rgba(0,0,0,.5);border-top:6px solid var(--fc)}
+.fac:hover,.fac:focus-visible{border-color:var(--ft);outline:none}
+.fac.sel{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold),0 4px 18px rgba(0,0,0,.6)}
+.fac .fhead{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.fac .femb{width:64px;height:75px;flex:0 0 auto}
+.fac .fnm{font-family:Cinzel,Georgia,serif;font-size:25px;font-weight:bold;color:#fff3d6;line-height:1.15}
+.fac .fep{font-style:italic;font-size:16px;color:var(--dim)}
+.fac .fsw{display:flex;gap:6px;margin-top:5px}.fac .fsw span{width:20px;height:20px;border-radius:50%;border:2px solid #fff3d6}
+.fac .fplay{margin:6px 0 8px;font-size:17px;color:#fff3d6}
+.fac .fhd{font-size:14px;font-weight:bold;letter-spacing:1.5px;margin-top:6px;color:var(--gold)}
+.fac .fhd.good{color:#8fe39a}.fac .fhd.bad{color:#ff9d86}
+.fac ul{margin:3px 0 0;padding-left:20px;font-size:16px}
+.fac .fweak,.fac .fstart{margin:3px 0 0;font-size:16px}
+.fac .fgo{display:none;margin-top:12px;min-height:54px;line-height:54px;border-radius:12px;text-align:center;font-size:21px;font-weight:bold;
+  background:linear-gradient(#e7c56c,#c79a35);color:#1c1408;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.fac.sel .fgo{display:block}
+#diff .dbtn{min-height:48px;min-width:96px;font-size:18px}
+@media (max-width:1100px){ .fcards{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .fcards{grid-template-columns:1fr} #pick h1{font-size:26px} #pick .sub{font-size:17px} #pick{align-items:flex-start} }
+@media (max-height:500px){ #pick{align-items:flex-start} }
+/* the front page covers the whole screen while you choose, and scrolls from the top when it is taller than the screen */
+#pick{position:fixed;inset:0;z-index:60;align-items:flex-start}
+#pick .wrap{margin:auto}
+#oldCards[hidden]{display:none!important}
+.fac .fhd{font-size:15px}
+#pick{background:#121110}

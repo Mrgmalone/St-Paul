@@ -146,8 +146,9 @@ function moveBy(u, mx, my) {
   u.x = clamp(u.x, 10, MW - 10); u.y = clamp(u.y, 10, MH - 10);
 }
 function aggro(u, r) {
+  if (r > 0 && u.sight > r) r = u.sight;   // Psychana sees farther
   let best = null, bd = r;
-  for (const o of nearUnits(u.x, u.y, r + 40)) { if (o.dead || o.inside || o.team === u.team || (o.onWall && u.type !== 'archer')) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
+  for (const o of nearUnits(u.x, u.y, r + 40)) { if (o.dead || o.inside || !hostile(u.team, o.team) || hiddenFrom(o, u.team) || (o.onWall && u.type !== 'archer')) continue; const d = edgeDist(u, o); if (d < bd) { bd = d; best = o; } }
   return best;
 }
 function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u._pd = null; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }

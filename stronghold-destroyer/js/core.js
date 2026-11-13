@@ -342,7 +342,8 @@ function makeUnit(team, kind, x, y) {
   if (kind === 'knight') { u.pal = Object.assign({}, PAL[team], { helmet: '#d6dce2', plume: team === 'player' ? '#f0e6d0' : ENEMY_PLUME }); u.look = { beard: Math.random() < 0.5, longHair: false, w: 1.06, h: 1.03 }; }
   if (kind === 'king') { u.pal = Object.assign({}, PAL[team], { helmet: '#e0b84e', plume: '#f0e6d0', shieldRim: '#e0b84e' }); u.look = { beard: true, longHair: true, w: 1.08, h: 1.0, s: 1.22 }; }
   if (kind === 'civ') u.pal = team === 'enemy' ? PAL.ecv : PAL.civ;
-  else if (team === 'player') { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }
+  else if (team === 'player' && !(FACKEY && kind === 'king')) { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }   // a faction's king keeps his full strength
+  if (team === 'player' && FACKEY) applyFaction(u, FACKEY);
   units.push(u);
   return u;
 }
@@ -474,10 +475,11 @@ function setupWorld() {
 }
 // No side starts with an army (Gerald's design): you begin with a few civilians, and the enemy with its lord and its workers.
 // `army` is only for the older tests, written when both sides began with soldiers (index.html?testArmy=1); the game never passes it.
-function spawnPlayerPeople(army) {
+function spawnPlayerPeople(army, nCiv = 5) {
   if (army) [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
     .forEach(([k, x, y]) => makeUnit('player', k, x + HOME.dx, y + HOME.dy));
-  [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058]].forEach(([x, y]) => makeUnit('player', 'civ', x + HOME.dx, y + HOME.dy));
+  const spots = [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058], [120, 1096], [156, 1104], [192, 1098], [228, 1106], [264, 1094]];   // a second row for the healers' doubled people
+  for (let i = 0; i < nCiv; i++) { const [x, y] = spots[i % spots.length]; makeUnit('player', 'civ', x + HOME.dx + Math.floor(i / spots.length) * 20, y + HOME.dy); }
   // (tests only) enemy guards at their posts
   if (army) [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
     .forEach(([k, x, y]) => { const g = makeUnit('enemy', k, x + EXP, y); g.maxHp = g.hp = Math.round(g.hp * 0.85); });
@@ -567,15 +569,18 @@ function approachPoint(u, t) {
   const a = Math.atan2(u.y - t.y, u.x - t.x), d = t.radius + u.radius + u.range * 0.5;
   return { x: t.x + Math.cos(a) * d, y: t.y + Math.sin(a) * d };
 }
+// who fights whom: every side against every other, except a side's own people and the trading friend, who is at peace with all
+function hostile(a, b) { return a !== b && a !== 'friend' && b !== 'friend'; }
 function enemiesOf(team) {
-  const list = units.filter(o => o.team !== team && !o.dead && !o.inside);
-  for (const s of structures) if (s.team !== team && !s.dead && s.kind !== 'pit' && s.kind !== 'moat') list.push(s);
+  const list = units.filter(o => hostile(team, o.team) && !o.dead && !o.inside && !hiddenFrom(o, team));
+  for (const s of structures) if (hostile(team, s.team) && !s.dead && s.kind !== 'pit' && s.kind !== 'moat') list.push(s);
   return list;
 }
 function nearestEnemy(u, maxD) {   // the closest enemy person (from the nearby grid) or enemy building
+  if (maxD > 0 && u.sight > maxD) maxD = u.sight;   // Psychana: everyone sees as far as a longbowman
   let best = null, bd = maxD;
-  for (const e of nearUnits(u.x, u.y, maxD + 40)) { if (e.team === u.team || e.dead || e.inside) continue; const d = edgeDist(u, e); if (d < bd) { bd = d; best = e; } }
-  for (const s of structures) { if (s.team === u.team || s.dead || s.kind === 'pit' || s.kind === 'moat') continue; const d = edgeDist(u, s); if (d < bd) { bd = d; best = s; } }
+  for (const e of nearUnits(u.x, u.y, maxD + 40)) { if (!hostile(u.team, e.team) || e.dead || e.inside || hiddenFrom(e, u.team)) continue; const d = edgeDist(u, e); if (d < bd) { bd = d; best = e; } }
+  for (const s of structures) { if (!hostile(u.team, s.team) || s.dead || s.kind === 'pit' || s.kind === 'moat') continue; const d = edgeDist(u, s); if (d < bd) { bd = d; best = s; } }
   return best;
 }
 function hitCenter(t) { return t.x0 !== undefined ? { x: t.x + RR(-22, 22), y: t.y - RR(20, 90) } : { x: t.x, y: t.y - 21 }; }
