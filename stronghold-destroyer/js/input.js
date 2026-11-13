@@ -173,7 +173,7 @@ canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse') {
     if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
-    if (e.button === 0) drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false };
+    if (e.button === 0) { drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false }; if (!placing && !tearing) holdStart(p); }
     else if (e.button === 2) { if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
   } else touchDown(p);
@@ -190,10 +190,11 @@ function touchDown(p) {
   document.body.classList.add('touch'); fling.x = fling.y = 0; clearTimeout(TOUCH.hold);
   if (pointers.size === 1) {
     Object.assign(TOUCH, { mode: 'press', sx: p.x, sy: p.y, lx: p.x, ly: p.y, t0: performance.now(), lt: performance.now(), vx: 0, vy: 0 });
-    TOUCH.hold = setTimeout(() => { if (TOUCH.mode === 'press') { TOUCH.mode = 'box'; drag = { sx: TOUCH.sx, sy: TOUCH.sy, x: TOUCH.lx, y: TOUCH.ly, box: true, shift: TOUCH.add, touch: true }; markers.push(Object.assign(toWorld(TOUCH.sx, TOUCH.sy) || { x: 0, y: 0 }, { t: 0, col: '140,255,160' })); } }, 420);
+    if (!holdStart(p)) TOUCH.hold = setTimeout(() => { if (TOUCH.mode === 'press') { TOUCH.mode = 'box'; drag = { sx: TOUCH.sx, sy: TOUCH.sy, x: TOUCH.lx, y: TOUCH.ly, box: true, shift: TOUCH.add, touch: true }; markers.push(Object.assign(toWorld(TOUCH.sx, TOUCH.sy) || { x: 0, y: 0 }, { t: 0, col: '140,255,160' })); } }, 420);
   } else if (pointers.size === 2) { drag = null; TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; }
 }
 function touchMove(p) {
+  holdMove(p);
   if (TOUCH.mode === 'press' && Math.hypot(p.x - TOUCH.sx, p.y - TOUCH.sy) > 12) { TOUCH.mode = 'pan'; clearTimeout(TOUCH.hold); }
   if (TOUCH.mode === 'pan') {
     const now = performance.now(), d = panBy(TOUCH.lx, TOUCH.ly, p.x, p.y), dt = Math.max(1, now - TOUCH.lt) / 1000;
@@ -211,8 +212,9 @@ function touchMove(p) {
 function touchUp(p) {
   clearTimeout(TOUCH.hold);
   const mode = TOUCH.mode;
-  if (pointers.size > 0) { if (mode === 'two') TOUCH.mode = 'after'; return; }
+  if (pointers.size > 0) { holdEnd(); if (mode === 'two') TOUCH.mode = 'after'; return; }
   TOUCH.mode = null;
+  if (holdEnd()) return;   /* held a person: his card is open */
   if (mode === 'pan') { if (performance.now() - TOUCH.lt < 160) { fling.x = clamp(TOUCH.vx, -2400, 2400); fling.y = clamp(TOUCH.vy, -2400, 2400); } return; }
   if (mode === 'box') {
     const bx0 = Math.min(TOUCH.sx, p.x) - 10, bx1 = Math.max(TOUCH.sx, p.x) + 10, by0 = Math.min(TOUCH.sy, p.y) - 12, by1 = Math.max(TOUCH.sy, p.y) + 12;
@@ -247,7 +249,7 @@ document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; docu
 canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
-  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; }
+  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; holdMove(p); }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
@@ -262,6 +264,7 @@ function endPointer(e) {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { pointers.delete(e.pointerId); touchUp(p); pinch = null; return; }
   if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
+  if (holdEnd()) { drag = null; pointers.delete(e.pointerId); return; }   /* held a person: his card is open */
   if (drag && pointers.has(e.pointerId) && tearing && !drag.box) { tearAt(p.x, p.y); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId) && placing && !drag.box) { placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }
   if (drag && pointers.has(e.pointerId)) {

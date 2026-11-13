@@ -49,12 +49,17 @@
   </div></div>
   <canvas id="mini" title="Map: click or drag to move the view"></canvas>
   <div id="cmdbar">
+    <button id="btnPeople" title="Your people: who they are, their work and their worries" aria-label="Your people"><svg viewBox="0 0 40 40" width="34" height="34"><circle cx="20" cy="20" r="17" fill="#e8c9a0" stroke="#5a3a1a" stroke-width="2"/><circle cx="14" cy="17" r="2.4" fill="#3a2414"/><circle cx="26" cy="17" r="2.4" fill="#3a2414"/><path d="M12 25 Q20 32 28 25" fill="none" stroke="#3a2414" stroke-width="2.4" stroke-linecap="round"/><path d="M5 15 Q8 3 20 3 Q32 3 35 15 Q28 9 20 9 Q12 9 5 15Z" fill="#6a4424"/></svg><span>People</span></button>
     <div id="selbox"><span id="selLabel">No soldiers selected</span><div id="selSum"></div><div id="selBar"><i></i></div></div>
     <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnBell" class="sm" hidden title="Ring the bell: every soldier comes home to heal, then walks back to its spot">&#128276; Bell</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button><button id="camAdd" class="sm tonly" title="Add mode: tap people to add them to your group">&#65291; Add</button><button id="camHome" class="sm" title="Back to your castle (Space)">&#8962; Castle</button></div>
   </div>
   <div id="tips" aria-label="Reserved for the Art of War advisor (Phase 7)"></div>
   <div id="ibLabel" hidden></div>
   <div id="moodPop" class="pop" hidden></div>
+  <div id="peoplePop" class="pop" hidden></div>
+  <div id="personPop" class="pop" hidden></div>
+  <div id="tapIcon" hidden><canvas data-icon="r:people"></canvas></div>
+  <div id="alertBar" hidden aria-live="polite"></div>
   <div id="stagePop" class="pop" hidden></div>
   <div id="rivalsPop" class="pop" hidden></div>
   <div id="goodsPop" class="pop" hidden style="left:10px;top:8px"></div>
@@ -63,6 +68,7 @@
     <h3>MENU</h3>
     <button id="btnHelp">Help and controls (H)</button>
     <div class="row"><button id="btnTrees">Trees: Detailed</button><span style="font-size:14px;color:#d9c9a3">Simple runs faster on slower computers</span></div>
+    <div class="row"><button id="btnVoice">Voice: On</button><span style="font-size:14px;color:#d9c9a3">spoken alerts and advice</span></div>
     <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
     <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
@@ -216,6 +222,7 @@
 <script src="js/industry.js"></script>
 <script src="js/insidepics.js"></script>
 <script src="js/workgroups.js"></script>
+<script src="js/citizens.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/world3d.js"></script>

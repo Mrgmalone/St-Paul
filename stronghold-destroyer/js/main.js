@@ -110,10 +110,10 @@ let frameNo = 0, lastDraw = 0, last = performance.now(), time = 0, lastSel = 0, 
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   // reading a menu (help, mood, goods, a building's panel) pauses the game, unless enemies are close
-  menuT -= dt; if (menuT <= 0) { menuT = 0.25; const open = started && !won && (!document.getElementById('help').classList.contains('hide') || ['menuPop', 'moodPop', 'goodsPop', 'storePop'].some(id => !document.getElementById(id).hidden));
+  menuT -= dt; if (menuT <= 0) { menuT = 0.25; const open = started && !won && (!document.getElementById('help').classList.contains('hide') || ['menuPop', 'moodPop', 'goodsPop', 'storePop', 'peoplePop', 'personPop'].some(id => !document.getElementById(id).hidden));
     menuPause = open && !enemiesClose(); document.getElementById('menuNote').hidden = !menuPause || paused; }
   const halted = paused || menuPause;
-  if (started && IND()) INSIDE.update();   // the inside picture behind an open building box (shown while paused too)
+  if (started && IND()) { INSIDE.update(); citizensFrame(); }   // the inside picture behind an open building box (shown while paused too)
   if (!halted) time += dt; frameDt = halted ? 0 : dt;
   // camera scrolling
   const sp = 620 / cam.z * dt;
@@ -144,7 +144,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
-  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); updateCitizens(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);

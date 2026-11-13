@@ -173,7 +173,7 @@ const UI = (() => {
     const ln = (a, b) => `<div class="ln"><span>${a}</span><b>${b}</b></div>`;
     return '<h3>GOODS</h3>' + ln('Food: berries, crops, bread', `${Math.floor(foodKinds.berries)}, ${Math.floor(foodKinds.crops)}, ${Math.floor(foodKinds.bread)}`) + ln('Wheat', Math.floor(res.wheat)) + ln('Flour', Math.floor(res.flour)) + ln('Stone', Math.floor(res.stone)) + ln('Hops', Math.floor(res.hops)) + ln('Ale', Math.floor(res.ale)) + ln('Iron', Math.floor(res.iron)) + ln('Bows', res.bow) + ln('Spears', res.spear) + ln('Swords', res.sword) + '<p style="margin:8px 0 0;font-size:14px;color:#d9c9a3">Build workshops in the Industry tab (key 5). Weapons in the armory make soldiers cheap.</p>';
   }
-  function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop', 'storePop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
+  function closePops() { let any = false; for (const id of ['moodPop', 'menuPop', 'goodsPop', 'storePop', 'peoplePop', 'personPop']) if (!$(id).hidden) { $(id).hidden = true; any = true; } $('btnMenu').setAttribute('aria-expanded', 'false'); return any; }
   // --- tabs and hiding the panel ---
   // drop-down sections in the side panel: one opens at a time; clicking an open one closes it
   function showTab(name, toggleIfOpen) {

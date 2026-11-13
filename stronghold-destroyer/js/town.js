@@ -211,6 +211,7 @@ function canTrain(kind) {
   return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap() || (kind !== 'civ' && draftable())) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
+  if (IND() && kind === 'civ') { showBanner('Citizens cannot be bought: they grow up in your houses, 3 to 5 minutes each. Build houses to raise more.', 4); return; }
   if (!unlocked(kind, true)) { showBanner(`${KINDS[kind].name}s come at stage ${stageOfItem(kind, true)}, the ${stageName(stageOfItem(kind, true))}.`, 3); return; }
   if (!canTrain(kind)) {
     const c = COSTS[kind];
@@ -314,12 +315,12 @@ function updateJobs(dt) {
   for (const u of civs) if (u.job && (u.job.dead || (u.job.x0 !== undefined && !farms.includes(u.job) && !structures.includes(u.job)))) u.job = null;
   const sites = structures.concat(farms).filter(b => JOBS[b.kind] && b.team === 'player' && !b.dead && b.done && !b.asleep);
   for (const u of civs) if (u.job && u.job.asleep) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
-  for (const site of sites) {
+  for (const pass of IND() ? [1, 2] : [2]) for (const site of sites) {   /* every building gets one worker before any gets a second */
     let staff = civs.filter(u => u.job === site).length;
-    while (staff < jobWant(site)) {
+    while (staff < (pass === 1 ? Math.min(1, jobWant(site)) : jobWant(site))) {
       // first an idle person; if nobody is idle, a gatherer with no job is called over, so every new workplace is staffed by itself
-      let free = civs.filter(u => !u.job && u.order === 'idle' && !isManual(u));
-      if (!free.length) free = civs.filter(u => !u.job && (u.order === 'gather' || u.order === 'move' || u.order === 'idle') && u.order !== 'build' && !(u.task && u.task.node && JOBS[u.task.node.kind]));
+      let free = civs.filter(u => !u.job && !u.inSchool && !u.engineer && u.order === 'idle' && !isManual(u));
+      if (!free.length) free = civs.filter(u => !u.job && !u.inSchool && !u.engineer && (u.order === 'gather' || u.order === 'move' || u.order === 'idle') && u.order !== 'build' && !(u.task && u.task.node && JOBS[u.task.node.kind]));
       if (!free.length) { if (!site.noStaffMsg) { site.noStaffMsg = true; floatText(site.x, site.y - site.topH - 10, `${site.name}: no free civilian. Train one at the keep (Town list).`, '#ffb38a'); } break; }
       site.noStaffMsg = false;
       free.sort((a, b) => Math.hypot(a.x - site.x, a.y - site.y) - Math.hypot(b.x - site.x, b.y - site.y));
@@ -348,7 +349,7 @@ function updateJobs(dt) {
     if (b.team !== 'player' || b.dead || b.done !== false) continue;
     const on = civs.filter(u => u.order === 'build' && u.buildTarget === b).length; if (on >= 2) continue;
     const near = (a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y);
-    let pool = civs.filter(u => !u.job && !u.toHeal && !u.sick && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0 && u.sub === 'toKeep'));
+    let pool = civs.filter(u => !u.job && !u.inSchool && !u.toHeal && !u.sick && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0 && u.sub === 'toKeep'));
     if (!pool.length && !on) pool = civs.filter(u => u.job && !u.toHeal && !u.sick && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0));
     pool.sort(near).slice(0, 2 - on).forEach(u => { u.breakUntil = 0; commandBuild([u], b); floatText(u.x, u.y - 50, `Off to build the ${b.name}`, '#ffe9a8'); });
   }
@@ -359,16 +360,16 @@ function updateJobs(dt) {
   const onCount = new Map(); for (const o of civs) if (o.task && o.task.node && o.order === 'gather') onCount.set(o.task.node, (onCount.get(o.task.node) || 0) + 1);
   const onNode = n => onCount.get(n) || 0;
   for (const u of civs) {
-    if (u.job || u.toHeal || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
+    if (u.job || u.toHeal || u.inSchool || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
     const want = res.food < 120 || foodKinds.berries + foodKinds.crops < res.wood * 0.6 ? 'food' : 'wood';
     for (const type of [want, want === 'food' ? 'wood' : 'food']) {
       const list = type === 'wood' ? trees : bushes; let best = null, bd = 1100;
-      for (const n of list) { if (!nodeOk(n, type) || onNode(n) >= 5 || (u.bad && u.bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - u.x, c.y - u.y); if (d < bd) { bd = d; best = n; } }
+      for (const n of list) { if (!nodeOk(n, type) || onNode(n) >= 5 || (u.bad && u.bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - u.x, c.y - u.y); if (IND() && k0() && Math.hypot(c.x - k0().x, c.y - k0().y) > 750) continue;   /* citizens stay near the castle */ if (d < bd) { bd = d; best = n; } }
       if (best) { commandGather([u], best); onCount.set(best, onNode(best) + 1); break; }
     }
   }
   // people with no job wait by the campfire
-  if (playerFire) for (const u of civs) if (!u.job && u.order === 'idle' && !isManual(u) && !(u.breakUntil > time) && !u.inside && !u.toHeal && Math.hypot(u.x - playerFire.x, u.y - playerFire.y) > 75 && !(u.fireWaitT > time)) {
+  if (playerFire) for (const u of civs) if (!u.job && !u.inSchool && u.order === 'idle' && !isManual(u) && !(u.breakUntil > time) && !u.inside && !u.toHeal && Math.hypot(u.x - playerFire.x, u.y - playerFire.y) > 75 && !(u.fireWaitT > time)) {
     if (u.fireTried && time - u.fireTried < 20) { u.fireWaitT = time + 45; u.fireTried = 0; continue; }   /* could not get there last time: wait a while where it is */
     u.fireTried = time;
     const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26, d = { x: playerFire.x + Math.cos(a) * r, y: playerFire.y + Math.sin(a) * r * 0.7 };

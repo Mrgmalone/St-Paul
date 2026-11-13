@@ -367,3 +367,22 @@ body:not(.touch) #cmdbar .tonly{display:none}
 /* Phase 4B: a building box shows a picture of the inside behind its top, fading into the panel so the writing stays clear */
 #storePop.pic{background-size:100% auto!important;background-repeat:no-repeat!important;background-position:center top!important;background-color:rgba(24,17,10,.97)!important}
 #storePop.pic h3{text-shadow:0 2px 4px #000,0 0 10px #000;font-size:19px}
+/* Phase 4B step B3: the People tab, a person's card, the trade icon on a quick tap, and the needs alerts */
+#btnPeople{display:flex;align-items:center;gap:6px;min-height:52px;padding:4px 12px 4px 6px;border-radius:26px;border:2px solid var(--gold,#d9a93a);background:rgba(28,20,12,.94);color:#ffe9b8;font-size:17px;font-weight:700;cursor:pointer}
+#btnPeople svg{flex:none}
+#peoplePop{left:12px;bottom:96px;top:auto;width:min(480px,94vw);max-height:68vh;overflow-y:auto;z-index:9}
+#peoplePop .sub{margin:10px 0 4px;color:#ffd98a;font-weight:700;font-size:16px;border-top:1px solid rgba(217,169,58,.4);padding-top:6px}
+#peoplePop .plist{display:flex;flex-direction:column;gap:4px}
+#peoplePop .prow{display:grid;grid-template-columns:1.1fr 1.3fr .4fr;gap:2px 8px;align-items:center;text-align:left;min-height:46px;padding:4px 8px;border-radius:8px;border:1px solid rgba(217,169,58,.35);background:rgba(255,255,255,.04);color:#f3e7cf;font-size:16px;cursor:pointer}
+#peoplePop .prow small{grid-column:1/-1;color:#ffb38a;font-size:14px}
+#personPop{position:absolute;width:340px;z-index:10;font-size:17px}
+#personPop .why{font-size:15px;color:#e8dcc0;margin:2px 0 6px;line-height:1.35}
+#personPop.sheet{left:0!important;right:0;bottom:0;top:auto!important;width:auto;max-height:62vh;overflow-y:auto;border-radius:16px 16px 0 0;animation:sheetUp .28s ease-out}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+#tapIcon{position:absolute;z-index:6;pointer-events:none;width:60px;height:50px;border-radius:12px;background:rgba(255,248,232,.95);border:2px solid #5a3a1a;box-shadow:0 3px 8px rgba(0,0,0,.5)}
+#tapIcon canvas{width:56px;height:46px}
+#alertBar{position:absolute;top:66px;left:12px;max-width:min(520px,70vw);z-index:5;pointer-events:none;display:flex;flex-direction:column;gap:4px}
+#alertBar .al{background:rgba(24,17,10,.92);color:#ffe2a8;font-size:17px;font-weight:600;padding:6px 12px;border-left:5px solid #d9a93a;border-radius:6px}
+#alertBar .al.hot{color:#ffc0b0;border-left-color:#e0583a}
+#alertBar .al.sm{font-size:15px;font-weight:500;opacity:.88}
+@media (max-width:600px),(max-height:500px){ #btnPeople span{display:none} #btnPeople{min-height:48px;padding:4px} #alertBar{top:58px;max-width:90vw} #alertBar .al.sm{display:none} }
