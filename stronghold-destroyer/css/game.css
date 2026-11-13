@@ -397,3 +397,60 @@ body:not(.touch) #cmdbar .tonly{display:none}
 /* phones: the advisor across the top, the alerts below it (they must never cover each other) */
 @media (max-width:600px){ #tips{left:10px;right:10px;width:auto} #alertBar{top:112px} }
 @media (max-height:500px){ #tips{width:40vw} #alertBar{max-width:40vw} }
+/* ===================== Phase 4C step C6: phones and the top bar =====================
+   Phones: the five categories in a bar along the bottom; the chosen one opens upward over the map as a sheet of picture
+   buttons and folds away when a choice needs the map. Tablets and computers keep the side panel. */
+#catBar{display:none}
+body.phone{--catH:64px}
+body.phone #catBar{display:flex;position:absolute;left:0;right:0;bottom:0;height:var(--catH);z-index:8;gap:4px;padding:4px 6px;box-sizing:border-box;
+  background:linear-gradient(#24211e,#161514);border-top:1px solid var(--gold);box-shadow:0 -4px 14px rgba(0,0,0,.5)}
+body.phone #catBar button{flex:1 1 0;min-width:0;min-height:52px;margin:0;padding:2px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  font-size:12.5px;font-weight:700;letter-spacing:.3px;color:var(--ink);border-radius:10px}
+body.phone #catBar button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.phone #catBar button.on{color:#1c140b;background:linear-gradient(#f1d38f,#c99a4a);border-color:#f1d38f}
+body.phone #side{position:absolute!important;left:0;right:0;top:auto!important;bottom:var(--catH);width:auto!important;max-height:min(58vh,440px);flex-basis:auto!important;
+  border-left:none!important;border-top:1px solid var(--gold);border-radius:16px 16px 0 0;z-index:7;box-shadow:0 -8px 22px rgba(0,0,0,.6);animation:sheetUp .2s ease-out}
+body.phone #side.collapsed{display:none}
+body.phone #side .tab{display:none}
+body.phone #sideHead{padding:4px 8px 4px 14px}
+body.phone #btnHide{min-height:44px}
+body.phone #sideScroll{direction:ltr}
+body.phone .pane{grid-template-columns:repeat(auto-fill,var(--tile));margin-top:0;border-top:1px solid var(--line);border-radius:10px;justify-content:space-evenly}
+body.phone .pane > .grp,body.phone .pane > #queue,body.phone .pane > #armoryInfo,body.phone .pane > .rally{grid-column:1 / -1}
+body.phone #btnShow{display:none!important}
+body.phone #cmdbar{bottom:calc(var(--catH) + 6px)}
+body.phone #mini{bottom:calc(var(--catH) + 6px)}
+body.phone #personPop.sheet{bottom:var(--catH)}
+body.phone #peoplePop{bottom:calc(var(--catH) + 70px)}
+/* the gear (Settings) and the ? (Help) */
+#btnMenu{display:inline-flex;align-items:center;gap:4px}
+#btnMenu svg{flex:none}
+#btnHelpTop{margin:0;min-height:var(--tap);min-width:var(--tap);padding:4px 12px;font-size:21px;font-weight:800;border-radius:50%;color:var(--gold)}
+@media (max-width:600px), (max-height:500px){ #btnHelpTop{padding:2px 10px;font-size:19px} #btnMenu{padding:3px 8px} }
+.quitRow{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+#btnQuit{color:#ffc0b0;border-color:#b0503a}
+/* taxes: down, the level, up */
+#cTax{display:inline-flex;align-items:center;gap:4px;padding:0 3px}
+#cTax button{min-height:36px;min-width:40px;padding:0 6px;margin:0;font-size:14px;border-radius:8px;line-height:1}
+#cTax button:disabled{opacity:.35}
+#cTax b{font-size:15px;white-space:nowrap}
+@media (pointer:coarse){ #cTax button{min-height:44px;min-width:44px} }
+/* the advisor: compact on phones (no heading, one or two short lines; the tip itself is never switched off) */
+@media (max-width:600px), (max-height:500px){
+  #tips.adv{padding:4px 10px 5px;border-radius:8px}
+  #tips .advTitle{display:none}
+  #tips .advTip{font-size:14.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #tips .advTip::before{content:"\2726  ";color:#ffd98a}
+}
+@media (max-width:600px){ #alertBar{top:96px} }
+/* C6 touches: boxes open above the phone sheet; with nobody chosen the selection bar is one slim row; a slimmer sheet heading */
+body.phone .pop,body.phone #help{z-index:9}
+body.phone #cmdbar.none{flex-wrap:nowrap;max-width:calc(100% - 140px)}
+body.phone #cmdbar.none #selbox{display:none}
+body.phone #cmdbar.none .btns{flex:1 1 auto;min-width:0}
+body.phone #sideHead{min-height:0;padding:2px 6px 2px 14px;font-size:12px}
+body.phone #btnHide{min-height:44px;padding:2px 12px;font-size:15px}
+@media (max-height:500px){ body.phone #side{max-height:calc(100% - var(--catH) - 8px)} body.phone{--catH:56px} body.phone #catBar button{min-height:46px;flex-direction:row;gap:6px;font-size:14px} }
+/* every tap on a button counts at once (no waiting to see if it is a double-tap zoom) */
+button,#catBar,#cmdbar,#side,#top{touch-action:manipulation}
+@media (max-height:500px){ body.phone #cmdbar,body.phone #cmdbar.none{max-width:min(52%,460px)} }

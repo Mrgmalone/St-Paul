@@ -22,12 +22,13 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
   const small = await p.evaluate(() => [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.closest('#pick') && !b.closest('.chip')).map(b => { const r = b.getBoundingClientRect(); return { id: b.id || b.className || b.textContent.trim().slice(0, 20), w: Math.round(r.width), h: Math.round(r.height) }; }).filter(x => x.w < 44 || x.h < 44));
   console.log('buttons smaller than 44:', JSON.stringify(small)); if (small.length) bad.push(...small);
   // a phone held sideways and upright: picture buttons scale down to 64 points, every tap target stays at least 44
+  // (since Phase 4C the phone panel is a sheet across the bottom, so its width is no longer limited to two columns)
   for (const [w, h] of [[844, 390], [390, 844]]) {
     await p.setViewportSize({ width: w, height: h }); await p.evaluate(() => { window.dispatchEvent(new Event('resize')); UI.showTab('town'); }); await p.waitForTimeout(400);
     const ph = await p.evaluate(() => { const ib = [...document.querySelectorAll('.pane.active .ib')].map(b => b.getBoundingClientRect()), side = document.getElementById('side').getBoundingClientRect();
       const tiny = [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.closest('#pick') && !b.closest('.chip')).map(b => b.getBoundingClientRect()).filter(r => r.width && (r.width < 43.5 || r.height < 43.5)).length;
-      return { n: ib.length, w: ib.length ? Math.round(ib[0].width) : 0, h: ib.length ? Math.round(ib[0].height) : 0, side: Math.round(side.width), tiny }; });
-    console.log(`phone ${w}x${h}:`, JSON.stringify(ph)); if (!ph.n || Math.abs(ph.w - 64) > 3 || Math.abs(ph.h - 64) > 3 || ph.tiny || ph.side > 190) bad.push({ phone: [w, h], ph });
+      return { n: ib.length, w: ib.length ? Math.round(ib[0].width) : 0, h: ib.length ? Math.round(ib[0].height) : 0, side: Math.round(side.width), tiny, sheet: document.body.classList.contains('phone') }; });
+    console.log(`phone ${w}x${h}:`, JSON.stringify(ph)); if (!ph.n || Math.abs(ph.w - 64) > 3 || Math.abs(ph.h - 64) > 3 || ph.tiny || (!ph.sheet && ph.side > 190)) bad.push({ phone: [w, h], ph });
     await p.screenshot({ path: SP + (w > h ? '/buttons_phone.png' : '/buttons_phone_upright.png') });
   }
   if (bad.length) { console.log('bad', JSON.stringify(bad.slice(0, 8))); throw new Error('button rules broken'); }

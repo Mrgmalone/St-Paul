@@ -87,8 +87,9 @@ function enemyWorker(u, dt) {
     /* and plainly: much walking but staying in one small patch for 7 seconds (going round and round) means give this spot up */
     if (u._cx === undefined) { u._cx = u.x; u._cy = u.y; u._ct = 0; u._cw = 0; }
     u._ct += dt; u._cw += stepD;
-    if (u._ct > 4) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 90 && disp < 40 || disp < 16) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
+    if (u._ct > 4) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > (u.sub === 'toNode' ? 55 : 90) && disp < 40 || disp < 16) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* (4C: a slow jostle in the crowd at a tree or bush counts too) */   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
       if (round && u.sub === "toCamp") { const cd = edgeDist(u, camp); if (cd < 170) { u.campFails = 9; } u.path = []; u.repath = 0; }   /* going home round and round: close enough, put the load down (else a fresh way) */
+      else if (round && u.sub === 'toNode' && u.enode && !u.enode.gone && Math.hypot(nodeCenter(u.enode).x - u.x, nodeCenter(u.enode).y - u.y) <= nodeReach(u.enode) + 40) { u._wk = null; u.sub = 'work'; u.workT = 3.2 / ePace(); u.path = []; u.moving = false; return; }   /* right beside it: work from here */
       else if (round) { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; } }
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
     else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 120) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
@@ -134,7 +135,7 @@ function enemyWorker(u, dt) {
     const dn = Math.hypot(c.x - u.x, c.y - u.y);
     if (dn <= nodeReach(n) + 6 || stalled(u) && dn <= nodeReach(n) + 28) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.path = []; u.moving = false; }
     else {
-      walk(c.x, c.y);
+      walk(c.x, c.y); if (u.sub !== 'toNode') return;   /* the walk itself decided (work from here, or give the spot up) */
       // the route ends as close as the ground allows: work from there if it is next to the node, otherwise give it up and choose another
       if (!u.path.length) { if (dn <= nodeReach(n) + 24) { u.sub = 'work'; u.workT = 3.2 / ePace(); u.moving = false; } else { u.ebad = n; n.unreachT = time + 90; u.sub = null; } }
     }
