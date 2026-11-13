@@ -87,11 +87,12 @@ function enemyWorker(u, dt) {
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
     else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 120) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
       if (u.sub === 'toCamp') u.campFails = (u.campFails || 0) + 1;
-      if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } /* nobody tries that spot again for a while */ u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
+      if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } /* nobody tries that spot again for a while; a short pause before choosing again */ u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
       u.path = []; u.repath = 0; }   // carrying home or fleeing: look for a fresh way
     if ((!u.path.length && !(u.noPathT > time)) || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length) u.noPathT = time + 2; } followPath(u, dt); };
   if (time - u.lastHurt < 3 && u.sub !== 'flee') { u.sub = 'flee'; u.path = []; u.order = 'move'; }
   if (u.sub === 'flee') { const ap = approachPoint(u, camp); if (Math.hypot(u.x - ap.x, u.y - ap.y) < 20 || time - u.lastHurt > 8) { u.sub = null; } else { walk(ap.x, ap.y); return; } }
+  if (!u.sub && u.pauseT > time) { u.order = 'idle'; u.moving = false; u.path = []; return; }
   if (!u.sub) {
     const site = structures.find(b => mine(b) && b.done === false && !b.dead && !b.selfBuild && !units.some(o => o !== u && !o.dead && o.ejob === b));
     if (site) { u.ejob = site; u.sub = 'toSite'; u.order = 'build'; u.path = []; }

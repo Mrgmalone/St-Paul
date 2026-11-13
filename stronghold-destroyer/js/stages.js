@@ -73,7 +73,8 @@ function raiseRing(k, n, team, opts = {}) {
   // the old ring comes down (its walls become part of the new)
   for (const b of structures.slice()) if (b.team === team && (b.startPalisade || b.castleRing) && b.ringOf === k) removeQuietly(b);
   // clear the trees and rocks on the castle's ground
-  const inGround = (x, y) => x >= (k.c - R) * TILE && x < (k.c + 3 + R) * TILE && y >= (k.r - R) * TILE && y < (k.r + 3 + R) * TILE;
+  /* the castle's ground and a strip two squares wide outside it, so the new wall never closes off a pocket against the forest */
+  const inGround = (x, y) => x >= (k.c - R - 2) * TILE && x < (k.c + 5 + R) * TILE && y >= (k.r - R - 2) * TILE && y < (k.r + 5 + R) * TILE;
   for (const t of trees.slice()) if (!t.gone && inGround(t.x, t.y)) fellTree(t);
   for (const q of rocks) if (!q.gone && !q.iron && inGround(q.x, q.y)) { q.gone = true; setBlock(Math.floor(q.x / TILE), Math.floor(q.y / TILE), 0); }
   // your buildings in the way of the new wall move inside it

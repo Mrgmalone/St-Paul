@@ -572,14 +572,17 @@ function unstickWatch(u, dt) {
   if (u._uwx === undefined || Math.hypot(u.x - u._uwx, u.y - u._uwy) > 8) { u._uwx = u.x; u._uwy = u.y; u._uwT = 0; return; }
   if ((u._uwT += dt) < 20) return; u._uwT = 0;
   const home = u.team === 'player' ? playerKeep() : (rivalOf(u) && rivalOf(u).keep) || null; if (!home || Math.hypot(home.x - u.x, home.y - u.y) > 1200) return;
-  const ap = approachPoint(u, home);   /* twenty seconds without a step: whatever the reason, step to the nearest open square that has a way home */
+  const ap = approachPoint(u, home);   /* twenty seconds without a step: whatever the reason, step to the nearest open square from which a way truly reaches home */
+  const arrives = (x, y) => { const p = findPath(x, y, ap.x, ap.y); const e = p.length ? p[p.length - 1] : { x, y }; return Math.hypot(e.x - ap.x, e.y - ap.y) < 48; };
   const c0 = Math.floor(u.x / TILE), r0 = Math.floor(u.y / TILE);
   for (let rad = 2; rad <= 10; rad++) for (let dc = -rad; dc <= rad; dc++) for (let dr = -rad; dr <= rad; dr++) {
     if (Math.max(Math.abs(dc), Math.abs(dr)) !== rad) continue; const c = c0 + dc, r = r0 + dr, x = c * TILE + 16, y = r * TILE + 16;
     if (c < 1 || r < 1 || c >= COLS - 1 || r >= ROWS - 1 || tileBlocked(c, r) || riverTile[r * COLS + c] === 1 || circleBlocked(x, y, 8)) continue;
-    if (!findPath(x, y, ap.x, ap.y).length) continue;
+    if (!arrives(x, y)) continue;
     u.x = x; u.y = y; u.path = []; u.repath = 0; u._uwx = x; u._uwy = y; return;
   }
+  /* shut in a pocket with no way out nearby: out to the open ground beside home, as the Fix button does */
+  const f = nearestFree(Math.floor(ap.x / TILE), Math.floor(ap.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; u.repath = 0; u._uwx = u.x; u._uwy = u.y; }
 }
 function updateUnit(u, dt) {
   if (u.dead) { u.deathT += dt; u.flash = Math.max(0, u.flash - dt * 5); return; }
