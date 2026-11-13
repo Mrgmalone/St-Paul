@@ -157,6 +157,7 @@ function aggro(u, r) {
 }
 function sendHome(u) { u.order = 'return'; u.target = null; u.dest = u.post; u.stuckT = 0; u._pd = null; u.path = findPath(u.x, u.y, u.post.x, u.post.y); }
 function attackStep(u, dt) {
+  if (!u.target) { u.order = 'idle'; u.path = []; return; }   /* nobody left to attack */
   // breaking through a wall: every second, check whether a way to the real target has opened
   if (u.goal && isWall(u.target) && alive(u.goal)) {
     u.goalCheck = (u.goalCheck || 0) - dt;

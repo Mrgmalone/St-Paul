@@ -32,7 +32,7 @@ function moodReasons() {
   if (!aleBonus) r.push('there is no ale');
   if (!relBonus) r.push(IND() ? 'there is no house of healing or prayer' : 'there is no house of prayer');
   if (IND() && bugsOn) r.push('bugs are spoiling the food in the granary');
-  if (IND() && alePriceNow() === 2 && aleCover) r.push('the ale is dear');
+  if (IND() && alePriceNow() >= 1.5 && aleCover) r.push('the ale is dear');
   return r;
 }
 function updateMood(dt, people) {
@@ -40,8 +40,8 @@ function updateMood(dt, people) {
   aleBonus = 0; aleCover = 0;
   if (IND()) {   /* the alehouse and tavern: the price you set decides the mood, the gold and the drunks */
     const A = INDUSTRY.ale, serve = taverns * A.tavernServes + countOf('alehouse') * A.alehouseServes, p = alePriceNow();
-    if (serve && res.ale > 0 && people.length) { aleCover = Math.min(1, serve / people.length); aleBonus = Math.round(A.mood[p] * aleCover);
-      aleT += people.length * aleCover * dt / 240; while (aleT >= 1) { aleT -= 1; res.ale = Math.max(0, res.ale - 1); res.gold += A.gold[p]; }
+    if (serve && res.ale > 0 && people.length) { aleCover = Math.min(1, serve / people.length); aleBonus = Math.round(aleAt(A.mood, p) * aleCover);
+      aleT += people.length * aleCover * dt / 240; while (aleT >= 1) { aleT -= 1; res.ale = Math.max(0, res.ale - 1); res.gold += aleAt(A.gold, p); }
       aleDrunks(dt, Math.round(people.length * aleCover)); }
   } else if (taverns && res.ale > 0 && people.length) {
     aleCover = Math.min(1, taverns * 15 / people.length); aleBonus = Math.round(8 * aleCover);

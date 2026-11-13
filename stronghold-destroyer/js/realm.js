@@ -164,7 +164,9 @@ function rivalRaid(R) {
   const ap = approachPoint({ x: R.keep.x, y: R.keep.y1 + 40, radius: 11 }, k), pth = findPath(R.keep.x, R.keep.y1 + 40, ap.x, ap.y);
   if (pth.length < 2) return;
   // a way-point about every 380 points along the way, each nudged a little
-  const way = []; let acc = 0; for (let i = 1; i < pth.length; i++) { const a = pth[i - 1], b2 = pth[i], L = Math.hypot(b2.x - a.x, b2.y - a.y); for (let d = 380 - acc; d < L - 120; d += 380) way.push({ x: a.x + (b2.x - a.x) * d / L + RR(-40, 40), y: a.y + (b2.y - a.y) * d / L + RR(-40, 40) }); acc = (acc + L) % 380; }
+  /* a way-point every 380 points measured along the whole way (however many bends it has), none in its last 120 */
+  const way = []; let total = 0; for (let i = 1; i < pth.length; i++) total += Math.hypot(pth[i].x - pth[i - 1].x, pth[i].y - pth[i - 1].y);
+  { let walked = 0, next = 380; for (let i = 1; i < pth.length; i++) { const a = pth[i - 1], b2 = pth[i], L = Math.hypot(b2.x - a.x, b2.y - a.y); while (next <= walked + L && next < total - 120) { const f = (next - walked) / L; way.push({ x: a.x + (b2.x - a.x) * f + RR(-40, 40), y: a.y + (b2.y - a.y) * f + RR(-40, 40) }); next += 380; } walked += L; } }
   if (!way.length) way.push({ x: (R.keep.x + ap.x) / 2, y: (R.keep.y1 + ap.y) / 2 });
   raidSide(R, way);   /* each raid comes at you from a different side */
   for (const u of go) { u.raider = true; u.order = 'raid'; u.repath = 0; u.path = []; u.route = way.map(w => ({ x: w.x + RR(-24, 24), y: w.y + RR(-24, 24) })); }

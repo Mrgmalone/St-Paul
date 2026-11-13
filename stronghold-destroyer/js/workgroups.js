@@ -48,6 +48,7 @@ function autoEscorts() {   // a free soldier standing idle near home goes with a
 // the escort's own mind: true when it has decided what to do this frame
 function escortBrain(u) {
   const e = u.escort; if (!e) return false;
+  if (u.order === 'attack' && !alive(u.target)) { u.order = 'idle'; u.target = null; u.path = []; }   /* the one he fought is gone */
   if (time - (u.cmdT || -99) < 30 && u.cmdT > 0) { u.escort = null; return false; }   // you gave it another order: it leaves the group
   const gs = groupsOf(e.site), list = gs[e.g];
   if ((e.site.rival ? false : !groupsOn()) || e.site.dead || !list || !list.length) { u.escort = null; return false; }

@@ -197,10 +197,11 @@ function updateGranary(dt) {
 function restFarms(on) { for (const f of mineDone('farm')) { f.asleep = on; if (on) for (const u of units) if (u.job === f) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; } } }
 
 // ---------- ale: the price at the alehouse and tavern ----------
-const alePriceNow = () => Math.min(2, alePrice + (warNow ? 1 : 0));   // in wartime the price goes up a step
+const alePriceNow = () => Math.min(2, alePrice + (warNow ? 0.5 : 0));   // in wartime the price goes up half a step
+const aleAt = (arr, p) => { const i = Math.floor(p), f = p - i; return i >= arr.length - 1 ? arr[arr.length - 1] : arr[i] * (1 - f) + arr[i + 1] * f; };   // between two price settings
 function indWarCheck() { const k = playerKeep(); warNow = !!k && units.some(e => !e.dead && hostile('player', e.team) && e.type !== 'civ' && Math.hypot(e.x - k.x, e.y - k.y) < 1000); }
 function aleDrunks(dt, drinkers) {
-  if (alePriceNow() !== 0 || !drinkers) return;
+  if (alePriceNow() >= 0.5 || !drinkers) return;   /* only cheap ale makes drunks */
   if (Math.random() < INDUSTRY.ale.drunks[0] * drinkers * dt) {
     const w = units.filter(u => u.team === 'player' && !u.dead && u.type === 'civ' && u.job && !(u.drunkUntil > time));
     const v = w[Math.floor(Math.random() * w.length)]; if (v) { v.drunkUntil = time + 30; floatText(v.x, v.y - 55, 'Drunk! (cheap ale)', '#ffd27a'); }
@@ -296,7 +297,7 @@ function healthMood(n) {
   const cover = n ? Math.min(1, cap / n) : 0;
   return [cover, Math.round(Math.min(12, Math.max(best, sum * 0.5)) * cover)];
 }
-function updateHealers(dt) {
+function updateHealHouses(dt) {   /* (not updateHealers: that is Hekaranok's own, in factions.js) */
   healers = HEAL_KINDS.flatMap(k => mineDone(k));
   if (!healers.length) return;
   // the wounded nearby slowly mend (not while fighting)
@@ -323,7 +324,7 @@ function indSiteHtml(b) {
   if (b.kind === 'bakery') h += lnI('Bakeries allowed', `${indMax('bakery')} (five for each mill)`) + (bakeryMulOf(b) > 1 ? lnI('Cy Young bakers', `${bakeryMulOf(b)} times the bread`) : '');
   if (isField(b.kind) || b.kind === 'farm') { const s = sentryOf(b); h += lnI('Sentry', s ? `${s.name} on watch` : '<span style="color:#ffb38a">none: this field needs a sentry</span>'); }
   h += groupsHtml(b);
-  if (b.kind === 'alehouse' || b.kind === 'tavern') h += lnI('Ale price', `${INDUSTRY.ale.prices[alePriceNow()]}${warNow && alePrice < 2 ? ' (raised: wartime)' : ''}`) + lnI('Serves', `${b.kind === 'alehouse' ? INDUSTRY.ale.alehouseServes : INDUSTRY.ale.tavernServes} people`);
+  if (b.kind === 'alehouse' || b.kind === 'tavern') h += lnI('Ale price', `${INDUSTRY.ale.prices[alePrice]}${warNow && alePrice < 2 ? ' (raised for wartime)' : ''}`) + lnI('Serves', `${b.kind === 'alehouse' ? INDUSTRY.ale.alehouseServes : INDUSTRY.ale.tavernServes} people`);
   return h;
 }
 function indSiteButtons(b) {
@@ -398,5 +399,5 @@ function updateIndustry(dt) {
   updateStudy(dt);
   indT -= dt; if (indT > 0) return; indT = 1;
   checkMarketLoss();
-  updateGroups(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealers(1);
+  updateGroups(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealHouses(1);
 }

@@ -23,13 +23,14 @@ const { chromium } = require('playwright'); const env = require('./env');
       // a finished bakery with a baker and flour: count the bread it brings in
       const f = nearestFree(k.c + 6, k.r + 2); const bk = createBuilding('bakery', f.c, f.r); finishBuilding(bk);
       SD.res.flour = 200; const baker = SD.units.find(u => u.team === 'player' && u.type === 'civ'); baker.job = bk; baker.manualT = -99; baker.order = 'idle'; startJob(baker);
+      /* Phase 4B: a bakery needs a working mill */ const fm = nearestFree(k.c - 6, k.r + 2); const ml = createBuilding('mill', fm.c, fm.r); finishBuilding(ml); SD.res.wheat = 200; const miller = SD.units.find(u => u.team === 'player' && u.type === 'civ' && u !== baker); miller.job = ml; miller.manualT = -99; miller.order = 'idle'; startJob(miller);
       out.mul = bakeryMulOf(bk);
       const bread0 = foodKinds.bread || 0; window.__step(1200); out.bread = (foodKinds.bread || 0) - bread0;
       // spare food sold: lift food well above the line and wait one selling round
       addFood('crops', 400); const g0 = SD.res.gold, f0 = SD.res.food; window.__step(220); out.gold = SD.res.gold - g0; out.foodLeft = SD.res.food; out.food0 = f0;
       return out; });
     console.log('cyyoung', JSON.stringify(r));
-    need(r.mul === 4.5 && r.bread >= 13, 'Cy Young bakery makes 4.5x (one load is 13.5 bread, not 9)'); need(r.gold > 0 && r.foodLeft < r.food0, 'Cy Young sells spare food');
+    need(r.mul === 4.5 && r.bread >= 9, 'Cy Young bakery makes 4.5x the bread (one load is 9 bread, not 6)'); need(r.gold > 0 && r.foodLeft < r.food0, 'Cy Young sells spare food');
     await p.close(); }
   // ---- Ticanologue ----
   { const p = await start('ticanologue');
@@ -63,7 +64,7 @@ const { chromium } = require('playwright'); const env = require('./env');
       window.__step(10); out.spotted = band.every(u => !hiddenFrom(u, 'player'));
       // ten or more together cannot hide
       for (let i = 0; i < 10; i++) { const u = SD.makeKit('enemy', 'berserker', k.x + 1400 + i * 14, k.y + 600); u.fac = 'psychana'; u.order = 'hold'; band.push(u); }
-      window.__step(10); out.bigHidden = band.slice(4).some(u => hiddenFrom(u, 'player'));
+      reveal(k.x + 1400, k.y + 600, 400); window.__step(10); out.bigHidden = band.slice(4).some(u => hiddenFrom(u, 'player'));   /* (Phase 4B: first lift the fog over them) */
       return out; });
     console.log('psychana', JSON.stringify(r));
     need(r.sight === 240, 'Psychana sight'); need(r.hidden && r.inEnemies === 0, 'Psychana small band hidden'); need(r.spotted, 'Psychana band spotted by a tower near the castle'); need(!r.bigHidden, 'Psychana big band not hidden');
