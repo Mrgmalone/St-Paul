@@ -353,7 +353,9 @@ function updateJobs(dt) {
     }
   }
   // people with no job wait by the campfire
-  if (playerFire) for (const u of civs) if (!u.job && u.order === 'idle' && !isManual(u) && !(u.breakUntil > time) && !u.inside && !u.toHeal && Math.hypot(u.x - playerFire.x, u.y - playerFire.y) > 75) {
+  if (playerFire) for (const u of civs) if (!u.job && u.order === 'idle' && !isManual(u) && !(u.breakUntil > time) && !u.inside && !u.toHeal && Math.hypot(u.x - playerFire.x, u.y - playerFire.y) > 75 && !(u.fireWaitT > time)) {
+    if (u.fireTried && time - u.fireTried < 20) { u.fireWaitT = time + 45; u.fireTried = 0; continue; }   /* could not get there last time: wait a while where it is */
+    u.fireTried = time;
     const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26, d = { x: playerFire.x + Math.cos(a) * r, y: playerFire.y + Math.sin(a) * r * 0.7 };
     u.order = 'move'; u.dest = d; u.stuckT = 0; u.path = findPath(u.x, u.y, d.x, d.y);
   }

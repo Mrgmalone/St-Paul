@@ -81,8 +81,9 @@ function enemyWorker(u, dt) {
   const walk = (x, y) => {
     // no real progress toward the goal for 6 seconds (stuck in a crowd or a gap): drop this job and choose again
     const d = Math.hypot(x - u.x, y - u.y), key = u.sub + ':' + (u.sub === 'toSite' && u.ejob ? u.ejob.id : u.sub === 'toNode' && u.enode ? Math.round(u.enode.x || 0) + ',' + Math.round(u.enode.y || 0) : '');
-    if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; }
-    else if ((u._wt += dt) > 6) { u._wt = 0; u._wd = d;
+    const stepD = Math.hypot(u.x - (u._wlx || u.x), u.y - (u._wly || u.y)); u._wlx = u.x; u._wly = u.y;
+    if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
+    else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 150) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
       if (u.sub === 'toCamp') u.campFails = (u.campFails || 0) + 1;
       if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } /* nobody tries that spot again for a while */ u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
       u.path = []; u.repath = 0; }   // carrying home or fleeing: look for a fresh way
@@ -137,7 +138,7 @@ function enemyWorker(u, dt) {
   }
   if (u.sub === 'toCamp') {
     const ap = approachPoint(u, camp);
-    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || stalled(u) && edgeDist(u, camp) <= 36 || (u.campFails || 0) >= 2 && edgeDist(u, camp) < 170) {   // a crowded camp: after two tries, the load goes down at its edge
+    if (edgeDist(u, camp) <= 60 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || (u.campFails || 0) >= 2 && edgeDist(u, camp) < 170) {   // a crowded camp: after two tries, the load goes down at its edge
       u.campFails = 0; if (RV) RV.res[u.carryType === 'food' ? 'food' : 'wood'] += u.carry; else ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
     else walk(ap.x, ap.y);
   }

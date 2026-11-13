@@ -330,7 +330,7 @@ const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood'
 function nearestNode(type, x, y, maxD, bad) {
   const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone) : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm' && f.team === 'player') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm' && f.team === 'player') : bushes.concat(farms.filter(f => f.kind === 'farm' && f.team === 'player'));   // your own fields, never a rival's
   let best = null, bd = maxD;
-  for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
+  for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n)) || n.unreachT > time) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
   return best;
 }
 function breakRock(r) {
@@ -389,7 +389,7 @@ function civBrain(u, dt) {
       const a = Math.atan2(u.y - c.y, u.x - c.x), r = reach - 7;
       u.path = findPath(u.x, u.y, c.x + Math.cos(a) * r, c.y + Math.sin(a) * r); u.repath = 3;
       const end = u.path.length ? u.path[u.path.length - 1] : u;
-      if (Math.hypot(end.x - c.x, end.y - c.y) > reach + 2) { u.bad.add(task.node); task.node = null; u.path = []; return; } // cannot reach it
+      if (Math.hypot(end.x - c.x, end.y - c.y) > reach + 2) { u.bad.add(task.node); task.node.unreachT = time + 90; task.node = null; u.path = []; return; } /* cannot reach it: nobody tries it for a while */
     }
     followPath(u, dt);
   } else if (u.sub === 'work') {
