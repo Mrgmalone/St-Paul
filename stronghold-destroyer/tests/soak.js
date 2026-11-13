@@ -7,6 +7,7 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
   await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
   await p.goto(process.env.ARMY ? require('./env').GAME : require('./env').GAME_REAL);   // the real game (no starting army); ARMY=1 for the old start
   await p.evaluate(() => { const fs = window.__raf.splice(0); fs.forEach(f => f(0)); window.__now = 0; });
+  if (process.env.DIFF) await p.evaluate(k => SD.setDiff(k), process.env.DIFF);   // DIFF=easy|medium|hard
   if (process.env.ARMY) await p.click(`.civ[data-civ="${CIV}"]`);   // the old peoples (older tests)
   else { const F = { legion: 'psychana', harvest: 'cyyoung', wardens: 'hekaranok' }[CIV] || CIV; await p.click(`.fac[data-fac="${F}"]`); await p.click(`.fac[data-fac="${F}"] .fgo`); }   // the four factions
   await p.evaluate(() => { window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); for (const u of units) if (u.order !== 'idle') u._busyT = time; if (i % 10 === 9) window.__track(); } };   // _busyT: any other order, even for a moment
@@ -78,12 +79,18 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
     return msg;
   }, [min, !!process.env.ARMY]);
   await p.evaluate(() => SD.setRaid(150));
+  // the test player defends (every 5 seconds): idle soldiers go for the nearest enemy within 1,000 points of the keep
+  await p.evaluate(() => { window.__fights = 0; window.__defend = () => { const k = SD.keep(); if (!k) return;
+    const foes = units.filter(e => !e.dead && hostile('player', e.team) && e.type !== 'civ' && !hiddenFrom(e, 'player') && Math.hypot(e.x - k.x, e.y - k.y) < 1000); if (!foes.length) return;
+    for (const s of units) { if (s.team !== 'player' || s.dead || s.type === 'civ' || s.type === 'king' || isMachine(s) || s.order !== 'idle' || s.onWall || s.guardOf) continue;
+      const e = foes.reduce((a, b2) => Math.hypot(b2.x - s.x, b2.y - s.y) < Math.hypot(a.x - s.x, a.y - s.y) ? b2 : a); commandAttack([s], e); window.__fights++; } }; });
   const log = [];
   for (let m = 0; m < MINUTES; m++) {
     console.log(m + ': ' + await bot(m));
-    for (let s = 0; s < 12; s++) { await p.evaluate(() => { window.__step(100); window.__check(); }); }
+    for (let s = 0; s < 12; s++) { await p.evaluate(() => { window.__step(100); window.__check(); window.__defend(); }); }
     if (m % 5 === 4) console.log('   issues so far ' + JSON.stringify(await p.evaluate(() => Object.fromEntries(Object.entries(window.__issues).map(([k, v]) => [k, v.n]))))); if (m % 5 === 4) console.log('   mood ' + JSON.stringify(await p.evaluate(() => { try { return SD.moodReasons(); } catch (e) { return e.message; } }))); if (m % 5 === 4) console.log('   state ' + JSON.stringify(await p.evaluate(() => ({ t: Math.round(time), units: units.filter(u => !u.dead).length, mine: units.filter(u => !u.dead && u.team === 'player').length, foes: units.filter(u => !u.dead && u.team === 'enemy').length, mood: Math.round(SD.mood()), sick: units.filter(u => u.sick && !u.dead).length, fat: units.filter(u => (u.fat || 0) > 0.5 && !u.dead).length, gifts: units.filter(u => u.gift && !u.dead).length, inside: units.filter(u => u.inside && !u.dead).length, paths: window.__fp, won: won }))));
   }
   console.log(CIV, log.join('\n')); console.log('MOODWHY', JSON.stringify(await p.evaluate(() => { try { return SD.moodReasons(); } catch (e) { return e.message; } })), JSON.stringify(await p.evaluate(() => ({ rule: SD.rule(), res: SD.res, cap: popCap() }))));
+  console.log('OUTCOME', JSON.stringify(await p.evaluate(() => ({ diff: DIFF.key, keep: SD.keep() ? Math.round(SD.keep().hp) + '/' + SD.keep().maxHp : 'lost', stage: stageN, people: myPeople(), soldiers: units.filter(u => u.team === 'player' && !u.dead && u.type !== 'civ' && !isMachine(u)).length, fights: window.__fights, won, rivals: REALM.rivals.map(R => (R.friend ? 'F' : '') + R.stage + (R.defeated ? 'x' : '') + ':' + rivalArmy(R).length) }))));
   console.log('ISSUES', JSON.stringify(await p.evaluate(() => window.__issues), null, 1));
   console.log('errors', errs.slice(0, 20), errs.length); await b.close(); })();

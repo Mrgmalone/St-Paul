@@ -212,6 +212,7 @@ function canTrain(kind) {
 }
 function trainUnit(kind) {
   if (IND() && kind === 'civ') { showBanner('Citizens cannot be bought: they grow up in your houses, 3 to 5 minutes each. Build houses to raise more.', 4); return; }
+  if (IND() && kind === 'trebuchet' && unlocked(kind, true)) { engineerTrebuchet(); return; }   /* an engineer builds it at his hut */
   if (!unlocked(kind, true)) { showBanner(`${KINDS[kind].name}s come at stage ${stageOfItem(kind, true)}, the ${stageName(stageOfItem(kind, true))}.`, 3); return; }
   if (!canTrain(kind)) {
     const c = COSTS[kind];
@@ -254,6 +255,7 @@ const JOB_NAME = { waterpot: 'Water carrier', alehouse: 'Alewife', stable: 'Stab
 const craftCost = site => Math.max(0.5, 1 - 0.05 * Math.floor((site.made || 0) / 4)) * learnWaste();   // the school: less waste   // every 4 made: 5% less material, down to half
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
+  if (u.cartPal) { palBrain(u, dt); return; }   /* walking out beside the ox cart */
   const rc = recipeOf(site, u);
   if (u.sub === 'toDrop') {
     const drop = nearestDrop(u, u.carryType);

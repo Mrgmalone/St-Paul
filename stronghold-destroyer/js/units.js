@@ -627,7 +627,7 @@ function updateUnit(u, dt) {
     if (u._pd !== u.dest) { u._pd = u.dest; u.bestD = undefined; u.rerouted = false; u.progT = 0; }   // a new destination starts afresh
     if (u.bestD === undefined || d < u.bestD - 6) { u.bestD = d; u.progT = 0; } else u.progT = (u.progT || 0) + dt;
     if (u.progT > 3 && !u.rerouted) { u.rerouted = true; u.progT = 0; u.bestD = d; const pth = findPath(u.x, u.y, u.dest.x, u.dest.y); if (pth.length) u.path = pth; }
-    if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5 || (u.progT > 3 && u.rerouted)) { u.order = 'idle'; u.path = []; u.moving = false; u.bestD = undefined; u.rerouted = false; u.progT = 0; }
+    if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5 || (u.progT > 3 && u.rerouted)) { u.order = 'idle'; u.path = []; u.moving = false; u.bestD = undefined; u.rerouted = false; u.progT = 0; settleSpot(u); }
   } else if (u.order === 'attack') attackStep(u, dt);
   else if (u.order === 'mount') mountStep(u, dt);
   else if (u.order === 'raid') { followPath(u, dt);   /* a raider who makes no way for 6 seconds skips to his next way-point */
@@ -639,6 +639,19 @@ function updateUnit(u, dt) {
   if (CIV.keepHeal && u.team === 'player' && !isMachine(u) && u.hp < u.maxHp && playerKeep() && edgeDist(u, keep) < 200) u.hp = Math.min(u.maxHp, u.hp + CIV.keepHeal * dt);
   updateInside(u);
   u.lastX = u.x; u.lastY = u.y;
+}
+// arriving where others already stand: take the nearest open spot beside them instead of squeezing in (squeezing in shoves the
+// whole crowd outward, a little at a time, every time someone arrives)
+function settleSpot(u) {
+  if (!IND() || isMachine(u) || u.onWall || u.inside || u.guardOf || u.type === 'king' || (u.settleT || 0) > time - 4) return;
+  const near = nearUnits(u.x, u.y, 30).filter(o => o !== u && !o.dead && !o.onWall && !o.inside && Math.hypot(o.x - u.x, o.y - u.y) < 18);
+  if (!near.length) return;
+  u.settleT = time;
+  for (let ring = 1; ring <= 4; ring++) for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2 + ring * 0.4, x = u.x + Math.cos(a) * ring * 24, y = u.y + Math.sin(a) * ring * 24;
+    if (circleBlocked(x, y, 9) || nearUnits(x, y, 30).some(o => o !== u && !o.dead && Math.hypot(o.x - x, o.y - y) < 22)) continue;
+    u.order = 'move'; u.dest = { x, y }; u.path = [{ x, y }]; u.stuckT = 0; u._pd = null; return;
+  }
 }
 function separate() {   // people standing on each other step apart; only neighbours are compared (the nearby grid)
   for (const a of units) {

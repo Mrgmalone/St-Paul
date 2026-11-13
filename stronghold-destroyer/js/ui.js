@@ -19,6 +19,7 @@ const UI = (() => {
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
   function iconUnit(g, type, w, h) {
+    type = type.split('.')[0];   /* (u:archer.longbow: the kit is drawn by the 3D picture) */
     const u = fakeUnit(type);
     g.save(); g.translate(w / 2, h - 3);
     if (MACHINE[type]) { const sc = Math.min((w - 4) / 60, (h - 4) / 58); g.scale(sc, sc); u.animDur = 1; drawMachine(g, u, 0); }

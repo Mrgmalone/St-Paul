@@ -316,7 +316,7 @@ function indSiteHtml(b) {
     else h += lnI('Iron', `the blacksmith joins at stage ${INDUSTRY.yard.ironFrom}`);
     h += lnI('Yards allowed now', indMax('woodhut'));
   }
-  if (b.kind === 'quarry') { const ox = oxenOf(b).length; h += lnI('Oxen', `${ox} of ${lv(INDUSTRY.quarry.oxen)} (each eats ${lv(INDUSTRY.quarry.oxFood)} food a minute)`) + lnI('Work', 'one always stays at the stone; the rest cut and load the carts in pairs'); }
+  if (b.kind === 'quarry') { const ox = oxenOf(b).length; h += lnI('Oxen', `${ox} of ${lv(INDUSTRY.quarry.oxen)} (each eats ${lv(INDUSTRY.quarry.oxFood)} food a minute)`) + lnI('Work', `one always stays at the stone; the rest walk out in pairs with each ox cart (${units.filter(u => u.cartPal && u.cartPal.home === b).length} out now)`); }
   if (b.kind === 'farm' && b.animals) h += lnI('Animals', Object.entries(b.animals).map(([k, v]) => `${v} ${k}`).join(', ')) + lnI('Leather made', Math.floor(res.leather || 0));
   if (b.kind === 'stable') h += lnI('Horses', `${b.horses || 0} (for mounted knights)`) + lnI('Needs', `${indStaff('stable')} people to run (has ${staffOf(b)})`) + lnI('Oxen at your farms', animalsAll('oxen'));
   if (b.kind === 'bowyer') h += lnI('Cows at your farms', `${animalsAll('cows')} (needs 2)`);
@@ -376,6 +376,7 @@ function showIndBox(b) {
     h += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${soldierLvl < 5 && !soldierStudy ? B('slessons', `Soldiers' lessons, level ${soldierLvl + 1} (${SOLDIERS.lessons.levels[soldierLvl][0]} gold)`) : ''}${schoolLvl < 3 && !schoolStudy ? B('study', `Teach level ${schoolLvl + 1} (${INDUSTRY.school.levels[schoolLvl][0]} gold)`) : ''}${B('engineer', `Train an engineer (${INDUSTRY.school.engineerCost} gold)`)}</div>`;
   } else if (b.kind === 'engineerhut') {
     const mine = engineers().filter(e => e.job === b).length;
+    const tb = engineers().find(e => e.trebBuild && e.job === b); if (tb) h += lnI('Building a trebuchet', `${Math.round(tb.trebBuild.t / tb.trebBuild.dur * 100)}%`);
     h += lnI('Engineers here', `${mine} of ${INDUSTRY.engineersPerHut}`) + lnI('Trained at', 'the School') + lnI('Work', 'they repair damage very fast and later build trebuchets');
   } else if (HEAL_KINDS.includes(b.kind)) {
     const H = INDUSTRY.health[b.kind];
@@ -399,5 +400,43 @@ function updateIndustry(dt) {
   updateStudy(dt);
   indT -= dt; if (indT > 0) return; indT = 1;
   checkMarketLoss();
-  updateGroups(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealHouses(1);
+  updateGroups(1); quarryPairs(); updateEngineers(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealHouses(1);
+}
+
+// ---------- Phase 4C: quarry workers walk out in pairs with the ox carts; engineers build trebuchets ----------
+// one worker always stays at the stone; the others walk out two by two beside each loaded ox cart and come back with it
+function quarryPairs() {
+  for (const q of mineDone('quarry')) {
+    const crew = units.filter(u => u.job === q && !u.dead && u.type === 'civ').sort((a, b) => a.id - b.id), carts = oxenOf(q);
+    for (const u of crew) { const c = u.cartPal; if (c && (c.dead || c.home !== q || (c.sub !== 'haul' && edgeDist(c, q) < 30))) { u.cartPal = null; u.path = []; u.order = 'idle'; } }
+    const free = crew.slice(1).filter(u => !u.cartPal && !(u.breakUntil > time));
+    for (const c of carts) { if (c.sub !== 'haul') continue; const pals = crew.filter(u => u.cartPal === c).length;
+      for (const u of free.splice(0, Math.max(0, 2 - pals))) { u.cartPal = c; u.order = 'craft'; u.crafting = null; u.path = []; u.repath = 0; } }
+  }
+}
+function palBrain(u, dt) {   // walk beside the cart
+  const c = u.cartPal, tx = c.x + (u.id % 2 ? 18 : -18), ty = c.y + 10;
+  if (Math.hypot(u.x - tx, u.y - ty) > 26) { if (!u.path.length || u.repath <= 0) { u.path = findPath(u.x, u.y, tx, ty); u.repath = 1; } followPath(u, dt); }
+  else { u.moving = false; u.path = []; u.facing = c.facing || 1; }
+}
+// at the Stronghold, with the school's top level, an engineer builds a trebuchet at his hut
+function engineerTrebuchet() {
+  const c = COSTS.trebuchet, cost = { wood: c.wood, stone: c.stone || 0, gold: c.gold || 0 };
+  if (stageN < 5 || schoolLvl < 3) { showBanner("Trebuchets need stage 5, the Stronghold, and the school's top level.", 3.5); return; }
+  const e = engineers().filter(u => !u.trebBuild && u.order !== 'repair' && u.job && !u.job.dead).sort((a, b) => edgeDist(a, a.job) - edgeDist(b, b.job))[0];
+  if (!e) { showBanner("A trebuchet is built by an engineer: train one at the School (he lives in an Engineer's Hut).", 4); return; }
+  if (!afford(cost)) { showBanner(`A trebuchet needs ${engineText ? Object.entries(cost).filter(([, v]) => v).map(([k, v]) => v + ' ' + k).join(', ') : ''}.`, 3); return; }
+  pay(cost); e.trebBuild = { t: 0, dur: c.time * 1.5 };
+  floatText(e.x, e.y - 55, 'Building a trebuchet', '#ffe9a8'); AudioSys.ui('select'); updateHud();
+}
+function updateEngineers(dt) {
+  for (const e of engineers()) {
+    const tb = e.trebBuild; if (!tb) continue; const hut = e.job;
+    if (!hut || hut.dead) { e.trebBuild = null; continue; }
+    if (edgeDist(e, hut) > 50) { if (e.order !== 'move') { const ap = approachPoint(e, hut); commandMove([e], ap.x, ap.y); e.cmdT = -99; } continue; }
+    if (e.attackAnim === 0) { e.attackAnim = 0.001; AudioSys.play('hammer', e.x, e.y); }
+    tb.t += dt * workMul();
+    if (tb.t >= tb.dur) { e.trebBuild = null; const f = nearestFree(Math.floor(hut.x1 / TILE) + 1, Math.floor(hut.y1 / TILE) + 1);
+      const t = makeUnit('player', 'trebuchet', f ? f.c * TILE + 16 : hut.x, f ? f.r * TILE + 16 : hut.y1 + 30); floatText(t.x, t.y - 70, 'Trebuchet built by your engineer', '#9fe8a8'); AudioSys.ui('ready'); }
+  }
 }

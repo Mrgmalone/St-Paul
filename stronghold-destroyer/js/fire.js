@@ -88,7 +88,7 @@ function assignRepairs() {
     if (b.team !== 'player' || b.dead || b.done === false || b.fire > 0 || b.hp >= b.maxHp * 0.98 || b.kind === 'keep' && false) continue;
     if (units.some(u => !u.dead && u.order === 'repair' && u.repairB === b)) continue;
     if (units.some(e => !e.dead && hostile('player', e.team) && e.type !== 'civ' && Math.hypot(e.x - b.x, e.y - b.y) < 260)) continue;   // not while the enemy is at it
-    const civ = u => !u.dead && u.team === 'player' && u.type === 'civ' && !u.toHeal && u.order !== 'firefight' && u.order !== 'repair' && u.order !== 'build' && u.order !== 'leave' && !u.inSchool && !(u.breakUntil > time);
+    const civ = u => !u.dead && u.team === 'player' && u.type === 'civ' && !u.toHeal && !u.trebBuild && !u.cartPal && u.order !== 'firefight' && u.order !== 'repair' && u.order !== 'build' && u.order !== 'leave' && !u.inSchool && !(u.breakUntil > time);
     const near = (p, q) => Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y);
     const w = units.filter(u => civ(u) && u.engineer).sort(near)[0] || units.filter(u => civ(u) && u.job === b).sort(near)[0] || units.filter(u => civ(u) && !u.job && !u.engineer && (u.order === 'idle' || u.order === 'gather' && !(u.carry > 0)) && Math.hypot(u.x - b.x, u.y - b.y) < 900).sort(near)[0];   /* a citizen with no trade leaves his gathering to mend it */
     if (!w) continue;

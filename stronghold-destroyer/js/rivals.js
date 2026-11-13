@@ -87,7 +87,7 @@ function enemyWorker(u, dt) {
     /* and plainly: much walking but staying in one small patch for 7 seconds (going round and round) means give this spot up */
     if (u._cx === undefined) { u._cx = u.x; u._cy = u.y; u._ct = 0; u._cw = 0; }
     u._ct += dt; u._cw += stepD;
-    if (u._ct > 7) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 140 && disp < 50 || disp < 12) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
+    if (u._ct > 4) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 90 && disp < 40 || disp < 8) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
       if (round && u.sub === "toCamp") { const cd = edgeDist(u, camp); if (cd < 170) { u.campFails = 9; } u.path = []; u.repath = 0; }   /* going home round and round: close enough, put the load down (else a fresh way) */
       else if (round) { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; } }
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
@@ -108,7 +108,8 @@ function enemyWorker(u, dt) {
     if (site) { u.ejob = site; u.sub = 'toSite'; u.order = 'build'; u.path = []; }
     else {
       const wantFood = Math.random() < 0.4, list = wantFood ? bushes.filter(b => b.amount >= 10).concat(RV ? farms.filter(f => mine(f) && f.kind === 'farm' && f.amount >= 10) : []) : trees.filter(t => !t.gone && t.amount > 0);
-      const on = new Map(); for (const o of units) if (o !== u && !o.dead && o.team === u.team && o.owner === u.owner && o.enode && (o.sub === 'toNode' || o.sub === 'work')) on.set(o.enode, (on.get(o.enode) || 0) + 1);
+      /* everyone at or heading for a bush or tree counts, whoever they belong to (a crowded one makes newcomers go round and round it) */
+      const on = new Map(); for (const o of units) { if (o === u || o.dead || o.type !== 'civ') continue; const n = o.enode && (o.sub === 'toNode' || o.sub === 'work') ? o.enode : o.task && o.task.node && o.order === 'gather' ? o.task.node : null; if (n) on.set(n, (on.get(n) || 0) + 1); }
       let best = null, bd = 900; for (const n of list) { const k = on.get(n) || 0; if (k >= 3 || n === u.ebad || n.unreachT > time) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < bd) { bd = d; best = n; } }
       if (!best) { u.order = 'idle'; u.moving = false; return; }
       u.enode = best; u.task = { type: wantFood ? 'food' : 'wood', node: best }; u.sub = 'toNode'; u.order = 'gather'; u.path = [];
