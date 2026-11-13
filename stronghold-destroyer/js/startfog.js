@@ -46,7 +46,9 @@ function randomCamps(region, n) {
 (() => {
   if (LEGACY) return;   // the older tests keep the old map
   const q = new URLSearchParams(location.search).get('start');
-  if (q !== null && START_SITES[+q]) START_AT = +q;   // (tests: ?start=0..4 pins one of the five old places)
+  let pend = null; try { pend = JSON.parse(sessionStorage.getItem('sd-load') || 'null'); } catch (e) { pend = null; }   /* (4D: a saved game being loaded brings back its own starting places) */
+  if (pend && Array.isArray(pend.sites) && pend.sites.length >= 2) { START_SITES.length = 0; for (const s of pend.sites) START_SITES.push(s.slice()); START_AT = Math.min(pend.startAt || 0, START_SITES.length - 1); START_RANDOM = !!pend.random; }
+  else if (q !== null && START_SITES[+q]) START_AT = +q;   // (tests: ?start=0..4 pins one of the five old places)
   else {
     const camps = randomCamps(matchPrefs().region || 'random', 5);
     if (camps) { START_RANDOM = true; START_AT = -1; START_SITES.length = 0; for (const s of camps) START_SITES.push(s); START_AT = 0; }

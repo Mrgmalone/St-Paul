@@ -373,13 +373,14 @@ function makeKeep(c, r) {
   return s;
 }
 const bushes = [], stumps = [];
+const bushRand = mulberry32(5150), BR = (a, b) => a + (b - a) * bushRand();   // (4D: bushes land in the same places every time, so a saved game finds them again)
 function placeBushes() {
   const spots = [[300, 860], [330, 875], [285, 895], [318, 905], [470, 960], [500, 975], [455, 990], [140, 1150], [175, 1160]].map(([x, y]) => [x + HOME.dx, y + HOME.dy]).concat([ [160, 760], [190, 780], [150, 800], [820, 940], [850, 955], [830, 985], [865, 920], [800, 970], [1500, 1200], [1530, 1215], [1480, 1240], [2380, 760], [2410, 780], [2440, 755], [2700, 620], [2730, 640], [1100, 1500], [1130, 1520]]);
   for (const [bx, by] of spots) {
     let x = bx, y = by, tries = 0;
-    while ((circleBlocked(x, y, 12) || roadDist(x, y) < 36) && tries++ < 40) { x = bx + RR(-60, 60); y = by + RR(-60, 60); }
+    while ((circleBlocked(x, y, 12) || roadDist(x, y) < 36) && tries++ < 40) { x = bx + BR(-60, 60); y = by + BR(-60, 60); }
     if (tries >= 40) continue;
-    bushes.push({ kind: 'bush', x, y, amount: 150, max: 150, seed: Math.random() * 100 });
+    bushes.push({ kind: 'bush', x, y, amount: 150, max: 150, seed: bushRand() * 100 });
   }
 }
 let keep = null;
