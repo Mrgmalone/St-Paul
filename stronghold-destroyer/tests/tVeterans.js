@@ -5,7 +5,7 @@
 // crews (a longbowman from the Homestead), engines for the giant towers at new prices, and a soldier's glance on a quick tap.
 const { start } = require('./lib4b');
 (async () => {
-  const { p, need, done, SP } = await start('psychana');
+  const { p, need, done, SP } = await start('psychana', { start: 0 });   /* the west start: the flamethrowers' open field is measured from it */
   const r = await p.evaluate(() => {
     const out = {}, k = SD.keep(); SD.res.gold = 20000; SD.res.wood = 5000; SD.res.stone = 3000; SD.res.iron = 200; CIV.popCap = 300; T.people(20);   /* (room in the houses for everyone trained here) */
     // ---- a battle survived ----

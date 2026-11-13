@@ -148,15 +148,22 @@ function holdPerson(u) {
   speeches.push({ u, text: sayLineFor(u).split('. ')[0], t: 0 });
 }
 function tapIcon(u) {
-  tapU = u; tapUntil = performance.now() + 2500;
+  tapU = u; tapUntil = performance.now() + 3500;
   const el = document.getElementById('tapIcon'), c = el.querySelector('canvas'); c.dataset.icon = iconKey(u); delete c.dataset.done; UI.paintIcons(el);
-  el.title = JOB_OF(u); el.hidden = false; const lb = el.querySelector('b');   /* a soldier gets a glance: who, stars, health */
-  lb.textContent = isSoldier(u) ? `${u.name}${u.vet ? ' \u2605' + u.vet : ''} \u00b7 ${Math.round(u.hp / u.maxHp * 100)}%` : ''; lb.hidden = !isSoldier(u); placeTap();
+  el.title = JOB_OF(u); el.hidden = false; const lb = el.querySelector('b');   /* one click: who they are and what they are doing (soldiers also stars and health) */
+  lb.textContent = isSoldier(u) ? `${u.name}${u.vet ? ' \u2605' + u.vet : ''} \u00b7 ${doingOf(u)} \u00b7 ${Math.round(u.hp / u.maxHp * 100)}%` : `${nameOf(u)} \u00b7 ${JOB_OF(u)} \u00b7 ${doingOf(u)}`; lb.hidden = false; placeTap();
 }
 function placeTap() {
   const el = document.getElementById('tapIcon'); if (el.hidden) return;
   if (!tapU || tapU.dead || performance.now() > tapUntil) { el.hidden = true; tapU = null; return; }
   const q = screenOf(tapU.x, tapU.y, 70 + (R3D.active ? elev3D(tapU) : elev2D(tapU))); el.style.left = q.x - 26 + 'px'; el.style.top = q.y - 56 + 'px';
+}
+// what someone is doing right now, in a few words
+function doingOf(u) {
+  if (u.order === 'firefight') return 'fighting a fire'; if (u.order === 'repair') return 'mending a building'; if (u.order === 'build') return 'building';
+  if (u.order === 'attack') return 'fighting'; if (u.escort) return 'guarding workers'; if (u.guardOf) return 'on guard'; if (u.onWall) return 'on the wall';
+  if (u.order === 'craft') return u.sub === 'work' ? 'at work' : 'going to work'; if (u.order === 'gather') return u.sub === 'toKeep' ? 'carrying ' + (u.carryType || 'goods') + ' home' : u.sub === 'work' ? 'gathering ' + ((u.task && u.task.type) || '') : 'going to gather';
+  if (u.breakUntil > time) return 'on a break'; if (u.sick) return 'ill'; if (u.order === 'move') return 'walking'; return 'resting';
 }
 // holding: a press that stays still on one of your people for a second
 let HOLD = null;

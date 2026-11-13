@@ -210,6 +210,7 @@ const fixBtn = document.getElementById('btnFix');
 fixBtn.addEventListener('pointerdown', e => e.stopPropagation());
 fixBtn.onclick = e => { e.stopPropagation(); const u = selection.size === 1 ? [...selection][0] : null; if (u) fixUnit(u); };
 function placeFixButton() {
+  if (IND()) { if (!fixBtn.hidden) fixBtn.hidden = true; return; }   /* Gerald: no Fix button floating over people in the real game (Remove & rebuild stays in each box) */
   const u = selection.size === 1 ? [...selection][0] : null;
   if (!u || u.dead || u.inside || !started) { if (!fixBtn.hidden) fixBtn.hidden = true; return; }
   const q = screenOf(u.x, u.y, (isMachine(u) ? 60 : 64) + (R3D.active ? elev3D(u) : elev2D(u)));

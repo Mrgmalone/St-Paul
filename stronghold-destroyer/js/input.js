@@ -126,7 +126,9 @@ function showStore(b) {
 }
 function onScreenPlayers() { return units.filter(u => u.team === 'player' && !u.dead && !u.inside && u.x > cam.x && u.x < cam.x + vw / cam.z && u.y > cam.y && u.y < cam.y + vh / cam.z); }
 
-function issueAt(sx, sy) {
+// in the real game, a command given ends the selection: send someone somewhere and they are let go at once
+function issueAt(sx, sy) { const ok = issueAt0(sx, sy); if (ok && IND()) { selection.clear(); try { UI.setSelection(selectedList()); } catch (e) {} } return ok; }
+function issueAt0(sx, sy) {
   const sel = selectedList().filter(u => u.type !== 'oxcart'); if (!sel.length) return false;
   for (const u of sel) { u.cmdT = time; if (u.guardOf && u.type !== 'knight') u.guardOf = null; if (u.type === 'king') u.leftKeep = true; }
   AudioSys.ui('ack');
@@ -231,6 +233,7 @@ function touchTap(p) {
   const hit = pickScreen(p.x, p.y), now = performance.now(), last = TOUCH.lastTap;
   TOUCH.lastTap = { t: now, x: p.x, y: p.y, hit };
   if (isMine(hit)) {
+    if (IND() && last && last.hit === hit && now - last.t < 380 && Math.hypot(p.x - last.x, p.y - last.y) < 40) { selectOnly([hit]); showCard(hit); return; }   /* a double tap opens the person's box */
     if (last && last.hit && now - last.t < 380 && Math.hypot(p.x - last.x, p.y - last.y) < 40 && last.hit.type === hit.type) { selectOnly(onScreenPlayers().filter(u => u.type === hit.type || (hit.type !== 'civ' && u.type !== 'civ' && !isMachine(u) && !isMachine(hit)))); return; }
     if (TOUCH.add) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); return; }
     selectOnly([hit]); talkTo(hit); return;
@@ -279,7 +282,9 @@ function endPointer(e) {
         else issueAt(p.x, p.y);
       } else {
         const now = performance.now();
-        if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
+        if (IND() && selection.size && !isMine(hit)) issueAt(p.x, p.y);   /* real game: with someone chosen, a click sends them (and lets them go) */
+        else if (IND() && isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) { selectOnly([hit]); showCard(hit); }   /* a double click opens the person's box */
+        else if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
         else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else { selectOnly([hit]); talkTo(hit); } }
         else if (hit && hit.team === 'player' && IND_BOX[hit.kind]) showIndBox(hit);
         else if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false) showStore(hit);
