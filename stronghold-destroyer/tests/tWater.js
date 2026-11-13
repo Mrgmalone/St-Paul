@@ -13,17 +13,17 @@ const { start } = require('./lib4b');
   need(moved('river') && moved('pond'), 'the river and the pond ripple');
   need(moved('moat'), 'a moat you dig has moving water too');
   // by the river: watch for a minute of play; butterflies and frogs keep near the water; nothing goes over its cap
-  const life = await p.evaluate(() => { const RX = 1236, ry = 1300; SD.cam.z = 1.2; SD.centerOn(RX + 40, ry);
-    const cap = R3D.LIFE_CAP, worst = {}, flies = [], frogs = [];
-    for (let s = 0; s < 120; s++) { window.__drawMs = 0; window.__step(1); window.__drawMs = 999999; window.__step(9);
-      const c = R3D.lifeCount(); for (const k in cap) worst[k] = Math.max(worst[k] || 0, c[k] || 0);
+  const life = await p.evaluate(() => { const rp = RIVER.reduce((b, q) => Math.abs(q.y - 1300) < Math.abs(b.y - 1300) ? q : b), RX = rp.x, ry = rp.y; SD.cam.z = 1.2; SD.centerOn(RX + 40, ry);   /* right over the river */
+    const cap = R3D.LIFE_CAP, worst = {}, flies = [], frogs = []; let splashes = 0;
+    for (let s = 0; s < 180; s++) { window.__drawMs = 0; window.__step(1); window.__drawMs = 999999; window.__step(9);
+      const c = R3D.lifeCount(); for (const k in cap) worst[k] = Math.max(worst[k] || 0, c[k] || 0); splashes += c.splash || 0;
       const sp = R3D.lifeSpots(); flies.push(...sp.fly); frogs.push(...sp.frog); }
     const nearWater = ([x, z]) => riverDist(x, z) < RIVER_HALF + 70   /* within about two squares of the bank */ || Math.min(x, z, MW - x, MH - z) < 30 || (pond && Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry) < 1.4);
-    return { worst, cap, flies: flies.length, fliesNear: flies.filter(nearWater).length, frogs: frogs.length, frogsNear: frogs.filter(nearWater).length }; });
+    return { worst, cap, splashes, flies: flies.length, fliesNear: flies.filter(nearWater).length, frogs: frogs.length, frogsNear: frogs.filter(nearWater).length }; });
   console.log('life', JSON.stringify(life));
   need(Object.keys(life.cap).every(k => (life.worst[k] || 0) <= life.cap[k]), 'no kind of creature ever goes over its cap');
   need(life.flies > 0 && life.fliesNear >= life.flies * 0.8, 'butterflies appear near the shore');
   need(life.frogs === 0 || life.frogsNear === life.frogs, 'frogs sit by the water');
-  need((life.worst.splash || 0) > 0, 'now and then a splash');
+  need(life.splashes > 0, 'now and then a splash');
   await done();
 })();

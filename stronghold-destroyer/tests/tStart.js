@@ -20,7 +20,7 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
     const inTrees = SD.units.filter(u => !u.dead && !u.onWall && blocked[Math.floor(u.y / TILE) * COLS + Math.floor(u.x / TILE)]).length;
     let roadTrees = 0; for (const rd of ROADS) for (const pt of rd) for (const t of SD.trees) if (Math.hypot(t.x - pt.x, t.y - pt.y) < 40) roadTrees++;
     let water = 0, bridge = 0; for (const v of riverTile) { if (v === 1) water++; else if (v === 2) bridge++; }
-    const camps = SD.structures.filter(s => s.campCenter && !s.dead), paths = camps.map(cp => findPath(k.x, k.y1 + 40, cp.x, cp.y1 + 50).length), path = { length: camps.length >= 4 ? Math.min(...paths) : 0 };   // a way to every rival's keep
+    const camps = SD.structures.filter(s => s.campCenter && !s.dead), paths = camps.map(cp => findPath(k.x, k.y1 + 40, cp.x, cp.y1 + 50).length), path = { length: camps.length >= 1 && camps.length === REALM.rivals.filter(R => R.keep).length ? Math.min(...paths) : 0 };   // a way to every rival's keep (since Phase 4C, however many rivals were chosen; three by default)
     // how wooded: the share of land squares holding a tree, and the biggest solid block of trees
     const tset = new Set(SD.trees.map(t => t.c + ',' + t.r)); let solid = 0; for (const t of SD.trees) { let n = 0; for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) if (tset.has((t.c + dc) + ',' + (t.r + dr))) n++; if (n >= 7) solid++; }
     return { stone: SD.res.stone, wood: SD.res.wood, food: SD.res.food, king: mine.filter(u => u.type === 'king').length, civs: mine.filter(u => u.type === 'civ').length, palisade: pal.length, palisadeWood: pal.every(s => s.kind === 'wall'),

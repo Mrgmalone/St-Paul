@@ -68,8 +68,8 @@ const { start } = require('./lib4b');
   need(sc.far === 0, 'citizens with no trade gather near the castle');
   // a phone: the card slides up from the bottom
   await p.setViewportSize({ width: 390, height: 844 }); await p.evaluate(() => { window.__step(2); holdPerson(units.find(v => v.team === 'player' && v.type === 'civ' && !v.dead)); window.__drawMs = 0; window.__step(2); window.__drawMs = 999999; });
-  const ph = await p.evaluate(() => { const el = document.getElementById('personPop'), r = el.getBoundingClientRect(); return { sheet: el.classList.contains('sheet'), bottom: Math.round(r.bottom), h: innerHeight, w: Math.round(r.width) }; });
+  const ph = await p.evaluate(() => { const el = document.getElementById('personPop'), r = el.getBoundingClientRect(); const bar = document.getElementById('catBar'), bt = bar && getComputedStyle(bar).display !== 'none' ? Math.round(bar.getBoundingClientRect().top) : innerHeight; return { sheet: el.classList.contains('sheet'), bottom: Math.round(r.bottom), h: bt, w: Math.round(r.width) }; });   /* (since Phase 4C the card rests on top of the phone's category bar) */
   console.log('phone card', JSON.stringify(ph)); await p.waitForTimeout(400); await p.screenshot({ path: SP + '/person-card-phone.png' });
-  need(ph.sheet && Math.abs(ph.bottom - ph.h) < 4 && ph.w >= 380, 'on a phone the card slides up from the bottom');
+  need(ph.sheet && Math.abs(ph.bottom - ph.h) < 4 && ph.w >= 380, 'on a phone the card slides up from the bottom (resting on the category bar)');
   await done();
 })();
