@@ -51,6 +51,11 @@ in), crossbowmen, foot knights (a maceman guards a new tower's door at stage 3),
 stand in at stage 5), the Fletcher, granary expansion, engineers, escorted work groups, ladder men, flamethrowers, mobile
 trebuchets, and towers coming armed at stage 5.
 
+**Checks and speed (final 4A, play link version 48)**: all 43 checks pass; four 15-minute long games (one per faction)
+with no one stuck, circling, frozen or drifting. Speed in the software 3D test (time per block of frames, lower is
+faster), Phase 3 then 4A, measured turn about with nothing else running: 100 people 2,186 then 1,962; 800 people 3,873
+then 3,689.
+
 ## Where we left off (for a fresh session)
 
 Gerald asked that, if the conversation runs out of room and restarts, work picks
