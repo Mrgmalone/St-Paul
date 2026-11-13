@@ -32,7 +32,7 @@ function moodReasons() {
   if (!aleBonus) r.push('there is no ale');
   if (!relBonus) r.push(IND() ? 'there is no house of healing or prayer' : 'there is no house of prayer');
   if (IND() && bugsOn) r.push('bugs are spoiling the food in the granary');
-  if (IND() && alePriceNow() >= 1.5 && aleCover) r.push('the ale is dear');
+  if (IND() && alePriceNow() > 1.5 && aleCover) r.push('the ale is dear');
   return r;
 }
 function updateMood(dt, people) {

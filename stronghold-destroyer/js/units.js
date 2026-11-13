@@ -630,7 +630,8 @@ function updateUnit(u, dt) {
     if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5 || (u.progT > 3 && u.rerouted)) { u.order = 'idle'; u.path = []; u.moving = false; u.bestD = undefined; u.rerouted = false; u.progT = 0; }
   } else if (u.order === 'attack') attackStep(u, dt);
   else if (u.order === 'mount') mountStep(u, dt);
-  else if (u.order === 'raid') followPath(u, dt);
+  else if (u.order === 'raid') { followPath(u, dt);   /* a raider who makes no way for 6 seconds skips to his next way-point */
+    if (u._rx === undefined || Math.hypot(u.x - u._rx, u.y - u._ry) > 8) { u._rx = u.x; u._ry = u.y; u._rt = 0; } else if ((u._rt += dt) > 6) { u._rt = 0; if (u.route && u.route.length) u.route.shift(); u.path = []; u.repath = 0; } }
 
   // wounds slowly mend after 8 seconds out of harm's way
   if (u.hp < u.maxHp && time - u.lastHurt > 8 && !starving && !isMachine(u)) u.hp = Math.min(u.maxHp, u.hp + CIV.heal * dt);

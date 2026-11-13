@@ -87,8 +87,9 @@ function enemyWorker(u, dt) {
     /* and plainly: much walking but staying in one small patch for 7 seconds (going round and round) means give this spot up */
     if (u._cx === undefined) { u._cx = u.x; u._cy = u.y; u._ct = 0; u._cw = 0; }
     u._ct += dt; u._cw += stepD;
-    if (u._ct > 7) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 140 && disp < 50 || disp < 12) && (u.sub === 'toNode' || u.sub === 'toSite');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
-      if (round) { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; } }
+    if (u._ct > 7) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 140 && disp < 50 || disp < 12) && (u.sub === 'toNode' || u.sub === 'toSite' || u.sub === 'toCamp');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
+      if (round && u.sub === "toCamp") { const cd = edgeDist(u, camp); if (cd < 170) { u.campFails = 9; } u.path = []; u.repath = 0; }   /* going home round and round: close enough, put the load down (else a fresh way) */
+      else if (round) { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; } }
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
     else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 120) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
       if (u.sub === 'toCamp') u.campFails = (u.campFails || 0) + 1;
@@ -97,7 +98,11 @@ function enemyWorker(u, dt) {
     if ((!u.path.length && !(u.noPathT > time)) || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length) u.noPathT = time + 2; } followPath(u, dt); };
   if (time - u.lastHurt < 3 && u.sub !== 'flee') { u.sub = 'flee'; u.path = []; u.order = 'move'; }
   if (u.sub === 'flee') { const ap = approachPoint(u, camp); if (Math.hypot(u.x - ap.x, u.y - ap.y) < 20 || time - u.lastHurt > 8) { u.sub = null; } else { walk(ap.x, ap.y); return; } }
-  if (!u.sub && u.pauseT > time) { u.order = 'idle'; u.moving = false; u.path = []; return; }
+  if (!u.sub && u.pauseT > time) { if (u.order === 'move' && u.path.length) return;   /* stepping out of a crowd */
+    u.order = 'idle'; u.moving = false; u.path = [];
+    /* waiting in a crowd: step out of it once, to an open square nearby, rather than be jostled about */
+    if (!u.decrowdT || u.decrowdT < time) { u.decrowdT = time + 8; if (nearUnits(u.x, u.y, 30).filter(o => o !== u && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < 26).length >= 3) { const f = nearestFree(Math.floor(u.x / TILE) + (Math.random() < 0.5 ? -2 : 2), Math.floor(u.y / TILE) + (Math.random() < 0.5 ? -2 : 2)); if (f) { u.order = 'move'; u.dest = { x: f.c * TILE + 16, y: f.r * TILE + 16 }; u.path = findPath(u.x, u.y, u.dest.x, u.dest.y); u.stuckT = 0; } } }
+    return; }
   if (!u.sub) {
     const site = structures.find(b => mine(b) && b.done === false && !b.dead && !b.selfBuild && !units.some(o => o !== u && !o.dead && o.ejob === b));
     if (site) { u.ejob = site; u.sub = 'toSite'; u.order = 'build'; u.path = []; }
