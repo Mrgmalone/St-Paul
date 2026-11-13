@@ -529,7 +529,8 @@ function updateGuards(dt) {
     if (u.order !== 'idle' || u.toHeal) continue;
     const g = u.guardOf;
     if (g.type === 'king' && g.onWall) { const dk = g.onWall, gx2 = dk.x + (u.id % 5 - 2) * 18, gy2 = dk.y1 + 34; if (Math.hypot(u.x - gx2, u.y - gy2) > 40) commandMove([u], gx2, gy2); continue; }
-    const gx = u.guardSpot ? u.guardSpot.x : g.x0 !== undefined ? g.x + (u.id % 2 ? -28 : 28) : g.x + (u.id % 5 - 2) * 18,   // a body's width clear of the door guard who came with the tower gy = u.guardSpot ? u.guardSpot.y : g.kind === 'keep' ? g.y1 + 16 : g.x0 !== undefined ? g.y + 14 : g.y + 26;
+    // (a second guard stands a body's width clear of the door guard who came with the tower)
+    const gx = u.guardSpot ? u.guardSpot.x : g.x0 !== undefined ? g.x + (u.id % 2 ? -28 : 28) : g.x + (u.id % 5 - 2) * 18, gy = u.guardSpot ? u.guardSpot.y : g.kind === 'keep' ? g.y1 + 16 : g.x0 !== undefined ? g.y + 14 : g.y + 26;
     if (Math.hypot(u.x - gx, u.y - gy) > 56) commandMove([u], gx, gy);   // a little leeway, so a nudge does not send it walking back and forth
   }
 }
