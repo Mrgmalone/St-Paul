@@ -104,7 +104,7 @@ function giftKnight(b, msg) {
   // he stands on the open side that faces home, so he never ends up outside the wall
   const home = keep && keep !== b ? keep : { x: b.x, y: b.y + 999 }, mx = (b.x0 + b.x1) / 2, my = (b.y0 + b.y1) / 2;
   const spots = [[mx, b.y1 + 14], [mx, b.y0 - 14], [b.x0 - 14, my], [b.x1 + 14, my]].filter(([x, y]) => !circleBlocked(x, y, 6)).sort((p, q) => Math.hypot(p[0] - home.x, p[1] - home.y) - Math.hypot(q[0] - home.x, q[1] - home.y));
-  const sp = spots[0] || [mx, b.y1 + 14];
+  const fr = spots[0] ? null : nearestFree(Math.floor(mx / TILE), Math.floor((b.y1 + 14) / TILE)), sp = spots[0] || (fr ? [fr.c * TILE + 16, fr.r * TILE + 16] : [mx, b.y1 + 14]);   /* every side of the tower hemmed in: the nearest clear spot, never inside the trees */
   // the door guard that comes with a tower fits your stage: a spearman, then a maceman (until foot knights come), then a knight
   const u = makeUnit('player', FACKEY && !LEGACY ? (stageN >= 4 ? 'knight' : stageN >= 3 ? 'maceman' : 'spear') : 'knight', sp[0], sp[1]);
   u.gift = true; u.guardOf = b; u.cmdT = -99; u.guardSpot = { x: sp[0], y: sp[1] };
