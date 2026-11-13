@@ -120,12 +120,14 @@ function frame(now) {
   let mx = 0, my = 0;
   if (keys.ArrowLeft) mx -= 1; if (keys.ArrowRight) mx += 1; if (keys.ArrowUp) my -= 1; if (keys.ArrowDown) my += 1;
   const modal = !document.getElementById('help').classList.contains('hide') || document.getElementById('pick').style.display !== 'none' && !started;
-  if (edge.on && !pinch && !orbit && !modal && !TOUCH.mode && performance.now() > edge.touchUntil) { const E = 12, W = window.innerWidth, H = window.innerHeight; if (edge.x <= E) mx -= 1; if (edge.x >= W - 1 - E) mx += 1; if (edge.y <= E) my -= 1; if (edge.y >= H - 1 - E) my += 1; }
+  let edgeMul = 1;
+  if (edge.on && !pinch && !orbit && !modal && !TOUCH.mode && performance.now() > edge.touchUntil) { const E = CONTROLS.edgeZone, W = window.innerWidth, H = window.innerHeight, depth = d => clamp((E - d) / E, 0, 1);   /* the deeper into the edge band, the faster, up to a gentle limit */
+    const l = depth(edge.x), r = depth(W - 1 - edge.x), t = depth(edge.y), bo = depth(H - 1 - edge.y); mx += r - l; my += bo - t; if (l || r || t || bo) edgeMul = CONTROLS.edgeSpeed / 620; }
   edge.held = (mx || my) && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown) ? edge.held + dt : 0;
-  const boost = 1 + Math.min(1, edge.held / 1.2) * 0.8;   // edge scrolling speeds up the longer you hold
+  const boost = edgeMul < 1 ? edgeMul * (1 + Math.min(1, edge.held / 2) * 0.3) : 1;   // edge scrolling: slow and steady, a little quicker if held
   mx *= boost; my *= boost;
   if (mx || my) { if (R3D.active) { const { c, s } = R3D.panAxes(); const ax = mx * c + my * s, ay = -mx * s + my * c; mx = ax; my = ay; } }
-  const ease = Math.min(1, dt * 9);
+  const ease = Math.min(1, dt * (edgeMul < 1 ? CONTROLS.ease : 9));   // it eases in and out (gentler at the edge)
   camVel.x += (mx * sp / Math.max(dt, 1e-3) - camVel.x) * ease; camVel.y += (my * sp / Math.max(dt, 1e-3) - camVel.y) * ease;
   if (Math.abs(camVel.x) + Math.abs(camVel.y) > 2) { cam.x += camVel.x * dt; cam.y += camVel.y * dt; clampCam(); } else { camVel.x = camVel.y = 0; }
   if (Math.abs(fling.x) + Math.abs(fling.y) > 4) { cam.x += fling.x * dt; cam.y += fling.y * dt; clampCam(); const k = Math.exp(-dt * 3.2); fling.x *= k; fling.y *= k; } else fling.x = fling.y = 0;

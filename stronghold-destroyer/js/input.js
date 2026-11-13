@@ -188,15 +188,20 @@ function panBy(x0, y0, x1, y1) {   // move the view so the ground under the fing
   const w0 = toWorld(x0, y0), w1 = toWorld(x1, y1); if (!w0 || !w1) return { x: 0, y: 0 };
   const dx = w1.x - w0.x, dy = w1.y - w0.y; cam.x -= dx; cam.y -= dy; clampCam(); return { x: dx, y: dy };
 }
+// a box drawn round a crowd picks the soldiers in it (civilians only when there are no soldiers)
+const boxPick = list => IND() && list.some(u => u.type !== 'civ' && u.type !== 'king') ? list.filter(u => u.type !== 'civ' && u.type !== 'king') : list;
 function touchDown(p) {
   document.body.classList.add('touch'); fling.x = fling.y = 0; clearTimeout(TOUCH.hold);
+  /* placing a building: one finger drags its outline to where it should go (lifting the finger sets it down); a wall starts where the finger lands */
+  if (IND() && placing && pointers.size === 1) { TOUCH.mode = 'place'; mouse.x = p.x; mouse.y = p.y; mouse.inside = true; if (isLine(placing.kind) && !placing.start) placeAt(p.x, p.y, false); return; }
   if (pointers.size === 1) {
     Object.assign(TOUCH, { mode: 'press', sx: p.x, sy: p.y, lx: p.x, ly: p.y, t0: performance.now(), lt: performance.now(), vx: 0, vy: 0 });
-    if (!holdStart(p)) TOUCH.hold = setTimeout(() => { if (TOUCH.mode === 'press') { TOUCH.mode = 'box'; drag = { sx: TOUCH.sx, sy: TOUCH.sy, x: TOUCH.lx, y: TOUCH.ly, box: true, shift: TOUCH.add, touch: true }; markers.push(Object.assign(toWorld(TOUCH.sx, TOUCH.sy) || { x: 0, y: 0 }, { t: 0, col: '140,255,160' })); } }, 420);
+    if (!holdStart(p)) TOUCH.hold = setTimeout(() => { if (TOUCH.mode === 'press') { TOUCH.mode = 'box'; drag = { sx: TOUCH.sx, sy: TOUCH.sy, x: TOUCH.lx, y: TOUCH.ly, box: true, shift: TOUCH.add, touch: true }; markers.push(Object.assign(toWorld(TOUCH.sx, TOUCH.sy) || { x: 0, y: 0 }, { t: 0, col: '140,255,160' })); } }, IND() ? CONTROLS.boxHold : 420);
   } else if (pointers.size === 2) { drag = null; TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; }
 }
 function touchMove(p) {
   holdMove(p);
+  if (TOUCH.mode === 'place') { if (pointers.size >= 2) { TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; } else { mouse.x = p.x; mouse.y = p.y; return; } }
   if (TOUCH.mode === 'press' && Math.hypot(p.x - TOUCH.sx, p.y - TOUCH.sy) > 12) { TOUCH.mode = 'pan'; clearTimeout(TOUCH.hold); }
   if (TOUCH.mode === 'pan') {
     const now = performance.now(), d = panBy(TOUCH.lx, TOUCH.ly, p.x, p.y), dt = Math.max(1, now - TOUCH.lt) / 1000;
@@ -214,6 +219,7 @@ function touchMove(p) {
 function touchUp(p) {
   clearTimeout(TOUCH.hold);
   const mode = TOUCH.mode;
+  if (mode === 'place' && pointers.size === 0) { TOUCH.mode = null; mouse.inside = false; if (placing) placeAt(p.x, p.y, false); return; }   /* set down where the finger lifts */
   if (pointers.size > 0) { holdEnd(); if (mode === 'two') TOUCH.mode = 'after'; return; }
   TOUCH.mode = null;
   if (holdEnd()) return;   /* held a person: his card is open */
@@ -221,7 +227,7 @@ function touchUp(p) {
   if (mode === 'box') {
     const bx0 = Math.min(TOUCH.sx, p.x) - 10, bx1 = Math.max(TOUCH.sx, p.x) + 10, by0 = Math.min(TOUCH.sy, p.y) - 12, by1 = Math.max(TOUCH.sy, p.y) + 12;
     const inBox = units.filter(u => { if (u.team !== 'player' || u.dead || u.inside) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
-    if (TOUCH.add) inBox.forEach(u => selection.add(u)); else selectOnly(inBox);
+    if (TOUCH.add) boxPick(inBox).forEach(u => selection.add(u)); else selectOnly(boxPick(inBox));
     drag = null; return;
   }
   if (mode === 'press') touchTap(p);
@@ -274,7 +280,7 @@ function endPointer(e) {
     if (drag.box) {
       const bx0 = Math.min(drag.sx, p.x) - 8, bx1 = Math.max(drag.sx, p.x) + 8, by0 = Math.min(drag.sy, p.y) - 10, by1 = Math.max(drag.sy, p.y) + 10;
       const inBox = units.filter(u => { if (u.team !== 'player' || u.dead || u.inside) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
-      if (drag.shift && !drag.touch) inBox.forEach(u => selection.add(u)); else selectOnly(inBox);
+      if (drag.shift && !drag.touch) boxPick(inBox).forEach(u => selection.add(u)); else selectOnly(boxPick(inBox));
     } else {
       const hit = pickScreen(p.x, p.y);
       if (drag.touch) {

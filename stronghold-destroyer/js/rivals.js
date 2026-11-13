@@ -151,8 +151,8 @@ function enemyWorker(u, dt) {
     return;
   }
   if (u.sub === 'toCamp') {
-    const ap = approachPoint(u, camp);
-    if (edgeDist(u, camp) <= 60 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || (u.campFails || 0) >= 2 && edgeDist(u, camp) < 170) {   // a crowded camp: after two tries, the load goes down at its edge
+    const ap0 = approachPoint(u, camp), ap = IND() ? { x: ap0.x + (u.id % 5 - 2) * 14, y: ap0.y + (u.id % 3 - 1) * 10 } : ap0;   /* each worker his own drop-off spot (all on one spot, they went round each other) */
+    if (edgeDist(u, camp) <= (IND() ? 90 : 60) || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || (u.campFails || 0) >= 2 && edgeDist(u, camp) < 170) {   // a crowded camp: after two tries, the load goes down at its edge
       u.campFails = 0; if (RV) RV.res[u.carryType === 'food' ? 'food' : 'wood'] += u.carry; else ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
     else walk(ap.x, ap.y);
   }

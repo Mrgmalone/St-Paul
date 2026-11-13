@@ -168,3 +168,9 @@ const SOLDIERS = {
   // flamethrowers: dig a short moat round themselves when they stop in the field
   flameMoat: 5
 };
+
+// ---------- Phase 4C: controls ----------
+// edgeSpeed: how fast the view slides when the mouse rests at the screen's edge (points a second at normal zoom; the
+// keyboard stays at 620); edgeZone: how wide the edge band is (the deeper in, the faster, up to edgeSpeed); ease: how
+// gently it starts and stops (lower is gentler). boxHold: how long a finger rests before it draws a selection box (ms).
+const CONTROLS = { edgeSpeed: 260, edgeZone: 34, ease: 4.5, boxHold: 300 };

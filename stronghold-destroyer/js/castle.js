@@ -56,7 +56,7 @@ let placing = null;
 const MAX_PEOPLE = 400;
 const popCap = () => Math.min(MAX_PEOPLE, (CIV.popCap + 5 * structures.filter(b => b.kind === 'house' && b.done && !b.dead && b.team === 'player').length) * (CIV.popMul || 1));   // Hekaranok: room for twice the people
 // a building can face any of four ways before it is set down: 0 south (toward you), 1 west, 2 north, 3 east
-const DIR_NAME = ['south', 'west', 'north', 'east'], DIR_VEC = [[0, 1], [-1, 0], [0, -1], [1, 0]];
+const DIR_NAME = ['toward you', 'to the left', 'away from you', 'to the right'], DIR_VEC = [[0, 1], [-1, 0], [0, -1], [1, 0]];
 const dimsOf = (kind, dir = 0) => { const d = BUILD[kind]; return dir % 2 ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; };
 function tileFor(kind, wx, wy, dir = 0) { const d = dimsOf(kind, dir); return { c: Math.round(wx / TILE - d.w / 2), r: Math.round(wy / TILE - d.h / 2) }; }
 function canPlace(kind, c, r, dir = 0) {
