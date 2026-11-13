@@ -8,6 +8,7 @@ const GROUP_SIZE = 5;
 const groupsOn = () => IND() && stageN >= 3;
 // the groups of a building, each a list of the people (or carts) that go out together
 function groupsOf(site) {
+  if (site.rival) return site.rival.stage >= 3 && !site.rival.defeated ? rivalGroups(site.rival) : [];   /* a rival's woodcutters */
   if (!groupsOn() || site.dead || site.done === false) return [];
   if (site.kind === 'woodhut') {
     const crew = units.filter(u => u.job === site && !u.dead && u.type === 'civ' && !u.ironWork).sort((a, b) => a.id - b.id), out = [];
@@ -29,7 +30,7 @@ function sendEscort(site, g) {
   const gs = groupsOf(site); if (!gs[g]) return;
   if (escortOf(site, g)) { showBanner(`Group ${GROUP_WORD[g] || g + 1} already has a soldier.`, 2); return; }
   const c = groupCenter(gs[g]);
-  const s = units.filter(u => u.team === 'player' && !u.dead && ESCORT_KINDS[u.type] && !u.escort && !u.guardOf && !u.gift && !u.onWall && !u.raider && (u.order === 'idle' || u.order === 'move' && time - (u.cmdT || -99) > 30))
+  const s = units.filter(u => u.team === 'player' && !u.dead && ESCORT_KINDS[u.type] && !u.noGuard && !u.escort && !u.guardOf && !u.gift && !u.onWall && !u.raider && (u.order === 'idle' || u.order === 'move' && time - (u.cmdT || -99) > 30))
     .sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y))[0];
   if (!s) { showBanner('No free swordsman, spearman or archer to send. Train one, or free one from the walls.', 3.5); return; }
   s.escort = { site, g }; s.cmdT = -99; s.escRe = 0;
@@ -39,7 +40,7 @@ function autoEscorts() {   // a free soldier standing idle near home goes with a
   for (const site of mineDone('woodhut').concat(mineDone('quarry'))) {
     const gs = groupsOf(site);
     for (let g = 0; g < gs.length; g++) if (!escortOf(site, g)) {
-      const s = units.find(u => u.team === 'player' && !u.dead && ESCORT_KINDS[u.type] && !u.escort && !u.guardOf && !u.gift && !u.onWall && !u.raider && u.order === 'idle' && time - (u.cmdT || -99) > 60 && !isManual(u));
+      const s = units.find(u => u.team === 'player' && !u.dead && ESCORT_KINDS[u.type] && !u.noGuard && !u.escort && !u.guardOf && !u.gift && !u.onWall && !u.raider && u.order === 'idle' && time - (u.cmdT || -99) > 60 && !isManual(u));
       if (s) { s.escort = { site, g }; s.escRe = 0; floatText(s.x, s.y - 55, `Escorting group ${GROUP_WORD[g] || g + 1}`, '#9fe8a8'); }
     }
   }
@@ -49,12 +50,12 @@ function escortBrain(u) {
   const e = u.escort; if (!e) return false;
   if (time - (u.cmdT || -99) < 30 && u.cmdT > 0) { u.escort = null; return false; }   // you gave it another order: it leaves the group
   const gs = groupsOf(e.site), list = gs[e.g];
-  if (!groupsOn() || e.site.dead || !list || !list.length) { u.escort = null; return false; }
+  if ((e.site.rival ? false : !groupsOn()) || e.site.dead || !list || !list.length) { u.escort = null; return false; }
   const c = groupCenter(list);
   if (u.order === 'attack' && alive(u.target) && Math.hypot(u.target.x - c.x, u.target.y - c.y) < 340) return false;   // already fighting for them
   // anyone hostile close to the group: go for them
   let foe = null, fd = 230;
-  for (const o of nearUnits(c.x, c.y, 230)) { if (o.dead || !hostile('player', o.team) || hiddenFrom(o, 'player')) continue; const d = Math.hypot(o.x - c.x, o.y - c.y); if (d < fd) { fd = d; foe = o; } }
+  for (const o of nearUnits(c.x, c.y, 230)) { if (o.dead || !hostile(u.team, o.team) || hiddenFrom(o, u.team)) continue; const d = Math.hypot(o.x - c.x, o.y - c.y); if (d < fd) { fd = d; foe = o; } }
   if (foe) { u.order = 'attack'; u.target = foe; u.repath = 0; return true; }
   // otherwise keep close to the group
   const d = Math.hypot(u.x - c.x, u.y - c.y);

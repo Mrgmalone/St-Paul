@@ -136,6 +136,7 @@ function followPath(u, dt) {
 // newcomers walk in along the west road, at the first clear spot (never inside a tree)
 function roadEntry() {
   curTeam = 'player';
+  if (IND()) { const e = roadEntryNear(); if (e) return e; }   /* along the nearest road, wherever your castle stands */
   for (let dx = 0; dx < 200; dx += 8) for (const dy of [0, -12, 12, -24, 24, -36, 36]) { const x = 26 + dx, y = 1092 + dy; if (!circleBlocked(x, y, 10)) return { x, y }; }
   return { x: 60, y: 1092 };
 }
@@ -259,6 +260,10 @@ function playerBrain(u) {
 }
 function enemyBrain(u, dt) {
   if (u.rogue) { rogueBrain(u, dt); return; }   // bandits: steal and run
+  if (u.order === 'firefight') { fireBrain(u, dt); return; }   /* the rivals fight fires and mend damage too */
+  if (u.order === 'repair') { repairBrain(u, dt); return; }
+  if (u.escort && escortBrain(u)) return;
+  if (u.scout) scoutBrain(u);
   u.think -= dt;
   if (u.type === 'civ') { enemyWorker(u, dt); return; }
   if (u.type === 'ram') { ramBrain(u); return; }
@@ -350,6 +355,8 @@ function fellTree(t) {
 const floats = [];
 function floatText(x, y, text, col) { floats.push({ x, y, text, col, t: 0 }); }
 function civBrain(u, dt) {
+  if (u.order === 'firefight') { fireBrain(u, dt); return; }
+  if (u.order === 'repair') { repairBrain(u, dt); return; }
   if (u.order === 'craft') { craftBrain(u, dt); return; }
   const k = playerKeep();
   if (u.order === 'leave') {
@@ -518,7 +525,7 @@ function updateHealth(dt) {
 }
 function updateGuards(dt) {
   guardT -= dt; if (guardT > 0) return; guardT = 1;
-  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal;
+  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal && !u.noGuard && !u.escort;   /* flamethrowers go to war only */
   const king = units.find(u => u.type === 'king' && u.team === 'player' && !u.dead);
   // up to five knights keep close by the king
   const knights = units.filter(u => u.type === 'knight' && u.team === 'player' && !u.dead);
@@ -571,7 +578,7 @@ const insideOf = b => units.filter(u => !u.dead && u.inside === b);
 // (boxed in by trees, shore and buildings), steps to the nearest square that has a way. Like the Fix button, done for you.
 function unstickWatch(u, dt) {
   const k0 = u.team === 'player' ? playerKeep() : null;
-  const going = (u.toHeal && !(k0 && edgeDist(u, k0) < 110)) || u.order === 'move' || (u.order === 'build' && u.sub === 'go') || u.order === 'return' || (u.order === 'gather' && u.sub && u.sub.startsWith('to'));   /* raiders have their own rules; builders at work and the sick beside the keep stand still on purpose */
+  const going = (u.toHeal && !(k0 && edgeDist(u, k0) < 110)) || u.order === 'firefight' || (u.order === 'repair' && u.repairB && edgeDist(u, u.repairB) > 20) || u.order === 'move' || (u.order === 'build' && u.sub === 'go') || u.order === 'return' || (u.order === 'gather' && u.sub && u.sub.startsWith('to'));   /* raiders have their own rules; builders at work and the sick beside the keep stand still on purpose */
   if (!going || u.onWall || u.inside || isMachine(u)) { u._uwT = 0; return; }
   if (u._uwx === undefined || Math.hypot(u.x - u._uwx, u.y - u._uwy) > 8) { u._uwx = u.x; u._uwy = u.y; u._uwT = 0; return; }
   if ((u._uwT += dt) < 20) return; u._uwT = 0;

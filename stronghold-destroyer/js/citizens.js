@@ -103,7 +103,7 @@ function personConcerns(u) {
 const MAKE_GOLD = { food: 1, wood: 1, stone: 1.5, iron: 3, hops: 1, wheat: 1, flour: 2, bread: 1.5, ale: 3, bow: 12, spear: 8, sword: 20, mace: 16, armor: 40, grapes: 1, apples: 1 };
 function personMoney(u) {
   const taxMin = TAXES[tax].gold * taxStageMul() * 3;   // taxes: gold every 20 seconds per person
-  if (u.type !== 'civ') return { earns: `${ECONOMY.wages[u.type] || 0} gold a minute in wages`, tax: '' };
+  if (u.type !== 'civ') return { earns: `${(kitOf(u) ? kitOf(u).wage : ECONOMY.wages[u.type]) || 0} gold a minute in wages`, tax: '' };
   let earn = 0;
   if (u.job) { const rc = recipeOf(u.job, u); if (rc) earn = (rc.n || 1) / rc.time * 60 * (MAKE_GOLD[rc.out] || 1); else earn = 20 * (MAKE_GOLD[FIELD_TYPE[u.job.kind] || 'wood'] || 1); }
   return { earns: earn ? `about ${Math.round(earn)} gold of work a minute` : 'nothing yet', tax: `${Math.round(taxMin * 10) / 10} gold a minute in tax` };
@@ -122,12 +122,12 @@ let cardOf = null, tapU = null, tapUntil = 0;
 const iconKey = u => u.engineer ? 'b:engineerhut' : u.inSchool ? 'b:school' : u.job ? 'b:' + u.job.kind : u.type !== 'civ' ? 'u:' + u.type : u.order === 'build' ? 'b:house' : 'r:people';
 function personHtml(u) {
   const m = personMood(u), c = personConcerns(u), $ = personMoney(u), col = m.v >= 70 ? '#9fe39a' : m.v >= 40 ? '#ffd98a' : m.v >= 20 ? '#ffb38a' : '#ff8a7a';
-  const edu = u.type === 'civ' ? ['none', 'first level', 'second level', 'third level'][Math.min(3, u.edu || 0)] : `${['none', 'first', 'second', 'third', 'fourth', 'fifth'][Math.min(5, u.sedu || 0)]} level`;
+  const edu = u.type === 'civ' ? ['none', 'first level', 'second level', 'third level'][Math.min(3, u.edu || 0)] : `soldiers' lessons: ${['none', 'first', 'second', 'third', 'fourth', 'fifth'][Math.min(5, soldierLvl)]} level`;
   return `<button class="xbtn" data-card="close" aria-label="Close">&times;</button><h3>${nameOf(u).toUpperCase()}</h3>` +
     lnI('Work', JOB_OF(u)) + lnI('Happiness', `<span style="color:${col}">${m.v}</span>`) +
     `<div class="why">${m.why.concat(m.town.map(t => '- the town: ' + t)).slice(0, 5).map(t => `<div>${t}</div>`).join('') || '<div>nothing special</div>'}</div>` +
     lnI('Education', edu) + lnI('Worries', c.length ? c.slice(0, 2).join('; ') : 'none') + lnI('Earns', $.earns) + ($.tax ? lnI('Pays', $.tax) : '') +
-    (u.type !== 'civ' && u.vet ? lnI('Battles survived', u.vet) : '');
+    (isSoldier(u) ? lnI('Battles survived', `${u.vet || 0} \u2605`) + lnI('Enemies felled', u.kills || 0) + (u.type === 'knight' ? lnI('Horse', u.mounted ? `mounted (${Math.max(0, Math.round(u.horseHp))} strength left)` : 'on foot') : '') : '');
 }
 function showCard(u) {
   cardOf = u; const p = document.getElementById('personPop'); p.innerHTML = personHtml(u); p.hidden = false;
@@ -149,7 +149,8 @@ function holdPerson(u) {
 function tapIcon(u) {
   tapU = u; tapUntil = performance.now() + 2500;
   const el = document.getElementById('tapIcon'), c = el.querySelector('canvas'); c.dataset.icon = iconKey(u); delete c.dataset.done; UI.paintIcons(el);
-  el.title = JOB_OF(u); el.hidden = false; placeTap();
+  el.title = JOB_OF(u); el.hidden = false; const lb = el.querySelector('b');   /* a soldier gets a glance: who, stars, health */
+  lb.textContent = isSoldier(u) ? `${u.name}${u.vet ? ' \u2605' + u.vet : ''} \u00b7 ${Math.round(u.hp / u.maxHp * 100)}%` : ''; lb.hidden = !isSoldier(u); placeTap();
 }
 function placeTap() {
   const el = document.getElementById('tapIcon'); if (el.hidden) return;
@@ -212,6 +213,8 @@ function collectAlerts() {
     if (groupsOn() && (b.kind === 'woodhut' || b.kind === 'quarry')) groupsOf(b).forEach((l, g) => { if (!escortOf(b, g)) add(4, `Group ${GROUP_WORD[g] || g + 1} of the ${nm} needs a soldier.`, b); });
     if (b.kind === 'woodhut' && !nearestNode('wood', b.x, b.y, yardReach())) add(5, `The ${nm} has no trees near it.`, b);
   }
+  for (const b of structures) if (b.fire > 0 && !b.dead && b.team === 'player') add(9, `Fire at the ${b.name}!`, b);
+  for (const q of rebuildWaiting()) add(3, `The ${q.name} waits for supplies to be rebuilt.`);
   if (myPeople() >= popCap()) add(3, 'Your houses are full: build a house so more citizens can grow up.');
   return A.sort((a, b) => b.prio - a.prio);
 }

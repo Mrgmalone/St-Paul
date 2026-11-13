@@ -53,5 +53,5 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
   console.log('fails', JSON.stringify(fails)); console.log('errors', errs.slice(0, 5)); await b.close();
   if (fails.length) process.exit(1);
 })();
-const STAGE_UNITS = { 2: [], 3: ['sword', 'maceman', 'ballista'], 4: ['knight', 'ram', 'catapult'], 5: ['trebuchet'] };
+const STAGE_UNITS = { 2: [], 3: ['sword', 'maceman', 'ballista', 'knight'], 4: ['ram', 'catapult'], 5: [] };   // foot knights at the Hold; trebuchets also need the school's top level
 const STAGE_BLD = { 2: ['quarry', 'tavern', 'brewery', 'highwall'], 3: ['smithy', 'market', 'mill', 'bakery', 'ironmine'], 4: ['roundtower', 'greattower'], 5: [] };

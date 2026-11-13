@@ -601,7 +601,7 @@ function doHit(u) {
   const t = u.target;
   if (u.holdFire) return;
   if (!alive(t) || edgeDist(u, t) > rangeOf(u) + 8) return;
-  if (u.type === 'archer') { // loose an arrow; it lands a moment later
+  if (u.type === 'archer' && u.kit !== 'flame') { // loose an arrow; it lands a moment later (a flamethrower burns close up instead)
     const c = hitCenter(t), x0 = u.x + u.facing * 8, y0 = u.y - 26;
     fire({ x0, y0, x1: c.x, y1: c.y, t: 0, dur: Math.hypot(c.x - x0, c.y - y0) / 460 + 0.08, h: 18, target: t, from: u, dmg: Math.round(u.dmg * RR(0.85, 1.15)) });
     AudioSys.play('bow', u.x, u.y); AudioSys.combat(u.x, u.y);
@@ -617,7 +617,8 @@ function doHit(u) {
     return;
   }
   if (u.type === 'ram' && t.x0 === undefined) return;
-  let dmg = Math.round(u.dmg * RR(0.85, 1.15) * (u.team === 'enemy' && lordNear(u) ? 1.2 : 1) * armorMul(t, u));
+  let dmg = adjHit(t, Math.round(u.dmg * RR(0.85, 1.15) * (u.team === 'enemy' && lordNear(u) ? 1.2 : 1) * armorMul(t, u)), u, 'melee');   /* stars, lessons, horses, flame */
+  if (u.kit === 'flame') for (let i = 0; i < 5; i++) spawn('sparkR', u.x + u.facing * RR(8, 30), u.y - RR(14, 28), u.y);
   if (isWall(t) && u.type !== 'ram' && t.kind !== 'moat') dmg = Math.max(1, Math.round(dmg * WALL_RESIST));
   if (t.kind === 'moat' && u.type === 'ram') return;
   t.hp -= dmg; t.flash = 1;
@@ -632,6 +633,7 @@ function doHit(u) {
     t.facing = u.x > t.x ? 1 : -1;
     t.lastHurt = time;
   }
+  if (u.kit === 'flame' && t.x0 !== undefined) ignite(t, u);   /* flamethrowers set buildings alight */
   if (t.hp <= 0) { kill(t); return; }
   reactToHit(t, u);
 }
@@ -676,6 +678,7 @@ function kill(t) {
   selection.delete(t);
   if (t.kind === 'moat') { for (let i = 0; i < 10; i++) spawn('dust', t.x + RR(-14, 14), t.y - 8, t.y); floatText(t.x, t.y - 30, 'Moat filled in', '#ffb38a'); }
   if (t.x0 !== undefined) {
+    onBuildingLost(t);   /* rebuilt where it stood, once there are supplies */
     for (const o of units) if (!o.dead && o.onWall === t) { dismount(o); o.hp -= 15; o.flash = 1; if (o.hp <= 0) kill(o); }
     for (let i = 0; i < t.w; i++) for (let j = 0; j < t.h; j++) { setBlock(t.c + i, t.r + j, 0); if (t.kind === 'gate') gate[(t.r + j) * COLS + t.c + i] = 0; }
     for (let i = 0; i < 40; i++) spawn('smoke', t.x + RR(-30, 30), t.y - RR(0, 70), t.y);

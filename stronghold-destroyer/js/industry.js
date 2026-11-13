@@ -26,7 +26,7 @@ function indMax(kind) {
 }
 const IND_STAFF = { quarry: () => INDUSTRY.quarry.staff, woodhut: () => lv(INDUSTRY.yard.staff), wheatfarm: () => lv(INDUSTRY.fields.staff),
   mill: () => stageN >= 3 ? INDUSTRY.mill.staffLate : INDUSTRY.mill.staffEarly, bakery: () => INDUSTRY.mill.bakeryStaff,
-  alehouse: () => 1, bowyer: () => 2, stable: () => 4, farm: () => 4, vineyard: () => 3, orchard: () => 3, apothecary: () => 1 };
+  alehouse: () => 1, waterpot: () => 1, bowyer: () => 2, stable: () => 4, farm: () => 4, vineyard: () => 3, orchard: () => 3, apothecary: () => 1 };
 const indStaff = k => IND_STAFF[k] ? IND_STAFF[k]() : 3;
 // how many come by themselves; more can be added from the building's box (Fill adds as many as it holds)
 const IND_AUTO = { wheatfarm: 2, woodhut: 2, quarry: 2, farm: 2, stable: 4 };
@@ -342,6 +342,7 @@ function indAction(b, act) {
   else if (act.startsWith('escort:')) sendEscort(b, +act.slice(7));
   else if (act.startsWith('ale:')) { alePrice = +act.slice(4); showBanner(`Ale is now ${INDUSTRY.ale.prices[alePrice].toLowerCase()}: ${alePrice === 0 ? 'happy, but some will be drunk at work' : alePrice === 2 ? 'good gold, but your people are angry' : 'the fair middle'}.`, 3); }
   else if (act === 'study') startStudy('school');
+  else if (act === 'slessons') startSoldierLessons();
   else if (act === 'doctor') startStudy('doctor');
   else if (act === 'engineer') trainEngineer();
   else if (act === 'feast') holdFeast();
@@ -370,7 +371,8 @@ function showIndBox(b) {
     h += lnI('Learning', `level ${schoolLvl} of 3`) + (schoolStudy ? lnI('Teaching now', `level ${schoolStudy.lvl}: ${Math.round(schoolStudy.t / schoolStudy.dur * 100)}%`) : '');
     h += lnI('Each level', 'wastes 10% less material, builds 10% cheaper and 15% quicker; from level 2, better market prices');
     h += lnI('Engineers', `${engineers().length} (room for ${mineDone('engineerhut').length * INDUSTRY.engineersPerHut})`) + lnI('Trebuchets', schoolLvl >= 3 ? 'allowed at the Stronghold' : 'need level 3 and the Stronghold');
-    h += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${schoolLvl < 3 && !schoolStudy ? B('study', `Teach level ${schoolLvl + 1} (${INDUSTRY.school.levels[schoolLvl][0]} gold)`) : ''}${B('engineer', `Train an engineer (${INDUSTRY.school.engineerCost} gold)`)}</div>`;
+    h += lnI("Soldiers' lessons", `level ${soldierLvl} of 5${soldierStudy ? ` (learning level ${soldierStudy.lvl}: ${Math.round(soldierStudy.t / soldierStudy.dur * 100)}%)` : ''}`);
+    h += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${soldierLvl < 5 && !soldierStudy ? B('slessons', `Soldiers' lessons, level ${soldierLvl + 1} (${SOLDIERS.lessons.levels[soldierLvl][0]} gold)`) : ''}${schoolLvl < 3 && !schoolStudy ? B('study', `Teach level ${schoolLvl + 1} (${INDUSTRY.school.levels[schoolLvl][0]} gold)`) : ''}${B('engineer', `Train an engineer (${INDUSTRY.school.engineerCost} gold)`)}</div>`;
   } else if (b.kind === 'engineerhut') {
     const mine = engineers().filter(e => e.job === b).length;
     h += lnI('Engineers here', `${mine} of ${INDUSTRY.engineersPerHut}`) + lnI('Trained at', 'the School') + lnI('Work', 'they repair damage very fast and later build trebuchets');
@@ -393,7 +395,8 @@ function showIndBox(b) {
 function updateIndustry(dt) {
   if (!IND() || !started) return;
   if (stageN !== indStage) { const grew = indStage && stageN > indStage; indStage = stageN; if (grew) mergeOnGrowth(); renameAll(); relabelButtons(); }
-  checkMarketLoss(); updateStudy(dt);
+  updateStudy(dt);
   indT -= dt; if (indT > 0) return; indT = 1;
+  checkMarketLoss();
   updateGroups(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealers(1);
 }

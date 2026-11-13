@@ -250,7 +250,7 @@ function updateWar(dt) {
     }
   }
   for (const s of structures) {
-    if (s.dead || s.done === false || !s.engine || s.engineHold || s.team !== 'player') continue;
+    if (s.dead || s.done === false || !s.engine || s.engineHold || (s.team !== 'player' && !IND())) continue;   /* the rivals' great towers carry engines too */
     s.engineT = (s.engineT === undefined ? 2 : s.engineT) - dt; if (s.engineT > 0) continue;
     const treb = s.engine === 'trebuchet', reach = (treb ? 720 : 460) * weatherRange(); let tgt = null, bd = reach;
     for (const e of enemiesOf(s.team)) { if (treb ? false : e.x0 !== undefined) continue; if (e.kind === 'unit' && e.type === 'civ') continue; const d = Math.hypot(e.x - s.x, e.y - s.y) + (treb && e.x0 !== undefined ? -120 : 0); if (d < bd) { bd = d; tgt = e; } }
@@ -267,13 +267,13 @@ function updateWar(dt) {
     if (a.kind === 'stone') {   // a catapult stone: crushes what it lands on and everyone close by
       const gy = t && t.x0 !== undefined ? t.y : a.y1 + 21;
       if (alive(t) && t.x0 !== undefined) { t.hp -= isWall(t) ? Math.round(a.dmg * 0.8) : a.dmg; t.flash = 1; t.wobble = 1; if (t.hp <= 0) kill(t); else reactToHit(t, a.from); }
-      for (const o of units) { if (o.dead || (a.from && !hostile(o.team, a.from.team)) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= Math.round(a.dmg * 0.55 * (1 - d / 46) * armorMul(o, a.from)); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
+      for (const o of units) { if (o.dead || (a.from && !hostile(o.team, a.from.team)) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= adjHit(o, Math.round(a.dmg * 0.55 * (1 - d / 46) * armorMul(o, a.from)), a.from, 'stone'); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
       for (let k = 0; k < 10; k++) spawn('chip', a.x1, a.y1, gy); for (let k = 0; k < 6; k++) spawn('dust', a.x1 + RR(-16, 16), gy - 4, gy);
       AudioSys.play('stoneHit', a.x1, a.y1); AudioSys.play('boom', a.x1, a.y1); stuckStones.push({ x: a.x1 + RR(-6, 6), y: gy + 2, t: 0 });
       continue;
     }
     if (a.kind === 'bolt' && alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 24)) {
-      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * 0.25)) : t.x0 !== undefined ? Math.round(a.dmg * 0.5) : t.onWall ? Math.round(a.dmg * 0.7) : a.dmg; t.flash = 1; t.lastHurt = time;
+      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * 0.25)) : t.x0 !== undefined ? Math.round(a.dmg * 0.5) : adjHit(t, t.onWall ? Math.round(a.dmg * 0.7) : a.dmg, a.from, 'bolt'); t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16);
       if (t.x0 === undefined) for (let k = 0; k < 4; k++) spawn(k % 2 ? 'spark' : 'sparkR', t.x, t.y - 18, t.y); else for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
       if (t.hp <= 0) kill(t); else reactToHit(t, a.from);
@@ -282,7 +282,7 @@ function updateWar(dt) {
     if (a.kind === 'bolt') { stuckArrows.push({ x: a.x1, y: a.y1 + 12, ang: Math.atan2(a.y1 - a.y0, a.x1 - a.x0) * 0.3 + 0.9, t: 0, bolt: true }); continue; }
     if (alive(t) && t.kind === 'moat') continue;
     if (alive(t) && (t.x0 !== undefined || Math.hypot(t.x - a.x1, t.y - 16 - a.y1) < 18)) {
-      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : Math.round((t.onWall ? a.dmg * 0.5 : a.dmg) * armorMul(t, a.from)); t.flash = 1; t.lastHurt = time;
+      t.hp -= isWall(t) ? Math.max(1, Math.round(a.dmg * WALL_RESIST)) : adjHit(t, Math.round((t.onWall ? a.dmg * 0.5 : a.dmg) * armorMul(t, a.from)), a.from, a.from && a.from.kit === 'crossbow' ? 'bolt' : 'arrow'); t.flash = 1; t.lastHurt = time;
       AudioSys.play('thunk', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
       if (t.x0 !== undefined) for (let k = 0; k < 4; k++) spawn('chip', a.x1, a.y1, t.y);
       else for (let k = 0; k < 3; k++) spawn(k % 2 ? 'spark' : 'sparkR', t.x, t.y - 18, t.y);

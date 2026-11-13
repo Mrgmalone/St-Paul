@@ -58,16 +58,16 @@ const FACTION_BASE = { sHp: 1, sDmg: 1, sSpeed: 1, train: 1, gather: 1, carry: 1
 const STAGES = [
   { n: 1, name: 'Shack', grow: 0, wall: 'wood', keepHp: 1500,
     unlock: { units: ['civ', 'spear', 'archer'],
-      buildings: ['house', 'farm', 'wheatfarm', 'woodhut', 'stockpile', 'granary', 'wall', 'gate', 'gtower', 'pit', 'poleturner', 'bowyer', 'armory', 'garden', 'alehouse'] } },
+      buildings: ['house', 'farm', 'wheatfarm', 'woodhut', 'stockpile', 'granary', 'wall', 'gate', 'gtower', 'pit', 'poleturner', 'bowyer', 'armory', 'garden', 'alehouse', 'waterpot'] } },
   { n: 2, name: 'Homestead', grow: 2, wall: 'brick', keepHp: 2200,
     need: { people: 12, mood: 50, food: 150, buildings: { house: 3, woodhut: 1, farmAny: 1 } },
     unlock: { units: [], buildings: ['quarry', 'tavern', 'brewery', 'hopfarm', 'highwall', 'stairs', 'lookout', 'chapel', 'stocks', 'moat', 'mill', 'apothecary'] } },
   { n: 3, name: 'Hold', grow: 3, wall: 'stone', keepHp: 3200,
     need: { people: 22, mood: 55, food: 300, stone: 150, buildings: { house: 5, quarry: 1, tavern: 1 } },
-    unlock: { units: ['sword', 'maceman', 'ballista'], buildings: ['smithy', 'ironmine', 'market', 'bakery', 'stower', 'school', 'engineerhut', 'stable', 'vineyard', 'orchard', 'church'] } },
+    unlock: { units: ['sword', 'maceman', 'ballista', 'knight'], buildings: ['smithy', 'ironmine', 'market', 'bakery', 'stower', 'school', 'engineerhut', 'stable', 'vineyard', 'orchard', 'church'] } },
   { n: 4, name: 'Castle', grow: 2, wall: 'thick', keepHp: 4500,
     need: { people: 35, mood: 60, food: 500, stone: 300, iron: 80, buildings: { smithy: 1, market: 1, mill: 1, bakery: 1 } },
-    unlock: { units: ['knight', 'ram', 'catapult'], buildings: ['roundtower', 'greattower', 'abbey'] } },
+    unlock: { units: ['ram', 'catapult'], buildings: ['roundtower', 'greattower', 'abbey'] } },
   { n: 5, name: 'Stronghold', grow: 3, wall: 'thick', keepHp: 6500,
     need: { people: 50, mood: 65, food: 800, stone: 500, iron: 200, buildings: { school: 1, stower: 2 } },   // the school must stand before the Stronghold
     unlock: { units: ['trebuchet'], buildings: [] } }
@@ -143,4 +143,28 @@ const INDUSTRY = {
   farmStart: { cows: 2, pigs: 2, oxen: 2, chickens: 3, turkeys: 1, sheep: 1 }, leatherEvery: 45,
   // the granary's Expand (from the Hold), and the school's engineers (each Engineer's Hut houses four)
   granaryExpand: { wood: 60, stone: 40 }, engineersPerHut: 4
+};
+
+// ---------- Phase 4B: soldiers ----------
+const SOLDIERS = {
+  // veteran stars: one for each battle survived (up to 100); each makes him a little stronger
+  stars: { max: 100, dmgPer: 0.008, toughPer: 0.005, battleEnds: 12 },
+  // soldier lessons at the school (the Soldiers button): five levels, numbers kept hidden from the player; [gold, seconds]
+  lessons: { levels: [[120, 60], [220, 75], [360, 90], [520, 110], [720, 130]], dmgPer: 0.06, toughPer: 0.05 },
+  // the soldiers of the sheet, now trained for real (they share the archer's or maceman's figure in a different outfit)
+  kits: {
+    longbow:  { name: 'Longbowman',  base: 'archer',  stage: 2, needs: ['bow'], gold: 15, hp: 75, dmg: 11, range: 240, cd: 1.9, speed: 70, sight: 2, wage: 1 },
+    crossbow: { name: 'Crossbowman', base: 'archer',  stage: 3, needs: ['bow'], iron: 2, gold: 15, hp: 85, dmg: 22, range: 160, cd: 2.9, speed: 66, wage: 2 },
+    flame:    { name: 'Flamethrower', base: 'archer', stage: 4, needs: ['sword', 'armor'], gold: 20, squad: 10, hp: 80, dmg: 12, range: 36, cd: 0.8, speed: 96, wage: 1 },
+    berserker:{ name: 'Berserker',   base: 'maceman', stage: 3, needs: ['mace'], leather: 2, gold: 10, hp: 150, dmg: 21, range: 5, cd: 1.0, speed: 80, wage: 2, only: 'psychana' }
+  },
+  // knights: on foot from the Hold; mounted from the Castle when the stable has a horse. The horse takes the blows
+  // until it falls, unless a crossbow bolt or ballista bolt strikes the rider.
+  knight: { footSpeed: 56, mountedSpeed: 86, horseHp: 180 },
+  // a lookout tower: a sentry at the door, an archer on top, and from the Homestead a longbowman too (farther, two shots)
+  lookout: { longbowFrom: 2, range: 420 },
+  // engines for the giant towers (Round and Great Tower come empty): Gerald's 5,000 and 10,000, scaled to this economy
+  towerEngine: { ballista: { gold: 400, wood: 150 }, trebuchet: { gold: 800, wood: 300, stone: 100 } },
+  // flamethrowers: dig a short moat round themselves when they stop in the field
+  flameMoat: 5
 };

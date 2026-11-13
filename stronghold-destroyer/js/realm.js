@@ -92,7 +92,7 @@ function rivalTick(R, dt) {
   if ((R.placeT -= dt) <= 0) { R.placeT = 10 / p; rivalBuild(R); }
   // more workers while there is room and food
   const cap = Math.round((RIVALS.workersPerStage[R.stage - 1] || 4) * facRule(R.fac, 'popMul', 1)), workers = people.filter(u => u.type === 'civ').length;
-  if ((R.workerT -= dt) <= 0 && workers < cap && R.res.food >= 40) { R.workerT = 24 / p; R.res.food -= 40; const k = R.keep, fr = nearestFree(Math.floor(k.x / TILE) - 2, Math.floor(k.y1 / TILE) + 1); if (fr) rivalUnit(R, 'civ', fr.c * TILE + 16, fr.r * TILE + 16); }
+  if (!IND() && (R.workerT -= dt) <= 0 && workers < cap && R.res.food >= 40) {   /* (the real game: their citizens grow, see rivals4b.js) */ R.workerT = 24 / p; R.res.food -= 40; const k = R.keep, fr = nearestFree(Math.floor(k.x / TILE) - 2, Math.floor(k.y1 / TILE) + 1); if (fr) rivalUnit(R, 'civ', fr.c * TILE + 16, fr.r * TILE + 16); }
   // soldiers
   if ((R.trainT -= dt) <= 0) { R.trainT = 14 / p; rivalTrain(R); }
   // grow a stage when the same needs as yours are met
@@ -159,13 +159,14 @@ function rivalRaid(R) {
   if (!k || army.length < RIVALS.raid.minArmy) return;
   const home = army.length > 4 ? 2 : 1, go = army.slice(home);   // a couple stay home to guard
   const big = go.length >= RIVALS.raid.largeArmy;
-  if (big) { const sk = ['catapult', 'ram', 'trebuchet'].filter(t => stageOfItem(t, true) <= R.stage)[0]; if (sk) { const c = RIVAL_COST[sk]; if (Object.entries(c).every(([kk, v]) => (R.res[kk] || 0) >= v)) { for (const [kk, v] of Object.entries(c)) R.res[kk] -= v; const fr = nearestFree(Math.floor(R.keep.x / TILE), Math.floor(R.keep.y1 / TILE) + 2); if (fr) go.push(rivalUnit(R, sk, fr.c * TILE + 16, fr.r * TILE + 16)); } } }
+  if (big) { const sk = ['catapult', 'ram', 'trebuchet'].filter(t => stageOfItem(t, true) <= R.stage && (t !== 'trebuchet' || !IND() || R.schoolTop))[0]; if (sk) { const c = RIVAL_COST[sk]; if (Object.entries(c).every(([kk, v]) => (R.res[kk] || 0) >= v)) { for (const [kk, v] of Object.entries(c)) R.res[kk] -= v; const fr = nearestFree(Math.floor(R.keep.x / TILE), Math.floor(R.keep.y1 / TILE) + 2); if (fr) go.push(rivalUnit(R, sk, fr.c * TILE + 16, fr.r * TILE + 16)); } } }
   // a route through way-points along a planned way, bent a little each time so raids do not all come the same way
   const ap = approachPoint({ x: R.keep.x, y: R.keep.y1 + 40, radius: 11 }, k), pth = findPath(R.keep.x, R.keep.y1 + 40, ap.x, ap.y);
   if (pth.length < 2) return;
   // a way-point about every 380 points along the way, each nudged a little
   const way = []; let acc = 0; for (let i = 1; i < pth.length; i++) { const a = pth[i - 1], b2 = pth[i], L = Math.hypot(b2.x - a.x, b2.y - a.y); for (let d = 380 - acc; d < L - 120; d += 380) way.push({ x: a.x + (b2.x - a.x) * d / L + RR(-40, 40), y: a.y + (b2.y - a.y) * d / L + RR(-40, 40) }); acc = (acc + L) % 380; }
   if (!way.length) way.push({ x: (R.keep.x + ap.x) / 2, y: (R.keep.y1 + ap.y) / 2 });
+  raidSide(R, way);   /* each raid comes at you from a different side */
   for (const u of go) { u.raider = true; u.order = 'raid'; u.repath = 0; u.path = []; u.route = way.map(w => ({ x: w.x + RR(-24, 24), y: w.y + RR(-24, 24) })); }
   raidPing = { x: R.keep.x, y: R.keep.y, t: 0 };
   showBanner(`<b>${R.name}</b> (${FACTIONS[R.fac].name}) sends ${go.length} soldiers against you${big ? ', with siege engines' : ''}!`, 4);

@@ -12,7 +12,7 @@ async function start(fac, opts = {}) {
   await p.evaluate(() => { window.__step(3); document.getElementById('banner').style.display = 'none'; SD.setRaid(99999); REALM.rogueT = 1e9; for (const R of REALM.rivals) R.raidT = 1e9;
     window.T = {
       put(kind, near) { const k = SD.keep(), o = near || { c: k.c + 1, r: k.r + 1 };
-        for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r); finishBuilding(bb); return bb; } }
+        for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r); finishBuilding(bb); bb.hp = bb.maxHp; return bb;   /* (built and whole) */ } }
         return null; },
       people(n, type = 'civ') { const k = SD.keep(), out = []; for (let i = 0; i < n; i++) { const f = nearestFree(k.c + 2 + (i % 5), k.r + 6 + Math.floor(i / 5)); out.push(makeUnit('player', type, f.c * TILE + 16, f.r * TILE + 16)); } return out; },
       stage(n) { stageN = n; window.__step(25); },

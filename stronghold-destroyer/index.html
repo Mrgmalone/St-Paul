@@ -53,12 +53,12 @@
     <div id="selbox"><span id="selLabel">No soldiers selected</span><div id="selSum"></div><div id="selBar"><i></i></div></div>
     <div class="btns"><button id="btnAll" class="sm">All</button><button id="btnSold" class="sm">Soldiers</button><button id="btnCiv" class="sm">Civilians</button><button id="btnBell" class="sm" hidden title="Ring the bell: every soldier comes home to heal, then walks back to its spot">&#128276; Bell</button><button id="btnClear" class="sm">Clear</button><button id="btnStop" class="sm">Stop</button><button id="camAdd" class="sm tonly" title="Add mode: tap people to add them to your group">&#65291; Add</button><button id="camHome" class="sm" title="Back to your castle (Space)">&#8962; Castle</button></div>
   </div>
-  <div id="tips" aria-label="Reserved for the Art of War advisor (Phase 7)"></div>
+  <div id="tips" aria-label="The Art of War advisor" aria-live="polite"></div>
   <div id="ibLabel" hidden></div>
   <div id="moodPop" class="pop" hidden></div>
   <div id="peoplePop" class="pop" hidden></div>
   <div id="personPop" class="pop" hidden></div>
-  <div id="tapIcon" hidden><canvas data-icon="r:people"></canvas></div>
+  <div id="tapIcon" hidden><canvas data-icon="r:people"></canvas><b hidden></b></div>
   <div id="alertBar" hidden aria-live="polite"></div>
   <div id="stagePop" class="pop" hidden></div>
   <div id="rivalsPop" class="pop" hidden></div>
@@ -122,6 +122,7 @@
         <button class="bb ib" data-b="house"><canvas data-icon="b:house"></canvas>House<small>50 wood &middot; +5 people</small><span class="why"></span></button>
         <button class="bb ib" data-b="chapel"><canvas data-icon="b:chapel"></canvas>House of Prayer<small>80 wood &middot; 40 gold</small><span class="why"></span></button>
         <button class="bb ib" data-b="woodhut"><canvas data-icon="b:woodhut"></canvas>Woodcutter<small>30 wood &middot; worker comes by itself</small><span class="why"></span></button>
+        <button class="bb ib" data-b="waterpot"><canvas data-icon="b:waterpot"></canvas>Water Pot<small>10 wood &middot; water for fires</small><span class="why"></span></button>
         <button class="bb ib" data-b="stockpile"><canvas data-icon="b:stockpile"></canvas>Stockpile<small>20 wood &middot; stores wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="granary"><canvas data-icon="b:granary"></canvas>Granary<small>40 wood &middot; stores food</small><span class="why"></span></button>
         <button class="bb ib" data-b="market"><canvas data-icon="b:market"></canvas>Market<small>60 wood &middot; buy and sell goods</small><span class="why"></span></button>
@@ -154,6 +155,10 @@
         <button class="tb ib" data-k="maceman"><canvas data-icon="u:maceman"></canvas>Maceman<small>1 mace &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="knight"><canvas data-icon="u:knight"></canvas>Knight<small>sword &middot; armor &middot; 20 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="archer"><canvas data-icon="u:archer"></canvas>Archer<small>1 bow &middot; 10 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
+        <button class="kb ib" data-kit="longbow"><canvas data-icon="u:archer"></canvas>Longbowman<small>1 bow &middot; 15 gold &middot; shoots far</small><span class="why"></span></button>
+        <button class="kb ib" data-kit="crossbow"><canvas data-icon="u:archer"></canvas>Crossbowman<small>1 bow &middot; 2 iron &middot; 15 gold &middot; unhorses knights</small><span class="why"></span></button>
+        <button class="kb ib" data-kit="berserker"><canvas data-icon="u:maceman"></canvas>Berserker<small>1 mace &middot; 2 leather &middot; 10 gold</small><span class="why"></span></button>
+        <button class="kb ib" data-kit="flame"><canvas data-icon="u:archer"></canvas>Flamethrowers (10)<small>sword &middot; armor &middot; 20 gold: one knight's cost</small><span class="why"></span></button>
         <button class="tb ib" data-k="ram"><canvas data-icon="u:ram"></canvas>Ram<small>80 wood &middot; 20 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="catapult"><canvas data-icon="u:catapult"></canvas>Catapult<small>150 wood &middot; 30 stone &middot; 40 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
         <button class="tb ib" data-k="trebuchet"><canvas data-icon="u:trebuchet"></canvas>Trebuchet<small>220 wood &middot; 40 stone &middot; 80 gold</small><span class="ring"></span><span class="secs"></span><b class="cnt"></b><span class="why"></span></button>
@@ -219,10 +224,15 @@
 <script src="js/factions.js"></script>
 <script src="js/stages.js"></script>
 <script src="js/realm.js"></script>
+<script src="js/startfog.js"></script>
 <script src="js/industry.js"></script>
 <script src="js/insidepics.js"></script>
 <script src="js/workgroups.js"></script>
 <script src="js/citizens.js"></script>
+<script src="js/soldiers.js"></script>
+<script src="js/fire.js"></script>
+<script src="js/rivals4b.js"></script>
+<script src="js/advisor.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/world3d.js"></script>

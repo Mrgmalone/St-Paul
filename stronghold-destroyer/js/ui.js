@@ -5,7 +5,7 @@
 // ---------- interface: status chips, tabs, pictures, minimap, mood report, menu ----------
 const UI = (() => {
   const statusEl = document.getElementById('status'), $ = id => document.getElementById(id);
-  let built = false, miniBase = null, miniBaseT = 0;
+  let built = false, miniBase = null, miniBaseT = 0, fogCan = null, fogCanV = -1;
   // --- small pictures drawn with the game's own artwork ---
   function fakeUnit(type) {
     return { kind: 'unit', type, team: 'player', x: 0, y: 0, pal: type === 'civ' ? PAL.civ : PAL.player, skin: '#d9a57a', hair: '#4a2e18', seed: 1,
@@ -14,7 +14,7 @@ const UI = (() => {
   }
   function iconBuilding(g, name, w, h) {
     const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (isField(name)) b.amount = b.max;
-    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84], market: [104, 66], alehouse: [80, 78], apothecary: [80, 78], church: [96, 140], abbey: [96, 150], school: [104, 80], engineerhut: [80, 78], stable: [80, 76], vineyard: [72, 72], orchard: [72, 72] }[name] || [80, 80];
+    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84], market: [104, 66], alehouse: [80, 78], apothecary: [80, 78], church: [96, 140], abbey: [96, 150], school: [104, 80], engineerhut: [80, 78], stable: [80, 76], vineyard: [72, 72], orchard: [72, 72], waterpot: [40, 40] }[name] || [80, 80];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -221,11 +221,13 @@ const UI = (() => {
     const sx = W / MW, sy = H / MH;
     g.fillStyle = 'rgba(226,194,90,0.9)'; for (const f of farms) if (!f.dead) g.fillRect(f.x0 * sx, f.y0 * sy, (f.x1 - f.x0) * sx, (f.y1 - f.y0) * sy);
     for (const s of structures) {
-      if (s.dead) continue;
+      if (s.dead || fogHides(s, 'player')) continue;
       g.fillStyle = s.team === 'player' ? PAL.player.tunic : s.fac && FACTIONS[s.fac] ? FACTIONS[s.fac].trim : '#c8342c';   // a rival's buildings in its faction's colour
       g.fillRect(s.x0 * sx, s.y0 * sy, Math.max(2, (s.x1 - s.x0) * sx), Math.max(2, (s.y1 - s.y0) * sy));
       if (s.kind === 'keep' || s.kind === 'tower') { g.strokeStyle = '#fff3d6'; g.lineWidth = dpr; g.strokeRect(s.x0 * sx, s.y0 * sy, (s.x1 - s.x0) * sx, (s.y1 - s.y0) * sy); }
     }
+    if (FOG.on) { if (!fogCan || fogCanV !== fogVer) { fogCan = fogCan || document.createElement('canvas'); fogCan.width = FOG.w; fogCan.height = FOG.h; const fg = fogCan.getContext('2d'), im = fg.createImageData(FOG.w, FOG.h); for (let i = 0; i < FOG.seen.length; i++) { im.data[i * 4 + 3] = FOG.seen[i] ? 0 : 235; } fg.putImageData(im, 0, 0); fogCanV = fogVer; }
+      g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, W, H); }   // the land not yet seen
     const d = Math.max(2, 2 * dpr);
     for (const u of units) {
       if (u.dead || hiddenFrom(u, 'player')) continue;

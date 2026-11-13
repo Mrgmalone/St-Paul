@@ -386,3 +386,10 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #alertBar .al.hot{color:#ffc0b0;border-left-color:#e0583a}
 #alertBar .al.sm{font-size:15px;font-weight:500;opacity:.88}
 @media (max-width:600px),(max-height:500px){ #btnPeople span{display:none} #btnPeople{min-height:48px;padding:4px} #alertBar{top:58px;max-width:90vw} #alertBar .al.sm{display:none} }
+#tapIcon b{position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;background:rgba(24,17,10,.92);color:#ffe9b8;font-size:15px;padding:2px 8px;border-radius:6px;border:1px solid #d9a93a}
+.kb[hidden]{display:none!important}
+/* Phase 4B step B8: the Art of War advisor, always on in the top corner of the map */
+#tips.adv{height:auto;background:rgba(24,17,10,.9);border:1px solid #d9a93a;border-radius:10px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.55)}
+#tips .advTitle{font-family:Cinzel,Georgia,serif;font-size:14px;letter-spacing:1px;color:#ffd98a;margin-bottom:2px}
+#tips .advTip{font-size:17px;line-height:1.3;color:#fff3d6}
+@media (max-width:600px),(max-height:500px){ #tips .advTip{font-size:15px} #tips .advTitle{font-size:12px} }

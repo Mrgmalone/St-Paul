@@ -230,7 +230,7 @@ function trainUnit(kind) {
   updateHud();
 }
 // ---------- self-running workers ----------
-const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, alehouse: 1, stable: 1, vineyard: 1, orchard: 1 };
+const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, alehouse: 1, stable: 1, vineyard: 1, orchard: 1, waterpot: 1 };
 const JOB_MAX = 3;
 const maxStaff = k => IND() ? indStaff(k) : (k === 'woodhut' || isField(k)) ? 2 : 3;   // blacksmith: 3   // huts and farms hold 2, other industries 3; each worker adds full output
 const staffOf = site => units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.job === site).length;
@@ -250,7 +250,7 @@ const SMITH = { sword: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }, m
 const recipeOf = (site, u) => u && u.ironWork && site.kind === 'woodhut' ? YARD_IRON : site.kind === 'smithy' ? SMITH[site.make || 'sword'] : IND() && site.kind === 'bakery' ? INDUSTRY.bakery : IND() && site.kind === 'mill' ? INDUSTRY.millCraft : CRAFT[site.kind];
 
 const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1, alehouse: 1, school: 1, engineerhut: 1, apothecary: 1, stable: 1 };
-const JOB_NAME = { alehouse: 'Alewife', stable: 'Stable hand', vineyard: 'Vine-dresser', orchard: 'Orchard keeper', smithy: 'Blacksmith', quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
+const JOB_NAME = { waterpot: 'Water carrier', alehouse: 'Alewife', stable: 'Stable hand', vineyard: 'Vine-dresser', orchard: 'Orchard keeper', smithy: 'Blacksmith', quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
 const craftCost = site => Math.max(0.5, 1 - 0.05 * Math.floor((site.made || 0) / 4)) * learnWaste();   // the school: less waste   // every 4 made: 5% less material, down to half
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
@@ -299,7 +299,7 @@ function startJob(u) {
   if (site.kind === 'engineerhut') { engineerJob(u); return; }
   if (CRAFT[site.kind] || u.ironWork) { u.order = 'craft'; u.sub = 'toSite'; u.path = []; u.repath = 0; u.crafting = null; u.task = null; return; }
   if (site.kind === 'hopfarm' || site.kind === 'wheatfarm' || site.kind === 'vineyard' || site.kind === 'orchard') { u.order = 'gather'; u.task = { type: FIELD_TYPE[site.kind], node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
-  if (site.kind === 'stable') { const ap = approachPoint(u, site); if (edgeDist(u, site) > 40) { commandMove([u], ap.x, ap.y); u.cmdT = -99; } else u.order = 'idle'; return; }
+  if (site.kind === 'stable' || site.kind === 'waterpot') { const ap = approachPoint(u, site); if (edgeDist(u, site) > 40) { commandMove([u], ap.x, ap.y); u.cmdT = -99; } else u.order = 'idle'; return; }
   if (site.kind === 'farm') { u.order = 'gather'; u.task = { type: 'food', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
   const t = nearestNode('wood', site.x, site.y, yardReach(), u.bad);   /* from the Hold, wagons reach farther into the forest */
   if (!t) { u.job = null; floatText(u.x, u.y - 50, 'No trees near the hut', '#ffb38a'); return; }
@@ -349,12 +349,12 @@ function updateJobs(dt) {
     if (b.team !== 'player' || b.dead || b.done !== false) continue;
     const on = civs.filter(u => u.order === 'build' && u.buildTarget === b).length; if (on >= 2) continue;
     const near = (a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y);
-    let pool = civs.filter(u => !u.job && !u.inSchool && !u.toHeal && !u.sick && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0 && u.sub === 'toKeep'));
-    if (!pool.length && !on) pool = civs.filter(u => u.job && !u.toHeal && !u.sick && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0));
+    let pool = civs.filter(u => !u.job && !u.inSchool && !u.toHeal && !u.sick && !isManual(u) && u.order !== 'build' && u.order !== 'leave' && u.order !== 'firefight' && u.order !== 'repair' && !(u.carry > 0 && u.sub === 'toKeep'));
+    if (!pool.length && !on) pool = civs.filter(u => u.job && !u.toHeal && !u.sick && u.order !== 'build' && u.order !== 'leave' && u.order !== 'firefight' && u.order !== 'repair' && !(u.carry > 0));
     pool.sort(near).slice(0, 2 - on).forEach(u => { u.breakUntil = 0; commandBuild([u], b); floatText(u.x, u.y - 50, `Off to build the ${b.name}`, '#ffe9a8'); });
   }
-  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time) && !u.toHeal && !(u.job.kind === 'stable' || u.job.kind === 'engineerhut') ) startJob(u);
-  for (const u of civs) if (u.job && (u.job.kind === 'stable' || u.job.kind === 'engineerhut') && u.order === 'idle' && edgeDist(u, u.job) > 60 && !(u.breakUntil > time)) startJob(u);
+  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time) && !u.toHeal && !(u.job.kind === 'stable' || u.job.kind === 'engineerhut' || u.job.kind === 'waterpot') ) startJob(u);
+  for (const u of civs) if (u.job && (u.job.kind === 'stable' || u.job.kind === 'engineerhut' || u.job.kind === 'waterpot') && u.order === 'idle' && edgeDist(u, u.job) > 60 && !(u.breakUntil > time)) startJob(u);
   // anyone with no building job gathers by themselves: food when stores are low, otherwise wood; at most 5 to a bush, tree or rock
   // how many are already on each bush, tree or rock: counted once, then kept up to date as people are sent
   const onCount = new Map(); for (const o of civs) if (o.task && o.task.node && o.order === 'gather') onCount.set(o.task.node, (onCount.get(o.task.node) || 0) + 1);
@@ -402,8 +402,8 @@ function updateEconomy(dt) {
       q.t += dt;
       if (q.t >= q.dur) {
         trainQueue.splice(trainQueue.indexOf(q), 1);
-        const u = makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20), rp = rallyFor(q.kind);
-        commandMove([u], rp.x + RR(-25, 25), rp.y + RR(-20, 20));
+        const list = IND() ? finishTraining(q, k) : [makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20)], rp = rallyFor(q.kind), u = list[0];   /* a squad of ten, a sheet soldier, a knight with or without a horse */
+        for (const v of list) commandMove([v], rp.x + RR(-25, 25), rp.y + RR(-20, 20));
         floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8'); AudioSys.ui('ready');
       }
     }

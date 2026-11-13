@@ -125,7 +125,7 @@ function updateStages(dt) {
 // ---------- wages ----------
 function updateWages(dt) {
   if ((wageT += dt) < 60) return; wageT = 0;
-  let owed = 0; for (const u of units) if (u.team === 'player' && !u.dead) owed += ECONOMY.wages[u.type] || 0;
+  let owed = 0; for (const u of units) if (u.team === 'player' && !u.dead) owed += (kitOf(u) ? kitOf(u).wage : ECONOMY.wages[u.type]) || 0;
   if (!owed) { wagesUnpaid = false; return; }
   if (res.gold >= owed) { res.gold -= owed; wagesUnpaid = false; const k = playerKeep(); if (k) floatText(k.x, k.y0 - 40, `Wages paid: ${owed} gold`, '#e9dcbc'); }
   else { res.gold = 0; wagesUnpaid = true; showBanner(`<b>Your soldiers are unpaid</b> (wages ${owed} gold a minute). The people grow unhappy until there is gold.`, 4); }

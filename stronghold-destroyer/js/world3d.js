@@ -9,6 +9,10 @@ const R3D = (() => {
   const T = window.THREE;
   const available = !!T && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
   let active = false, ready = false, renderer, scene, camera, sun, fill, sky, clouds3, glCanvas, groundMesh;
+  const fogUni = { value: null }, fogOnUni = { value: 0 }; let fogTex = null;
+  // the fog of war on the ground: one value per 64-point square, 0 unseen and 1 seen
+  function setFog(seen, w, h) { if (!fogTex) { fogTex = new T.DataTexture(new Uint8Array(w * h * 4), w, h, T.RGBAFormat); fogTex.magFilter = fogTex.minFilter = T.LinearFilter; fogUni.value = fogTex; }
+    const d = fogTex.image.data; for (let i = 0; i < w * h; i++) { const v = seen[i] ? 255 : 0; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; } fogTex.needsUpdate = true; fogOnUni.value = 1; }
   // one fixed camera: looking down at 40 degrees above the ground, turned 45 degrees so buildings show two faces,
   // as the sheet draws them. Only zoom changes. (40 degrees keeps the unit pictures, drawn from a little above, natural.)
   const CAM_YAW = Math.PI / 4, CAM_PITCH = 40 * Math.PI / 180;
@@ -151,10 +155,10 @@ const R3D = (() => {
     const gmat = new T.MeshStandardMaterial({ map: tex, roughness: 0.97 });
     gmatRef = gmat;
     gmat.onBeforeCompile = sh => {
-      gmat.userData.sh = sh; sh.uniforms.snowAmt = { value: 0 };
+      gmat.userData.sh = sh; sh.uniforms.snowAmt = { value: 0 }; sh.uniforms.fogMap = fogUni; sh.uniforms.fogOn = fogOnUni;
       sh.uniforms.detailMap = { value: detTex }; sh.uniforms.detailRep = { value: new T.Vector2(MW / 26, MH / 26) };
-      sh.fragmentShader = 'uniform sampler2D detailMap; uniform vec2 detailRep; uniform float snowAmt;\n' + sh.fragmentShader.replace('#include <map_fragment>',
-        '#include <map_fragment>\n  { float d1 = texture2D(detailMap, vUv * detailRep).r, d2 = texture2D(detailMap, vUv * detailRep * 0.27 + 0.31).r; diffuseColor.rgb *= mix(0.84, 1.16, d1 * 0.65 + d2 * 0.35); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.97), snowAmt * clamp(0.45 + 0.5 * d2, 0.0, 0.92)); }');
+      sh.fragmentShader = 'uniform sampler2D detailMap; uniform vec2 detailRep; uniform float snowAmt; uniform sampler2D fogMap; uniform float fogOn;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n  if (fogOn > 0.5) { vec2 fw = vec2(vUv.x * ' + (MW + 140).toFixed(1) + ' - 70.0, (1.0 - vUv.y) * ' + (MH + 140).toFixed(1) + ' - 70.0); float seen = texture2D(fogMap, fw / vec2(' + MW.toFixed(1) + ', ' + MH.toFixed(1) + ')).r; diffuseColor.rgb *= mix(0.07, 1.0, seen); }\n  { float d1 = texture2D(detailMap, vUv * detailRep).r, d2 = texture2D(detailMap, vUv * detailRep * 0.27 + 0.31).r; diffuseColor.rgb *= mix(0.84, 1.16, d1 * 0.65 + d2 * 0.35); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.97), snowAmt * clamp(0.45 + 0.5 * d2, 0.0, 0.92)); }');
     };
     groundMesh = mesh(geo, gmat, 0, 0, 0, false);
     scene.add(groundMesh);
@@ -796,6 +800,7 @@ const R3D = (() => {
       add(mesh(new T.ConeGeometry(28, 22, 12), thatchM(60, 24), 0, 274, 0));
       door(inner, 0, 0, 13, 10, 16);
       info.archer = towerArcher(teamSide, 0.9); info.archer.root.position.set(6, 251, 10); add(info.archer.root);
+      if (b.longbow) { const lb = towerArcher(teamSide, 0.95); lb.root.position.set(-14, 251, -6); add(lb.root); }   // the longbowman beside him
     } else if (b.kind === 'roundtower') {
       add(cyl(46, 50, 16, texMat('stoneDark', 2, 1), 0, 8, 0, 28));
       add(cyl(42, 44, 132, stoneM(260, 132), 0, 82, 0, 28));
@@ -851,6 +856,8 @@ const R3D = (() => {
       for (let r = 0; r < 3; r++) for (let k = 0; k < 4 - r; k++) { const l = cyl(2.6, 2.6, 16, logM, 22, 2.8 + r * 4.6, -6 + k * 5.4 + r * 2.7, 8); l.rotation.x = Math.PI / 2; add(l); }
       add(cyl(4.5, 5, 6, woodVM(8, 6), 20, 3, 16, 10));
       const axe = new T.Group(); axe.add(cyl(0.6, 0.6, 12, std('#7b5a34'), 0, 6, 0, 5)); axe.add(box(0.8, 4, 4.5, std('#c3cad1', { metalness: 0.8, roughness: 0.3 }), 0, 0.8, 2)); axe.position.set(20, 6, 16); axe.rotation.z = 0.5; add(axe);
+    } else if (b.kind === 'waterpot') {   // a big clay pot of water on a wooden stand
+      add(box(26, 4, 26, woodHM(26, 4), 0, 2, 0)); add(cyl(10, 8, 18, std('#a8653a', { roughness: 0.9 }), 0, 13, 0, 14)); add(cyl(9, 9, 0.6, std('#4f86c8', { roughness: 0.2 }), 0, 22, 0, 14));
     } else if (b.kind === 'stockpile') {
       add(box(56, 3, 52, woodHM(56, 4), 0, 1.5, 0));
       for (const [x, z] of [[-27, -25], [27, -25], [-27, 25], [27, 25]]) add(cyl(1.4, 1.4, 12, woodVM(3, 12), x, 6, z, 6));
@@ -1906,6 +1913,7 @@ const R3D = (() => {
         if (['wall', 'gate', 'highwall', 'stairs', 'moat'].includes(b.kind) && !joined.has(b.id) && joined.add(b.id)) for (const o of structures) if (o !== b && (o.kind === 'wall' || o.kind === 'highwall' || o.kind === 'stairs' || o.kind === 'moat') && Math.abs(o.c - b.c) + Math.abs(o.r - b.r) === 1) { const om = bModels.get(o.id); if (om && !om.rubble) { scene.remove(om.g); bModels.delete(o.id); } }
         if (isField(b.kind) || b.kind === 'house') hideGrass(b.x0, b.y0, b.x1, b.y1);
       }
+      if (!b.dead) md.g.visible = !fogHides(b, 'player');   // a rival's building in the fog is not shown
       if (b.dead) { if (!md.rubble) { md.g.visible = false; md.rubble = (b.kind === 'farm' || b.kind === 'moat' || b.kind === 'pit') ? null : rubble(b); } if (Math.random() < 0.05) spawn('smoke', b.x + RR(-25, 25), b.y - RR(5, 25), b.y); continue; }
       if (b.dropT) { const k = 1 - (performance.now() - b.dropT) / 380; md.g.position.y = md.baseY + Math.max(0, k) * k * 18; if (k <= 0) { b.dropT = 0; md.g.position.y = md.baseY; } }
       const prog = b.done === false ? Math.max(0.06, b.progress) : 1;
@@ -2111,9 +2119,10 @@ const R3D = (() => {
       if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
     if (tearing && mouse.inside) drawTearHover(g, (x, y) => project(x, 2, y));
+    drawStars(g, project);   // veterans' stars
     for (const u of units) { if (u.dead || hiddenFrom(u, 'player')) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
     // each rival's keep carries its lord's name and faction, in the faction's colour
-    for (const s of structures) if (s.campCenter && !s.dead) { const R = rivalOf(s); if (!R) continue; const q = project(s.x, (s.topH || 125) + 46, (s.y0 + s.y1) / 2); if (!q.ok) continue;
+    for (const s of structures) if (s.campCenter && !s.dead && !fogHides(s, 'player')) { const R = rivalOf(s); if (!R) continue; const q = project(s.x, (s.topH || 125) + 46, (s.y0 + s.y1) / 2); if (!q.ok) continue;
       const t = `${R.name} · ${FACTIONS[R.fac].name}${R.friend ? ' (friend)' : ''}`; g.save(); g.font = 'bold 17px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,0.88)'; g.strokeText(t, q.x, q.y); g.fillStyle = R.friend ? '#9fe8a8' : FACTIONS[R.fac].trim; g.fillText(t, q.x, q.y); g.restore(); }
     for (const s of structures.concat(farms)) if (s.asleep && !s.dead) { const q = project(s.x, (s.topH || 20) + 30, (s.y0 + s.y1) / 2); if (q.ok) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', q.x, q.y); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', q.x, q.y); g.restore(); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
@@ -2210,7 +2219,7 @@ const R3D = (() => {
     const per = {}; for (const m of treeMeshes) { const n = m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3, k = Math.round(n); per[k] = (per[k] || 0) + m.count; }
     return { per, trees: treeMeshes.length, treeCount: trees.length, grassChunks: grass ? grass.length : 0, calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
   }
-  return { debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt };
+  return { debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
 })();
 
 const speeches = [];
@@ -2258,9 +2267,9 @@ function showTower(b) {
   storeShown = b; const p = document.getElementById('storePop'), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`;
   const top = units.filter(o => o.onWall === b && !o.dead).length, door = units.filter(o => o.guardOf === b && !o.dead).length;
   let html = `<h3>${b.name.toUpperCase()}</h3>` + ln('Archers on top', `${top} of ${WALL_POSTS[b.kind]}`) + ln('Guards at the door', `${door} of 2`);
-  if (b.kind === 'roundtower') {
+  if (b.kind === 'roundtower' || (IND() && b.kind === 'greattower')) {
     html += ln('Engine', b.engine ? (b.engine === 'trebuchet' ? 'Trebuchet' : 'Ballista') + (b.engineHold ? ' (holding fire)' : ' (firing)') : 'none');
-    html += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` + (b.engine ? `<button class="sm" data-tw="stop">Stop</button><button class="sm" data-tw="go">Continue</button>` : `<button class="sm" data-tw="ballista">Mount Ballista (110 wood, 50 gold)</button><button class="sm" data-tw="trebuchet">Mount Trebuchet (200 wood, 40 stone, 80 gold)</button>`) + `</div>`;
+    html += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">` + (b.engine ? `<button class="sm" data-tw="stop">Stop</button><button class="sm" data-tw="go">Continue</button>` : `<button class="sm" data-tw="ballista">Mount Ballista (${engineText('ballista')})</button><button class="sm" data-tw="trebuchet">Mount Trebuchet (${engineText('trebuchet')})</button>`) + `</div>`;
   }
   html += fixRow + '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Idle archers climb up by themselves; idle knights, macemen and spearmen guard the door. Esc closes.</div>';
   const key = 'tw' + b.id + (b.engine || '') + (b.engineHold ? 'h' : '') + top + '/' + door;
@@ -2268,10 +2277,10 @@ function showTower(b) {
 }
 document.getElementById('storePop').addEventListener('click', e => {
   const m = e.target.closest('[data-mach]'); if (m && storeShown && storeShown.kind === 'unit') { storeShown.holdFire = m.dataset.mach === 'stop'; if (storeShown.holdFire) { storeShown.order = 'idle'; storeShown.target = null; } talkTo(storeShown); AudioSys.ui('select'); return; }
-  const t = e.target.closest('[data-tw]'); if (!t || !storeShown || storeShown.kind !== 'roundtower') return;
+  const t = e.target.closest('[data-tw]'); if (!t || !storeShown || !(storeShown.kind === 'roundtower' || (IND() && storeShown.kind === 'greattower'))) return;
   const b = storeShown, a = t.dataset.tw;
   if (a === 'stop' || a === 'go') b.engineHold = a === 'stop';
-  else { const cost = a === 'ballista' ? { wood: 110, gold: 50 } : { wood: 200, stone: 40, gold: 80 }; if (!afford(cost)) { showBanner(`Not enough ${lacking(cost)} to mount a ${a}.`, 2.5); return; } pay(cost); b.engine = a; b.engineHold = false; floatText(b.x, b.y - b.topH - 20, `${a === 'ballista' ? 'Ballista' : 'Trebuchet'} mounted`, '#9fe8a8'); }
+  else { const cost = engineCost(a), why = engineWhyNot(a); if (why) { showBanner(why, 3.5); return; } if (!afford(cost)) { showBanner(`Not enough ${lacking(cost)} to mount a ${a}.`, 2.5); return; } pay(cost); b.engine = a; b.engineHold = false; floatText(b.x, b.y - b.topH - 20, `${a === 'ballista' ? 'Ballista' : 'Trebuchet'} mounted`, '#9fe8a8'); }
   AudioSys.ui('select'); showTower(b); updateHud();
 });
 let paused = false, leftNoteT = 0, menuPause = false, menuT = 0;

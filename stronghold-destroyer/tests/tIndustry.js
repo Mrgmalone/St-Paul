@@ -16,7 +16,7 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
   await p.evaluate(() => {
     window.T = {
       put(kind, near) { const k = SD.keep(), o = near || { c: k.c + 1, r: k.r + 1 };
-        for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r); finishBuilding(bb); return bb; } }
+        for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r); finishBuilding(bb); bb.hp = bb.maxHp; return bb;   /* (built and whole) */ } }
         return null; },
       people(n) { const k = SD.keep(); for (let i = 0; i < n; i++) { const f = nearestFree(k.c + 2 + (i % 5), k.r + 6 + Math.floor(i / 5)); makeUnit('player', 'civ', f.c * TILE + 16, f.r * TILE + 16); } },
       stage(n) { stageN = n; window.__step(25); },

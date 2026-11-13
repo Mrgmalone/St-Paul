@@ -107,7 +107,7 @@ function updateStealth(dt) {
   }
 }
 // hidden from this team: a stealthy berserker nobody's tower has spotted
-const hiddenFrom = (o, team) => !!(o.stealth && !o.spotted && o.team !== team);
+const hiddenFrom = (o, team) => !!(o.stealth && !o.spotted && o.team !== team) || fogHides(o, team);   // (and anything in the fog you have not yet seen)
 
 // ---------- once a frame ----------
 function updateFactions(dt) { sellSurplus(dt); updateHealers(dt); updateStealth(dt); }

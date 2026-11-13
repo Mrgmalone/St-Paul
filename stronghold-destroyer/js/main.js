@@ -144,7 +144,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
-  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); updateCitizens(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); updateCitizens(dt); updateSoldiers(dt); updateFireRepair(dt); updateFog(dt); updateRivals4b(dt); updateAdvisor(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);
@@ -228,7 +228,7 @@ function startGame(key) {
     for (const s of structures.slice()) if (s.kind === 'tower' && s.team === 'enemy') removeQuietly(s);
     for (let i = fires.length - 1; i >= 0; i--) if (!fires[i].player && Math.hypot(fires[i].x - CAMP.x, fires[i].y - CAMP.y) < 200) fires.splice(i, 1);
     setBlock(49 + EX, 13, 0);
-    realmStart();
+    realmStart(); startFog();
   }
   else { planEnemyWalls(); buildEnemyWalls(16, true); planEnemyBase(); }   // the older tests: the old single camp
   raidTimer = Math.max(300, DIFF.first + 210);

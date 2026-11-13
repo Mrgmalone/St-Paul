@@ -45,7 +45,8 @@ const BUILD = {
   engineerhut: { name: "Engineer's Hut", w: 2, h: 2, wood: 50, stone: 20, time: 12, hp: 400, topH: 60 },
   stable: { name: 'Stable', w: 2, h: 2, wood: 60, time: 14, hp: 400, topH: 56 },
   vineyard: { name: 'Vineyard', w: 2, h: 2, wood: 40, gold: 10, time: 10, hp: 200, topH: 30 },
-  orchard: { name: 'Orchard', w: 2, h: 2, wood: 40, gold: 10, time: 10, hp: 200, topH: 40 }
+  orchard: { name: 'Orchard', w: 2, h: 2, wood: 40, gold: 10, time: 10, hp: 200, topH: 40 },
+  waterpot: { name: 'Water Pot', w: 1, h: 1, wood: 10, time: 3, hp: 120, topH: 22 }
 };
 const TERRITORY = 560;
 const farms = [];
@@ -234,6 +235,7 @@ function tearAt(sx, sy) {
   const b = tearTarget(sx, sy);
   if (!b) { showBanner('Click one of your own walls or buildings to tear it down.', 2); return; }
   if (b.kind === 'keep') { showBanner('The keep cannot be torn down.', 2.5); return; }
+  b.torn = true;   /* (torn down on purpose: not rebuilt by itself) */
   const r = refundOf(b); res.wood += r.wood; res.stone += r.stone; res.gold += r.gold;
   for (const u of units) {
     if (u.dead) continue;
@@ -336,6 +338,7 @@ function drawBuilding(g, b, t) {
   else if (b.kind === 'chapel' || b.kind === 'church' || b.kind === 'abbey') drawChapel(g, b, P);
   else if (b.kind === 'garden') drawGarden(g, b, P);
   else if (b.kind === 'stocks') drawStocks(g, b, P);
+  else if (b.kind === 'waterpot') { g.fillStyle = P('#6b4a2a'); g.fillRect(b.x - 9, b.y - 22, 18, 20); g.fillStyle = P('#4f86c8'); g.beginPath(); g.ellipse(b.x, b.y - 22, 9, 3.5, 0, 0, Math.PI * 2); g.fill(); }
   else if (b.kind === 'hopfarm' || b.kind === 'vineyard' || b.kind === 'orchard') drawHopFarm(g, b, P);
   else if (WORKSHOP[b.kind]) drawWorkshop(g, b, P);
   else if (b.kind === 'house') drawHouse(g, b, P, t);
