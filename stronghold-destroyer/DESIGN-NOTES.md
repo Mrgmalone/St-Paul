@@ -275,6 +275,19 @@ games in a row, the winning rule by count), tFrame (the table, globes, the glass
 tWater, and tTablet (the touch round by finger on an iPad and on a phone: choose and send, a finger box, a patrol, a
 house dragged into place, citizens filling a moat, then the way straight over the filled square and round a wall).
 
+**Checks and long games (final 4C, play link version 51):** all 61 checks pass (50 from before Phase 4C, 11 new). Three older
+checks needed updating for Gerald's 4C changes (three rivals by default; the phone card resting on the new bottom bar; the
+water check's camera placed over the river); none was a fault in the game. Long games (15 minutes each, all four factions,
+Easy, Medium and Hard, 1 to 4 rivals): after the last fixes, 5 of 6 games had zero problems of any kind; in one, two rival
+soldiers moved back and forth on one spot of their own ground for about 10 seconds; it did not happen again in 4 more
+games run with a trace to catch its cause (so the cause is not yet confirmed). Fixed on the way, each a real cause:
+bandits with no way out stood still for ever (now they slip away); a rival worker kept walking at trees he could not
+reach (now he checks the way first); a rival worker jostled beside a tree (now he works from there).
+How the difficulties feel with the simple test player (it defends but stays small and builds no walls): Easy, it reached
+stage 2 with 26 to 29 people and 11 to 13 soldiers, keep untouched, rivals at stage 1 to 2; Medium, it was worn down at
+stage 1 or 2 (keep damaged in most games), rivals at stage 2 to 3 with 6 to 10 soldiers; Hard, the keep fell in two of
+three games, rivals at stage 2 to 3 with up to 13 soldiers.
+
 **Speed (Phase 4C, measured alone, the same way as before; frame time in a software-drawn test browser, lower is faster,
 so only the comparison matters):** 100 people: Phase 3 2,269 (two runs averaged), 4B 2,008, 4C 2,232. 800 people: Phase 3
 4,326, 4B 3,748, 4C 3,745. Phase 3's speed holds (level at 100, 13% faster at 800). Against 4B, 4C is about 11% slower at
@@ -300,7 +313,7 @@ in 4B; optionally a more detailed continent relief for the corner globes.
 
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4C):** branch `upgrade-v2` holds Phase 4A, Phase 4B and Phase 4C steps C0 to C9, all built and checked;
+**Latest (Phase 4C, play link version 51):** branch `upgrade-v2` holds Phase 4A, Phase 4B and Phase 4C steps C0 to C9, all built and checked;
 the Phase 4C section above lists what each step does, the settings, the assumptions and the art still needed.
 Earlier: Phase 4B steps B1 to B8; its section lists what each step does, the numbers to confirm, the conflicts, what was
 simplified and the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
