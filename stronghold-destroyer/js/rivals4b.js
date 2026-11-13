@@ -23,7 +23,7 @@ function rivalGrowth(R, dt) {
   const p = (RIVALS.pace[DIFF.key] || 1), cap = RIVALS.workersPerStage[R.stage - 1] || 8;
   R.growing = R.growing || [];
   for (let i = R.growing.length - 1; i >= 0; i--) { const g = R.growing[i]; g.t += dt * p; if (g.t < g.dur) continue; R.growing.splice(i, 1);
-    const k = R.keep, fr = nearestFree(Math.floor(k.x / TILE) - 2, Math.floor(k.y1 / TILE) + 1); if (fr && rivalCivs(R).length < cap) rivalUnit(R, 'civ', fr.c * TILE + 16, fr.r * TILE + 16); }
+    const k = R.keep, fr = nearestFree(Math.floor(k.x / TILE) - 3 + Math.floor(Math.random() * 7), Math.floor(k.y1 / TILE) + 1 + Math.floor(Math.random() * 3)); if (fr && rivalCivs(R).length < cap) rivalUnit(R, 'civ', fr.c * TILE + 16, fr.r * TILE + 16); }   /* (spread out, not all on one square) */
   const homes = [R.keep].concat(rivalBuilt(R, 'house'));
   for (const h of homes) { if (rivalCivs(R).length + R.growing.length >= cap || R.res.food < 20) break; if (R.growing.some(g => g.home === h)) continue; R.growing.push({ t: 0, dur: R4.growMin + Math.random() * (R4.growMax - R4.growMin), home: h }); }
   return true;

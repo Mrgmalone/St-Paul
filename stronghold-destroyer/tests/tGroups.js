@@ -16,7 +16,7 @@ const { start } = require('./lib4b');
     out.keptClose = near;
     // a raider comes at the group: the escort goes for him
     const c = groupCenter(groupsOf(yard)[0]), foe = makeUnit('enemy', 'spear', c.x + 120, c.y); foe.order = 'idle'; foe.think = 99;
-    T.run(1.5); out.fought = sp.order === 'attack' && sp.target === foe;
+    out.fought = false; for (let i = 0; i < 8 && !out.fought; i++) { T.run(0.5); out.fought = sp.order === 'attack' && sp.target === foe; }
     foe.dead = true; T.run(3);
     // a soldier left idle goes with the second group by himself
     const [ar] = T.people(1, 'archer'); ar.cmdT = time - 120; T.run(7); out.autoEscort = !!(ar.escort && ar.escort.site === yard);

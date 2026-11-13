@@ -58,7 +58,7 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
     if (st) { T.act(st, 'fill'); T.run(2); out.stableCrew = staffOf(st); T.run(75); out.horses = st.horses; }
     // ---- the granary: too much food brings bugs; it can be expanded from the Hold ----
     const gr = T.put('granary'); const cap = foodCap(); out.cap = cap;
-    addFood('crops', cap + 400 - SD.res.food); T.run(62); out.bugs = bugsOn; const f1 = SD.res.food; T.run(5); out.spoiling = SD.res.food < f1;
+    addFood('crops', cap + 400 - SD.res.food); T.run(62); out.bugs = bugsOn; const f1 = SD.res.food; updateGranary(1); out.spoiling = SD.res.food < f1;   /* (the spoiling itself, apart from the food still coming in) */
     T.act(gr, 'expand'); out.capExpanded = foodCap(); spendFood(Math.max(0, Math.floor(SD.res.food - 200))); T.run(12); out.bugsGone = !bugsOn;
     // ---- ale prices ----
     const ah = T.put('alehouse'); SD.res.ale = 200; alePrice = 0; T.run(3); out.aleCheap = aleBonus; alePrice = 2; T.run(3); out.aleDear = aleBonus;

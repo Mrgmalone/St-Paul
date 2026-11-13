@@ -87,7 +87,7 @@ function enemyWorker(u, dt) {
     /* and plainly: much walking but staying in one small patch for 7 seconds (going round and round) means give this spot up */
     if (u._cx === undefined) { u._cx = u.x; u._cy = u.y; u._ct = 0; u._cw = 0; }
     u._ct += dt; u._cw += stepD;
-    if (u._ct > 7) { const round = u._cw > 140 && Math.hypot(u.x - u._cx, u.y - u._cy) < 50 && (u.sub === 'toNode' || u.sub === 'toSite'); u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
+    if (u._ct > 7) { const disp = Math.hypot(u.x - u._cx, u.y - u._cy), round = (u._cw > 140 && disp < 50 || disp < 12) && (u.sub === 'toNode' || u.sub === 'toSite');   /* round and round, or not moving at all */ u._ct = 0; u._cw = 0; u._cx = u.x; u._cy = u.y;
       if (round) { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } u.pauseT = time + 4; u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; } }
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
     else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 120) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
