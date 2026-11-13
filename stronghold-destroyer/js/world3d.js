@@ -24,13 +24,14 @@ const R3D = (() => {
     const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rep, rep); t.encoding = T.sRGBEncoding; return texCache[name] = t;
   }
   // heraldry from Gerald's sheets: a gold lion rampant on crimson for his army; an ember tower on charcoal for the Black Stone foe
+  // a rival faction's cloth: its field colour with its own charge (a wheat sheaf, scales, a healing herb, an eye)
   const emblemTex = (team, bg) => genTex('emblem-' + team + (bg || ''), 128, (g, n) => {
-    g.fillStyle = bg || (team === 'enemy' ? ENEMY_COL : ARMY.crimson); g.fillRect(0, 0, n, n);
+    g.fillStyle = bg || (FACTIONS[team] ? FACTIONS[team].field : team === 'enemy' ? ENEMY_COL : ARMY.crimson); g.fillRect(0, 0, n, n);
     for (let x = 0; x < n; x++) { const f = Math.sin(x / n * Math.PI * 7) * 0.5 + Math.sin(x / n * Math.PI * 17 + 1) * 0.2; g.fillStyle = f > 0 ? `rgba(255,220,200,${f * 0.09})` : `rgba(0,0,0,${-f * 0.22})`; g.fillRect(x, 0, 1, n); }   // folds
     for (let y = 0; y < n; y += 2) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, y, n, 1); } for (let x = 0; x < n; x += 2) { g.fillStyle = 'rgba(255,255,255,0.03)'; g.fillRect(x, 0, 1, n); }   // weave
     for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; g.fillRect(Math.random() * n, Math.random() * n, 2, 1); }
     g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, n - 5, n, 5); g.fillStyle = 'rgba(217,169,58,0.8)'; g.fillRect(0, n - 9, n, 2);   // a dark hem with a gold stripe
-    if (team === 'enemy') drawTowerEmblem(g, n / 2, n / 2, n * 0.8, ENEMY_TRIM); else drawLion(g, n / 2, n * 0.52, n * 0.86, ARMY.gold);
+    if (FACTIONS[team]) { g.save(); g.translate(n * 0.1, n * 0.08); drawEmblem(g, team, n * 0.8, n * 0.8, true); g.restore(); } else if (team === 'enemy') drawTowerEmblem(g, n / 2, n / 2, n * 0.8, ENEMY_TRIM); else drawLion(g, n / 2, n * 0.52, n * 0.86, ARMY.gold);
   }, 1);
   // brushed, scratched steel; a crimson weave with soft fold shading; grained leather - painted here, no files needed
   const steelTex = () => genTex('steel', 256, (g, n, R) => { const gr = g.createLinearGradient(0, 0, 0, n); gr.addColorStop(0, '#f4f6f8'); gr.addColorStop(0.5, '#d8dde2'); gr.addColorStop(1, '#eef1f4'); g.fillStyle = gr; g.fillRect(0, 0, n, n);
@@ -306,7 +307,7 @@ const R3D = (() => {
     const N = 9000, CHK = 620, by = new Map(); let k = 0, tries = 0;
     while (k < N && tries++ < N * 4) {
       const x = Rg() * MW, z = Rg() * MH;
-      if (blockedAt(x, z) || roadDist(x, z) < 22 || Math.hypot(x - CAMP.x, z - CAMP.y) < 150 || mountAt(x, z) > 18) continue;
+      if (blockedAt(x, z) || roadDist(x, z) < 22 || campDist(x, z) < 150 || mountAt(x, z) > 18) continue;
       if (pond && Math.hypot((x - pond.x) / pond.rx, (z - pond.y) / pond.ry) < 1.05) continue;
       const s = 0.6 + Rg() * 0.6, key = Math.floor(x / CHK) + ',' + Math.floor(z / CHK); if (!by.has(key)) by.set(key, []);
       by.get(key).push({ x, z, y: heightAt(x, z) - 0.2, s, sy: s * (0.8 + Rg() * 0.4), ry: Rg() * 6.28, col: new T.Color().setHSL(0.23 + Rg() * 0.06, 0.35, 0.55 + Rg() * 0.12).multiplyScalar(1.25) }); k++;
@@ -640,8 +641,8 @@ const R3D = (() => {
   // (the brick choice applies only while one building is being built: trees and tools keep their timber)
   function buildingModel(b) { try { return buildingModel0(b); } finally { BRICK = { stone: 'brick_gray', plaster: 'brick_brown' }; } }
   function buildingModel0(b) {
-    const teamCol = b.team === 'enemy' ? ENEMY_COL : PAL.player.tunic, teamSide = b.team === 'enemy' ? 'enemy' : 'player';
-    BRICK = b.team === 'enemy' && b.mat !== 'wood' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen', woodV: 'brick_blackgreen', woodH: 'brick_blackgreen' } : b.mat === 'brick' ? { stone: 'brick_brown', plaster: 'brick_brown' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
+    const foe = b.team !== 'player', teamCol = foe ? (b.fac ? FACTIONS[b.fac].field : ENEMY_COL) : PAL.player.tunic, teamSide = foe ? 'enemy' : 'player', foeTrim = b.fac ? FACTIONS[b.fac].trim : ENEMY_TRIM;
+    BRICK = foe && b.kind === 'keep' && (b.stage || 1) <= 2 ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen' } : foe && b.mat !== 'wood' ? { stone: 'brick_blackgreen', plaster: 'brick_blackgreen', woodV: 'brick_blackgreen', woodH: 'brick_blackgreen' } : b.mat === 'brick' ? { stone: 'brick_brown', plaster: 'brick_brown' } : b.kind === 'chapel' ? { stone: 'brick_green', plaster: 'brick_green' } : { stone: 'brick_gray', plaster: 'brick_brown' };
     const g = new T.Group(), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2, gy = heightAt(cx, cz);
     g.position.set(cx, gy - 1, cz);
     const inner = new T.Group(); g.add(inner);
@@ -701,7 +702,7 @@ const R3D = (() => {
       }
       for (const [x, z] of [[-31, -31], [31, -31], [-31, 31], [31, 31]]) add(cyl(2, 2, 30, wood, x, 140, z, 6));
       const roof = mesh(new T.ConeGeometry(58, 38, 4, 1), thatchM(60, 40), 0, 174, 0); roof.rotation.y = Math.PI / 4; add(roof);
-      info.flags.push(pole(inner, 0, 190, 0, 26, b.team === 'enemy' ? ENEMY_TRIM : teamCol));
+      info.flags.push(pole(inner, 0, 190, 0, 26, foe ? foeTrim : teamCol));
       info.archer = towerArcher('enemy'); info.archer.root.position.set(6, 104, 14); add(info.archer.root);
     } else if (b.kind === 'house') {
       add(box(52, 5, 46, stoneM(52, 5), 0, 2.5, 0));
@@ -724,7 +725,7 @@ const R3D = (() => {
       add(cyl(1.8, 1.8, 62, woodHM(62, 4), 0, 64.5, 0, 8)).rotation.z = Math.PI / 2;
       add(box(8, 30, 8, stoneM(8, 30), 14, 62, -9)); add(box(9.5, 2, 9.5, texMat('stoneDark', 1, 1), 14, 77, -9));
       info.chimney = { x: cx + 14, z: cz - 9, y: gy + 80 };
-    } else if (b.kind === 'wall' && (b.mat ? b.mat === 'wood' : b.team !== 'enemy')) {
+    } else if (b.kind === 'wall' && (b.mat ? b.mat === 'wood' : !foe)) {
       // your wall is a wooden palisade: sharpened logs set side by side along the run of the wall
       const nbw = (dc, dr) => structures.some(o => !o.dead && (o.kind === 'wall' || o.kind === 'gate') && o.c === b.c + dc && o.r === b.r + dr && o.team === b.team);
       const ew = nbw(1, 0) || nbw(-1, 0), ns = nbw(0, 1) || nbw(0, -1), logM = woodVM(8, 34), R = mulberry32(b.c * 131 + b.r * 17);
@@ -733,13 +734,13 @@ const R3D = (() => {
     } else if (b.kind === 'wall') {
       add(box(32, 30, 32, stoneM(32, 30), 0, 15, 0));
       add(box(32, 1.5, 22, texMat('stoneDark', 1, 1), 0, 30.4, 0));
-      const enemy = b.team === 'enemy', nb = (dc, dr) => structures.some(o => !o.dead && (o.kind === 'wall' || o.kind === 'gate') && o.c === b.c + dc && o.r === b.r + dr && o.team === b.team);
+      const enemy = foe, nb = (dc, dr) => structures.some(o => !o.dead && (o.kind === 'wall' || o.kind === 'gate') && o.c === b.c + dc && o.r === b.r + dr && o.team === b.team);
       const mm = stoneM(9, 8);
       if (!nb(0, 1)) for (const x of [-9.5, 6.5]) add(box(9, 8, 6, mm, x, 34, 13));
       if (!nb(0, -1)) for (const x of [-9.5, 6.5]) add(box(9, 8, 6, mm, x, 34, -13));
       if (!nb(1, 0)) for (const z of [-9.5, 6.5]) add(box(6, 8, 9, mm, 13, 34, z));
       if (!nb(-1, 0)) for (const z of [-9.5, 6.5]) add(box(6, 8, 9, mm, -13, 34, z));
-      if (enemy) { if (!nb(0, 1)) add(box(9, 12, 1, std(ENEMY_TRIM), 0, 16, 16.4)); else if (!nb(1, 0)) add(box(1, 12, 9, std(ENEMY_TRIM), 16.4, 16, 0)); }   // Black Stone hangings in ember
+      if (enemy) { if (!nb(0, 1)) add(box(9, 12, 1, std(foeTrim), 0, 16, 16.4)); else if (!nb(1, 0)) add(box(1, 12, 9, std(foeTrim), 16.4, 16, 0)); }   // Black Stone hangings in ember
     } else if (b.kind === 'gate') {
       for (const x of [-12, 12]) add(box(8, 42, 30, stoneM(8, 42), x, 21, 0));
       add(box(32, 7, 30, stoneM(32, 7), 0, 45, 0));
@@ -1145,7 +1146,7 @@ const R3D = (() => {
   // a horse: barrel body, arched neck, four jointed legs that trot in diagonal pairs, and a long cloth caparison
   function horseModel(team, m) {
     const g = new T.Group(), coat = std(team === 'enemy' ? '#2a2422' : '#7a5232', { roughness: 0.8 }), dark = std('#1e1612', { roughness: 0.8 });
-    const cloth = new T.MeshStandardMaterial({ color: C(team === 'enemy' ? '#34302e' : PAL.player.tunic), roughness: 0.85, side: T.DoubleSide, map: fabricTex() });
+    const cloth = new T.MeshStandardMaterial({ color: C(m.facField || (team === 'enemy' ? '#34302e' : PAL.player.tunic)), roughness: 0.85, side: T.DoubleSide, map: fabricTex() });
     const bodyM = sph(1, coat, 0, 25, 0, 16); bodyM.scale.set(6.6, 7.2, 15.5); g.add(bodyM);
     const neck = new T.Group(); neck.position.set(0, 29, 12); g.add(neck);
     const nk = capsule(3.6, 2.9, 13, coat, 10); nk.rotation.x = Math.PI - 0.75; neck.add(nk);
@@ -1203,9 +1204,9 @@ const R3D = (() => {
       rim: std(P.shieldRim || '#d9b04a', { metalness: 0.5, roughness: 0.45 }), shieldF: std(P.shield || P.tunic, { roughness: 0.7 }), string: std('#e8e0c8')
     };
     // Gerald's sheets: polished plate over mail, gold edging, crimson cloth with the gold lion (blackened steel and an ember tower for the foe)
-    const team = u.team === 'enemy' ? 'enemy' : 'player';
-    m.lion = new T.MeshStandardMaterial({ map: emblemTex(team), roughness: 0.88, side: T.DoubleSide });
-    m.trimG = std(team === 'enemy' ? ENEMY_TRIM : ARMY.gold, { metalness: 0.75, roughness: 0.32 });
+    const team = u.team === 'player' ? 'player' : 'enemy', emb = team === 'enemy' && u.fac && FACTIONS[u.fac] ? u.fac : team;
+    m.lion = new T.MeshStandardMaterial({ map: emblemTex(emb), roughness: 0.88, side: T.DoubleSide });
+    m.trimG = std(emb !== team ? FACTIONS[emb].trim : team === 'enemy' ? ENEMY_TRIM : ARMY.gold, { metalness: 0.75, roughness: 0.32 }); m.facField = emb !== team ? FACTIONS[emb].field : null;
     if (soldier) {
       m.plate = std(team === 'enemy' ? '#5d6168' : '#d5dbe1', { metalness: 0.92, roughness: team === 'enemy' ? 0.36 : 0.24, map: steelTex(), bumpMap: steelTex(), bumpScale: 0.12 });
       m.mail = std('#8b9197', { metalness: 0.6, roughness: 0.4, map: mailTex(), bumpMap: mailTex(), bumpScale: 0.35 }); m.mail.map = mailTex().clone(); m.mail.map.needsUpdate = true; m.mail.map.repeat.set(3, 3); m.mail.bumpMap = m.mail.map;
@@ -1223,10 +1224,10 @@ const R3D = (() => {
       m.vest = std(vest, { map: lk.female ? fabricTex() : leatherTex(), roughness: 0.78 });
       m.skirt = new T.MeshStandardMaterial({ color: C(lower), map: lk.female ? fabricTex() : leatherTex(), roughness: 0.85, side: T.DoubleSide });
       m.pants = std(foe ? '#2e2a28' : '#4a3c30', { map: fabricTex() }); m.boot = std(foe ? '#2a2420' : '#5a4030', { roughness: 0.6 });
-      m.sash = std(foe ? ENEMY_TRIM : ARMY.crimson, { map: fabricTex(), roughness: 0.8 });
+      m.sash = std(foe ? (u.fac && FACTIONS[u.fac] ? FACTIONS[u.fac].trim : ENEMY_TRIM) : ARMY.crimson, { map: fabricTex(), roughness: 0.8 });
       m.apron = new T.MeshStandardMaterial({ color: C(foe ? '#5e5a54' : '#c9bea4'), map: fabricTex(), roughness: 0.9, side: T.DoubleSide });
     }
-    const shieldFace = (rx, ry, ox, oy) => { const t = emblemTex(team).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T.ClampToEdgeWrapping; t.repeat.set(rx, ry); t.offset.set(ox, oy); return new T.MeshStandardMaterial({ map: t, roughness: 0.7 }); };
+    const shieldFace = (rx, ry, ox, oy) => { const t = emblemTex(emb).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T.ClampToEdgeWrapping; t.repeat.set(rx, ry); t.offset.set(ox, oy); return new T.MeshStandardMaterial({ map: t, roughness: 0.7 }); };
     const root = new T.Group(), body = new T.Group(); root.add(body);
     const sleeve = soldier ? m.mail : m.cloth, gloved = soldier || u.type === 'archer';
     // legs: thigh, knee, shin and a shaped boot
@@ -2098,6 +2099,9 @@ const R3D = (() => {
     }
     if (tearing && mouse.inside) drawTearHover(g, (x, y) => project(x, 2, y));
     for (const u of units) { if (u.dead || hiddenFrom(u, 'player')) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
+    // each rival's keep carries its lord's name and faction, in the faction's colour
+    for (const s of structures) if (s.campCenter && !s.dead) { const R = rivalOf(s); if (!R) continue; const q = project(s.x, (s.topH || 125) + 46, (s.y0 + s.y1) / 2); if (!q.ok) continue;
+      const t = `${R.name} · ${FACTIONS[R.fac].name}${R.friend ? ' (friend)' : ''}`; g.save(); g.font = 'bold 17px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,0.88)'; g.strokeText(t, q.x, q.y); g.fillStyle = R.friend ? '#9fe8a8' : FACTIONS[R.fac].trim; g.fillText(t, q.x, q.y); g.restore(); }
     for (const s of structures.concat(farms)) if (s.asleep && !s.dead) { const q = project(s.x, (s.topH || 20) + 30, (s.y0 + s.y1) / 2); if (q.ok) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', q.x, q.y); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', q.x, q.y); g.restore(); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';

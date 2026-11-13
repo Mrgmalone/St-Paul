@@ -94,7 +94,7 @@ function finishBuilding(b) {
   b.done = true; b.progress = 1;
   if (b.team === 'player' && COMFORT[b.kind]) cheer(COMFORT[b.kind][0], COMFORT[b.kind][1], `${b.name}: your people cheer! +${COMFORT[b.kind][0]} mood`);
   if (isField(b.kind)) b.amount = 10;
-  floatText(b.x, b.y - b.topH - 10, `${b.name} built`, '#9fe8a8');
+  if (b.team === 'player') floatText(b.x, b.y - b.topH - 10, `${b.name} built`, '#9fe8a8');
   if (b.team === 'player') AudioSys.play('built', b.x, b.y);
   if (b.team === 'player' && GIFT_TOWERS[b.kind]) giftKnight(b, 'A knight comes with the tower to guard its door.');
 }
@@ -116,13 +116,13 @@ const GUARD_R = { keep: 260 };
 function guardPost(u) {
   const g = u.guardOf; if (!g || g.dead || g.x0 === undefined || u.toHeal) return false;
   const R = GUARD_R[g.kind] || 230;
-  if (u.order === 'attack' && alive(u.target) && u.target.team !== 'player' && u.target.x0 === undefined) {
+  if (u.order === 'attack' && alive(u.target) && hostile('player', u.target.team) && u.target.x0 === undefined) {
     if (edgeDist(g, u.target) > R + 90) { u.order = 'idle'; u.target = null; u.path = []; return true; }   // gone: back to the door
     return false;
   }
   if (u.order !== 'idle' && u.order !== 'attack') return false;
   let best = null, bd = R;
-  for (const e of units) if (!e.dead && e.team !== 'player') { const d = edgeDist(g, e); if (d < bd) { bd = d; best = e; } }
+  for (const e of units) if (!e.dead && hostile('player', e.team) && !hiddenFrom(e, 'player')) { const d = edgeDist(g, e); if (d < bd) { bd = d; best = e; } }
   if (best) { u.order = 'attack'; u.target = best; u.repath = 0; u.cmdT = -99; return true; }
   return false;
 }

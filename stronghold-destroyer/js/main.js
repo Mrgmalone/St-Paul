@@ -142,7 +142,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
-  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);
@@ -221,12 +221,18 @@ function startGame(key) {
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople(testArmy, fac ? FACTIONS[fac].start.civilians : 5); spawnKing(); if (testArmy && keep) giftKnight(keep, ''); startPalisade();   // the king is the only fighter you start with, on foot
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle
-  planEnemyWalls(); buildEnemyWalls(16, true);
-  planEnemyBase(); raidTimer = Math.max(300, DIFF.first + 210);
+  if (fac) {   // the old enemy camp's watchtower and fire (made with the map) give way to four rivals, each a faction, growing from a shack like you
+    for (const s of structures.slice()) if (s.kind === 'tower' && s.team === 'enemy') removeQuietly(s);
+    for (let i = fires.length - 1; i >= 0; i--) if (!fires[i].player && Math.hypot(fires[i].x - CAMP.x, fires[i].y - CAMP.y) < 200) fires.splice(i, 1);
+    setBlock(49 + EX, 13, 0);
+    realmStart();
+  }
+  else { planEnemyWalls(); buildEnemyWalls(16, true); planEnemyBase(); }   // the older tests: the old single camp
+  raidTimer = Math.max(300, DIFF.first + 210);
   Object.assign(WEATHER, { season: 0, seasonT: SEASON_LEN, kind: 'clear', t: weatherHold(), cover: 0 });
-  LORD.unit = null; LORD.said = {}; LORD.broken = false; spawnLord();
-  setTimeout(() => lordSay('hello', 'So, a new lord in the west. Enjoy your little keep while it stands.'), 22000);
-  { const camp = enemyCamp(); for (let i = 0; i < 4; i++) { const f = nearestFree(Math.floor((camp.x - 70 + i * 22) / TILE), Math.floor((camp.y + 40) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); } }
+  LORD.unit = null; LORD.said = {}; LORD.broken = false; if (!fac) spawnLord();
+  if (!fac) setTimeout(() => lordSay('hello', 'So, a new lord in the west. Enjoy your little keep while it stands.'), 22000);
+  if (!fac) { const camp = enemyCamp(); for (let i = 0; i < 4; i++) { const f = nearestFree(Math.floor((camp.x - 70 + i * 22) / TILE), Math.floor((camp.y + 40) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); } }
   started = true; applyStageLocks();
   document.getElementById('pick').style.display = 'none';
   UI.paintIcons();

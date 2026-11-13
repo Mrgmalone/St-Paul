@@ -339,3 +339,9 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #stagePop .sttab tr.ok td:first-child{color:#8fe39a;font-size:20px}#stagePop .sttab tr.no td:first-child{color:#ff9d86;font-size:20px}
 #stagePop .sttab td:last-child{text-align:right;white-space:nowrap}
 #stagePop .stnext{font-size:16px;margin:6px 0;color:var(--ink)}
+#rivalsPop{left:50%;top:70px;transform:translateX(-50%);min-width:340px;max-width:min(620px,94vw)}
+#rivalsPop .rvrow{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(217,180,90,.18)}
+#rivalsPop canvas{width:44px;height:52px;flex:0 0 auto}
+#rivalsPop .rvn{font-size:18px;font-weight:bold;color:#fff3d6}#rivalsPop .rvd{font-size:16px;color:var(--ink)}#rivalsPop .rvw{font-size:15px;color:var(--dim)}
+#rivalsPop .rve,#rivalsPop .rvf,#rivalsPop .rvx{font-size:13px;font-weight:bold;letter-spacing:1px;padding:2px 7px;border-radius:8px;margin-left:6px;vertical-align:2px}
+#rivalsPop .rve{background:#7a2a22;color:#ffd9cf}#rivalsPop .rvf{background:#2a5a32;color:#d6ffdc}#rivalsPop .rvx{background:#444;color:#ddd}

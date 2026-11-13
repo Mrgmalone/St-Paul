@@ -178,7 +178,7 @@ function attackStep(u, dt) {
         const end = u.path.length ? u.path[u.path.length - 1] : u;
         if (Math.hypot(end.x - ap.x, end.y - ap.y) > 40) {
           let wb = null, wd = 200;
-          for (const b of structures) if (!b.dead && b.team !== u.team && isWall(b) && !(b.kind === 'moat' && isMachine(u))) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }
+          for (const b of structures) if (!b.dead && hostile(b.team, u.team) && isWall(b) && !(b.kind === 'moat' && isMachine(u))) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }
           if (wb) { if (!u.goal) u.goal = t; u.target = wb; u.path = []; u.repath = 0; return; }
         }
       }
@@ -186,7 +186,7 @@ function attackStep(u, dt) {
     followPath(u, dt);
   }
 }
-const nearestFoeBuilding = (u, maxD) => { let best = null, bd = maxD; for (const b of structures) if (!b.dead && b.team !== u.team && b.done !== false && b.kind !== 'pit' && b.kind !== 'moat') { const d = edgeDist(u, b); if (d < bd) { bd = d; best = b; } } return best; };
+const nearestFoeBuilding = (u, maxD) => { let best = null, bd = maxD; for (const b of structures) if (!b.dead && hostile(b.team, u.team) && b.done !== false && b.kind !== 'pit' && b.kind !== 'moat') { const d = edgeDist(u, b); if (d < bd) { bd = d; best = b; } } return best; };
 function ramBrain(u) {
   if (u.order === 'attack' && (!alive(u.target) || u.target.x0 === undefined)) {
     const n = nearestFoeBuilding(u, u.team === 'player' ? 220 : 1e9);
@@ -327,7 +327,7 @@ const nodeCenter = n => isField(n.kind) ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y
 const nodeReach = n => isField(n.kind) ? 30 : n.kind === 'tree' ? 33 : n.kind === 'rock' ? 30 : 24;
 const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood' || type === 'stone' ? n.amount > 0 : n.amount >= 1);
 function nearestNode(type, x, y, maxD, bad) {
-  const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone) : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm') : bushes.concat(farms.filter(f => f.kind === 'farm'));
+  const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone) : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm' && f.team === 'player') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm' && f.team === 'player') : bushes.concat(farms.filter(f => f.kind === 'farm' && f.team === 'player'));   // your own fields, never a rival's
   let best = null, bd = maxD;
   for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
   return best;
@@ -432,7 +432,7 @@ function restPoseFor(u) {
 function updateRest(u, dt) {
   if (isMachine(u) || u.lord) { u.pose = null; u.poseK = 0; return; }
   u.alertT = (u.alertT || 0) - dt;
-  if (u.alertT <= 0) { u.alertT = 0.4; u.danger = nearUnits(u.x, u.y, 300).some(e => !e.dead && e.team !== u.team && e.type !== 'civ' && Math.hypot(e.x - u.x, e.y - u.y) < 300); }
+  if (u.alertT <= 0) { u.alertT = 0.4; u.danger = nearUnits(u.x, u.y, 300).some(e => !e.dead && hostile(e.team, u.team) && !hiddenFrom(e, u.team) && e.type !== 'civ' && Math.hypot(e.x - u.x, e.y - u.y) < 300); }
   const still = !u.moving && !(u.attackAnim > 0) && (u.order === 'idle' || u.order === 'hold' || (u.order === 'mount' && u.onWall)) && !u.danger && u.combatT <= 0 && time - u.lastHurt > 4;
   u.idleT = still ? (u.idleT || 0) + dt : 0;
   // two idle people standing close together talk: they face each other's way now and then, with a small gesture
@@ -466,7 +466,7 @@ function kingBrain(u) {
 // from the roof he sees far beyond any archer's reach, and warns you who is coming and from where
 function kingWatch(u, k) {
   u.watchT = (u.watchT || 0) - frameDt; if (u.watchT > 0) return; u.watchT = 1;
-  const cy = (k.y0 + k.y1) / 2, seen = units.filter(e => !e.dead && e.team !== 'player' && !e.inside && e.type !== 'civ' && Math.hypot(e.x - k.x, e.y - cy) < KING_SIGHT);
+  const cy = (k.y0 + k.y1) / 2, seen = units.filter(e => !e.dead && hostile('player', e.team) && !hiddenFrom(e, 'player') && !e.inside && e.type !== 'civ' && Math.hypot(e.x - k.x, e.y - cy) < KING_SIGHT);
   for (const e of seen) e.seenByKing = time;
   const fresh = seen.filter(e => !e.kingWarned); if (!fresh.length || time - (u.warnT || -99) < 20) return;
   for (const e of seen) e.kingWarned = true; u.warnT = time;

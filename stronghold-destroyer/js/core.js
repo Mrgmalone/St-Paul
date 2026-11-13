@@ -77,12 +77,20 @@ bezier({ x: 2420, y: 230 }, { x: 2480, y: 250 }, { x: 2520, y: 270 }, { x: 2560,
 // south road: from the main road south and east through the southern woods, then up to the camp
 bezier({ x: 860, y: 1050 }, { x: 980, y: 1300 }, { x: 1400, y: 1560 }, { x: 1900, y: 1520 }, 60, roadS);
 bezier({ x: 1900, y: 1520 }, { x: 2400, y: 1480 }, { x: 2760, y: 1200 }, { x: 2800, y: 700 }, 60, roadS);
-const ROADS = [road, roadN, roadS];
+// roads to the other rivals' sites (east, south-east, south), each joining the south road
+const roadE = [], roadSE = [], roadSS = [];
+bezier({ x: 2790, y: 1000 }, { x: 3050, y: 1060 }, { x: 3300, y: 1260 }, { x: 3536, y: 1296 }, 40, roadE);
+bezier({ x: 2300, y: 1470 }, { x: 2450, y: 1700 }, { x: 2600, y: 1950 }, { x: 2640, y: 2128 }, 40, roadSE);
+bezier({ x: 1640, y: 1540 }, { x: 1690, y: 1760 }, { x: 1660, y: 1950 }, { x: 1680, y: 2128 }, 40, roadSS);
+const ROADS = [road, roadN, roadS, roadE, roadSE, roadSS];
 function roadDist(x, y) { let m = 1e9; for (const rd of ROADS) for (const p of rd) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < m) m = d; } return Math.sqrt(m); }
 
 const HOME = { dx: 352, dy: -96 };   // your castle sits well inside the map, with room all round it
 const PLAYER_START = { x: 270 + HOME.dx, y: 1070 + HOME.dy };
 const CAMP = { x: 1640 + EXP, y: 440 };
+// every camp's ground: the old enemy camp and the four rivals' sites are all kept clear of forest the same way
+const SITES_PX = () => [CAMP].concat(RIVALS.sites.map(([c, r]) => ({ x: c * TILE + 16, y: r * TILE + 16 })));
+const campDist = (x, y) => { let m = 1e9; for (const s of SITES_PX()) { const d = Math.hypot(x - s.x, y - s.y); if (d < m) m = d; } return m; };
 
 // ---------- world objects ----------
 const trees = [], rocks = [], units = [], structures = [], fires = [], particles = [], markers = [];
@@ -111,7 +119,7 @@ function placeObstacles() {
     const x = c * TILE + 16, y = r * TILE + 16;
     if (tileBlocked(c, r)) return false;
     if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 430) return false;   // an open meadow round your start, room to build
-    if (Math.hypot(x - CAMP.x, y - CAMP.y) < 280) return false;
+    if (campDist(x, y) < 280) return false;
     if (roadDist(x, y) < 62) return false;
     for (const [ox, oy] of OUTCROPS) if (Math.hypot(x - ox, y - oy) < 115) return false;   // room to quarry
     if (riverDist(x, y) < RIVER_HALF + 40) return false;   // open banks
@@ -250,7 +258,7 @@ function paintTerrain() {
   const fl = ['#f4f1e6', '#f2d24b', '#b78bd8', '#e8865a', '#f6f3ff'];
   for (let i = 0; i < 520; i++) {
     const x = SR(0, MW), y = SR(0, MH);
-    if (roadDist(x, y) < 30 || Math.hypot(x - CAMP.x, y - CAMP.y) < 200) continue;
+    if (roadDist(x, y) < 30 || campDist(x, y) < 200) continue;
     g.strokeStyle = '#3d6828'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(x, y + 3); g.lineTo(x, y); g.stroke();
     g.fillStyle = fl[Math.floor(srand() * fl.length)]; g.beginPath(); g.arc(x, y, SR(1, 1.8), 0, Math.PI * 2); g.fill();
     g.fillStyle = 'rgba(240,200,60,0.9)'; g.fillRect(x - 0.4, y - 0.4, 0.8, 0.8);
@@ -323,7 +331,7 @@ function makeUnit(team, kind, x, y) {
   const u = {
     id: nextId++, kind: 'unit', type: kind, team, name: k.name, x, y, radius: 11,
     hp: k.hp, maxHp: k.hp, dmg: k.dmg, range: k.range, cd: k.cd, speed: k.speed, animDur: k.anim, hitAt: k.hitAt,
-    pal: PAL[team], skin: SKINS[Math.floor(Math.random() * SKINS.length)], seed: Math.random() * 10,
+    pal: PAL[team] || PAL.enemy, skin: SKINS[Math.floor(Math.random() * SKINS.length)], seed: Math.random() * 10,
     facing: team === 'player' ? 1 : -1, walkPhase: Math.random() * 6, moving: false,
     path: [], order: 'idle', target: null, repath: 0, atkTimer: 0, attackAnim: 0, combatT: 0,
     flash: 0, dead: false, deathT: 0, stuckT: 0, lastX: x, lastY: y,
@@ -339,9 +347,9 @@ function makeUnit(team, kind, x, y) {
   u.sick = 0;
   if (kind === 'catapult' || kind === 'ballista' || kind === 'oxcart') u.radius = 17;
   if (kind === 'trebuchet') u.radius = 21;
-  if (kind === 'knight') { u.pal = Object.assign({}, PAL[team], { helmet: '#d6dce2', plume: team === 'player' ? '#f0e6d0' : ENEMY_PLUME }); u.look = { beard: Math.random() < 0.5, longHair: false, w: 1.06, h: 1.03 }; }
-  if (kind === 'king') { u.pal = Object.assign({}, PAL[team], { helmet: '#e0b84e', plume: '#f0e6d0', shieldRim: '#e0b84e' }); u.look = { beard: true, longHair: true, w: 1.08, h: 1.0, s: 1.22 }; }
-  if (kind === 'civ') u.pal = team === 'enemy' ? PAL.ecv : PAL.civ;
+  if (kind === 'knight') { u.pal = Object.assign({}, PAL[team] || PAL.enemy, { helmet: '#d6dce2', plume: team === 'player' ? '#f0e6d0' : ENEMY_PLUME }); u.look = { beard: Math.random() < 0.5, longHair: false, w: 1.06, h: 1.03 }; }
+  if (kind === 'king') { u.pal = Object.assign({}, PAL[team] || PAL.enemy, { helmet: '#e0b84e', plume: '#f0e6d0', shieldRim: '#e0b84e' }); u.look = { beard: true, longHair: true, w: 1.08, h: 1.0, s: 1.22 }; }
+  if (kind === 'civ') u.pal = team === 'player' ? PAL.civ : PAL.ecv;
   else if (team === 'player' && !(FACKEY && kind === 'king')) { u.maxHp = u.hp = Math.round(u.hp * CIV.sHp); u.dmg *= CIV.sDmg; u.speed *= CIV.sSpeed; }   // a faction's king keeps his full strength
   if (team === 'player' && FACKEY) applyFaction(u, FACKEY);
   units.push(u);
@@ -379,7 +387,7 @@ function placeIron() {
     let best = null;
     for (let rad = 0; rad < 10 && !best; rad++) for (let dc = -rad; dc <= rad && !best; dc++) for (let dr = -rad; dr <= rad && !best; dr++) {
       const c = Math.floor(wx / TILE) + dc, r = Math.floor(wy / TILE) + dr, x = c * TILE + 16, y = r * TILE + 16;
-      if (tileBlocked(c, r) || roadDist(x, y) < 60 || Math.hypot(x - CAMP.x, y - CAMP.y) < 260) continue;
+      if (tileBlocked(c, r) || roadDist(x, y) < 60 || campDist(x, y) < 260) continue;
       let room = true; for (let i = -2; i <= 2 && room; i++) for (let j = -2; j <= 2 && room; j++) if (tileBlocked(c + i, r + j)) room = false;
       if (room) best = { c, r, x, y };
     }
@@ -396,7 +404,7 @@ function placePond() {
   for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(Rp() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
   for (const [c, r] of cands) {
     const x = c * TILE + 16, y = r * TILE + 16;
-    if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 380 || Math.hypot(x - CAMP.x, y - CAMP.y) < 420) continue;
+    if (Math.hypot(x - PLAYER_START.x, y - PLAYER_START.y) < 380 || campDist(x, y) < 420) continue;
     const tiles = [];
     let ok = true;
     for (let dc = -5; dc <= 5 && ok; dc++) for (let dr = -4; dr <= 4 && ok; dr++) {
@@ -441,7 +449,7 @@ function buildElevation() {
     let m = 0;
     for (const M of MOUNTAINS) { const dx = x - M.x, dy = y - M.y, c = Math.cos(M.ang), s2 = Math.sin(M.ang), u = dx * c + dy * s2, v = -dx * s2 + dy * c, d = (u / M.len) ** 2 + (v / M.w) ** 2; if (d < 5) m = Math.max(m, M.h * Math.exp(-d * 1.5) * (0.72 + 0.55 * TN(x / 55 + M.x, y / 55))); }
     // keep the ground flat where people build and walk the roads
-    const fk = clamp((Math.hypot(x - kx, y - ky) - 520) / 260, 0, 1), fc = clamp((Math.hypot(x - CAMP.x, y - CAMP.y) - 420) / 240, 0, 1), fr = clamp((roadDist(x, y) - 50) / 120, 0, 1);
+    const fk = clamp((Math.hypot(x - kx, y - ky) - 520) / 260, 0, 1), fc = clamp((campDist(x, y) - 420) / 240, 0, 1), fr = clamp((roadDist(x, y) - 50) / 120, 0, 1);
     const f = fk * fc * fr * clamp((riverDist(x, y) - 70) / 150, 0, 1);   // level ground along the river
     const rvd = riverDist(x, y), bed = rvd < 56 ? 13 * ease(1 - rvd / 56) * clamp((roadDist(x, y) - 56) / 26, 0, 1) : 0;   // the river bed, except under the bridges
     ELEV[j * EW + i] = h * f + m * f - bed; MOUNT[j * EW + i] = m * f;

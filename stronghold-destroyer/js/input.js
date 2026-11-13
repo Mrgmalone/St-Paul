@@ -150,7 +150,7 @@ function issueAt(sx, sy) {
     if (sold.length) commandMove(sold, w.x, w.y); return true;
   }
   { const kg = sold.find(u => u.type === 'king'); if (hit && hit.kind === 'keep' && hit.team === 'player' && kg) { kg.leftKeep = false; kg.cmdT = -999; if (kg.onWall !== hit) { const ap = approachPoint(kg, hit); commandMove([kg], ap.x, ap.y); } floatText(hit.x, hit.y - 150, 'The King returns to the keep', '#ffe9a8'); const rest = sold.filter(u => u !== kg); if (!civs.length && !rest.length) return true; sold.splice(sold.indexOf(kg), 1); } }
-  if (hit && hit.kind === 'keep' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
+  if (hit && hit.kind === 'keep' && hit.team === 'player' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResourceScreen(sx, sy);
   if (node && isField(node.kind) && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   if (node && civs.length) { commandGather(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
@@ -361,7 +361,7 @@ function updateHud() {
   UI.setStatus({ civ: CIV.name, civColor: CIV.color === '#2f63b0' ? '#8fb6ff' : CIV.color === '#3f8a3a' ? '#9fe39a' : '#c4adff',
     food: Math.floor(res.food), eat: Math.round(mine * 60 * RATIONS[ration].eat / CIV.eatEvery), wood: Math.floor(res.wood), stone: Math.floor(res.stone), gold: Math.floor(res.gold),
     pop, cap: popCap(), idle: idleCount(), mood: Math.round(mood), moodName: moodName(), moodColor: mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a',
-    moodRate: Math.round(moodRate), foes, raid: towerUp ? (raidCount === 0 ? 'Peace ' : '') + `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
+    moodRate: Math.round(moodRate), foes, raid: REALM.on ? (() => { const t = Math.min(...REALM.rivals.filter(R => !R.friend && !R.defeated).map(R => R.raidT), 9999); return t > 9000 ? 'none' : `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`; })() : towerUp ? (raidCount === 0 ? 'Peace ' : '') + `${Math.floor(raidTimer / 60)}:${String(Math.floor(raidTimer % 60)).padStart(2, '0')}` : 'stopped' });
   document.querySelectorAll('.tb').forEach(b => { const w = whyNotTrain(b.dataset.k); b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
   document.querySelectorAll('.wb').forEach(b => { const w = !hasArmory() ? 'build an armory' : res.gold < weaponPrice(b.dataset.w) ? `need ${weaponPrice(b.dataset.w) - Math.floor(res.gold)} more gold` : ''; { const sm = b.querySelector('small'), t = weaponPrice(b.dataset.w) + ' gold'; if (sm && sm.textContent !== t) sm.textContent = t; } b.classList.toggle('off', !!w); const el = b.querySelector('.why'); if (el) el.textContent = w; });
   const ar = document.getElementById('armoryInfo'); const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`; if (ar) ar.textContent = `Weapons: ${pl(res.sword, 'sword')}, ${pl(res.mace, 'mace')}, ${pl(res.spear, 'spear')}, ${pl(res.bow, 'bow')}, ${res.armor} armor` + (hasArmory() ? '' : ' · build an Armory to buy more');
@@ -371,7 +371,8 @@ function updateHud() {
   document.getElementById('queue').textContent = trainQueue.length ? `In training: ${trainQueue.length} (right-click a button to cancel one)` : '';
   const sel = selectedList();
   UI.setSelection(sel);
-  if (!won && foes === 0) endGame('VICTORY', 'The enemy camp has been destroyed.');
+  if (!won && REALM.on && REALM.rivals.length && REALM.rivals.every(R => R.friend || R.defeated)) endGame('VICTORY', 'Every rival who stood against you has fallen.');
+  else if (!won && !REALM.on && foes === 0) endGame('VICTORY', 'The enemy camp has been destroyed.');
   else if (!won && !playerKeep()) endGame('DEFEAT', 'Your keep has fallen.');
   else if (!won && mine === 0 && !trainQueue.length && res.food < 40) endGame('DEFEAT', 'Your people are gone.');
 }

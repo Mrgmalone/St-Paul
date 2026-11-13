@@ -76,7 +76,7 @@ function updateEnemyBase(dt) {
   if (camp && workers < 4 + houses * 2 && Math.random() < dt / 12) { const f = nearestFree(Math.floor((camp.x - 60) / TILE), Math.floor((camp.y + 30) / TILE)); if (f) makeUnit('enemy', 'civ', f.c * TILE + 16, f.r * TILE + 16); }
 }
 function enemyWorker(u, dt) {
-  const camp = enemyCamp();
+  const RV = rivalOf(u), camp = RV ? (RV.keep && !RV.keep.dead ? RV.keep : null) : enemyCamp(), mine = b => RV ? b.owner === RV.id : b.team === 'enemy', ePace = () => RV ? RV.pace : ePace0();
   if (!camp) { u.order = 'idle'; u.moving = false; u.path = []; return; }
   const walk = (x, y) => {
     // no real progress toward the goal for 6 seconds (stuck in a crowd or a gap): drop this job and choose again
@@ -89,11 +89,11 @@ function enemyWorker(u, dt) {
   if (time - u.lastHurt < 3 && u.sub !== 'flee') { u.sub = 'flee'; u.path = []; u.order = 'move'; }
   if (u.sub === 'flee') { const ap = approachPoint(u, camp); if (Math.hypot(u.x - ap.x, u.y - ap.y) < 20 || time - u.lastHurt > 8) { u.sub = null; } else { walk(ap.x, ap.y); return; } }
   if (!u.sub) {
-    const site = structures.find(b => b.team === 'enemy' && b.done === false && !b.dead && !b.selfBuild && !units.some(o => o !== u && !o.dead && o.ejob === b));
+    const site = structures.find(b => mine(b) && b.done === false && !b.dead && !b.selfBuild && !units.some(o => o !== u && !o.dead && o.ejob === b));
     if (site) { u.ejob = site; u.sub = 'toSite'; u.order = 'build'; u.path = []; }
     else {
-      const wantFood = Math.random() < 0.4, list = wantFood ? bushes.filter(b => b.amount >= 10) : trees.filter(t => !t.gone && t.amount > 0);
-      const on = new Map(); for (const o of units) if (o !== u && !o.dead && o.team === 'enemy' && o.enode && (o.sub === 'toNode' || o.sub === 'work')) on.set(o.enode, (on.get(o.enode) || 0) + 1);
+      const wantFood = Math.random() < 0.4, list = wantFood ? bushes.filter(b => b.amount >= 10).concat(RV ? farms.filter(f => mine(f) && f.kind === 'farm' && f.amount >= 10) : []) : trees.filter(t => !t.gone && t.amount > 0);
+      const on = new Map(); for (const o of units) if (o !== u && !o.dead && o.team === u.team && o.owner === u.owner && o.enode && (o.sub === 'toNode' || o.sub === 'work')) on.set(o.enode, (on.get(o.enode) || 0) + 1);
       let best = null, bd = 900; for (const n of list) { const k = on.get(n) || 0; if (k >= 3 || n === u.ebad) continue; const c = nodeCenter(n), d = Math.hypot(c.x - camp.x, c.y - camp.y) + Math.random() * 140 + k * 90; if (d < bd) { bd = d; best = n; } }
       if (!best) { u.order = 'idle'; u.moving = false; return; }
       u.enode = best; u.task = { type: wantFood ? 'food' : 'wood', node: best }; u.sub = 'toNode'; u.order = 'gather'; u.path = [];
@@ -109,7 +109,7 @@ function enemyWorker(u, dt) {
     u.moving = false; u.facing = b.x >= u.x ? 1 : -1;
     if (u.attackAnim === 0) u.attackAnim = 0.001;
     b.progress = Math.min(1, b.progress + dt * ePace() / b.buildTime); b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.9 * dt * ePace() / b.buildTime);
-    if (b.progress >= 1) { b.done = true; ENEMY.built++; u.sub = null; u.ejob = null; u.order = 'idle'; }
+    if (b.progress >= 1) { b.done = true; if (RV) RV.built++; else ENEMY.built++; u.sub = null; u.ejob = null; u.order = 'idle'; }
     return;
   }
   if (u.sub === 'toNode') {
@@ -136,13 +136,13 @@ function enemyWorker(u, dt) {
   }
   if (u.sub === 'toCamp') {
     const ap = approachPoint(u, camp);
-    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || stalled(u) && edgeDist(u, camp) <= 36) { ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
+    if (edgeDist(u, camp) <= 16 || Math.hypot(u.x - ap.x, u.y - ap.y) < 14 || stalled(u) && edgeDist(u, camp) <= 36) { if (RV) RV.res[u.carryType === 'food' ? 'food' : 'wood'] += u.carry; else ENEMY.res += u.carry; u.carry = 0; u.carryType = null; u.sub = null; u.task = null; }
     else walk(ap.x, ap.y);
   }
 }
 // ---------- the rival lord: Lord Varek of Ashmoor ----------
 const LORD = { name: 'Lord Varek of Ashmoor', unit: null, said: {}, broken: false };
-const ePace = () => DIFF.pace * (LORD.broken ? 0.6 : 1);
+const ePace0 = () => DIFF.pace * (LORD.broken ? 0.6 : 1), ePace = ePace0;
 function lordSay(key, text, delay = 0) {
   if (LORD.said[key]) return; LORD.said[key] = true;
   setTimeout(() => { showBanner(`<b>${LORD.name}:</b> “${text}”`, 4.5); AudioSys.ui('warhorn'); }, delay);
@@ -229,13 +229,13 @@ function updateWar(dt) {
     s.archerT = (s.archerT === undefined ? 2 : s.archerT) - dt;
     if (s.archerT <= 0) {
       let tgt = null, bd = s.range * weatherRange();
-      for (const u of units) if (!u.dead && !u.inside && u.team !== s.team) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < bd) { bd = d; tgt = u; } }
+      for (const u of units) if (!u.dead && !u.inside && hostile(s.team, u.team) && !hiddenFrom(u, s.team)) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < bd) { bd = d; tgt = u; } }
       if (tgt) {
         s.aim = tgt.x > s.x + 6 ? 1 : -1; s.tx = tgt.x; s.ty = tgt.y; s.drawT = 0.3; s.archerT = s.fireRate;
         const x0 = s.x + 6 + s.aim * 8, y0 = s.y - s.archerY, x1 = tgt.x + RR(-7, 7), y1 = tgt.y - 16 + RR(-4, 4);
         fire({ x0, y0, x1, y1, t: 0, dur: Math.hypot(x1 - x0, y1 - y0) / 430 + 0.12, h: 26, target: tgt, from: s, dmg: s.arrowDmg });
         if (s.shots > 1) {   // a second archer on the great tower picks another foe
-          let t2 = tgt, b2 = s.range; for (const u of units) if (!u.dead && u.team !== s.team && u !== tgt) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < b2) { b2 = d; t2 = u; } }
+          let t2 = tgt, b2 = s.range; for (const u of units) if (!u.dead && hostile(s.team, u.team) && !hiddenFrom(u, s.team) && u !== tgt) { const d = Math.hypot(u.x - s.x, u.y - (s.y - 32)); if (d < b2) { b2 = d; t2 = u; } }
           const xa = s.x - 6 - s.aim * 8, xb = t2.x + RR(-7, 7), yb = t2.y - 16 + RR(-4, 4);
           fire({ x0: xa, y0, x1: xb, y1: yb, t: -0.15, dur: Math.hypot(xb - xa, yb - y0) / 430 + 0.12, h: 26, target: t2, from: s, dmg: s.arrowDmg });
         }
@@ -261,7 +261,7 @@ function updateWar(dt) {
     if (a.kind === 'stone') {   // a catapult stone: crushes what it lands on and everyone close by
       const gy = t && t.x0 !== undefined ? t.y : a.y1 + 21;
       if (alive(t) && t.x0 !== undefined) { t.hp -= isWall(t) ? Math.round(a.dmg * 0.8) : a.dmg; t.flash = 1; t.wobble = 1; if (t.hp <= 0) kill(t); else reactToHit(t, a.from); }
-      for (const o of units) { if (o.dead || o.team === (a.from && a.from.team) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= Math.round(a.dmg * 0.55 * (1 - d / 46) * armorMul(o, a.from)); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
+      for (const o of units) { if (o.dead || (a.from && !hostile(o.team, a.from.team)) || o.onWall) continue; const d = Math.hypot(o.x - a.x1, o.y - gy); if (d < 34) { o.hp -= Math.round(a.dmg * 0.55 * (1 - d / 46) * armorMul(o, a.from)); o.flash = 1; o.lastHurt = time; if (o.hp <= 0) kill(o); } }
       for (let k = 0; k < 10; k++) spawn('chip', a.x1, a.y1, gy); for (let k = 0; k < 6; k++) spawn('dust', a.x1 + RR(-16, 16), gy - 4, gy);
       AudioSys.play('stoneHit', a.x1, a.y1); AudioSys.play('boom', a.x1, a.y1); stuckStones.push({ x: a.x1 + RR(-6, 6), y: gy + 2, t: 0 });
       continue;

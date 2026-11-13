@@ -123,6 +123,7 @@ const UI = (() => {
       <span class="chip" title="Gold"><canvas data-icon="r:gold"></canvas><b id="vGold"></b></span>
       <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b><small id="vIdle"></small></span>
       <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
+      <button class="chip" id="cRivals" title="Your rivals: who they are, their faction, stage and standing"><b>&#9873; Rivals</b></button>
       <button class="chip" id="cStage" title="Your castle's stage: click to see what the next stage needs"><b id="vStage">Stage 1</b></button>
       <span class="chip" title="Enemies left"><canvas data-icon="r:foes"></canvas><b id="vFoes"></b></span>
       <button class="chip" id="cGoods" title="Goods: click for the list"><canvas data-icon="r:goods"></canvas><b id="vGoods"></b></button>
@@ -131,7 +132,8 @@ const UI = (() => {
     paintIcons(statusEl); built = true;
     $('cMood').onclick = () => toggle('moodPop');
     $('cStage').onclick = () => { const p = $('stagePop'); if (p.hidden) showStagePop(); else p.hidden = true; };
-    $('cStage').hidden = LEGACY;
+    $('cStage').hidden = LEGACY; $('cRivals').hidden = LEGACY;
+    $('cRivals').onclick = () => { const p = $('rivalsPop'); if (p.hidden) showRivalsPop(); else p.hidden = true; };
     $('cGoods').onclick = () => { const p = $('goodsPop'); p.hidden = !p.hidden; if (!p.hidden) p.innerHTML = goodsReport(); };
   }
   let moodBand = -1;
@@ -220,14 +222,14 @@ const UI = (() => {
     g.fillStyle = 'rgba(226,194,90,0.9)'; for (const f of farms) if (!f.dead) g.fillRect(f.x0 * sx, f.y0 * sy, (f.x1 - f.x0) * sx, (f.y1 - f.y0) * sy);
     for (const s of structures) {
       if (s.dead) continue;
-      g.fillStyle = s.team === 'player' ? PAL.player.tunic : '#c8342c';
+      g.fillStyle = s.team === 'player' ? PAL.player.tunic : s.fac && FACTIONS[s.fac] ? FACTIONS[s.fac].trim : '#c8342c';   // a rival's buildings in its faction's colour
       g.fillRect(s.x0 * sx, s.y0 * sy, Math.max(2, (s.x1 - s.x0) * sx), Math.max(2, (s.y1 - s.y0) * sy));
       if (s.kind === 'keep' || s.kind === 'tower') { g.strokeStyle = '#fff3d6'; g.lineWidth = dpr; g.strokeRect(s.x0 * sx, s.y0 * sy, (s.x1 - s.x0) * sx, (s.y1 - s.y0) * sy); }
     }
     const d = Math.max(2, 2 * dpr);
     for (const u of units) {
       if (u.dead || hiddenFrom(u, 'player')) continue;
-      g.fillStyle = u.team !== 'player' ? '#ff5a4a' : u.type === 'civ' ? '#f2e2b8' : shade(PAL.player.tunic, 0.35);
+      g.fillStyle = u.team === 'friend' ? '#9fe8a8' : u.team !== 'player' ? (u.rogue ? '#bdbdbd' : '#ff5a4a') : u.type === 'civ' ? '#f2e2b8' : shade(PAL.player.tunic, 0.35);
       g.fillRect(u.x * sx - d / 2, u.y * sy - d / 2, d, d);
       if (u.lord) { g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(u.x * sx, u.y * sy, d * 1.6, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#3a0a08'; g.lineWidth = dpr; g.stroke(); }
     }

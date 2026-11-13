@@ -114,11 +114,11 @@ function updateFactions(dt) { sellSurplus(dt); updateHealers(dt); updateStealth(
 
 // ---------- emblems: drawn in code, the same way as the lion and the ember tower ----------
 // A heater shield in the faction's field colour with its charge: a wheat sheaf, a pair of scales, a healing herb, an eye.
-function drawEmblem(g, key, w, h) {
+function drawEmblem(g, key, w, h, bare) {   // bare: the charge on a plain field (for cloth and shields in the world), no shield outline
   const f = FACTIONS[key]; if (!f) return;
-  g.save(); g.clearRect(0, 0, w, h);
-  const sh = () => { g.beginPath(); g.moveTo(w * 0.1, h * 0.06); g.lineTo(w * 0.9, h * 0.06); g.lineTo(w * 0.9, h * 0.5); g.quadraticCurveTo(w * 0.88, h * 0.82, w * 0.5, h * 0.96); g.quadraticCurveTo(w * 0.12, h * 0.82, w * 0.1, h * 0.5); g.closePath(); };
-  sh(); g.fillStyle = f.field; g.fill(); g.lineWidth = Math.max(2, w * 0.05); g.strokeStyle = f.trim; g.stroke();
+  g.save(); if (!bare) g.clearRect(0, 0, w, h);
+  const sh = bare ? () => { g.beginPath(); g.rect(0, 0, w, h); } : () => { g.beginPath(); g.moveTo(w * 0.1, h * 0.06); g.lineTo(w * 0.9, h * 0.06); g.lineTo(w * 0.9, h * 0.5); g.quadraticCurveTo(w * 0.88, h * 0.82, w * 0.5, h * 0.96); g.quadraticCurveTo(w * 0.12, h * 0.82, w * 0.1, h * 0.5); g.closePath(); };
+  sh(); if (!bare) { g.fillStyle = f.field; g.fill(); g.lineWidth = Math.max(2, w * 0.05); g.strokeStyle = f.trim; g.stroke(); }
   sh(); g.clip();
   g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(0, 0, w * 0.5, h);   // a soft sheen on one half
   g.strokeStyle = f.charge; g.fillStyle = f.charge; g.lineCap = 'round'; g.lineJoin = 'round';

@@ -89,11 +89,12 @@ const ECONOMY = {
 const RIVALS = {
   count: 4,
   lords: ['Lord Varek of Ashmoor', 'Lady Brenna of Kestrel Hill', 'Lord Odo of Fenmarch', 'Lady Sibyl of Greyholt'],
-  sites: [[80, 15], [110, 40], [82, 66], [44, 68]],
+  sites: [[80, 15], [110, 40], [82, 66], [52, 66]],   // north-east (the old camp), east, south-east, south
   friend: true,
   pace: { easy: 0.65, medium: 1.0, hard: 1.35 },
-  workersPerStage: [4, 7, 10, 13, 16],
-  raid: { first: { easy: 420, medium: 330, hard: 260 }, every: { easy: 150, medium: 120, hard: 95 }, minArmy: 4, largeArmy: 12 }
+  workersPerStage: [8, 15, 24, 32, 38],   // enough people to meet each stage's needs (workers + soldiers + the lord)
+  // seconds before a rival's first raid (each later rival waits 75 seconds more), and between its raids
+  raid: { first: { easy: 600, medium: 450, hard: 330 }, every: { easy: 300, medium: 240, hard: 170 }, minArmy: 4, largeArmy: 12 }
 };
 
 // ---------- rogue bandits ----------

@@ -17,7 +17,7 @@ function paintTerrainArt() {
   // 2. meadow flowers in patches, away from roads and camps
   const M = makeNoise(17);
   g.save(); g.beginPath();
-  for (let i = 0; i < 160 * AF; i++) { const x = RS(0, MW), y = RS(0, MH); if (roadDist(x, y) < 60 || Math.hypot(x - CAMP.x, y - CAMP.y) < 260 || M(x / 300, y / 300) < 0.5) continue; g.moveTo(x + 60, y); g.ellipse(x, y, RS(30, 70), RS(22, 50), RS(0, 3), 0, Math.PI * 2); }
+  for (let i = 0; i < 160 * AF; i++) { const x = RS(0, MW), y = RS(0, MH); if (roadDist(x, y) < 60 || campDist(x, y) < 260 || M(x / 300, y / 300) < 0.5) continue; g.moveTo(x + 60, y); g.ellipse(x, y, RS(30, 70), RS(22, 50), RS(0, 3), 0, Math.PI * 2); }
   g.clip(); g.globalAlpha = 0.85; g.fillStyle = pat('meadow', 0.5); g.fillRect(0, 0, MW, MH); g.restore();
   // 3. the camp clearing and the dirt roads
   g.save(); g.beginPath(); g.ellipse(CAMP.x - 30, CAMP.y + 20, 210, 150, 0, 0, Math.PI * 2); g.clip(); g.globalAlpha = 0.8; g.fillStyle = pat('dirt', 0.7); g.fillRect(0, 0, MW, MH); g.restore();
