@@ -80,10 +80,12 @@ function enemyWorker(u, dt) {
   if (!camp) { u.order = 'idle'; u.moving = false; u.path = []; return; }
   const walk = (x, y) => {
     // no real progress toward the goal for 6 seconds (stuck in a crowd or a gap): drop this job and choose again
-    const d = Math.hypot(x - u.x, y - u.y), key = u.sub + ':' + (u.sub === 'toSite' && u.ejob ? u.ejob.id : u.sub === 'toNode' && u.enode ? Math.round(u.enode.x || 0) + ',' + Math.round(u.enode.y || 0) : '');
+    /* how far is left along the planned way (a detour round a wall still counts as getting closer; being jostled does not) */
+    let d = u.path.length ? Math.hypot(u.path[0].x - u.x, u.path[0].y - u.y) : Math.hypot(x - u.x, y - u.y); for (let i = 1; i < u.path.length; i++) d += Math.hypot(u.path[i].x - u.path[i - 1].x, u.path[i].y - u.path[i - 1].y);
+    const key = u.sub + ':' + (u.sub === 'toSite' && u.ejob ? u.ejob.id : u.sub === 'toNode' && u.enode ? Math.round(u.enode.x || 0) + ',' + Math.round(u.enode.y || 0) : '');
     const stepD = Math.hypot(u.x - (u._wlx || u.x), u.y - (u._wly || u.y)); u._wlx = u.x; u._wly = u.y;
     if (u._wk !== key || d < u._wd - 6) { u._wk = key; u._wd = d; u._wt = 0; u._ww = 0; }
-    else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 150) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
+    else if ((u._wt += dt) > 6 || (u._ww = (u._ww || 0) + stepD) > 120) { u._ww = 0; /* six seconds, or 150 points walked, without getting closer */ u._wt = 0; u._wd = d;
       if (u.sub === 'toCamp') u.campFails = (u.campFails || 0) + 1;
       if (u.sub === 'toSite' || u.sub === 'toNode') { u._wk = null; if (u.sub === 'toNode') { u.ebad = u.enode; if (u.enode) u.enode.unreachT = time + 90; } /* nobody tries that spot again for a while */ u.sub = null; u.ejob = null; u.path = []; u.moving = false; return; }
       u.path = []; u.repath = 0; }   // carrying home or fleeing: look for a fresh way
