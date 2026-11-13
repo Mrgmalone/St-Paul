@@ -1807,10 +1807,10 @@ const R3D = (() => {
       let md = unitModels.get(u.id);
       if (!md) { md = u.type === 'ram' ? ramModel(u) : u.type === 'oxcart' ? oxcartModel(u) : u.type === 'trebuchet' ? trebuchetModel(u) : u.type === 'catapult' ? catapultModel(u) : u.type === 'ballista' ? ballistaModel(u) : (() => { const ent = glbEntry(u); if (ent) return glbUnitModel(u, ent); return personModel(u); })(); if (!md.artModel) addGhost(md, u); unitModels.set(u.id, md); scene.add(md.root); }
       else if (md.glb && u.type === 'civ' && !u.dead) { const ent = glbEntry(u); if (ent && ent.key !== md.glbKey) { scene.remove(md.root); unitModels.delete(u.id); continue; } }
-      if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && outlinesOn && behindStructure(u);
+      if (md.ghost) md.ghost.visible = !u.dead && !u.onWall && !u.inside && !hiddenFrom(u, 'player') && outlinesOn && behindStructure(u);
       seen.add(u.id);
       const y = heightAt(u.x, u.y);
-      md.root.position.set(u.x, y + elev3D(u), u.y); md.root.visible = !u.inside;
+      md.root.position.set(u.x, y + elev3D(u), u.y); md.root.visible = !u.inside && !hiddenFrom(u, 'player');   // a hidden Psychana band is not drawn until a tower spots it
       // face the way they move, or their target when fighting
       let want = null;
       if (u.target && alive(u.target) && (u.attackAnim > 0 || u.order === 'attack') && !u.moving) want = Math.atan2(u.target.x - u.x, u.target.y - u.y);
@@ -2073,7 +2073,7 @@ const R3D = (() => {
       if (isLine(kind)) { g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; const label = placing.start ? `${cost} ${d.stone ? 'stone' : 'wood'}` : 'wall start'; g.strokeText(label, mouse.x, mouse.y - 24); g.fillStyle = '#ffe9a8'; g.fillText(label, mouse.x, mouse.y - 24); }
     }
     if (tearing && mouse.inside) drawTearHover(g, (x, y) => project(x, 2, y));
-    for (const u of units) { if (u.dead) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
+    for (const u of units) { if (u.dead || hiddenFrom(u, 'player')) continue; if (selection.has(u) || u.hp < u.maxHp || hover === u || u.lord) { const p = project(u.x, (isMachine(u) ? 62 : u.lord ? 70 : 52) + elev3D(u), u.y); if (p.ok && p.x > -40 && p.x < vw + 40 && p.y > -40 && p.y < vh + 40) { drawHealthBar(g, p.x, p.y, u.lord ? 44 : 28, u.hp / u.maxHp); if (u.lord) { g.save(); g.font = 'bold 14px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(u.name, p.x, p.y - 8); g.fillStyle = '#ffd98a'; g.fillText(u.name, p.x, p.y - 8); g.restore(); } } } }
     for (const s of structures.concat(farms)) if (s.asleep && !s.dead) { const q = project(s.x, (s.topH || 20) + 30, (s.y0 + s.y1) / 2); if (q.ok) { g.save(); g.font = 'bold 15px "Source Sans 3", Georgia, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText('Zz asleep', q.x, q.y); g.fillStyle = '#cfe3ff'; g.fillText('Zz asleep', q.x, q.y); g.restore(); } }
     for (const s of structures) if (!s.dead && (s.hp < s.maxHp || hover === s)) { const p = project(s.x, (s.kind === 'tower' ? 200 : s.kind === 'keep' ? 160 : (s.topH || 40) + 18), (s.y0 + s.y1) / 2); if (p.ok) drawHealthBar(g, p.x, p.y, Math.max(30, Math.min(84, s.x1 - s.x0 + 16)), s.hp / s.maxHp); }
     g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';

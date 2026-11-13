@@ -142,7 +142,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
-  if (!won && started) { updateWar(dt); updateEconomy(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);
@@ -209,6 +209,7 @@ function startGame(key) {
   const fac = FACTIONS[key] ? key : null; FACKEY = fac;
   AudioSys.init(); AudioSys.setTheme(fac ? FAC_THEME[fac] : key);
   CIV = fac ? factionCiv(fac) : CIVS[key];
+  document.getElementById('btnBell').hidden = fac !== 'hekaranok';   // the healers' bell
   if (fac) {   // your faction's own costs: the marketers' expensive market, the healers' stronger abbey (stand-in: House of Prayer)
     BUILD.market.wood = Math.round(BUILD.market.wood * myRule('marketCostMul', 1));
     BUILD.chapel.hp = Math.round(BUILD.chapel.hp * myRule('abbeyHpMul', 1));
@@ -233,6 +234,7 @@ function startGame(key) {
 }
 document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));
 // the front page: the four factions, drawn from settings.js (the old peoples show only for the older tests)
+document.getElementById('btnBell').onclick = () => ringBell();
 // a first tap selects a faction (so all four can be read first); its Play button starts the game
 buildFrontPage(); document.querySelectorAll('.fac').forEach(b => b.onclick = e => {
   if (b.classList.contains('sel') && e.target.closest('.fgo')) { startGame(b.dataset.fac); return; }

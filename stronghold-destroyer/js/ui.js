@@ -223,7 +223,7 @@ const UI = (() => {
     }
     const d = Math.max(2, 2 * dpr);
     for (const u of units) {
-      if (u.dead) continue;
+      if (u.dead || hiddenFrom(u, 'player')) continue;
       g.fillStyle = u.team !== 'player' ? '#ff5a4a' : u.type === 'civ' ? '#f2e2b8' : shade(PAL.player.tunic, 0.35);
       g.fillRect(u.x * sx - d / 2, u.y * sy - d / 2, d, d);
       if (u.lord) { g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(u.x * sx, u.y * sy, d * 1.6, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#3a0a08'; g.lineWidth = dpr; g.stroke(); }
