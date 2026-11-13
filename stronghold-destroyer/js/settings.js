@@ -181,3 +181,8 @@ const CONTROLS = { edgeSpeed: 260, edgeZone: 34, ease: 4.5, boxHold: 300 };
 // 'berserker', 'knight' (knights and anyone on a horse are never allowed). Change this one line to change who may fill.
 const MOAT_FILLERS = ['civ', 'spear', 'flame'];
 const MOAT = { fillPerSecond: 18 };   // how fast one citizen fills (the moat's strength 160 goes in about 9 seconds)
+
+// ---------- Phase 4C: spikes ----------
+// strikes it takes to kill on active spikes: ordinary people one; these armored kinds two (a mounted knight's first strike
+// kills the horse). The owner's own side walks over them safely.
+const SPIKES = { armored: ['knight', 'sword', 'king'], siegeDamage: 120 };

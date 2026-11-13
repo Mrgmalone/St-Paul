@@ -225,8 +225,9 @@ function updateTraps(dt) {
     b.sprung = Math.max(0, b.sprung - dt); b.cool = Math.max(0, b.cool - dt);
     if (b.cool > 0 || b.charges <= 0) continue;
     for (const u of units) {
-      if (u.dead || u.team === b.team || u.onWall || u.x < b.x0 + 2 || u.x > b.x1 - 2 || u.y < b.y0 + 2 || u.y > b.y1 + 4) continue;
-      const dmg = isMachine(u) ? 120 : 60; u.hp -= dmg; u.flash = 1; u.lastHurt = time;
+      if (u.dead || (IND() ? spikeSpares(b, u) : u.team === b.team) || u.onWall || u.x < b.x0 + 2 || u.x > b.x1 - 2 || u.y < b.y0 + 2 || u.y > b.y1 + 4) continue;
+      if (IND()) spikeStrike(b, u); else { const dmg = isMachine(u) ? 120 : 60; u.hp -= dmg; }   /* 4C: lethal; knights and armored swordsmen take two strikes */
+      u.flash = 1; u.lastHurt = time;
       for (let k = 0; k < 6; k++) spawn(k % 2 ? 'spark' : 'sparkR', u.x, u.y - 10, u.y); for (let k = 0; k < 6; k++) spawn('chip', b.x, b.y - 10, b.y);
       AudioSys.play('stab', u.x, u.y); floatText(b.x, b.y - 40, 'Spike pit!', '#ff9d86');
       b.charges--; b.sprung = 2.5; b.cool = 1.2;

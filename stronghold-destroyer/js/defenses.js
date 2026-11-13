@@ -40,3 +40,14 @@ function fillBrain(u, dt) {
   m.hp -= MOAT.fillPerSecond * dt; if (Math.random() < dt * 4) spawn('dust', m.x + RR(-12, 12), m.y - 4, m.y);
   if (m.hp <= 0) { kill(m); m.filled = true; floatText(m.x, m.y - 30, 'Filled: ordinary ground now', '#e9dcbc'); }
 }
+
+// ---------- spikes: lethal to the enemy; knights and armored swordsmen take two strikes; the owner's side is safe ----------
+const spikeArmored = u => SPIKES.armored.includes(u.type) || !!u.lord;
+const spikeSpares = (b, u) => !hostile(b.team, u.team) || (b.owner !== undefined && u.owner === b.owner) || (b.team === 'player' && u.team === 'player');
+function spikeStrike(b, u) {
+  if (isMachine(u)) { u.hp -= SPIKES.siegeDamage; return; }
+  if (u.mounted && u.horseHp > 0) { dismountKnight(u); u.spikeHits = 1; floatText(u.x, u.y - 60, 'The spikes bring his horse down', '#ff9d86'); return; }
+  u.spikeHits = (u.spikeHits || 0) + 1;
+  if (!spikeArmored(u) || u.spikeHits >= 2) { u.hp = 0; return; }   // one strike kills an ordinary person; armor holds once
+  u.hp = Math.min(u.hp, Math.max(1, Math.round(u.maxHp * 0.3))); floatText(u.x, u.y - 60, 'His armor holds, barely', '#ffb38a');
+}
