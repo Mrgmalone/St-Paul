@@ -71,6 +71,7 @@ function updateWeather(dt) {
 }
 // every missile leaves through here: the wind pushes where it comes down
 function fire(a) {
+  arrowCost(a);   // arrows and bolts cost wood
   const push = a.kind === 'stone' ? 40 : a.kind === 'bolt' ? 34 : 72, d = Math.max(0, a.dur) * WEATHER.wind * push * RR(0.45, 1.35);   // gusts: some shots blow wide, some fly true
   const jit = 1 + WEATHER.rain * 0.6 + WEATHER.snow * 0.4;
   a.x1 += Math.cos(WEATHER.ang) * d + RR(-2, 2) * jit * WEATHER.rain; a.y1 += Math.sin(WEATHER.ang) * d * 0.6;
@@ -112,6 +113,7 @@ function frame(now) {
   menuT -= dt; if (menuT <= 0) { menuT = 0.25; const open = started && !won && (!document.getElementById('help').classList.contains('hide') || ['menuPop', 'moodPop', 'goodsPop', 'storePop'].some(id => !document.getElementById(id).hidden));
     menuPause = open && !enemiesClose(); document.getElementById('menuNote').hidden = !menuPause || paused; }
   const halted = paused || menuPause;
+  if (started && IND()) INSIDE.update();   // the inside picture behind an open building box (shown while paused too)
   if (!halted) time += dt; frameDt = halted ? 0 : dt;
   // camera scrolling
   const sp = 620 / cam.z * dt;
@@ -142,7 +144,7 @@ function frame(now) {
   curTeam = 'player';
   separate();
   curTeam = 'player';
-  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); }
+  if (!won && started) { updateWar(dt); updateEconomy(dt); updateFactions(dt); updateStages(dt); updateRealm(dt); updateIndustry(dt); }
   for (const s of structures) if (s.selfBuild && !s.done && !s.dead) { s.progress = Math.min(1, s.progress + dt / s.buildTime); s.hp = Math.min(s.maxHp, s.hp + s.maxHp * 0.9 * dt / s.buildTime); if (s.progress >= 1) s.done = true; }
   for (const s of structures) { s.flash = Math.max(0, s.flash - dt * 5); s.wobble = Math.max(0, s.wobble - dt * 3); if (s.dead) s.deathT += dt; }
   for (const fi of fires) if (Math.random() < dt * 4) spawn('smoke', fi.x + RR(-3, 3), fi.y - 18, fi.y);
@@ -213,7 +215,8 @@ function startGame(key) {
   stageN = 1; keep.stage = 1; if (fac) keep.maxHp = keep.hp = STAGES[0].keepHp;   // the healers' bell
   if (fac) {   // your faction's own costs: the marketers' expensive market, the healers' stronger abbey (stand-in: House of Prayer)
     BUILD.market.wood = Math.round(BUILD.market.wood * myRule('marketCostMul', 1));
-    BUILD.chapel.hp = Math.round(BUILD.chapel.hp * myRule('abbeyHpMul', 1));
+    BUILD.abbey.hp = Math.round(BUILD.abbey.hp * myRule('abbeyHpMul', 1));
+    schoolLvl = 0; schoolStudy = null; alePrice = 1; taxTotal = 0; feastUntil = 0; doctorLvl = 0; doctorStudy = null; indStage = 0;
   }
   Object.assign(PAL.player, { tunic: ARMY.crimson, tunicDark: ARMY.crimsonDark, shield: ARMY.crimson });   // every civilisation's army wears Gerald's crimson and gold
   PAL.civ.trim = CIV.color;

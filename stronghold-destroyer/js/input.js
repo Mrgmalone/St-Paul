@@ -78,11 +78,11 @@ function showSite(b) {
     if (Object.keys(rc.inp).length) html += ln('Skill', `uses ${Math.round(craftCost(b) * 100)}% of the usual material`);
     if (b.kind === 'quarry') html += ln('Cut stone waiting for the cart', b.stock || 0);
   } else if (OUTPUT[b.kind]) html += ln('Makes', OUTPUT[b.kind]) + ln('Speed', n > 1 ? `${n}x one worker` : 'one worker');
-  html += ln('Made so far', Math.floor(b.produced || 0));
+  html += ln('Made so far', Math.floor(b.produced || 0)) + indSiteHtml(b);
   if (INDOOR[b.kind] && b.done !== false) html += insideHtml(b, 'Working inside');
   // the buttons are built once per building; only the figures above them refresh, so a click is never lost
   if (p.dataset.site !== String(b.id) || !document.getElementById('siteInfo')) {
-    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div>${fixRow}<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
+    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div>${fixRow}<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` + indSiteButtons(b) + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
       '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Workers you remove (or free by sleeping a building) go gathering, and can be called up as soldiers when your houses are full. Esc closes.</div>';
     p.dataset.site = String(b.id);
   }
@@ -115,12 +115,12 @@ function showStore(b) {
   const p = document.getElementById('storePop'), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`, F = Math.floor;
   let html = `<h3>${b.name.toUpperCase()}</h3>`;
   if (b.kind === 'stockpile' || b.kind === 'keep') html += ln('Wood', F(res.wood)) + ln('Stone', F(res.stone)) + ln('Iron', F(res.iron)) + ln('Hops', F(res.hops)) + ln('Wheat', F(res.wheat)) + ln('Flour', F(res.flour));
-  if (b.kind === 'granary' || b.kind === 'keep') html += ln('Berries', F(foodKinds.berries)) + ln('Crops', F(foodKinds.crops)) + ln('Bread', F(foodKinds.bread)) + ln('Ale', F(res.ale));
+  if (b.kind === 'granary' || b.kind === 'keep') html += granaryHtml() + ln('Berries', F(foodKinds.berries)) + ln('Crops', F(foodKinds.crops)) + ln('Bread', F(foodKinds.bread)) + ln('Ale', F(res.ale));
   if (b.kind === 'armory' || b.kind === 'keep') html += ln('Swords', res.sword) + ln('Maces', res.mace) + ln('Spears', res.spear) + ln('Bows', res.bow) + ln('Knight armor', res.armor);
   const q = structures.filter(o => o.kind === 'quarry' && o.team === 'player' && !o.dead && o.stock);
   if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));
   if (b.kind === 'keep') html += insideHtml(b, 'Being cared for inside');
-  html += fixRow;
+  html += granaryButtons(b) + fixRow;
   html += '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">All your stores share one supply: these are your totals. Click the ground or press Esc to close.</div>';
   setBox(p, html); p.dataset.site = ''; p.hidden = false;
 }
@@ -233,6 +233,7 @@ function touchTap(p) {
     if (TOUCH.add) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); return; }
     selectOnly([hit]); talkTo(hit); return;
   }
+  if (hit && hit.team === 'player' && IND_BOX[hit.kind] && !selection.size) { showIndBox(hit); return; }
   if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false && !selection.size) { showStore(hit); return; }
   if (hit && hit.team === 'player' && JOBS[hit.kind] && !selection.size) { showSite(hit); return; }
   if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false && !selection.size) { showTower(hit); return; }
@@ -277,6 +278,7 @@ function endPointer(e) {
         const now = performance.now();
         if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
         else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else { selectOnly([hit]); talkTo(hit); } }
+        else if (hit && hit.team === 'player' && IND_BOX[hit.kind]) showIndBox(hit);
         else if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false) showStore(hit);
         else if (hit && hit.team === 'player' && JOBS[hit.kind]) showSite(hit);
         else if (hit && hit.team === 'player' && GUARD_TOWERS[hit.kind] && hit.done !== false) showTower(hit);

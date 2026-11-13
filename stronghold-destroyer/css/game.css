@@ -364,3 +364,6 @@ body:not(.touch) #cmdbar .tonly{display:none}
     width:auto!important;max-height:calc(100% - 66px)!important;overflow-y:auto!important;box-sizing:border-box}
 }
 @media (max-height:500px){ .pop,#stagePop,#rivalsPop,#moodPop,#goodsPop,#storePop{left:auto!important;width:min(480px,70vw)!important} }
+/* Phase 4B: a building box shows a picture of the inside behind its top, fading into the panel so the writing stays clear */
+#storePop.pic{background-size:100% auto!important;background-repeat:no-repeat!important;background-position:center top!important;background-color:rgba(24,17,10,.97)!important}
+#storePop.pic h3{text-shadow:0 2px 4px #000,0 0 10px #000;font-size:19px}

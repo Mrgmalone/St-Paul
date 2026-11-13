@@ -14,7 +14,7 @@ const UI = (() => {
   }
   function iconBuilding(g, name, w, h) {
     const b = makeBuildingObj(name, 0, 0); b.done = true; b.progress = 1; b.id = 3; if (isField(name)) b.amount = b.max;
-    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84], market: [104, 66] }[name];
+    const vis = { lookout: [70, 240], roundtower: [112, 176], moat: [40, 30], pit: [40, 30], highwall: [40, 112], stairs: [40, 100], stower: [80, 176], greattower: [112, 204], quarry: [80, 66], wheatfarm: [72, 72], mill: [96, 130], bakery: [80, 78], chapel: [84, 120], garden: [72, 40], stocks: [40, 40], hopfarm: [72, 72], brewery: [80, 80], tavern: [84, 86], ironmine: [80, 70], bowyer: [80, 76], poleturner: [80, 76], smithy: [80, 78], armory: [82, 80], farm: [72, 72], house: [86, 86], wall: [40, 46], gate: [40, 50], gtower: [80, 136], woodhut: [74, 70], stockpile: [72, 40], granary: [80, 84], market: [104, 66], alehouse: [80, 78], apothecary: [80, 78], church: [96, 140], abbey: [96, 150], school: [104, 80], engineerhut: [80, 78], stable: [80, 76], vineyard: [72, 72], orchard: [72, 72] }[name] || [80, 80];
     const sc = Math.min((w - 4) / vis[0], (h - 3) / vis[1]);
     g.save(); g.translate(w / 2, h - 2); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBuilding(g, b, 0.5); g.restore();
   }
@@ -147,7 +147,7 @@ const UI = (() => {
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
     $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
     if (!$('goodsPop').hidden) setBox($('goodsPop'), goodsReport());
-    if (storeShown && !$('storePop').hidden) { if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else if (storeShown.kind === 'market') showMarket(storeShown); else if (!JOBS[storeShown.kind] && !STORE_KINDS[storeShown.kind]) showBasic(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
+    if (storeShown && !$('storePop').hidden) { if (IND_BOX[storeShown.kind]) showIndBox(storeShown); else if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else if (storeShown.kind === 'market') showMarket(storeShown); else if (!JOBS[storeShown.kind] && !STORE_KINDS[storeShown.kind]) showBasic(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
     if (!$('moodPop').hidden) setBox($('moodPop'), moodReport());
   }
   function moodReport() {

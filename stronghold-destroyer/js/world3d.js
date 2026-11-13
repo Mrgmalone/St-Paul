@@ -896,7 +896,11 @@ const R3D = (() => {
       add(cyl(0.8, 0.8, 16, std('#3a2a18'), 26, 30, 21, 5)); const sign = box(10, 8, 1, std('#e8d8b0'), 26, 30, 25); add(sign);
       const barrel = (x, z) => { add(cyl(4.5, 4.5, 9, woodVM(8, 9), x, 4.5, z, 12)); add(cyl(4.7, 4.7, 0.8, std('#2b2824', { metalness: 0.5 }), x, 2, z, 12)); add(cyl(4.7, 4.7, 0.8, std('#2b2824', { metalness: 0.5 }), x, 7, z, 12)); };
       if (k === 'bakery') { const ov = mesh(new T.SphereGeometry(8, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), stoneM(16, 8), -30, 0, 14); add(ov); add(box(5, 4, 1, std('#1a120c'), -30, 2.5, 22)); add(box(5, 22, 5, stoneM(5, 22), 16, 46, -8)); }
-      if (k === 'brewery' || k === 'tavern') { barrel(-30, 18); barrel(-30, 8); barrel(-22, 26); }
+      if (k === 'brewery' || k === 'tavern' || k === 'alehouse') { barrel(-30, 18); barrel(-30, 8); barrel(-22, 26); }
+      if (k === 'stable') for (const [x, z] of [[-30, 14], [-30, 4], [-22, 24]]) add(box(8, 6, 6, std('#c9a648', { roughness: 1 }), x, 3, z));   // hay bales
+      if (k === 'apothecary') for (let i = 0; i < 4; i++) add(cyl(1.4, 1.8, 5, std(['#5aa36a', '#7a5ab0', '#c9a14a', '#4a8ab0'][i], { roughness: 0.3 }), -30 + i * 3.6, 2.5, 24, 8));   // bottles of medicine
+      if (k === 'school') add(box(14, 10, 1, std('#2a3a2a'), 18, 14, 25));   // a slate board by the door
+      if (k === 'engineerhut') { const wh = mesh(new T.TorusGeometry(6, 1.2, 5, 10), std('#6b4a2a'), -30, 8, 20); add(wh); }   // a spare wheel
       if (k === 'tavern') { add(box(14, 1.4, 6, woodHM(14, 2), 14, 7, 30)); add(cyl(1, 1, 7, woodVM(2, 7), 8, 3.5, 30, 5)); add(cyl(1, 1, 7, woodVM(2, 7), 20, 3.5, 30, 5)); }
       if (k === 'smithy') { add(box(8, 5, 5, std('#3d3f42', { metalness: 0.7, roughness: 0.4 }), 20, 6, 28)); add(box(4, 3, 4, std('#3d3f42', { metalness: 0.7 }), 20, 3, 28)); add(mesh(new T.SphereGeometry(4, 10, 6), new T.MeshStandardMaterial({ color: C('#ff7a2a'), emissive: C('#ff5a10'), emissiveIntensity: 1.5 }), -16, 6, 24)); }
       if (k === 'bowyer') for (let i = 0; i < 3; i++) { const bw = mesh(new T.TorusGeometry(7, 0.5, 5, 14, Math.PI), std('#6b4422'), -30, 12 + i * 2, 4 + i * 6); bw.rotation.y = Math.PI / 2; add(bw); }
@@ -909,7 +913,7 @@ const R3D = (() => {
       const hub = new T.Group(); hub.position.set(0, 74, 22); inner.add(hub); info.sails = hub;
       const axle = cyl(2.5, 2.5, 6, woodHM(6, 6), 0, 0, -2, 10); axle.rotation.x = Math.PI / 2; hub.add(axle);
       for (let k = 0; k < 4; k++) { const arm = new T.Group(); arm.rotation.z = k * Math.PI / 2; hub.add(arm); arm.add(box(2, 44, 1.6, woodVM(2, 44), 0, 23, 0)); const sail = box(10, 34, 0.5, std('#e8dcc0', { roughness: 1, side: T.DoubleSide }), 6, 26, 0.6); arm.add(sail); }
-    } else if (b.kind === 'chapel') {
+    } else if (b.kind === 'chapel' || b.kind === 'church' || b.kind === 'abbey') {
       add(box(54, 4, 46, stoneM(54, 4), 0, 2, 0));
       add(box(34, 36, 40, stoneM(34, 36), -8, 22, 0));
       const gs = new T.Shape(); gs.moveTo(-19, 0); gs.lineTo(19, 0); gs.lineTo(0, 18); gs.closePath();
@@ -940,11 +944,11 @@ const R3D = (() => {
       add(box(26, 1, 22, std('#1a120c'), 0, 0.6, 0));
       add(box(14, 7, 10, woodHM(14, 7), 22, 7, 18)); for (const x of [16, 28]) { const wh = cyl(3, 3, 1.6, std('#3a2a18'), x, 3, 23.5, 10); wh.rotation.x = Math.PI / 2; add(wh); }
       for (let i = 0; i < 5; i++) add(mesh(new T.IcosahedronGeometry(2.5, 0), std('#8a5434', { flatShading: true }), 18 + (i % 3) * 3.5, 11.5, 15 + Math.floor(i / 3) * 4));
-    } else if (b.kind === 'hopfarm') {
+    } else if (b.kind === 'hopfarm' || b.kind === 'vineyard' || b.kind === 'orchard') {
       const soil = mesh(new T.PlaneGeometry(60, 60), texMat('soil', 2, 4), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
       for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) add(cyl(0.7, 0.7, 26, woodVM(2, 26), -22 + c * 14.6, 13, -22 + r * 14.6, 5));
       for (let r = 0; r < 4; r++) add(box(46, 0.6, 0.6, std('#6b5030'), 0, 25, -22 + r * 14.6));
-      const n = 7 * 7 * 3, vines = new T.InstancedMesh(new T.ConeGeometry(2.4, 14, 6), std('#4f8a3a', { roughness: 0.85 }), n);
+      const n = 7 * 7 * 3, vines = new T.InstancedMesh(new T.ConeGeometry(b.kind === 'orchard' ? 4.5 : 2.4, b.kind === 'orchard' ? 18 : 14, 6), std(b.kind === 'vineyard' ? '#5e4a78' : b.kind === 'orchard' ? '#2f6a2a' : '#4f8a3a', { roughness: 0.85 }), n);
       vines.castShadow = true; info.wheat = vines; info.wheatN = n; add(vines);
     } else if (b.kind === 'farm' || b.kind === 'wheatfarm') {
       const soil = mesh(new T.PlaneGeometry(60, 60), texMat('soil', 2, 4), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
@@ -962,6 +966,15 @@ const R3D = (() => {
       for (let y = 12; y < H; y += 16) { sc.add(box(hw * 2, 1, 1, pm, 0, y, hd)); sc.add(box(hw * 2, 1, 1, pm, 0, y, -hd)); }
       g.add(sc); info.scaffold = sc;
     }
+    if (b.kind === 'farm' && b.team === 'player' && IND()) {   // the animal farm: a pen in one corner with cows and pigs
+      const fence = woodHM(30, 2); for (const [x, z, w, d] of [[-16, -16, 28, 1.2], [-16, -2, 28, 1.2], [-30, -9, 1.2, 14], [-2, -9, 1.2, 14]]) add(box(w, 1.2, d, fence, x, 5, z));
+      for (const [x, z, col, s] of [[-22, -11, '#f2ece0', 1], [-12, -8, '#5a3a24', 1], [-24, -5, '#e0a0a0', 0.6], [-8, -13, '#e8b0b0', 0.6]]) { add(box(9 * s, 5 * s, 4.5 * s, std(col, { roughness: 1 }), x, 4 * s + 1, z)); add(box(3 * s, 3 * s, 3 * s, std(col, { roughness: 1 }), x + 5.5 * s, 6 * s + 1, z)); }
+    }
+    if (b.kind === 'woodhut' && (b.lvl || 1) >= 3) {   // the hitching area: a wagon and its horse
+      add(box(16, 5, 9, woodHM(16, 5), -30, 6, 22)); for (const x of [-36, -24]) { const wh = cyl(3.2, 3.2, 1.4, std('#3a2a18'), x, 3.2, 27, 10); wh.rotation.x = Math.PI / 2; add(wh); }
+      add(box(12, 6, 5, std('#7a5034', { roughness: 1 }), -14, 9, 22)); add(box(4, 5, 4, std('#7a5034', { roughness: 1 }), -7, 12, 22)); for (const x of [-18, -10]) for (const z of [20.5, 23.5]) add(cyl(0.8, 0.8, 7, std('#5a3a24'), x, 3.5, z, 5));
+    }
+    if (b.kind === 'church') inner.scale.set(1.35, 1.35, 1.35); else if (b.kind === 'abbey') inner.scale.set(1.5, 1.6, 1.5);
     if (b.kind === 'wall' && b.mat === 'thick') inner.scale.set(1, 1.45, 1); else if (b.kind === 'wall' && b.mat === 'stone') inner.scale.set(1, 1.15, 1);   // the castle ring gets taller as it grows
     inner.traverse(o => { if (o.isMesh && o.material && !info.mats.includes(o.material) && o.material.emissive) info.mats.push(o.material); });
     scene.add(g);

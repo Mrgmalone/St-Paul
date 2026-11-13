@@ -58,18 +58,18 @@ const FACTION_BASE = { sHp: 1, sDmg: 1, sSpeed: 1, train: 1, gather: 1, carry: 1
 const STAGES = [
   { n: 1, name: 'Shack', grow: 0, wall: 'wood', keepHp: 1500,
     unlock: { units: ['civ', 'spear', 'archer'],
-      buildings: ['house', 'farm', 'wheatfarm', 'woodhut', 'stockpile', 'granary', 'wall', 'gate', 'gtower', 'pit', 'poleturner', 'bowyer', 'armory', 'garden'] } },
+      buildings: ['house', 'farm', 'wheatfarm', 'woodhut', 'stockpile', 'granary', 'wall', 'gate', 'gtower', 'pit', 'poleturner', 'bowyer', 'armory', 'garden', 'alehouse'] } },
   { n: 2, name: 'Homestead', grow: 2, wall: 'brick', keepHp: 2200,
     need: { people: 12, mood: 50, food: 150, buildings: { house: 3, woodhut: 1, farmAny: 1 } },
-    unlock: { units: [], buildings: ['quarry', 'tavern', 'brewery', 'hopfarm', 'highwall', 'stairs', 'lookout', 'chapel', 'stocks', 'moat'] } },
+    unlock: { units: [], buildings: ['quarry', 'tavern', 'brewery', 'hopfarm', 'highwall', 'stairs', 'lookout', 'chapel', 'stocks', 'moat', 'mill', 'apothecary'] } },
   { n: 3, name: 'Hold', grow: 3, wall: 'stone', keepHp: 3200,
     need: { people: 22, mood: 55, food: 300, stone: 150, buildings: { house: 5, quarry: 1, tavern: 1 } },
-    unlock: { units: ['sword', 'maceman', 'ballista'], buildings: ['smithy', 'ironmine', 'market', 'mill', 'bakery', 'stower'] } },
+    unlock: { units: ['sword', 'maceman', 'ballista'], buildings: ['smithy', 'ironmine', 'market', 'bakery', 'stower', 'school', 'engineerhut', 'stable', 'vineyard', 'orchard', 'church'] } },
   { n: 4, name: 'Castle', grow: 2, wall: 'thick', keepHp: 4500,
     need: { people: 35, mood: 60, food: 500, stone: 300, iron: 80, buildings: { smithy: 1, market: 1, mill: 1, bakery: 1 } },
-    unlock: { units: ['knight', 'ram', 'catapult'], buildings: ['roundtower', 'greattower'] } },
+    unlock: { units: ['knight', 'ram', 'catapult'], buildings: ['roundtower', 'greattower', 'abbey'] } },
   { n: 5, name: 'Stronghold', grow: 3, wall: 'thick', keepHp: 6500,
-    need: { people: 50, mood: 65, food: 800, stone: 500, iron: 200, buildings: { stower: 2 } },   // stand-in until the school is built (Phase 4B)
+    need: { people: 50, mood: 65, food: 800, stone: 500, iron: 200, buildings: { school: 1, stower: 2 } },   // the school must stand before the Stronghold
     unlock: { units: ['trebuchet'], buildings: [] } }
 ];
 
@@ -100,3 +100,47 @@ const RIVALS = {
 // ---------- rogue bandits ----------
 // Small bands that belong to no rival: they come in from the edge of the map, steal from your stores and run off.
 const ROGUES = { first: 360, every: 240, band: [2, 4], steal: { food: 30, wood: 30, stone: 15, gold: 15 } };
+
+// ---------- Phase 4B: the industries ----------
+// Every list of five is by castle stage (Shack, Homestead, Hold, Castle, Stronghold).
+const INDUSTRY = {
+  // the wood and iron yard ("Woodcutter's Hut" grows into it): how many may stand, and how many people each holds.
+  // From the Hold the blacksmith joins and some of the yard's people work iron (you choose how many); wagons carry
+  // the woodcutters to the forest (they travel faster) and a hitching area stands outside.
+  yard: { max: [4, 3, 2, 1, 1], staff: [2, 5, 10, 20, 25], ironFrom: 3, ironEvery: 6, wagonSpeed: 1.6 },
+  // arrows and bolts cost wood; with no wood, archers make rock-tipped arrows (no quarry needed), a little weaker
+  arrowWood: 0.1, boltWood: 1, rockArrow: 0.8,
+  // stone quarries (from the Homestead): at most two, ten people each; oxen by stage (the second comes free at the
+  // Castle); oxen eat food each minute and cost more to replace as you grow; on foot, people gather stone only nearby
+  quarry: { max: 2, staff: 10, oxen: [0, 1, 1, 2, 2], oxFood: [0, 2, 3, 4, 5], oxReplace: [[0, 0], [40, 10], [60, 20], [90, 35], [120, 50]], oxSpeed: [1, 1, 1.15, 1.3, 1.45], footStone: 320 },
+  // wheat fields: how many may stand and how many people each holds (they merge as the castle grows); each wants a sentry
+  fields: { max: [5, 5, 3, 2, 2], staff: [3, 5, 7, 10, 10] },
+  // the mill: before the Hold up to two small mills of two people; from the Hold one mill that comes with five bakeries of three
+  mill: { maxEarly: 2, staffEarly: 2, maxLate: 1, staffLate: 3, bakeries: 5, bakeryStaff: 3 },
+  // bread: one baker makes about 6 loaves a minute from 3 flour (fifteen bakers feed about twenty people every couple of minutes);
+  // a miller grinds about 15 flour a minute from wheat
+  bakery: { inp: { flour: 0.5 }, out: 'bread', n: 1, time: 10, batch: 6 },
+  millCraft: { inp: { wheat: 1 }, out: 'flour', n: 2, time: 8, batch: 6 },
+  // the granary: how much food it holds before bugs get in (expanded at the Hold); the keep holds a little more
+  granary: { cap: 300, capExpanded: 800, keepCap: 150, bugsAfter: 60, spoil: 0.03 },
+  // the alehouse (one worker): price settings and what they do to the people
+  ale: { prices: ['Cheap', 'Fair', 'Dear'], gold: [0.5, 1, 1.8], mood: [10, 8, -6], drunks: [0.012, 0, 0], alehouseServes: 8, tavernServes: 15 },
+  // the feast (from the Hold): ingredients, and it costs more than all the taxes you have gathered this game
+  feast: { needs: { grapes: 10, apples: 10, chickens: 4, turkeys: 2, cows: 1, sheep: 1 }, minGold: 200, mood: 40, lasts: 360, work: 2 },
+  // the market: non-food goods sell for (buy) and buy for (sell) these multiples of what they cost to make, by school level;
+  // food costs the same to buy and to sell. Happy or upset people still move prices (up to 25% cheaper, 40% dearer).
+  market: { buy: [2.5, 2.5, 2.0, 1.8], sell: [1.2, 1.2, 1.5, 1.6], destroyedMood: -30,
+    makeCost: { wood: 1, stone: 1.5, iron: 3, hops: 1, wheat: 1, flour: 2, food: 1, bread: 1.5, ale: 3, bow: 12, spear: 8, sword: 20, mace: 16, armor: 40 } },
+  // the school (from the Hold): three levels of learning (gold, seconds); each level wastes less material (10%), builds
+  // cheaper and quicker (10% and 15%), and from level 2 trades better
+  school: { levels: [[150, 60], [300, 90], [600, 120]], waste: 0.1, buildCost: 0.1, buildTime: 0.15, engineerCost: 40 },
+  // the health houses: how much they heal and lift spirits, by size; the Stronghold's doctor upgrade
+  // heal: how fast the sick recover nearby (the keep alone is 1); serves: how many people one of them cheers
+  health: { apothecary: { heal: 1.5, mood: 2, r: 420, serves: 10 }, chapel: { heal: 1.5, mood: 5, r: 520, serves: 20 }, church: { heal: 2, mood: 6, r: 620, serves: 35 },
+    abbey: { heal: 3, mood: 7, r: 720, serves: 50 }, doctorCost: 400, doctorTime: 120, doctorMul: 2 },
+  // animals at the farm (and horses at the stable): born every so many seconds while their keepers work, up to a cap
+  animals: { cows: [40, 8], pigs: [30, 10], oxen: [60, 6], chickens: [15, 20], turkeys: [25, 8], sheep: [35, 8], horses: [70, 8] },
+  farmStart: { cows: 2, pigs: 2, oxen: 2, chickens: 3, turkeys: 1, sheep: 1 }, leatherEvery: 45,
+  // the granary's Expand (from the Hold), and the school's engineers (each Engineer's Hut houses four)
+  granaryExpand: { wood: 60, stone: 40 }, engineersPerHut: 4
+};

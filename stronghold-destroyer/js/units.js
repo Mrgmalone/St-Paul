@@ -30,7 +30,8 @@ function commandMove(list, x, y) {
   markers.push({ x, y, t: 0, col: '120,255,140' });
 }
 function commandGather(list, node) {
-  const type = node.kind === 'rock' ? 'stone' : node.kind === 'tree' ? 'wood' : node.kind === 'hopfarm' ? 'hops' : node.kind === 'wheatfarm' ? 'wheat' : 'food';
+  const type = node.kind === 'rock' ? 'stone' : node.kind === 'tree' ? 'wood' : FIELD_TYPE[node.kind] || 'food';
+  if (type === 'stone' && list[0] && list[0].team === 'player' && !nearStone(node)) { showBanner('That stone is too far to carry by hand. Build a Quarry beside it: its oxen haul the stone home.', 3.5); return; }
   for (const u of list) { u.order = 'gather'; u.task = { type, node }; u.sub = (u.carry > 0 && u.carryType !== type) ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0; u.bad.clear(); }
   markers.push({ x: node.x, y: node.y, t: 0, col: '255,220,90' });
 }
@@ -109,7 +110,7 @@ const stalled = u => u.stT !== undefined && time - u.stT > 1.5;
 function followPath(u, dt) {
   if (u.stT === undefined || Math.hypot(u.x - u.stX, u.y - u.stY) > 4) { u.stX = u.x; u.stY = u.y; u.stT = time; }
   if (!u.path.length) { u.moving = false; return; }
-  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
+  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * (u.speedMul || 1) * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
   if (d <= Math.max(step, 2.5)) {
     if (!circleBlocked(wp.x, wp.y, Math.min(7, u.radius * 0.8))) { u.x = wp.x; u.y = wp.y; }
     u.path.shift();
@@ -237,7 +238,7 @@ function cartBrain(u, dt) {
   }
   if (edgeDist(u, q) > 20) { const ap = approachPoint(u, q); walk(ap.x, ap.y); return; }
   u.moving = false; u.path = [];
-  if ((q.stock || 0) >= 8) { const n = Math.min(q.stock, 24); q.stock -= n; u.carry = n; u.carryType = 'stone'; u.sub = 'haul'; u.path = []; }
+  if ((q.stock || 0) >= 8) { const n = Math.min(q.stock, Math.round(24 * (u.strong || 1))); q.stock -= n; u.carry = n; u.carryType = 'stone'; u.sub = 'haul'; u.path = []; }
 }
 function playerBrain(u) {
   if (u.type === 'oxcart') { cartBrain(u, frameDt); return; }
@@ -317,20 +318,20 @@ function enemyBrain(u, dt) {
   if (u.order === 'idle') u.moving = false;
 }
 // ---------- civilians ----------
-function isField(k) { return k === 'farm' || k === 'hopfarm' || k === 'wheatfarm'; }
+function isField(k) { return k === 'farm' || k === 'hopfarm' || k === 'wheatfarm' || k === 'vineyard' || k === 'orchard'; }
 // the gear a civilian carries: picked up when the job is given, carried there, used, and loaded for the walk home
 function gearOf(u) {
   if (u.order === 'build') return 'build';
   const t = u.task ? u.task.type : u.carry > 0 ? u.carryType : null;
   if (u.order === 'craft' && u.job) return u.job.kind === 'quarry' || u.job.kind === 'ironmine' ? 'stone' : 'build';
-  if (t === 'wood') return 'wood'; if (t === 'food') return 'food'; if (t === 'stone' || t === 'iron') return 'stone'; if (t === 'hops' || t === 'wheat') return 'grain';
+  if (t === 'wood') return 'wood'; if (t === 'food') return 'food'; if (t === 'stone' || t === 'iron') return 'stone'; if (t === 'hops' || t === 'wheat' || t === 'grapes' || t === 'apples') return 'grain';
   return null;
 }
 const nodeCenter = n => isField(n.kind) ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y1) / 2 } : n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : n.kind === 'rock' ? { x: Math.floor(n.x / TILE) * TILE + 16, y: Math.floor((n.y - 6) / TILE) * TILE + 16 } : { x: n.x, y: n.y };
 const nodeReach = n => isField(n.kind) ? 30 : n.kind === 'tree' ? 33 : n.kind === 'rock' ? 30 : 24;
 const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood' || type === 'stone' ? n.amount > 0 : n.amount >= 1);
 function nearestNode(type, x, y, maxD, bad) {
-  const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone) : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm' && f.team === 'player') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm' && f.team === 'player') : bushes.concat(farms.filter(f => f.kind === 'farm' && f.team === 'player'));   // your own fields, never a rival's
+  const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone && nearStone(r)) : (type === 'grapes' || type === 'apples') ? farms.filter(f => FIELD_TYPE[f.kind] === type && f.team === 'player') : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm' && f.team === 'player') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm' && f.team === 'player') : bushes.concat(farms.filter(f => f.kind === 'farm' && f.team === 'player'));   // your own fields, never a rival's
   let best = null, bd = maxD;
   for (const n of list) { if (!nodeOk(n, type) || (bad && bad.has(n)) || n.unreachT > time) continue; const c = nodeCenter(n), d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = n; } }
   return best;
@@ -379,7 +380,7 @@ function civBrain(u, dt) {
   if (u.sub !== 'toKeep' && u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
   if (u.sub === 'toNode' || u.sub === 'work') {
     if (!nodeOk(task.node, task.type) && !(task.type === 'food' && task.node && u.sub === 'work')) {
-      const n = u.job && isField(u.job.kind) && !u.job.dead ? u.job : nearestNode(task.type, u.job ? u.job.x : u.x, u.job ? u.job.y : u.y, u.job ? 460 : 500, u.bad);
+      const n = u.job && isField(u.job.kind) && !u.job.dead ? u.job : nearestNode(task.type, u.job ? u.job.x : u.x, u.job ? u.job.y : u.y, u.job ? (u.job.kind === 'woodhut' ? yardReach() : 460) : 500, u.bad);
       if (!n) { if (u.carry > 0) { u.sub = 'toKeep'; u.path = []; } else { u.order = 'idle'; u.task = null; u.moving = false; return; } }
       else if (n !== task.node) { task.node = n; u.sub = 'toNode'; u.path = []; }
     }
@@ -404,7 +405,7 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); else if (task.type === 'stone') AudioSys.play('stoneHit', u.x, u.y); }
     u.workT += dt;
-    const rate = 1 / fatWork(u) * (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' ? 1.1 : 0.8) / (CIV.gather * workMul());
+    const rate = 1 / fatWork(u) * (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' || task.type === 'grapes' || task.type === 'apples' ? 1.1 : 0.8) / (CIV.gather * workMul());
     if (u.workT >= rate) {
       u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = task.node.kind === 'bush' ? 'berries' : 'crops';
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
@@ -502,6 +503,8 @@ function updateHealth(dt) {
     u.sickT = (u.sickT || 0) + 1;
     // with no keep left to care for them, the sick get over it slowly on their own
     if (!k) { if (u.sickT >= 60) { u.sick = 0; u.sickT = 0; u.toHeal = false; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } continue; }
+    // a house of healing nearby cares for them where they are
+    if (IND()) { const h = healerFor(u); if (h) { u.toHeal = false; u.healT = (u.healT || 0) + h; if (u.healT >= 18) { u.sick = 0; u.sickT = 0; floatText(u.x, u.y - 55, 'Feeling better!', '#9fe8a8'); } continue; } }
     // if nobody notices for a while, they take themselves to the keep
     if (!u.toHeal && u.sickT >= 20) { u.toHeal = true; floatText(u.x, u.y - 55, 'I should go to the keep...', '#c8e0a0'); }
     // someone notices and sends them to the keep to be cared for

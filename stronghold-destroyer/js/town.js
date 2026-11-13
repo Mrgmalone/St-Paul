@@ -10,9 +10,9 @@ let fatBonus = 0, sickPen = 0, contentUntil = 0, leftCount = 0, returnT = 20, fu
 function cheer(n, secs, msg) { mood = Math.min(100, mood + n); contentUntil = Math.max(contentUntil, time + secs); if (msg) { const k = playerKeep(); if (k) floatText(k.x, k.y - 160, msg, '#ffd27a'); } }
 let mood = 60, ration = 1, tax = 1, goldT = 0, settleT = 30, leaveT = 25, moodRate = 0;
 const moodName = () => mood >= 70 ? 'Happy' : mood >= 40 ? 'Steady' : mood >= 20 ? 'Unhappy' : 'Rebellious';
-const fatWork = u => (1 - 0.35 * (u.fat || 0)) * (u.sick > 0 ? 0.4 : 1);   // the well-fed are lazy; the sick hardly work
+const fatWork = u => (1 - 0.35 * (u.fat || 0)) * (u.sick > 0 ? 0.4 : 1) * drunkMul(u);   // the well-fed are lazy; the sick hardly work
 const countOf = k => structures.filter(b => b.kind === k && b.done && !b.dead && b.team === 'player').length;
-const workMul = () => (mood >= 70 ? 1.15 : mood >= 40 ? 1 : 0.8) * (1 + 0.08 * countOf('stocks') - 0.05 * countOf('garden'));
+const workMul = () => (mood >= 70 ? 1.15 : mood >= 40 ? 1 : 0.8) * (1 + 0.08 * countOf('stocks') - 0.05 * countOf('garden')) * feastWork();   // a feast: twice the work
 function moodHtml() {
   const col = mood >= 70 ? '#9fe39a' : mood >= 40 ? '#ffd98a' : mood >= 20 ? '#ffb38a' : '#ff8a7a';
   const r = Math.round(moodRate);
@@ -30,18 +30,26 @@ function moodReasons() {
   if (fearHard) r.push('the stocks frighten them');
   if (!varietyBonus && !starving) r.push('they eat only one kind of food');
   if (!aleBonus) r.push('there is no ale');
-  if (!relBonus) r.push('there is no house of prayer');
+  if (!relBonus) r.push(IND() ? 'there is no house of healing or prayer' : 'there is no house of prayer');
+  if (IND() && bugsOn) r.push('bugs are spoiling the food in the granary');
+  if (IND() && alePriceNow() === 2 && aleCover) r.push('the ale is dear');
   return r;
 }
 function updateMood(dt, people) {
   const taverns = structures.filter(b => b.kind === 'tavern' && b.done && !b.dead && b.team === 'player').length;
   aleBonus = 0; aleCover = 0;
-  if (taverns && res.ale > 0 && people.length) {
+  if (IND()) {   /* the alehouse and tavern: the price you set decides the mood, the gold and the drunks */
+    const A = INDUSTRY.ale, serve = taverns * A.tavernServes + countOf('alehouse') * A.alehouseServes, p = alePriceNow();
+    if (serve && res.ale > 0 && people.length) { aleCover = Math.min(1, serve / people.length); aleBonus = Math.round(A.mood[p] * aleCover);
+      aleT += people.length * aleCover * dt / 240; while (aleT >= 1) { aleT -= 1; res.ale = Math.max(0, res.ale - 1); res.gold += A.gold[p]; }
+      aleDrunks(dt, Math.round(people.length * aleCover)); }
+  } else if (taverns && res.ale > 0 && people.length) {
     aleCover = Math.min(1, taverns * 15 / people.length); aleBonus = Math.round(8 * aleCover);
     aleT += people.length * aleCover * dt / 240;   // about one ale for every 15 people every minute while (aleT >= 1) { aleT -= 1; res.ale = Math.max(0, res.ale - 1); }
   }
   const variety = foodVariety(); varietyBonus = variety >= 3 ? 6 : variety === 2 ? 3 : 0;
-  relCover = people.length ? Math.min(1, countOf('chapel') * 20 / people.length) : 0; relBonus = Math.round(5 * relCover);
+  if (IND()) [relCover, relBonus] = healthMood(people.length);
+  else { relCover = people.length ? Math.min(1, countOf('chapel') * 20 / people.length) : 0; relBonus = Math.round(5 * relCover); }
   crowdPen = people.length >= popCap() * 0.9 ? -4 : 0;
   fearGood = 2 * countOf('garden'); fearHard = -2 * countOf('stocks');
   fullGranary = !starving && res.food > 300 ? 4 : 0;
@@ -53,7 +61,7 @@ function updateMood(dt, people) {
   if (leftCount > 0 && mood >= 55 && k0()) { returnT -= dt; if (returnT <= 0) { returnT = 20; if (people.length + trainQueue.length < popCap()) { leftCount--; const en = roadEntry(); const u = makeUnit('player', 'civ', en.x, en.y); const kk = k0(); commandMove([u], kk.x1 + 40, kk.y1 + 30); showBanner('A citizen who left has come back to your town!', 3.5); AudioSys.ui('bell'); } } }
   // taxes: gold per person every 20 seconds
   goldT += people.length * TAXES[tax].gold * taxStageMul() * dt / 20;   // a bigger castle's people pay a little more
-  while (goldT >= 1) { goldT -= 1; res.gold += 1; }
+  while (goldT >= 1) { goldT -= 1; res.gold += 1; taxTotal++; }
   const k = playerKeep();
   // happy towns draw new settlers along the road
   if (mood >= 70 && k) {
@@ -90,7 +98,7 @@ document.getElementById('feast').onclick = () => {
 };
 
 // ---------- economy: stores, upkeep, training ----------
-const res = { food: 100, wood: 80, gold: 0, stone: 0, mace: 0, armor: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0 };
+const res = { food: 100, wood: 80, gold: 0, stone: 0, mace: 0, armor: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0, grapes: 0, apples: 0, leather: 0 };
 const foodKinds = { berries: 0, crops: 100, bread: 0 };
 const FOOD_NAME = { berries: 'berries', crops: 'crops', bread: 'bread' };
 function addFood(kind, n) { foodKinds[kind] = (foodKinds[kind] || 0) + n; res.food += n; }
@@ -134,6 +142,7 @@ const hasArmory = () => countOf('armory') > 0;
 // the market: buying always costs more than making it yourself, and selling pays far less than buying
 const MARKET = [
   ['wood', 'Wood', 10, 20, 8], ['stone', 'Stone', 10, 30, 12], ['iron', 'Iron', 5, 30, 12], ['hops', 'Hops', 10, 30, 12], ['wheat', 'Wheat', 10, 30, 12], ['flour', 'Flour', 10, 45, 18],
+  ['grapes', 'Grapes', 10, 30, 12], ['apples', 'Apples', 10, 30, 12], ['leather', 'Leather', 5, 40, 16],
   ['food', 'Food (crops)', 10, 25, 10], ['bread', 'Bread', 10, 40, 16], ['ale', 'Ale', 5, 40, 16],
   ['bow', 'Bow', 1, BUY.bow, 12], ['spear', 'Spear', 1, BUY.spear, 8], ['sword', 'Sword', 1, BUY.sword, 16], ['mace', 'Mace', 1, BUY.mace, 12], ['armor', 'Knight armor', 1, BUY.armor, 28]
 ];
@@ -141,7 +150,8 @@ const WEAPONS = { bow: 1, spear: 1, sword: 1, mace: 1, armor: 1 };
 // a happy town trades on good terms; an upset one pays a market tax. Even at best, buying never gets as cheap as making it yourself,
 // and selling never pays as much as buying.
 const marketMul = () => mood >= 50 ? 1 - (mood - 50) / 50 * 0.25 : 1 + (50 - mood) / 50 * 0.4;   // 0.75 when overjoyed, 1.4 when furious
-const priceOf = row => { const [, , , buy, sell] = row, m = marketMul(), fm = myRule('marketBuyMul', 1);   // Ticanologue buys at half price
+const priceOf = row => IND() ? indPrice(row) : priceOf0(row);
+const priceOf0 = row => { const [, , , buy, sell] = row, m = marketMul(), fm = myRule('marketBuyMul', 1);   // Ticanologue buys at half price
   const b = fm < 1 ? Math.max(2, Math.ceil(buy * m * fm)) : Math.max(Math.ceil(buy * m), Math.ceil(sell * 1.6)); return { buy: b, sell: Math.min(Math.round(sell * (2 - m)), b - 1) }; };
 const haveOf = k => Math.floor(k === 'food' ? (foodKinds.crops || 0) + (foodKinds.berries || 0) : k === 'bread' ? (foodKinds.bread || 0) : (res[k] || 0));
 function trade(b, act, key) {
@@ -219,11 +229,11 @@ function trainUnit(kind) {
   updateHud();
 }
 // ---------- self-running workers ----------
-const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1 };
+const JOBS = { quarry: 1, wheatfarm: 1, mill: 1, bakery: 1, woodhut: 1, farm: 1, hopfarm: 1, brewery: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, alehouse: 1, stable: 1, vineyard: 1, orchard: 1 };
 const JOB_MAX = 3;
-const maxStaff = k => (k === 'woodhut' || isField(k)) ? 2 : 3;   // blacksmith: 3   // huts and farms hold 2, other industries 3; each worker adds full output
+const maxStaff = k => IND() ? indStaff(k) : (k === 'woodhut' || isField(k)) ? 2 : 3;   // blacksmith: 3   // huts and farms hold 2, other industries 3; each worker adds full output
 const staffOf = site => units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.job === site).length;
-const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], woodhut: ['wood'], granary: ['food', 'ale', 'bread'], tavern: ['ale'], armory: ['bow', 'spear', 'sword', 'mace', 'armor'] };
+const DROPS = { keep: ['wood', 'stone', 'food', 'hops', 'iron', 'ale', 'wheat', 'flour', 'bread', 'grapes', 'apples'], stockpile: ['wood', 'stone', 'hops', 'iron', 'wheat', 'flour'], woodhut: ['wood'], granary: ['food', 'ale', 'bread', 'grapes', 'apples'], tavern: ['ale'], alehouse: ['ale'], armory: ['bow', 'spear', 'sword', 'mace', 'armor'] };
 const CRAFT = {
   brewery: { inp: { hops: 2 }, out: 'ale', time: 7, batch: 2 },
   mill: { inp: { wheat: 2 }, out: 'flour', time: 6, batch: 3 },
@@ -232,17 +242,18 @@ const CRAFT = {
   quarry: { inp: {}, out: 'stone', time: 2, batch: 8 },
   bowyer: { inp: { wood: 3 }, out: 'bow', time: 9, batch: 1 },
   poleturner: { inp: { wood: 3 }, out: 'spear', time: 8, batch: 1 },
-  smithy: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }
+  smithy: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 },
+  alehouse: { inp: { wheat: 1 }, out: 'ale', time: 8, batch: 2 }
 };
 const SMITH = { sword: { inp: { iron: 2 }, out: 'sword', time: 10, batch: 1 }, mace: { inp: { iron: 2 }, out: 'mace', time: 9, batch: 1 }, armor: { inp: { iron: 3 }, out: 'armor', time: 14, batch: 1 } };
-const recipeOf = site => site.kind === 'smithy' ? SMITH[site.make || 'sword'] : CRAFT[site.kind];
+const recipeOf = (site, u) => u && u.ironWork && site.kind === 'woodhut' ? YARD_IRON : site.kind === 'smithy' ? SMITH[site.make || 'sword'] : IND() && site.kind === 'bakery' ? INDUSTRY.bakery : IND() && site.kind === 'mill' ? INDUSTRY.millCraft : CRAFT[site.kind];
 
-const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1 };
-const JOB_NAME = { smithy: 'Blacksmith', quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
-const craftCost = site => Math.max(0.5, 1 - 0.05 * Math.floor((site.made || 0) / 4));   // every 4 made: 5% less material, down to half
+const WORKSHOP = { bakery: 1, brewery: 1, tavern: 1, ironmine: 1, bowyer: 1, poleturner: 1, smithy: 1, armory: 1, alehouse: 1, school: 1, engineerhut: 1, apothecary: 1, stable: 1 };
+const JOB_NAME = { alehouse: 'Alewife', stable: 'Stable hand', vineyard: 'Vine-dresser', orchard: 'Orchard keeper', smithy: 'Blacksmith', quarry: 'Stonecutter', wheatfarm: 'Wheat farmer', mill: 'Miller', bakery: 'Baker', woodhut: 'Woodcutter', farm: 'Farmer', hopfarm: 'Hop farmer', brewery: 'Brewer', ironmine: 'Miner', bowyer: 'Bowyer', poleturner: 'Spear-maker', smithy: 'Smith' };
+const craftCost = site => Math.max(0.5, 1 - 0.05 * Math.floor((site.made || 0) / 4)) * learnWaste();   // the school: less waste   // every 4 made: 5% less material, down to half
 function craftBrain(u, dt) {
   const site = u.job; if (!site || site.dead) { u.order = 'idle'; u.job = null; return; }
-  const rc = recipeOf(site);
+  const rc = recipeOf(site, u);
   if (u.sub === 'toDrop') {
     const drop = nearestDrop(u, u.carryType);
     if (!drop) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - site.topH - 8, `Build an ${u.carryType === 'bow' || u.carryType === 'spear' || u.carryType === 'sword' ? 'armory' : 'store'} for the ${u.carryType}`, '#ffb38a'); u.waitMsgT = 10; } u.path = []; u.moving = false; return; }
@@ -254,6 +265,7 @@ function craftBrain(u, dt) {
   u.sub = 'work'; u.path = []; u.moving = false; u.facing = site.x >= u.x ? 1 : -1;
   if (u.crafting === null || u.crafting === undefined) {
     if (site.kind === 'quarry' && (site.stock || 0) >= 60) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - 40, 'Quarry pile full: waiting for the ox cart', '#ffb38a'); u.waitMsgT = 10; } return; }
+    { const blk = indBlock(site); if (blk) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(site.x, site.y - site.topH - 8, blk, '#ffb38a'); u.waitMsgT = 10; } return; } }
     if (!Object.entries(rc.inp).every(([k, v]) => res[k] >= v * craftCost(site))) {   // waiting for materials
       u.waitMsgT = (u.waitMsgT || 0) - dt;
       if (u.waitMsgT <= 0) { const need = Object.entries(rc.inp).filter(([k, v]) => res[k] < v * craftCost(site)).map(([k, v]) => `${k} (needs ${+(v * craftCost(site)).toFixed(1)}, you have ${Math.floor(res[k])})`); floatText(site.x, site.y - site.topH - 8, `${site.name} is waiting for ${need.join(' and ')}`, '#ffb38a'); u.waitMsgT = 10; }
@@ -267,7 +279,7 @@ function craftBrain(u, dt) {
   if (u.crafting >= rc.time) {
     u.crafting = null; site.made = (site.made || 0) + 1;
     if (Object.keys(rc.inp).length && site.made % 4 === 0 && craftCost(site) > 0.55) floatText(site.x, site.y - site.topH - 14, `${site.name} is getting skilled: now uses ${Math.round((1 - craftCost(site)) * 100)}% less material`, '#9fe8a8');
-    if (site.kind === 'quarry' && units.some(o => o.type === 'oxcart' && !o.dead && o.home === site)) {
+    if (site.kind === 'quarry' && units.some(o => o.type === 'oxcart' && !o.dead && o.home === site)) {   /* (the cart is waiting at the quarry) */
       site.stock = (site.stock || 0) + (rc.n || 1); if (site.stock > 60) site.stock = 60;
       if (site.stock % 4 === 0) floatText(site.x, site.y - 40, `${site.stock} stone cut, waiting for the ox cart`, '#e9dcbc');
       return;
@@ -283,17 +295,19 @@ function nearestDrop(u, type) {
 const isManual = u => time - (u.manualT === undefined ? -99 : u.manualT) < 20;
 function startJob(u) {
   const site = u.job;
-  if (CRAFT[site.kind]) { u.order = 'craft'; u.sub = 'toSite'; u.path = []; u.repath = 0; u.crafting = null; u.task = null; return; }
-  if (site.kind === 'hopfarm' || site.kind === 'wheatfarm') { u.order = 'gather'; u.task = { type: site.kind === 'hopfarm' ? 'hops' : 'wheat', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
+  if (site.kind === 'engineerhut') { engineerJob(u); return; }
+  if (CRAFT[site.kind] || u.ironWork) { u.order = 'craft'; u.sub = 'toSite'; u.path = []; u.repath = 0; u.crafting = null; u.task = null; return; }
+  if (site.kind === 'hopfarm' || site.kind === 'wheatfarm' || site.kind === 'vineyard' || site.kind === 'orchard') { u.order = 'gather'; u.task = { type: FIELD_TYPE[site.kind], node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
+  if (site.kind === 'stable') { const ap = approachPoint(u, site); if (edgeDist(u, site) > 40) { commandMove([u], ap.x, ap.y); u.cmdT = -99; } else u.order = 'idle'; return; }
   if (site.kind === 'farm') { u.order = 'gather'; u.task = { type: 'food', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
-  const t = nearestNode('wood', site.x, site.y, 460, u.bad);
+  const t = nearestNode('wood', site.x, site.y, yardReach(), u.bad);   /* from the Hold, wagons reach farther into the forest */
   if (!t) { u.job = null; floatText(u.x, u.y - 50, 'No trees near the hut', '#ffb38a'); return; }
   u.order = 'gather'; u.task = { type: 'wood', node: t }; u.sub = u.carry > 0 ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0;
 }
 let jobT = 0;
 function updateJobs(dt) {
   jobT -= dt; if (jobT > 0) return; jobT = 1;
-  for (const q of structures) if (q.kind === 'quarry' && q.team === 'player' && q.done && !q.dead && !units.some(o => o.type === 'oxcart' && !o.dead && o.home === q)) {
+  for (const q of structures) if (!IND() && q.kind === 'quarry' && q.team === 'player' && q.done && !q.dead && !units.some(o => o.type === 'oxcart' && !o.dead && o.home === q)) {
     const f = nearestFree(Math.floor((q.x + 40) / TILE), Math.floor(q.y / TILE)); if (f) { const c = makeUnit('player', 'oxcart', f.c * TILE + 16, f.r * TILE + 16); c.home = q; c.order = 'cart'; c.facing = 1; floatText(q.x, q.y - 60, 'An ox cart arrives to haul the stone', '#9fe8a8'); }
   }
   const civs = units.filter(u => !u.dead && u.type === 'civ' && u.team === 'player' && u.order !== 'leave');
@@ -302,7 +316,7 @@ function updateJobs(dt) {
   for (const u of civs) if (u.job && u.job.asleep) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
   for (const site of sites) {
     let staff = civs.filter(u => u.job === site).length;
-    while (staff < JOBS[site.kind]) {
+    while (staff < jobWant(site)) {
       // first an idle person; if nobody is idle, a gatherer with no job is called over, so every new workplace is staffed by itself
       let free = civs.filter(u => !u.job && u.order === 'idle' && !isManual(u));
       if (!free.length) free = civs.filter(u => !u.job && (u.order === 'gather' || u.order === 'move' || u.order === 'idle') && u.order !== 'build' && !(u.task && u.task.node && JOBS[u.task.node.kind]));
@@ -338,7 +352,8 @@ function updateJobs(dt) {
     if (!pool.length && !on) pool = civs.filter(u => u.job && !u.toHeal && !u.sick && u.order !== 'build' && u.order !== 'leave' && !(u.carry > 0));
     pool.sort(near).slice(0, 2 - on).forEach(u => { u.breakUntil = 0; commandBuild([u], b); floatText(u.x, u.y - 50, `Off to build the ${b.name}`, '#ffe9a8'); });
   }
-  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time) && !u.toHeal) startJob(u);
+  for (const u of civs) if (u.job && u.order === 'idle' && !(u.breakUntil > time) && !u.toHeal && !(u.job.kind === 'stable' || u.job.kind === 'engineerhut') ) startJob(u);
+  for (const u of civs) if (u.job && (u.job.kind === 'stable' || u.job.kind === 'engineerhut') && u.order === 'idle' && edgeDist(u, u.job) > 60 && !(u.breakUntil > time)) startJob(u);
   // anyone with no building job gathers by themselves: food when stores are low, otherwise wood; at most 5 to a bush, tree or rock
   // how many are already on each bush, tree or rock: counted once, then kept up to date as people are sent
   const onCount = new Map(); for (const o of civs) if (o.task && o.task.node && o.order === 'gather') onCount.set(o.task.node, (onCount.get(o.task.node) || 0) + 1);

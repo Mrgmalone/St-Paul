@@ -35,7 +35,17 @@ const BUILD = {
   poleturner: { name: 'Spear-maker', w: 2, h: 2, wood: 40, time: 10, hp: 300, topH: 60 },
   smithy: { name: 'Blacksmith', w: 2, h: 2, wood: 50, time: 12, hp: 380, topH: 64 },
   armory: { name: 'Armory', w: 2, h: 2, wood: 50, time: 12, hp: 450, topH: 66 },
-  market: { name: 'Market', w: 3, h: 2, wood: 60, time: 14, hp: 400, topH: 48 }
+  market: { name: 'Market', w: 3, h: 2, wood: 60, time: 14, hp: 400, topH: 48 },
+  // Phase 4B: the alehouse, the houses of healing and prayer, the school and engineers, the stable, vineyard and orchard
+  alehouse: { name: 'Alehouse', w: 2, h: 2, wood: 30, time: 8, hp: 260, topH: 56 },
+  apothecary: { name: 'Apothecary', w: 2, h: 2, wood: 50, gold: 20, time: 12, hp: 350, topH: 64 },
+  church: { name: 'Church', w: 3, h: 3, wood: 80, stone: 80, gold: 60, time: 30, hp: 1200, topH: 130 },
+  abbey: { name: 'Abbey', w: 3, h: 3, wood: 100, stone: 160, gold: 120, time: 40, hp: 1800, topH: 150 },
+  school: { name: 'School', w: 3, h: 2, wood: 80, stone: 40, gold: 60, time: 24, hp: 700, topH: 70 },
+  engineerhut: { name: "Engineer's Hut", w: 2, h: 2, wood: 50, stone: 20, time: 12, hp: 400, topH: 60 },
+  stable: { name: 'Stable', w: 2, h: 2, wood: 60, time: 14, hp: 400, topH: 56 },
+  vineyard: { name: 'Vineyard', w: 2, h: 2, wood: 40, gold: 10, time: 10, hp: 200, topH: 30 },
+  orchard: { name: 'Orchard', w: 2, h: 2, wood: 40, gold: 10, time: 10, hp: 200, topH: 40 }
 };
 const TERRITORY = 560;
 const farms = [];
@@ -54,6 +64,7 @@ function canPlace(kind, c, r, dir = 0) {
   if (kind !== 'ironmine' && kind !== 'quarry' && Math.hypot(cx - k.x, cy - (k.y0 + k.y1) / 2) > TERRITORY) return false;
   if (kind === 'ironmine' && !rocks.some(rk => rk.iron && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
   if (kind === 'quarry' && !rocks.some(rk => !rk.iron && !rk.gone && Math.hypot(rk.x - cx, rk.y - 6 - cy) < 80)) return false;
+  if (kind === 'stable' && IND() && !nearFarm(cx, cy)) return false;   // the stable stands inside a farm
   if (kind === 'stairs' && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => { const o = structAt(c + dc, r + dr); return o && o.kind === 'highwall'; })) return false;
   for (let i = 0; i < d.w; i++) for (let j = 0; j < d.h; j++) {
     const cc = c + i, rr2 = r + j;
@@ -68,7 +79,7 @@ function makeBuildingObj(kind, c, r, dir = 0) {
   const d = Object.assign({}, BUILD[kind], dimsOf(kind, dir));
   const b = { id: nextId++, kind, team: 'player', name: d.name, c, r, w: d.w, h: d.h, dir,
     x0: c * TILE, y0: r * TILE, x1: (c + d.w) * TILE, y1: (r + d.h) * TILE, x: (c + d.w / 2) * TILE, y: (r + d.h) * TILE,
-    maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower', 'lookout', 'roundtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time, flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
+    maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower', 'lookout', 'roundtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time * learnTime(), flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
   if (kind === 'gtower') Object.assign(b, { range: 230, fireRate: 2.0, arrowDmg: 7, archerY: 112 });
   if (kind === 'stower') Object.assign(b, { range: 265, fireRate: 1.6, arrowDmg: 8, archerY: 146 });
   if (kind === 'lookout') Object.assign(b, { range: 320, fireRate: 1.7, arrowDmg: 8, archerY: 255 });
@@ -140,14 +151,16 @@ function assignBuilders(b) {
   }
   if (civs.length) commandBuild(civs, b);
 }
-const afford = d => res.wood >= (d.wood || 0) && res.gold >= (d.gold || 0) && res.stone >= (d.stone || 0);
-const pay = d => { res.wood -= d.wood || 0; res.gold -= d.gold || 0; res.stone -= d.stone || 0; };
-const lacking = d => res.wood < (d.wood || 0) ? 'wood' : res.stone < (d.stone || 0) ? 'stone' : 'gold';
+const cm = v => Math.round((v || 0) * learnCost());   // the school: building costs less
+const afford = d => res.wood >= cm(d.wood) && res.gold >= cm(d.gold) && res.stone >= cm(d.stone);
+const pay = d => { res.wood -= cm(d.wood); res.gold -= cm(d.gold); res.stone -= cm(d.stone); };
+const lacking = d => res.wood < cm(d.wood) ? 'wood' : res.stone < cm(d.stone) ? 'stone' : 'gold';
 const isLine = k => k === 'wall' || k === 'highwall' || k === 'moat';
 function startPlacing(kind) {
   if (!started || won) return;
   if (!unlocked(kind, false)) { showBanner(`The ${BUILD[kind].name} comes at stage ${stageOfItem(kind, false)}, the ${stageName(stageOfItem(kind, false))}.`, 3); return; }
   if (!afford(BUILD[kind])) { showBanner(`Not enough ${lacking(BUILD[kind])} for a ${BUILD[kind].name}.${lacking(BUILD[kind]) === 'stone' ? ' Build a Quarry beside a grey rock.' : ''}`, 3); return; }
+  { const why = indWhyNot(kind); if (why) { showBanner(why, 3.5); return; } }
   if ((kind === 'garden' || kind === 'stocks') && structures.filter(b => b.kind === kind && !b.dead && b.team === 'player').length >= 3) { showBanner(`You can have at most 3 ${kind === 'garden' ? 'gardens' : 'sets of stocks'}.`, 2.5); return; }
   tearing = false; tearButton();
   placing = { kind, start: null, dir: lastDir };
@@ -320,10 +333,10 @@ function drawBuilding(g, b, t) {
   }
   if (b.kind === 'farm' || b.kind === 'wheatfarm') drawFarm(g, b, P);
   else if (b.kind === 'mill') drawMill(g, b, P, t);
-  else if (b.kind === 'chapel') drawChapel(g, b, P);
+  else if (b.kind === 'chapel' || b.kind === 'church' || b.kind === 'abbey') drawChapel(g, b, P);
   else if (b.kind === 'garden') drawGarden(g, b, P);
   else if (b.kind === 'stocks') drawStocks(g, b, P);
-  else if (b.kind === 'hopfarm') drawHopFarm(g, b, P);
+  else if (b.kind === 'hopfarm' || b.kind === 'vineyard' || b.kind === 'orchard') drawHopFarm(g, b, P);
   else if (WORKSHOP[b.kind]) drawWorkshop(g, b, P);
   else if (b.kind === 'house') drawHouse(g, b, P, t);
   else if (b.kind === 'wall') drawWall(g, b, P);

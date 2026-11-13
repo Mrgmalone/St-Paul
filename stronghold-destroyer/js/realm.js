@@ -10,8 +10,8 @@ const rivalOf = o => o && o.owner !== undefined ? REALM.rivals[o.owner] || null 
 // what a rival builds at each stage, in order (kind, how many in all); placed on its castle ground
 const RIVAL_PLAN = {
   1: [['house', 3], ['farm', 2], ['woodhut', 1], ['granary', 1], ['gtower', 1]],
-  2: [['house', 4], ['farm', 3], ['quarry', 1], ['tavern', 1], ['wheatfarm', 1], ['chapel', 1], ['lookout', 1], ['house', 5]],
-  3: [['smithy', 1], ['ironmine', 1], ['market', 1], ['mill', 1], ['bakery', 1], ['stower', 1], ['house', 7], ['stower', 2]],
+  2: [['house', 4], ['farm', 3], ['quarry', 1], ['tavern', 1], ['wheatfarm', 1], ['chapel', 1], ['lookout', 1], ['mill', 1], ['house', 5]],
+  3: [['smithy', 1], ['ironmine', 1], ['market', 1], ['bakery', 1], ['stower', 1], ['school', 1], ['house', 7], ['stower', 2]],
   4: [['roundtower', 1], ['house', 9], ['bakery', 2]],
   5: [['greattower', 1], ['house', 11]]
 };

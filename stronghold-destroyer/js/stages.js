@@ -7,12 +7,12 @@ let stageN = 1, stageCheckT = 0, wageT = 0, wagesUnpaid = false;
 // which stage first allows a unit or building; anything not listed in any stage is always open
 const STAGE_OF_ITEM = (() => { const m = {}; for (const st of STAGES) { for (const k of st.unlock.units) m['u:' + k] = st.n; for (const k of st.unlock.buildings) m['b:' + k] = st.n; } return m; })();
 const stageOfItem = (kind, isUnit) => STAGE_OF_ITEM[(isUnit ? 'u:' : 'b:') + kind] || 1;
-const unlocked = (kind, isUnit, stage = stageN) => LEGACY || !FACKEY || stageOfItem(kind, isUnit) <= stage;
+const unlocked = (kind, isUnit, stage = stageN) => LEGACY || !FACKEY || stageOfItem(kind, isUnit) <= stage && !(isUnit && kind === 'trebuchet' && !trebOk());   // trebuchets also need the school's top level
 const stageName = n => STAGES[n - 1] ? STAGES[n - 1].name : '';
 
 // ---------- what a side has, measured against the next stage ----------
 const NEED_LABEL = { house: 'Houses', woodhut: "Woodcutter's huts", farmAny: 'Farms or wheat fields', quarry: 'Quarries', tavern: 'Taverns', smithy: 'Blacksmiths', market: 'Markets',
-  mill: 'Mills', bakery: 'Bakeries', stower: 'Stone towers' };
+  mill: 'Mills', bakery: 'Bakeries', stower: 'Stone towers', school: 'School' };
 function countBuilt(kind, team, owner) {
   const ok = b => !b.dead && b.done !== false && b.team === team && (owner === undefined || b.owner === owner);
   if (kind === 'farmAny') return structures.concat(farms).filter(b => ok(b) && (b.kind === 'farm' || b.kind === 'wheatfarm')).length;
