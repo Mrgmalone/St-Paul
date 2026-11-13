@@ -306,9 +306,12 @@ const R3D = (() => {
   function waterSpot(c, R) { for (let i = 0; i < 14; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (isSea(x, z)) return { x, z, y: SEA + 1 }; if (x > 0 && z > 0 && x < MW && z < MH && riverTile[Math.floor(z / TILE) * COLS + Math.floor(x / TILE)] === 1 && riverDist(x, z) < RIVER_HALF - 12) return { x, z, y: -2.6 }; if (inPond(x, z)) return { x, z, y: water.position.y + 0.6 }; } return null; }
   function landSpot(c, R) { for (let i = 0; i < 10; i++) { const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2; if (x > 20 && z > 20 && x < MW - 20 && z < MH - 20 && !blockedAt(x, z) && !inPond(x, z)) return { x, z }; } return null; }
   function shoreSpot(c, R) {
+    /* (4C) a river bank in view: a point beside the water, on either side */
+    if (RIVER.length) { const near = RIVER.filter(q => Math.abs(q.x - c.x) < R && Math.abs(q.y - c.z) < R); if (near.length) { const i = RIVER.indexOf(near[Math.floor(Math.random() * near.length)]), a = RIVER[Math.max(0, i - 1)], b = RIVER[Math.min(RIVER.length - 1, i + 1)], L = Math.hypot(b.x - a.x, b.y - a.y) || 1, s = Math.random() < 0.5 ? -1 : 1, off = RIVER_HALF + 8 + Math.random() * 14, x = RIVER[i].x - (b.y - a.y) / L * off * s, z = RIVER[i].y + (b.x - a.x) / L * off * s; if (x > 20 && z > 20 && x < MW - 20 && z < MH - 20 && !blockedAt(x, z)) return { x, z }; } }
     for (let i = 0; i < 12; i++) {
       if (pond && Math.hypot(pond.x - c.x, pond.y - c.z) < R + pond.rx) { const a = Math.random() * 6.28, k = 1.05 + Math.random() * 0.1, x = pond.x + Math.cos(a) * pond.rx * k, z = pond.y + Math.sin(a) * pond.ry * k; if (!blockedAt(x, z)) return { x, z }; }
       const x = c.x + (Math.random() - 0.5) * R * 2, z = c.z + (Math.random() - 0.5) * R * 2, e = Math.min(x, z, MW - x, MH - z); if (e > 4 && e < 22) return { x, z };
+      if (x > 0 && z > 0 && x < MW && z < MH) { const rd = riverDist(x, z); if (rd > RIVER_HALF + 4 && rd < RIVER_HALF + 26 && !blockedAt(x, z)) return { x, z }; }   /* (4C) the river's banks too */
     }
     return null;
   }
@@ -328,8 +331,8 @@ const R3D = (() => {
     if (due('flock', 22)) { const fl = life.flock.find(q => !q.on); if (fl) { const a = Math.random() * 6.28; Object.assign(fl, { on: true, t: 0, x: c.x - Math.cos(a) * R * 1.4, z: c.z - Math.sin(a) * R * 1.4, dx: Math.cos(a), dz: Math.sin(a), y: heightAt(c.x, c.z) + 120 + Math.random() * 40 }); fl.g.visible = true; fl.g.rotation.y = -a; } }
     for (const fl of life.flock) if (fl.on) { fl.t += dt; if (fl.t > (R * 2.8) / 70) { fl.on = false; fl.g.visible = false; continue; } fl.g.position.set(fl.x + fl.dx * 70 * fl.t, fl.y, fl.z + fl.dz * 70 * fl.t); fl.birds.forEach((b, i) => { const f = Math.sin(time * 9 + i * 1.3) * 0.7; b.l.rotation.x = f; b.r.rotation.x = f; }); }
     // butterflies flutter over the grass for a while
-    if (due('fly', 3.5)) { const p = landSpot(c, R * 0.8), b = life.fly.find(q => !q.on); if (p && b) { Object.assign(b, { on: true, t: 0, life: 8 + Math.random() * 8, x: p.x, z: p.z, a: Math.random() * 6.28 }); b.g.visible = true; } }
-    for (const b of life.fly) if (b.on) { b.t += dt; if (b.t > b.life) { b.on = false; b.g.visible = false; continue; } b.a += (Math.random() - 0.5) * dt * 4; b.x += Math.cos(b.a) * 16 * dt; b.z += Math.sin(b.a) * 16 * dt; const f = Math.sin(time * 22 + b.life) * 1.1; b.l.rotation.y = f; b.r.rotation.y = -f; b.g.position.set(b.x, heightAt(b.x, b.z) + 9 + Math.sin(b.t * 3) * 3, b.z); b.g.rotation.y = -b.a; }
+    if (due('fly', 3.5)) { const sh = shoreSpot(c, R * 0.8), p = sh || landSpot(c, R * 0.8), b = life.fly.find(q => !q.on);   /* (4C) near the water first, the meadow when no shore is in view */ if (p && b) { Object.assign(b, { on: true, t: 0, life: 8 + Math.random() * 8, x: p.x, z: p.z, a: Math.random() * 6.28, home: sh ? { x: p.x, z: p.z } : null }); b.g.visible = true; } }
+    for (const b of life.fly) if (b.on) { b.t += dt; if (b.t > b.life) { b.on = false; b.g.visible = false; continue; } b.a += (Math.random() - 0.5) * dt * 4; if (b.home && Math.hypot(b.x - b.home.x, b.z - b.home.z) > 30) { const to = Math.atan2(b.home.z - b.z, b.home.x - b.x), d = ((to - b.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; b.a += d * Math.min(1, dt * 3); }   /* (4C) it keeps to the bank where it appeared */ b.x += Math.cos(b.a) * 16 * dt; b.z += Math.sin(b.a) * 16 * dt; const f = Math.sin(time * 22 + b.life) * 1.1; b.l.rotation.y = f; b.r.rotation.y = -f; b.g.position.set(b.x, heightAt(b.x, b.z) + 9 + Math.sin(b.t * 3) * 3, b.z); b.g.rotation.y = -b.a; }
     // frogs sit by the water and hop now and then
     if (due('frog', 9)) { const p = shoreSpot(c, R), fr = life.frog.find(q => !q.on); if (p && fr) { Object.assign(fr, { on: true, t: 0, life: 12 + Math.random() * 10, x: p.x, z: p.z, hop: 0, nextHop: 1 + Math.random() * 3, a: Math.random() * 6.28 }); fr.g.visible = true; } }
     for (const fr of life.frog) if (fr.on) { fr.t += dt; if (fr.t > fr.life) { fr.on = false; fr.g.visible = false; continue; } fr.nextHop -= dt; let lift = 0; if (fr.nextHop <= 0) { fr.hop += dt; const k = fr.hop / 0.4; if (k >= 1) { fr.hop = 0; fr.nextHop = 2 + Math.random() * 4; fr.a += (Math.random() - 0.5) * 2; } else { lift = Math.sin(k * Math.PI) * 6; fr.x += Math.cos(fr.a) * 22 * dt; fr.z += Math.sin(fr.a) * 22 * dt; } } fr.g.position.set(fr.x, Math.max(heightAt(fr.x, fr.z), SEA) + lift, fr.z); fr.g.rotation.y = Math.PI / 2 - fr.a; }
@@ -398,7 +401,7 @@ const R3D = (() => {
     return ball;
   }
   // ---------- the river and its stone bridges ----------
-  let riverMesh = null;
+  let riverMesh = null, moatWater = null;
   function buildRiver() {
     if (!RIVER.length) return;
     const pos = [], uv = [], idx = [], W = RIVER_HALF + 10;
@@ -965,7 +968,8 @@ const R3D = (() => {
       const a2 = towerArcher(teamSide, 0.95); a2.root.position.set(-20, 169, 30); a2.root.rotation.y = -0.4; add(a2.root);
     } else if (b.kind === 'moat') {
       const nb = (dc, dr) => structures.some(o => !o.dead && o.kind === 'moat' && o.c === b.c + dc && o.r === b.r + dr);
-      const water = new T.MeshStandardMaterial({ color: C('#24506a'), roughness: 0.12, metalness: 0.2, envMap: envCube || null, envMapIntensity: 1.1, transparent: true, opacity: 0.92 });
+      /* (4C) one shared moat water for every square, with the same moving ripples as the river and the sea */
+      const water = moatWater || (moatWater = new T.MeshStandardMaterial({ color: C('#24506a'), roughness: 0.12, metalness: 0.2, envMap: envCube || null, envMapIntensity: 1.1, transparent: true, opacity: 0.92, normalMap: waterNormal(), normalScale: new T.Vector2(0.45, 0.45) }));
       const wm = box(32, 1.6, 32, water, 0, 0.6, 0); wm.castShadow = false; add(wm);
       const bank = std('#5e4a30', { roughness: 1 }), edge = stoneM(32, 4);
       if (!nb(0, -1)) add(box(32, 3, 3, edge, 0, 1, -15)); if (!nb(0, 1)) add(box(32, 3, 3, edge, 0, 1, 15));
@@ -2455,7 +2459,10 @@ const R3D = (() => {
   const glassInfo = () => ({ strength: +GLASS.strength.toFixed(3), target: GLASS.target, copies: GLASS.copies, visible: GLASS.visible, ema: +GLASS.ema.toFixed(4), quality, globes: cornerGroups.map(g => [Math.round(g.position.x), Math.round(g.position.z), g.userData.globe]) });
   const glassForce = v => { GLASS.force = v; if (v !== null) GLASS.strength = v; };
   const glassFeed = (sec, n) => { const want = (typeof FRAME !== 'undefined' ? FRAME.reflection : 0.55) || 0, fpsMin = (typeof FRAME !== 'undefined' && FRAME.fadeBelowFps) || 40; for (let i = 0; i < n; i++) glassFade(sec, want, fpsMin); return glassInfo(); };
-  return { glassInfo, glassForce, glassFeed, debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
+  // (tests) where the creatures are now, and the ripple offsets of each kind of water
+  const lifeSpots = () => ({ fly: life.fly.filter(q => q.on).map(q => [Math.round(q.x), Math.round(q.z)]), frog: life.frog.filter(q => q.on).map(q => [Math.round(q.x), Math.round(q.z)]), splash: life.splash.filter(q => q.on).map(q => [Math.round(q.x), Math.round(q.z)]) });
+  const waterInfo = () => { const off = m => m && m.normalMap ? [+m.normalMap.offset.x.toFixed(4), +m.normalMap.offset.y.toFixed(4)] : null; return { sea: off(seaMesh && seaMesh.material), river: off(riverMesh && riverMesh.material), pond: off(water && water.material), moat: off(moatWater), seaWave: waveU.value }; };
+  return { lifeSpots, waterInfo, glassInfo, glassForce, glassFeed, debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
 })();
 
 const speeches = [];
