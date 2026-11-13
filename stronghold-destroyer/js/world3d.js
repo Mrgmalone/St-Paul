@@ -2277,6 +2277,8 @@ document.getElementById('leftClose').onclick = () => { document.getElementById('
     menuPop: () => { $('menuPop').hidden = true; $('btnMenu').setAttribute('aria-expanded', 'false'); },
     moodPop: () => { $('moodPop').hidden = true; },
     goodsPop: () => { $('goodsPop').hidden = true; },
+    stagePop: () => { $('stagePop').hidden = true; },
+    rivalsPop: () => { $('rivalsPop').hidden = true; },
     banner: () => { clearTimeout(bannerTimer); $('banner').style.opacity = 0; $('banner').classList.remove('shown'); },
     help: () => $('btnHelpClose').click(),
     win: () => { $('win').style.display = 'none'; }

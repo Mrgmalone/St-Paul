@@ -345,3 +345,22 @@ body:not(.touch) #cmdbar .tonly{display:none}
 #rivalsPop .rvn{font-size:18px;font-weight:bold;color:#fff3d6}#rivalsPop .rvd{font-size:16px;color:var(--ink)}#rivalsPop .rvw{font-size:15px;color:var(--dim)}
 #rivalsPop .rve,#rivalsPop .rvf,#rivalsPop .rvx{font-size:13px;font-weight:bold;letter-spacing:1px;padding:2px 7px;border-radius:8px;margin-left:6px;vertical-align:2px}
 #rivalsPop .rve{background:#7a2a22;color:#ffd9cf}#rivalsPop .rvf{background:#2a5a32;color:#d6ffdc}#rivalsPop .rvx{background:#444;color:#ddd}
+
+/* ===================== Phase 4A: phones (a short side under about 500 points) =====================
+   The top bar is one row that scrolls sideways; the selection bar and the map shrink; info boxes fill the width,
+   sit under the top bar and scroll inside, so nothing runs off the screen. Every tap target stays 44 points or more. */
+@media (max-width:600px), (max-height:500px){
+  #top{flex-wrap:nowrap!important;min-height:50px;padding:3px 6px;gap:5px;align-items:center}
+  #status{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden;white-space:nowrap;scrollbar-width:none;flex:1 1 auto;gap:5px}
+  #status::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;padding:2px 8px 2px 5px;font-size:15px}
+  #cmdbar{left:6px;bottom:6px;padding:5px 6px;max-width:calc(100% - 140px)}
+  #cmdbar #selSum,#cmdbar #selBar{display:none}
+  #cmdbar #selbox{font-size:14px;line-height:1.2}
+  #cmdbar .btns{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:5px}
+  #cmdbar .btns button{min-height:44px;padding:4px 10px;font-size:15px;flex:0 0 auto}
+  #mini{width:124px;height:78px;right:6px;bottom:6px}
+  .pop,#stagePop,#rivalsPop,#moodPop,#goodsPop,#storePop{left:6px!important;right:6px!important;top:56px!important;transform:none!important;min-width:0!important;max-width:none!important;
+    width:auto!important;max-height:calc(100% - 66px)!important;overflow-y:auto!important;box-sizing:border-box}
+}
+@media (max-height:500px){ .pop,#stagePop,#rivalsPop,#moodPop,#goodsPop,#storePop{left:auto!important;width:min(480px,70vw)!important} }
