@@ -87,7 +87,7 @@ function raiseRing(k, n, team, opts = {}) {
   let made = 0;
   for (const [c, r] of tiles) {
     if (tileBlocked(c, r) || riverTile[r * COLS + c]) continue;
-    for (const u of units) if (!u.dead && Math.floor(u.x / TILE) === c && Math.floor(u.y / TILE) === r) { const f = nearestFree(c + 1, r + 1); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }
+    for (const u of units) if (!u.dead && !u.onWall && u.x > c * TILE - 12 && u.x < (c + 1) * TILE + 12 && u.y > r * TILE - 12 && u.y < (r + 1) * TILE + 12) { const f = nearestFree(c + 1, r + 1); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }   /* anyone the new wall would touch steps clear */
     const w = makeBuildingObj('wall', c, r);
     const hp = { wood: 300, brick: 600, stone: 900, thick: 1300 }[mat] || 300;
     Object.assign(w, { team, owner: opts.owner, fac: opts.fac, done: true, progress: 1, hp, maxHp: hp, castleRing: true, ringOf: k, mat, name: { wood: 'Palisade', brick: 'Brick Wall', stone: 'Stone Wall', thick: 'Thick Stone Wall' }[mat] });

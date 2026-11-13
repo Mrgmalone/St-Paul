@@ -127,7 +127,7 @@ function placeRivalBuilding(R, kind, c, r) {
   Object.assign(b, { team: R.team, owner: R.id, fac: R.fac, name: `${FACTIONS[R.fac].name} ${d.name}`, hp: Math.round(b.maxHp * 0.1) });
   if (kind === 'chapel') b.maxHp = Math.round(b.maxHp * facRule(R.fac, 'abbeyHpMul', 1));
   if (!isField(kind)) for (let i = 0; i < b.w; i++) for (let j = 0; j < b.h; j++) setBlock(c + i, r + j, 1);
-  for (const u of units) if (!u.dead && u.x > b.x0 - 6 && u.x < b.x1 + 6 && u.y > b.y0 - 6 && u.y < b.y1 + 6) { const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }
+  for (const u of units) if (!u.dead && u.x > b.x0 - 12 && u.x < b.x1 + 12 && u.y > b.y0 - 12 && u.y < b.y1 + 12) { const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }
   if (isField(kind)) { Object.assign(b, { done: true, progress: 1, hp: b.maxHp, amount: 10 }); farms.push(b); } else structures.push(b);   // fields are ready at once
   return b;
 }

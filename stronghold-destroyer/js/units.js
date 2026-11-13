@@ -141,8 +141,10 @@ function roadEntry() {
 function moveBy(u, mx, my) {
   curTeam = u.team;
   const r = Math.min(7, u.radius * 0.8), trapped = blockedAt(u.x, u.y);   // the same width the route planner allows, so a planned route always fits   // someone standing right inside a tree or a wall may always step out
-  if (trapped || !circleBlocked(u.x + mx, u.y, r)) u.x += mx;
-  if (trapped || !circleBlocked(u.x, u.y + my, r)) u.y += my;
+  // someone whose edge already overlaps a wall or building (a wall raised beside them) may slide free, as long as the centre stays clear
+  const edging = !trapped && circleBlocked(u.x, u.y, r);
+  if (trapped || !circleBlocked(u.x + mx, u.y, r) || edging && !blockedAt(u.x + mx, u.y)) u.x += mx;
+  if (trapped || !circleBlocked(u.x, u.y + my, r) || edging && !blockedAt(u.x, u.y + my)) u.y += my;
   u.x = clamp(u.x, 10, MW - 10); u.y = clamp(u.y, 10, MH - 10);
 }
 function aggro(u, r) {
