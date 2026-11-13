@@ -20,13 +20,13 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
         if (!t) { window.__tr.set(u, { x: u.x, y: u.y, len: 0, x0: u.x, x1: u.x, y0: u.y, y1: u.y, t0: time, mv: 0, n: 0, fight: 0, idleLen: 0, cmd: u.cmdT }); continue; }
         const d = Math.hypot(u.x - t.x, u.y - t.y); t.len += d; t.x = u.x; t.y = u.y;
         t.x0 = Math.min(t.x0, u.x); t.x1 = Math.max(t.x1, u.x); t.y0 = Math.min(t.y0, u.y); t.y1 = Math.max(t.y1, u.y);
-        t.n++; if (u.moving) t.mv++; if (u.combatT > 0 || u.attackAnim > 0 || (u.order === 'attack' && u.target && edgeDist(u, u.target) < 60)) t.fight++;
+        t.n++; if (u.moving) t.mv++; if (u.team !== 'player') { (t.tr = t.tr || []).push([Math.round(time), u.order, u.sub || '', u.target ? (u.target.type || u.target.kind) + ':' + u.target.team + '@' + Math.round(Math.hypot(u.target.x - u.x, u.target.y - u.y)) : '', u.post ? Math.round(Math.hypot(u.x - u.post.x, u.y - u.post.y)) : -1, u.path ? u.path.length : 0, u.raider ? 'R' : '', u.escort ? 'E' : '', u.scout ? 'S' : '', units.filter(o => o !== u && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < 24).length]); }   /* (trace for a flagged unit) */ if (u.combatT > 0 || u.attackAnim > 0 || (u.order === 'attack' && u.target && edgeDist(u, u.target) < 60)) t.fight++;
         const idle = u.order === 'idle' && !u.job && !(u.breakUntil > time) && !u.toHeal && (u.cmdT || -99) === t.cmd && !(u._busyT > time - 0.55);   // idle the whole time since the last look
         if (idle && t.prevIdle) t.idleLen += d;   // only movement while idle the whole time (a guard who chased a raider and just went idle again is not wandering)
         t.prevIdle = idle;
         if (time - t.t0 >= 10) {
           const span = Math.hypot(t.x1 - t.x0, t.y1 - t.y0);
-          if (t.len > 160 && span < 60 && t.mv > t.n * 0.6 && t.fight < t.n * 0.2 && !isMachine(u)) window.__note('circling ' + u.type + ' ' + u.team + ' ' + u.order, { at: [Math.round(u.x), Math.round(u.y)], walked: Math.round(t.len), span: Math.round(span), sub: u.sub || '', t: Math.round(time) });
+          if (t.len > 160 && span < 60 && t.mv > t.n * 0.6 && t.fight < t.n * 0.2 && !isMachine(u)) window.__note('circling ' + u.type + ' ' + u.team + ' ' + u.order, { at: [Math.round(u.x), Math.round(u.y)], walked: Math.round(t.len), span: Math.round(span), sub: u.sub || '', t: Math.round(time), trace: (t.tr || []).filter((x, i) => i % 2 === 0).map(x => x.join(' ')) });
           if (t.idleLen > 40) window.__note('idle wandering ' + u.type + ' ' + u.team, { at: [Math.round(u.x), Math.round(u.y)], moved: Math.round(t.idleLen), t: Math.round(time), guard: !!u.guardOf });
           window.__tr.set(u, { x: u.x, y: u.y, len: 0, x0: u.x, x1: u.x, y0: u.y, y1: u.y, t0: time, mv: 0, n: 0, fight: 0, idleLen: 0, cmd: u.cmdT });
         }
