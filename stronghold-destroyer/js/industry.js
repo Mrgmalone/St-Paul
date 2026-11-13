@@ -322,6 +322,7 @@ function indSiteHtml(b) {
   if (b.kind === 'mill') h += lnI('Mills allowed now', `${indMax('mill')}${stageN >= 3 ? ', each keeps 5 bakeries going' : ''}`);
   if (b.kind === 'bakery') h += lnI('Bakeries allowed', `${indMax('bakery')} (five for each mill)`) + (bakeryMulOf(b) > 1 ? lnI('Cy Young bakers', `${bakeryMulOf(b)} times the bread`) : '');
   if (isField(b.kind) || b.kind === 'farm') { const s = sentryOf(b); h += lnI('Sentry', s ? `${s.name} on watch` : '<span style="color:#ffb38a">none: this field needs a sentry</span>'); }
+  h += groupsHtml(b);
   if (b.kind === 'alehouse' || b.kind === 'tavern') h += lnI('Ale price', `${INDUSTRY.ale.prices[alePriceNow()]}${warNow && alePrice < 2 ? ' (raised: wartime)' : ''}`) + lnI('Serves', `${b.kind === 'alehouse' ? INDUSTRY.ale.alehouseServes : INDUSTRY.ale.tavernServes} people`);
   return h;
 }
@@ -332,12 +333,13 @@ function indSiteButtons(b) {
   if (b.kind === 'woodhut') h += B('iron+', 'More on iron') + B('iron-', 'More on wood');
   if (isField(b.kind) || b.kind === 'farm') h += B('sentry', 'Post a sentry');
   if (b.kind === 'alehouse' || b.kind === 'tavern') h += INDUSTRY.ale.prices.map((p, i) => `<button class="sm${alePrice === i ? ' on' : ''}" data-ind="ale:${i}">${p}</button>`).join('');
-  return `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${h}</div>`;
+  return `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${h}</div>` + groupsButtons(b);
 }
 function indAction(b, act) {
   if (act === 'fill') { let n = 0; while (staffOf(b) < indStaff(b.kind)) { const before = staffOf(b); siteAction(b, 'add'); if (staffOf(b) === before) break; n++; } if (n) floatText(b.x, b.y - (b.topH || 30) - 30, `+${n} workers`, '#9fe8a8'); }
   else if (act === 'iron+' || act === 'iron-') { b.ironChosen = true; b.ironN = clamp((b.ironN || 0) + (act === 'iron+' ? 1 : -1), 0, indStaff('woodhut')); }
   else if (act === 'sentry') postSentry(b);
+  else if (act.startsWith('escort:')) sendEscort(b, +act.slice(7));
   else if (act.startsWith('ale:')) { alePrice = +act.slice(4); showBanner(`Ale is now ${INDUSTRY.ale.prices[alePrice].toLowerCase()}: ${alePrice === 0 ? 'happy, but some will be drunk at work' : alePrice === 2 ? 'good gold, but your people are angry' : 'the fair middle'}.`, 3); }
   else if (act === 'study') startStudy('school');
   else if (act === 'doctor') startStudy('doctor');
@@ -393,5 +395,5 @@ function updateIndustry(dt) {
   if (stageN !== indStage) { const grew = indStage && stageN > indStage; indStage = stageN; if (grew) mergeOnGrowth(); renameAll(); relabelButtons(); }
   checkMarketLoss(); updateStudy(dt);
   indT -= dt; if (indT > 0) return; indT = 1;
-  renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealers(1);
+  updateGroups(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealers(1);
 }

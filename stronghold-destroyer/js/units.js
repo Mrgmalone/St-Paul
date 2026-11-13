@@ -246,6 +246,7 @@ function playerBrain(u) {
   if (u.type === 'catapult' || u.type === 'ballista' || u.type === 'trebuchet') { siegeBrain(u); return; }
   if (u.type === 'king') { kingBrain(u); return; }
   if (u.guardOf && time - (u.cmdT || -99) >= 30 && guardPost(u)) return;
+  if (u.escort && escortBrain(u)) return;   // walking with a work group
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
