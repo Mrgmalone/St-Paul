@@ -55,6 +55,8 @@ function moveBuilding(b, c, r) {   // nothing lost: the same building, carried t
   if (!field) for (let i = 0; i < b.w; i++) for (let j = 0; j < b.h; j++) setBlock(b.c + i, b.r + j, 0);
   Object.assign(b, { c, r, x0: c * TILE, y0: r * TILE, x1: (c + b.w) * TILE, y1: (r + b.h) * TILE, x: (c + b.w / 2) * TILE, y: (r + b.h) * TILE });
   if (!field) for (let i = 0; i < b.w; i++) for (let j = 0; j < b.h; j++) setBlock(c + i, r + j, 1);
+  if (!field) for (const u of units) { if (u.dead || u.inside || u.onWall || u.x < b.x0 - 6 || u.x > b.x1 + 6 || u.y < b.y0 - 6 || u.y > b.y1 + 6) continue;   /* anyone standing where it is set down steps aside */
+    const f = nearestFree(Math.floor(u.x / TILE), Math.floor(u.y / TILE)); if (f) { u.x = f.c * TILE + 16; u.y = f.r * TILE + 16; u.path = []; } }
   for (const u of units) if (!u.dead && (u.inside === b || u.job === b)) { u.path = []; if (u.inside === b) { u.x = b.x; u.y = b.y1 + 14; } }
   if (R3D.active) R3D.rebuildModel(b);
 }

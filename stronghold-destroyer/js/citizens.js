@@ -29,7 +29,7 @@ const VOICE = (() => {
 })();
 
 // ---------- growing: citizens are born in your houses and grow up; they cannot be bought ----------
-const GROW = { min: 180, max: 300 };   // seconds: 3 to 5 minutes
+const GROW = { min: 180, max: 300, room: 0.85 };   // seconds: 3 to 5 minutes; families grow until the houses are 85% full (fuller counts as crowded)
 const growing = [];   // { t, dur, home }
 const NAMES = ['Ada', 'Bram', 'Cora', 'Dunstan', 'Edith', 'Fenn', 'Gilda', 'Hal', 'Isolde', 'Jory', 'Kit', 'Lune', 'Maud', 'Ned', 'Osric', 'Pell', 'Quill', 'Rowan', 'Sabine', 'Tam', 'Ulric', 'Vera', 'Wat', 'Yara', 'Alder', 'Bess', 'Colm', 'Dora', 'Elric', 'Fay', 'Godric', 'Hild', 'Ivo', 'Joan', 'Kenric', 'Lark', 'Mabel', 'Nell', 'Odo', 'Piers'];
 let nameSeq = 0;
@@ -47,11 +47,12 @@ function updateGrowth(dt) {
   }
   growT -= dt; if (growT > 0) return; growT = 5;
   const people = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length;
-  if (people + growing.length >= popCap() || res.food < 20 || starving) return;
+  const room = Math.floor(popCap() * GROW.room);
+  if (people + growing.length >= room || res.food < 20 || starving) return;
   // each house (and the keep) raises one child at a time
   const homes = [playerKeep(), ...mineDone('house')].filter(Boolean);
   for (const h of homes) {
-    if (people + growing.length >= popCap()) break;
+    if (people + growing.length >= room) break;
     if (growing.some(g => g.home === h)) continue;
     growing.push({ t: 0, dur: GROW.min + Math.random() * (GROW.max - GROW.min), home: h });
   }
