@@ -180,6 +180,10 @@ their own; and the face for the People button.
 
 ## Where we left off (for a fresh session)
 
+**Latest (Phase 4B):** branch `upgrade-v2` holds Phase 4A (play link version 48) and Phase 4B steps B1 to B8, all built;
+the Phase 4B section above lists what each step does, the numbers to confirm, the conflicts, what was simplified and
+the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
+
 Gerald asked that, if the conversation runs out of room and restarts, work picks
 up from here. State as of the latest build (artifact version 31 or later,
 branch `stronghold-destroyer`):
