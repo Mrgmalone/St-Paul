@@ -62,11 +62,17 @@ I pick one at the start and it changes how I build. The computer plays the rival
 - Always on, cannot be turned off. A small panel in a top corner, clear but not covering play.
 - Gives timely tips based on the situation (high ground, traps, which direction raiders come from, build a tower here). Short, in your own words, credited to Sun Tzu's The Art of War. One tip at a time, not constant.
 
+## Phase 4A as built (details and every number: stronghold-destroyer/DESIGN-NOTES.md and js/settings.js)
+- The four factions are on the front page and play by their rules, for you and for the computer rivals.
+- The five castle stages grow your castle by themselves and lock the buttons to what each stage allows.
+- Four rivals, one per faction, grow from a shack by their own economy and raid from their own bases; one is a trading friend.
+- Rogue bandits belong to no rival. The phone layout is done (front page, side buttons, info boxes, top bar).
+
 ## Phases
 1. Foundation: save tests, split the one big file, fix idle behavior and circling, measure speed and the people cap. No look changes. (Done.)
 2. The new look and interface: true 3D with a fixed camera, the sheet's art direction, team colours, picture-first buttons, wider map with the gold frame, living water. (Done.)
 3. Fix-up (Gerald's list after Phase 2): soldiers rebuilt as moving, fighting 3D figures in the sheet's look (no flat pictures); the enemy in the Black Stone look; my start as a shack in the woods with a small wooden palisade; ground, roads, water, stone bridge and brick walls rebuilt in the sheet's style; dense forests with clear roads; the old menu, help screen and building panels restyled to match the new interface. (Done; waiting for Gerald's review.)
-4. The four peoples, rival factions (start screen, rival AI, trading friend), and the wildlife and detail effects.
+4. 4A: the four factions and the five castle stages (done, waiting for Gerald's review). 4B: industries and chains, random starts and fog of war, school and education, feast and market details, fire and repair, veteran stars, spoken alerts and the People tab, deeper rival intelligence, the Art of War advisor.
 5. Big map, random starts, fog of war.
 6. Castle stages, growth, absorbing buildings, unit unlocks, new buildings, tower weapons.
 7. Raids, combat effects and sounds, difficulty.

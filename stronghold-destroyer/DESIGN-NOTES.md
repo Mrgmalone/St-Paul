@@ -9,6 +9,48 @@ Gerald's rules for pausing when multiplayer is added:
 - In single player today, the game pauses on its own while a menu is being read
   (Help, Menu, mood report, goods list, building panels), unless enemies are close.
 
+## Phase 4A: the four factions and the five castle stages (branch upgrade-v2)
+
+Every number below lives in one file, `js/settings.js` (FACTIONS, STAGES, ECONOMY, RIVALS, ROGUES), so renaming or
+tuning is done there.
+
+**Factions (front page, four side by side)**
+- Cy Young (bread makers): bakeries make 4.5x the bread; food above 200 is sold every 10 seconds, 3 gold per 10.
+- Ticanologue (marketers): market buying prices are half (selling prices drop too where needed, so nothing can be
+  bought and sold back at a profit); the market costs 3x the wood (180).
+- Hekaranok (healers): room for twice the people and 10 civilians at the start; people at 65% health and 80% damage
+  (the king keeps full strength); soldiers below 35% health walk home (House of Prayer if built, else the keep), heal
+  12 a second (1.5x at the House of Prayer) and walk back to the exact spot; a Bell button calls every soldier home.
+- Psychana (sight and stealth): every unit notices enemies at 240 (others 110); berserker bands of fewer than 10 are
+  not drawn and not targeted unless within 300 of a tower or palisade tower that stands within 700 of its castle.
+- Everyone starts with the king on foot, the civilians (5, Hekaranok 10), the shack and palisade, 100 food (Hekaranok
+  120) and 80 wood. No soldiers for anyone.
+
+**Stages** (the castle grows by itself; stone and iron are spent, the rest only checked)
+
+| Into stage | People | Happiness | Food | Stone | Iron | Buildings |
+|---|---|---|---|---|---|---|
+| 2 Homestead | 12 | 50 | 150 | – | – | 3 houses, 1 woodcutter's hut, 1 farm or wheat field |
+| 3 Hold | 22 | 55 | 300 | 150 | – | 5 houses, 1 quarry, 1 tavern |
+| 4 Castle | 35 | 60 | 500 | 300 | 80 | blacksmith, market, mill, bakery |
+| 5 Stronghold | 50 | 65 | 800 | 500 | 200 | 2 stone towers (stand-in until the school) |
+
+Ground grows 2, 3, 2, 3 squares each direction; ring wall wood, brick, stone, thick stone; keep 1500, 2200, 3200, 4500,
+6500. Wages per minute: spearman and archer 1, swordsman and maceman 2, knight 4, ballista and ram 2, catapult 3,
+trebuchet 4; unpaid soldiers cost 8 happiness. Taxes x1, 1.2, 1.4, 1.7, 2 by stage.
+
+**Rivals**: four, one per faction, at fixed sites (north-east, east, south-east, south); one (never your faction) is a
+trading friend at random. Same stages and needs as you (happiness assumed met). They gather and build visibly; finished
+buildings also yield each minute. First raid after 10, 7.5 or 5.5 minutes (Easy, Medium, Hard), 75 seconds later for each
+next rival; then every 5, 4 or about 3 minutes each; at least 4 soldiers; siege engines only with 12 or more. A rival
+falls when its keep falls; you win when every hostile rival has fallen.
+
+**Waiting for a real building or unit (Phase 4B)**: the mill's five bakeries (any bakery counts now), the abbey (House
+of Prayer stands in), longbowmen (Psychana's sight uses 240 for now), berserkers (a swordsman in the berserker kit stands
+in), crossbowmen, foot knights (a maceman guards a new tower's door at stage 3), the stable, the school (2 stone towers
+stand in at stage 5), the Fletcher, granary expansion, engineers, escorted work groups, ladder men, flamethrowers, mobile
+trebuchets, and towers coming armed at stage 5.
+
 ## Where we left off (for a fresh session)
 
 Gerald asked that, if the conversation runs out of room and restarts, work picks

@@ -11,9 +11,9 @@ const sizes = process.argv.slice(2).map(Number).filter(Boolean); if (!sizes.leng
     const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); if (D3) await env.use3d(p, { drawMs: 0 }); else await p.route('**/three.min.js', r => r.abort());
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
-    await p.goto(GAME);
+    await p.goto(process.env.REAL ? env.GAME_REAL : GAME);   // REAL=1: the real game (four rivals); otherwise the older game, as Phase 1-3 were measured
     await p.evaluate(() => { window.__raf.splice(0).forEach(f => f(0)); window.__now = 0; });
-    await p.click('.civ[data-civ="legion"]');
+    if (process.env.REAL) { await p.click('.fac[data-fac="cyyoung"]'); await p.click('.fac[data-fac="cyyoung"] .fgo'); } else await p.click('.civ[data-civ="legion"]');
     if (process.env.LOGIC) await p.evaluate(() => { window.__logicOnly = true; }); if (process.env.PROF) await p.evaluate(() => { window.__prof = {}; });
     // wait for the graphics to finish each frame, so a frame's time includes its drawing (otherwise unfinished drawing piles up)
     await p.evaluate(() => { const c = document.querySelector('canvas#gl') || document.querySelector('#view canvas'); const buf = new Uint8Array(4); window.__gpuSync = () => { const cv = document.getElementById('gl'); if (!cv) return; const gl = cv.getContext('webgl2') || cv.getContext('webgl'); if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf); }; }); if (process.env.EVAL) await p.evaluate(process.env.EVAL); if (process.env.SKIP) await p.evaluate(n => { window.__skip = n; }, +process.env.SKIP);
