@@ -174,3 +174,10 @@ const SOLDIERS = {
 // keyboard stays at 620); edgeZone: how wide the edge band is (the deeper in, the faster, up to edgeSpeed); ease: how
 // gently it starts and stops (lower is gentler). boxHold: how long a finger rests before it draws a selection box (ms).
 const CONTROLS = { edgeSpeed: 260, edgeZone: 34, ease: 4.5, boxHold: 300 };
+
+// ---------- Phase 4C: moats ----------
+// MOAT_FILLERS: who may fill a moat (shovel it full until it is ordinary ground). Use the unit's kind or kit:
+// 'civ' citizens, 'spear' spearmen, 'flame' flamethrowers, 'sword' swordsmen, 'maceman', 'archer', 'longbow', 'crossbow',
+// 'berserker', 'knight' (knights and anyone on a horse are never allowed). Change this one line to change who may fill.
+const MOAT_FILLERS = ['civ', 'spear', 'flame'];
+const MOAT = { fillPerSecond: 18 };   // how fast one citizen fills (the moat's strength 160 goes in about 9 seconds)

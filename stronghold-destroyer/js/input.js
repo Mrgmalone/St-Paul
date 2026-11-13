@@ -135,6 +135,7 @@ function issueAt0(sx, sy) {
   for (const u of sel) if (u.type === 'civ') { u.job = null; u.manualT = time; }
   const w = toWorld(sx, sy), hit = pickScreen(sx, sy);
   const civs = sel.filter(u => u.type === 'civ'), sold = sel.filter(u => u.type !== 'civ');
+  if (IND() && hit && hit.kind === 'moat' && sel.some(canFillMoat)) { commandFill(sel.filter(canFillMoat), hit); const rest = sel.filter(u => !canFillMoat(u)); if (rest.length) commandMove(rest, w.x, w.y); return true; }   /* fill a moat: only those allowed (MOAT_FILLERS) */
   if (hit && hit.team === 'enemy') {
     const rams = sold.filter(u => u.type === 'ram'), fighters = sold.filter(u => u.type !== 'ram');
     if (hit.x0 !== undefined) { if (sold.length) commandAttack(sold, hit); }
@@ -175,7 +176,8 @@ canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse') {
     if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
-    if (e.button === 0) { drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false }; if (!placing && !tearing) holdStart(p); }
+    if (e.button === 0) { drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false }; if (!placing && !tearing) holdStart(p);
+      if (IND() && placing && isLine(placing.kind) && !placing.start) { placeAt(p.x, p.y, false); drag.lineStart = true; } }   /* a wall drawn with the mouse held down starts here */
     else if (e.button === 2) { if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
   } else touchDown(p);
@@ -201,6 +203,7 @@ function touchDown(p) {
 }
 function touchMove(p) {
   holdMove(p);
+  if (TOUCH.mode === 'place' && pointers.size < 2) recordRoute(p.x, p.y);
   if (TOUCH.mode === 'place') { if (pointers.size >= 2) { TOUCH.mode = 'two'; Object.assign(TOUCH, twoInfo()); TOUCH.z0 = cam.z; TOUCH.d0 = TOUCH.d; } else { mouse.x = p.x; mouse.y = p.y; return; } }
   if (TOUCH.mode === 'press' && Math.hypot(p.x - TOUCH.sx, p.y - TOUCH.sy) > 12) { TOUCH.mode = 'pan'; clearTimeout(TOUCH.hold); }
   if (TOUCH.mode === 'pan') {
@@ -258,7 +261,7 @@ document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; docu
 canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
-  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; holdMove(p); }
+  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; holdMove(p); if (drag && placing) recordRoute(p.x, p.y); }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
@@ -275,7 +278,7 @@ function endPointer(e) {
   if (orbit) { orbit = null; pointers.delete(e.pointerId); return; }
   if (holdEnd()) { drag = null; pointers.delete(e.pointerId); return; }   /* held a person: his card is open */
   if (drag && pointers.has(e.pointerId) && tearing && !drag.box) { tearAt(p.x, p.y); drag = null; pointers.delete(e.pointerId); return; }
-  if (drag && pointers.has(e.pointerId) && placing && !drag.box) { placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }
+  if (drag && pointers.has(e.pointerId) && placing && !drag.box) { if (!(drag.lineStart && Math.hypot(p.x - drag.sx, p.y - drag.sy) < 12)) placeAt(p.x, p.y, drag.shift && !drag.touch); drag = null; pointers.delete(e.pointerId); return; }   /* a plain click starts a wall and waits for the second click */
   if (drag && pointers.has(e.pointerId)) {
     if (drag.box) {
       const bx0 = Math.min(drag.sx, p.x) - 8, bx1 = Math.max(drag.sx, p.x) + 8, by0 = Math.min(drag.sy, p.y) - 10, by1 = Math.max(drag.sy, p.y) + 10;

@@ -2054,6 +2054,7 @@ const R3D = (() => {
     for (const st of stumps) if (!stumpSeen.has(st)) { stumpSeen.add(st); const s = cyl(3.2 * st.s, 3.8 * st.s, 5, woodVM(6, 5), st.x, heightAt(st.x, st.y) + 2.5, st.y + 4, 8); scene.add(s); }
     for (const b of bushes) {
       let md = bushModels.get(b); if (!md) { md = bushModel(b); bushModels.set(b, md); }
+      if (b.cleared) { if (md.g.visible) md.g.visible = false; continue; }   /* cleared away for a wall */
       const n = Math.ceil(b.amount / 11); if (n !== md.shown) { md.shown = n; md.berries.count = Math.min(14, n); }
     }
     for (const f of fires) if (f.m3) {

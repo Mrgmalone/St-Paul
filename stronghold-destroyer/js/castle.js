@@ -72,7 +72,7 @@ function canPlace(kind, c, r, dir = 0) {
     if (cc < 1 || rr2 < 1 || cc >= COLS - 1 || rr2 >= ROWS - 1 || blocked[rr2 * COLS + cc] || gate[rr2 * COLS + cc]) return false;
     const x0 = cc * TILE, y0 = rr2 * TILE;
     if (farms.some(fm => x0 < fm.x1 && x0 + TILE > fm.x0 && y0 < fm.y1 && y0 + TILE > fm.y0)) return false;
-    if (bushes.some(b => b.x > x0 - 8 && b.x < x0 + TILE + 8 && b.y > y0 - 8 && b.y < y0 + TILE + 8)) return false;
+    if (bushes.some(b => !b.cleared && b.x > x0 - 8 && b.x < x0 + TILE + 8 && b.y > y0 - 8 && b.y < y0 + TILE + 8)) return false;
   }
   return true;
 }
@@ -275,7 +275,9 @@ function placeAt(sx, sy, keepGoing) {
   if (isLine(kind)) {
     if (!placing.start) { placing.start = { c, r }; showBanner('Now click where the wall should end.', 3); return; }
     let first = null, short = false;
-    for (const t of wallLine(placing.start.c, placing.start.r, c, r)) {
+    const route = IND() && placing.route && placing.route.length > 1 ? routeTiles(placing.route.concat([{ c, r }])) : wallLine(placing.start.c, placing.start.r, c, r);   /* the exact stroke drawn */
+    for (const t of route) {
+      if (IND()) clearForWall(t.c, t.r);   /* trees, loose rocks and bushes in the way are cleared, not walked round */
       if (!canPlace(kind, t.c, t.r)) continue;
       if (!afford(d)) { short = true; break; }
       pay(d); const b = createBuilding(kind, t.c, t.r); if (!first) first = b;

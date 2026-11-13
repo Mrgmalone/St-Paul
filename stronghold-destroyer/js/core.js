@@ -620,7 +620,7 @@ function doHit(u) {
   let dmg = adjHit(t, Math.round(u.dmg * RR(0.85, 1.15) * (u.team === 'enemy' && lordNear(u) ? 1.2 : 1) * armorMul(t, u)), u, 'melee');   /* stars, lessons, horses, flame */
   if (u.kit === 'flame') for (let i = 0; i < 5; i++) spawn('sparkR', u.x + u.facing * RR(8, 30), u.y - RR(14, 28), u.y);
   if (isWall(t) && u.type !== 'ram' && t.kind !== 'moat') dmg = Math.max(1, Math.round(dmg * WALL_RESIST));
-  if (t.kind === 'moat' && u.type === 'ram') return;
+  if (t.kind === 'moat' && (u.type === 'ram' || !canFillMoat(u))) return;   /* only the moat-fillers can shovel it full */
   t.hp -= dmg; t.flash = 1;
   AudioSys.play(u.type === 'ram' ? 'boom' : t.x0 !== undefined ? (t.kind === 'tower' || t.kind === 'house' || t.kind === 'gate' ? 'woodHit' : 'stoneHit') : swordish(u) ? 'clash' : 'stab', t.x, t.y - 16); AudioSys.combat(t.x, t.y);
   const c = hitCenter(t);

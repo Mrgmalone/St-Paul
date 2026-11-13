@@ -18,6 +18,9 @@ function adjHit(t, dmg, from, how) {
   if (from && from.kind === 'unit') from.fightT = time; t.fightT = time;
   // a soldier filling a moat cannot be hit while he does it
   if (t.order === 'attack' && t.target && t.target.kind === 'moat' && how !== 'stone') return 0;
+  if (t.order === 'fill' && how !== 'stone') return 0;
+  // flamethrowers cannot be hit by those filling a moat across the water
+  if (t.kit === 'flame' && from && (from.order === 'fill' || from.order === 'attack' && from.target && from.target.kind === 'moat')) return 0;
   dmg = dmg * strongMul(from) / toughMul(t);
   // flamethrowers: longbows cannot hit them, plain archers only a little
   if (t.kit === 'flame' && how === 'arrow') { if (from && from.kit === 'longbow') return 0; if (from && from.type === 'archer' && !from.kit) dmg *= 0.5; }

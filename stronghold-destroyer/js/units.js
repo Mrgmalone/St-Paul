@@ -183,7 +183,7 @@ function attackStep(u, dt) {
         const end = u.path.length ? u.path[u.path.length - 1] : u;
         if (Math.hypot(end.x - ap.x, end.y - ap.y) > 40) {
           let wb = null, wd = 200;
-          for (const b of structures) if (!b.dead && hostile(b.team, u.team) && isWall(b) && !(b.kind === 'moat' && isMachine(u))) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }
+          for (const b of structures) if (!b.dead && hostile(b.team, u.team) && isWall(b) && !(b.kind === 'moat' && !canFillMoat(u))) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }   /* only the moat-fillers go at a moat */
           if (wb) { if (!u.goal) u.goal = t; u.target = wb; u.path = []; u.repath = 0; return; }
         }
       }
@@ -315,7 +315,7 @@ function enemyBrain(u, dt) {
       const end = u.path.length ? u.path[u.path.length - 1] : u;
       if (Math.hypot(end.x - ap.x, end.y - ap.y) > 50) { // walled off: smash the nearest building in the way
         let wb = null, wd = 1e9;
-        for (const b of structures) if (!b.dead && b.team === 'player' && b.kind !== 'keep' && b.kind !== 'pit' && !(b.kind === 'moat' && isMachine(u))) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }
+        for (const b of structures) if (!b.dead && b.team === 'player' && b.kind !== 'keep' && b.kind !== 'pit' && !(b.kind === 'moat' && !canFillMoat(u))) { const d = edgeDist(u, b); if (d < wd) { wd = d; wb = b; } }
         if (wb) { u.order = 'attack'; u.target = wb; u.repath = 0; }
       }
     }
@@ -358,6 +358,7 @@ function fellTree(t) {
 const floats = [];
 function floatText(x, y, text, col) { floats.push({ x, y, text, col, t: 0 }); }
 function civBrain(u, dt) {
+  if (u.order === 'fill') { fillBrain(u, dt); return; }
   if (u.order === 'firefight') { fireBrain(u, dt); return; }
   if (u.order === 'repair') { repairBrain(u, dt); return; }
   if (u.order === 'craft') { craftBrain(u, dt); return; }
@@ -655,6 +656,8 @@ function settleSpot(u) {
     u.order = 'move'; u.dest = { x, y }; u.path = [{ x, y }]; u.stuckT = 0; u._pd = null; return;
   }
 }
+// who may fill a moat (MOAT_FILLERS in settings.js); the older test game keeps its old rule (everyone but siege engines)
+function canFillMoat(u) { if (!IND()) return !isMachine(u); if (!u || isMachine(u) || u.type === 'knight' || u.mounted) return false; return MOAT_FILLERS.includes(u.kit || u.type); }
 function separate() {   // people standing on each other step apart; only neighbours are compared (the nearby grid)
   for (const a of units) {
     if (a.dead || a.onWall || a.inside) continue;
