@@ -162,8 +162,10 @@ function rivalRaid(R) {
   if (big) { const sk = ['catapult', 'ram', 'trebuchet'].filter(t => stageOfItem(t, true) <= R.stage)[0]; if (sk) { const c = RIVAL_COST[sk]; if (Object.entries(c).every(([kk, v]) => (R.res[kk] || 0) >= v)) { for (const [kk, v] of Object.entries(c)) R.res[kk] -= v; const fr = nearestFree(Math.floor(R.keep.x / TILE), Math.floor(R.keep.y1 / TILE) + 2); if (fr) go.push(rivalUnit(R, sk, fr.c * TILE + 16, fr.r * TILE + 16)); } } }
   // a route through way-points along a planned way, bent a little each time so raids do not all come the same way
   const ap = approachPoint({ x: R.keep.x, y: R.keep.y1 + 40, radius: 11 }, k), pth = findPath(R.keep.x, R.keep.y1 + 40, ap.x, ap.y);
-  if (pth.length < 4) return;
-  const way = []; for (let i = 6; i < pth.length - 3; i += 8) way.push({ x: pth[i].x + RR(-40, 40), y: pth[i].y + RR(-40, 40) });
+  if (pth.length < 2) return;
+  // a way-point about every 380 points along the way, each nudged a little
+  const way = []; let acc = 0; for (let i = 1; i < pth.length; i++) { const a = pth[i - 1], b2 = pth[i], L = Math.hypot(b2.x - a.x, b2.y - a.y); for (let d = 380 - acc; d < L - 120; d += 380) way.push({ x: a.x + (b2.x - a.x) * d / L + RR(-40, 40), y: a.y + (b2.y - a.y) * d / L + RR(-40, 40) }); acc = (acc + L) % 380; }
+  if (!way.length) way.push({ x: (R.keep.x + ap.x) / 2, y: (R.keep.y1 + ap.y) / 2 });
   for (const u of go) { u.raider = true; u.order = 'raid'; u.repath = 0; u.path = []; u.route = way.map(w => ({ x: w.x + RR(-24, 24), y: w.y + RR(-24, 24) })); }
   raidPing = { x: R.keep.x, y: R.keep.y, t: 0 };
   showBanner(`<b>${R.name}</b> (${FACTIONS[R.fac].name}) sends ${go.length} soldiers against you${big ? ', with siege engines' : ''}!`, 4);
@@ -231,11 +233,11 @@ function updateFriendTrade(dt) {   // tell you once, when you first have a marke
 // ---------- rogue bandits: no one's men ----------
 // Small bands come in from the edge of the map, make for your nearest store, steal and run off the map again.
 // They fight whoever stands in their way (a rival's people too); kill them before they get away with the goods.
-function spawnRogues() {
+function spawnRogues(from) {   // from: a set place to come in from (tests); otherwise an edge far from every camp
   const k = playerKeep(); if (!k) return;
   const n = ROGUES.band[0] + Math.floor(Math.random() * (ROGUES.band[1] - ROGUES.band[0] + 1));
   // an edge point far from every camp, on the land
-  let at = null;
+  let at = from || null;
   for (let t = 0; t < 40 && !at; t++) {
     const side = Math.floor(Math.random() * 4), f = 0.1 + Math.random() * 0.8;
     const E = 230, x = side === 0 ? f * MW : side === 1 ? MW - E : side === 2 ? f * MW : E, y = side === 0 ? E : side === 1 ? f * MH : side === 2 ? MH - E : f * MH;   // well inside the land, clear of the shore
