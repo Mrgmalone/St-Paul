@@ -2545,6 +2545,7 @@ document.getElementById('leftClose').onclick = () => { document.getElementById('
     moodPop: () => { $('moodPop').hidden = true; },
     goodsPop: () => { $('goodsPop').hidden = true; },
     stagePop: () => { $('stagePop').hidden = true; },
+    trophyPop: () => { if (typeof closeTrophy === 'function') closeTrophy(); else $('trophyPop').hidden = true; },
     rivalsPop: () => { $('rivalsPop').hidden = true; },
     banner: () => { clearTimeout(bannerTimer); $('banner').style.opacity = 0; $('banner').classList.remove('shown'); },
     help: () => $('btnHelpClose').click(),
@@ -2574,4 +2575,3 @@ function setPaused(want) {
 document.getElementById('btnPause').onclick = () => setPaused(!paused);
 document.getElementById('btnResume').onclick = () => setPaused(false);
 let camSpin = 0, zoomAnim = null; const camVel = { x: 0, y: 0 };
-    trophyPop: () => { if (typeof closeTrophy === 'function') closeTrophy(); else $('trophyPop').hidden = true; },
