@@ -487,7 +487,8 @@ function spawnPlayerPeople(army, nCiv = 5) {
   if (army) [['sword', 300, 1000], ['sword', 334, 1022], ['sword', 368, 1044], ['spear', 300, 1054], ['spear', 336, 1076]]
     .forEach(([k, x, y]) => makeUnit('player', k, x + HOME.dx, y + HOME.dy));
   const spots = [[110, 1060], [146, 1070], [182, 1062], [218, 1072], [254, 1058], [120, 1096], [156, 1104], [192, 1098], [228, 1106], [264, 1094]];   // a second row for the healers' doubled people
-  for (let i = 0; i < nCiv; i++) { const [x, y] = spots[i % spots.length]; makeUnit('player', 'civ', x + HOME.dx + Math.floor(i / spots.length) * 20, y + HOME.dy); }
+  for (let i = 0; i < nCiv; i++) { const [x, y] = spots[i % spots.length], px = x + HOME.dx + Math.floor(i / spots.length) * 20, py = y + HOME.dy, f = blockedAt(px, py) || circleBlocked(px, py, 8) ? nearestFree(Math.floor(px / TILE), Math.floor(py / TILE)) : null;
+    makeUnit('player', 'civ', f ? f.c * TILE + 16 : px, f ? f.r * TILE + 16 : py); }   // never on the campfire or anything else solid
   // (tests only) enemy guards at their posts
   if (army) [['sword', 1528, 392], ['spear', 1538, 486], ['sword', 1618, 522], ['spear', 1734, 492], ['sword', 1728, 352]]
     .forEach(([k, x, y]) => { const g = makeUnit('enemy', k, x + EXP, y); g.maxHp = g.hp = Math.round(g.hp * 0.85); });
