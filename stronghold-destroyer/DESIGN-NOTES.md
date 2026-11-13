@@ -274,6 +274,12 @@ Settings, Help, Quit, taxes, hints; phone held both ways and iPad), tMatch (setu
 games in a row, the winning rule by count), tFrame (the table, globes, the glass and its fading under a low frame rate),
 tWater.
 
+**Speed (Phase 4C, measured alone, the same way as before; frame time in a software-drawn test browser, lower is faster,
+so only the comparison matters):** 100 people: Phase 3 2,269 (two runs averaged), 4B 2,008, 4C 2,232. 800 people: Phase 3
+4,326, 4B 3,748, 4C 3,745. Phase 3's speed holds (level at 100, 13% faster at 800). Against 4B, 4C is about 11% slower at
+100 people: the wider map accounts for about 7 of that (4C at the old width: 2,084) and the glass about 1 (4C with the
+reflection off: 2,214; the test's camera sits near the west edge, where the glass is in view).
+
 **Settings to know (all in js/settings.js):** CONTROLS (scrolling), MOAT_FILLERS and MOAT, SPIKES, FRAME (globes,
 reflection strength, fade frame rate, table size), RIVALS (rival defaults; the front page sets the count).
 
