@@ -56,6 +56,128 @@ with no one stuck, circling, frozen or drifting. Speed in the software 3D test (
 faster), Phase 3 then 4A, measured turn about with nothing else running: 100 people 2,186 then 1,962; 800 people 3,873
 then 3,689.
 
+## Phase 4B: industries, citizens, soldiers, fire, fog, rivals, advisor (branch upgrade-v2)
+
+All numbers live in `js/settings.js` (INDUSTRY, SOLDIERS) or at the top of each new file. None of this runs in the older test
+game (`?testArmy=1`). Steps were built in order B1 to B8 and saved one by one.
+
+**B1 Industries** (`js/industry.js`, `js/insidepics.js`)
+- Wood yard (the Woodcutter's Hut grows): huts allowed 4, 3, 2, 1, 1 by stage, holding 2, 5, 10, 20, 25 people; extra
+  huts merge into the busiest ones when the castle grows. From the Hold it is the Wood and Iron Yard: the blacksmith joins,
+  40% of the people work iron by default (at the Stronghold 15 on wood, 10 on iron; More on iron / More on wood buttons),
+  and wagons carry the woodcutters 1.6x faster and up to 1,100 points into the forest (a wagon and horse stand by it).
+- Arrows cost 0.1 wood, bolts 1 wood; with no wood archers tip arrows with stone (80% damage, no quarry needed).
+- Quarries: from the Homestead, at most 2, 10 people each. Oxen per quarry 1, 1, 2 (Castle, free), 2; each eats 2 to 5 food
+  a minute; a lost ox comes from a farm, or is bought (40 food and 10 gold at the Homestead, up to 120 and 50). On foot,
+  stone can be carried only from rocks within 320 points of the keep.
+- Animal farm: starts with 2 cows, 2 pigs, 2 oxen, 3 chickens, 1 turkey, 1 sheep; they breed while a keeper works; bulls
+  become oxen; hides give leather every 45 s. The Fletcher (was the Bowyer) needs 2 cows; 2 people. The stable (Hold) stands
+  in a farm, needs 4 people and breeds a horse every 70 s (up to 8).
+- Wheat fields: 5, 5, 3, 2, 2 allowed; 3, 5, 7, 10, 10 people; 2 come by themselves. Each field and farm should have a
+  sentry (Post a sentry button; the alerts remind you).
+- Mill (from the Homestead): 2 mills of 2 people before the Hold, then 1 mill of 3 that keeps 5 bakeries of 3 going. A miller
+  grinds about 15 flour a minute; a baker makes about 6 bread a minute from 3 flour (Cy Young 4.5x).
+- Granary: the keep holds 150 food, each granary 300 (800 once expanded, from the Hold: 60 wood, 40 stone). Overfull for 60 s
+  brings bugs: the extra spoils 3% a second, someone falls ill every 20 s, and after 2 minutes the sickest die every 30 s.
+  Rest the farms (their workers wait by the fire, no penalty) or sell food.
+- Alehouse (stage 1, 1 person, brews from wheat, serves 8) and tavern (Homestead, serves 15). Price Cheap / Fair / Dear:
+  mood +10 / +8 / -6 at full cover; 0.5 / 1 / 1.8 gold per ale drunk; cheap ale makes some workers drunk (half speed, 30 s).
+  In wartime the price goes up a step by itself.
+- Feast (Hold): never by itself. Needs 10 grapes (Vineyard), 10 apples (Orchard), 4 chickens, 2 turkeys, 1 cow, 1 sheep, and
+  gold of at least 200 and more than all the taxes gathered this game (1.1x). +40 mood for 6 minutes, nothing upsets them,
+  twice the work.
+- Market: one only; prices from what goods cost to make: buy 2.5x and sell 1.2x (school level 2: 2.0x / 1.5x; level 3:
+  1.8x / 1.6x); food costs the same to buy and to sell (1.5 gold each); mood still moves prices (-25% to +40%); Ticanologue
+  pays half. Losing it costs 30 mood.
+- School (Hold, one): 3 levels (150, 300, 600 gold; 1, 1.5, 2 minutes): each wastes 10% less material, builds 10% cheaper
+  and 15% quicker; level 2 trades better. Must stand before the Stronghold. Trains engineers (40 gold; 4 per Engineer's
+  Hut). Trebuchets need the Stronghold and level 3.
+- Apothecary (Homestead), House of Prayer, Church (Hold), Abbey (Castle): the sick within 420 to 720 points recover where
+  they are (1.5x to 3x the keep's speed) and the wounded mend; they cheer 10, 20, 35, 50 people. At the Stronghold the
+  apothecary's doctor can learn more (400 gold, 2 minutes: twice as fast). Hekaranok's abbey is 1.5x stronger.
+- Building boxes show a still picture of the inside (drawn in code; timber walls early, stone from the Hold).
+
+**B2 Escorted work groups** (`js/workgroups.js`): from the Hold a yard's woodcutters go out in groups of five and each
+quarry's ox cart is a group; each wants a swordsman, spearman or archer (never a flamethrower). The box shows "Group one
+needs a soldier" with an Escort button; a soldier idle for a minute joins a group by himself; your own order takes him off.
+
+**B3 Citizens** (`js/citizens.js`): citizens grow in houses (each house and the keep raise one at a time, 3 to 5 minutes)
+and cannot be bought; the killed are replaced the same way; new ones go to work by themselves; every building gets one
+worker before any gets a second; jobless citizens gather within 750 points of the keep; 3 study while the school teaches.
+People tab (face button, bottom left): counts, growing up, in school, work, everyone; scrolls; pauses the game. Quick tap:
+the trade's icon (a soldier: name, stars, health). Hold 1 second: the person speaks and his card opens (happiness and why,
+education, work, worries, earnings and tax) beside him on an iPad, sliding up from the bottom on a phone. Needs alerts
+(top left) for people and industries; the most urgent is spoken. One voice for alerts and advisor (Menu: Voice on/off).
+
+**B4 Soldiers** (`js/soldiers.js`): a star per battle survived (up to 100; bronze, silver from 10, gold from 25, pale from 50,
+white at 100; +0.8% damage and +0.5% toughness each). Soldier lessons at the school: 5 levels (120 to 720 gold), numbers
+hidden (+6% damage, +5% toughness a level). Longbowman (Homestead: bow + 15 gold; range 240, sees 2x), Crossbowman (Hold:
+bow + 2 iron + 15 gold; 22 damage, strikes riders), Berserker (Psychana only, Hold: mace + 2 leather + 10 gold),
+Flamethrowers (Castle: a squad of 10 for one foot knight's cost: sword + armor + 20 gold). Flamethrowers are fast; longbows
+cannot hit them and archers do half; their fire cannot kill but their knife kills archers; they set buildings alight; they dig
+a short moat when they stop in the field; a soldier filling a moat cannot be hit; they never guard or escort. Knights: on foot
+from the Hold; from the Castle a knight takes a stable horse if there is one (the horse takes 180 damage first unless a
+crossbow or ballista bolt hits the rider). Lookouts get a longbowman from the Homestead (range 420, two shots). Round and
+Great Towers come empty: ballista 400 gold + 150 wood, trebuchet 800 gold + 300 wood + 100 stone (Stronghold and school
+level 3).
+
+**B5 Fire and repair** (`js/fire.js`): alarm (banner, bell, spoken); up to 4 citizens fetch water from the nearest Water Pot
+(stage 1, 10 wood, one keeper; it holds more every 3 minutes, up to 3x) or the river, and throw it on the fire; school levels
+speed this. Unfought for 10 s, half the building burns; people inside burn or flee. Damage is mended by engineers (4x the
+building speed) or the building's workers or other citizens (half speed, so twice as long). A destroyed building is rebuilt
+on the same spot once its cost can be paid, taking twice as long; torn-down ones are not.
+
+**B6 Start, fog and sight** (`js/startfog.js`): you start at one of five places (the west meadow or a rival site) at random;
+rivals take the other four (`?start=0..4` pins it for testing). Fog of war: land not yet seen is dark and hides rivals, their
+buildings and their people (map and minimap); once seen it stays seen. Sight: citizens 220, soldiers 320, archers 360,
+longbowmen 720, keep 560, towers their range + 40, a tower with a ballista 720; Psychana's soldiers see like longbowmen.
+Newcomers walk in along the nearest road. The map stays 128 x 80 squares.
+
+**B7 Rivals** (`js/rivals4b.js`): same new buildings at the same stages; citizens grow (pace by difficulty); granaries spoil;
+they fight fires and mend; escorted woodcutters from the Hold; mounted knights with a stable; archers become longbowmen and
+crossbowmen; one flamethrower squad with a large army; soldier lessons at their school; ballistas on their great towers; a
+scout every 200 s; each raid's last leg comes from a different side; surplus wood or food traded through the friend for stone,
+iron or gold every 2 minutes; trebuchets only after their school's top level.
+
+**B8 The Art of War advisor** (`js/advisor.js`): top corner of the map, always on; every 40 s one short plain tip chosen from
+what is happening (granary, fire, raids, scouting, morale, wages, escorts, school, horses); shown and spoken (urgent alerts
+speak first). Our own words, no quotations.
+
+**Proposed numbers (Gerald to confirm or change; each is one line in settings.js)**
+- Yard huts at levels 1 and 2: 4 huts of 2, then 3 yards of 5.
+- Tower engines: ballista 400 gold + 150 wood; trebuchet 800 gold + 300 wood + 100 stone (Gerald's 5,000 and 10,000 are far
+  beyond this economy, where a town earns tens of gold a minute).
+- Market: buy at 2.5x make-cost and sell at 1.2x; with school level 2, 2.0x and 1.5x; level 3, 1.8x and 1.6x.
+- School levels 150 / 300 / 600 gold; soldier lessons 120 / 220 / 360 / 520 / 720 gold.
+- Winning: you win when every rival lord who is against you has lost his keep; the trading friend need not fall. You lose
+  if your keep falls.
+- Wages unchanged from 4A, plus longbowman 1, crossbowman 2, flamethrower 1 each, berserker 2. Taxes unchanged.
+- Spellings of the faction names unchanged (Cy Young, Ticanologue, Hekaranok, Psychana).
+
+**Conflicts found and how they were settled**
+- The mill: "at stage 3 one mill with 5 bakeries" but also "before stage 3, two mills of two". The mill now opens at the
+  Homestead (stage 2) so the early rule can apply; bakeries stay at the Hold.
+- Trebuchets appear twice (a siege engine you train, and a tower weapon). Both now need the Stronghold and the school's
+  top level.
+- Knights: Gerald's 4A answer said foot knights at stage 3; 4A had put all knights at stage 4. Now foot knights come at the
+  Hold and a knight rides only when the stable has a horse (from the Castle).
+
+**Simplified for now (honest list)**
+- Quarry workers do not walk out in pairs beside the ox; the box says so, but they cut at the quarry and the ox cart hauls.
+- Bricks are not a separate good (the Homestead's brick wall is part of the castle's growth).
+- Engineers do not yet build trebuchets themselves; trebuchets are trained or mounted as before, once the school allows.
+- Longbowmen, crossbowmen, flamethrowers and berserkers wear the sheet's outfits on the archer's and maceman's figures.
+- Rivals trade with the friend in the background (no carts on the road).
+
+**Art still needed** (drawn in code as stand-ins today): inside pictures for every building box (yard, quarry, farm,
+stable, fields, mill, bakery, granary, alehouse and tavern, market, school, engineer's hut, apothecary, chapel/church/abbey,
+smithy, Fletcher, spear-maker, armory, brewery, hop farm, vineyard, orchard, stockpile, keep); outside models for the
+school, apothecary, church, abbey, engineer's hut, stable, alehouse, water pot, vineyard and orchard (today the workshop,
+chapel and hop-farm shapes); a proper horse-and-wagon for the yard; flamethrower, crossbowman and longbowman figures of
+their own; and the face for the People button.
+
+**Status**: B1 to B8 built and saved (branch upgrade-v2); each step has its own check (tIndustry, tGroups, tCitizens, tVeterans, tFire, tFog, tRivals4b). Full checks, long games and speed: see the next note.
+
 ## Where we left off (for a fresh session)
 
 Gerald asked that, if the conversation runs out of room and restarts, work picks
