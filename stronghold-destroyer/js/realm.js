@@ -281,7 +281,16 @@ function rogueBrain(u, dt) {
     const ap = approachPoint(u, s); walk(ap.x, ap.y); return;
   }
   if (u.sub === 'flee') {
-    if (Math.hypot(u.x - u.exit.x, u.y - u.exit.y) < 40) { u.dead = true; u.deathT = 99; selection.delete(u); return; }   // gone, with the loot
+    const gone = () => { u.dead = true; u.deathT = 99; selection.delete(u); };
+    if (Math.hypot(u.x - u.exit.x, u.y - u.exit.y) < 40) { gone(); return; }   // gone, with the loot
+    /* (4C) no way out from here (the woods closed round him): near his way out, or out of your sight, he slips away into the trees;
+       otherwise he tries the nearest edge of the map instead (before, he stood there for ever) */
+    if (!u.path.length && u.repath > 0 && (u.fleeFail = (u.fleeFail || 0) + 1) > 2) {
+      u.fleeFail = 0;
+      if (Math.hypot(u.x - u.exit.x, u.y - u.exit.y) < 220 || fogHides(u, 'player') || (u.exitTries || 0) >= 2) { gone(); return; }
+      u.exitTries = (u.exitTries || 0) + 1; const ex = [[16, u.y], [MW - 16, u.y], [u.x, 16], [u.x, MH - 16]].sort((a, b) => Math.hypot(a[0] - u.x, a[1] - u.y) - Math.hypot(b[0] - u.x, b[1] - u.y))[u.exitTries - 1], f = nearestFree(Math.floor(ex[0] / TILE), Math.floor(ex[1] / TILE));
+      if (f) u.exit = { x: f.c * TILE + 16, y: f.r * TILE + 16 }; u.path = []; u.repath = 0;
+    }
     walk(u.exit.x, u.exit.y);
   }
 }

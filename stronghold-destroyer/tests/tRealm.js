@@ -67,6 +67,7 @@ const { chromium } = require('playwright'); const env = require('./env');
   const grow = await p.evaluate(() => {
     const foes = REALM.rivals.filter(R => !R.friend), A = foes[0], B = foes[1], out = {};
     for (const R of REALM.rivals) R.raidT = 99999;   // no raids during this part
+    for (const R of [A, B]) if (R.stage >= 2) { R.stage = 1; R.keep.stage = 1; }   /* (4C: on some maps the earlier parts of this check already took them to stage 2; both start this race at stage 1) */
     let aStage2 = null, bStage2 = null;
     for (let s = 0; s < 480; s++) {   // eight minutes
       for (const x of SD.structures.concat(farms)) if (x.owner === A.id && !x.dead && (x.kind === 'farm' || x.kind === 'woodhut' || x.kind === 'wheatfarm')) { x.hp = 0; if (farms.includes(x)) { x.dead = true; farms.splice(farms.indexOf(x), 1); } else kill(x); }

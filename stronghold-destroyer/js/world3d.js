@@ -139,7 +139,7 @@ const R3D = (() => {
   }
   function buildGround() {
     // the land runs right to the edge of the map and slips gently under the water band there
-    const E = 70, geo = new T.PlaneGeometry(MW + 2 * E, MH + 2 * E, 330, 210); geo.rotateX(-Math.PI / 2); geo.translate(MW / 2, 0, MH / 2);
+    const E = 70, geo = new T.PlaneGeometry(MW + 2 * E, MH + 2 * E, Math.round(330 * MW / 4096), 210);   /* (the same detail per square on the wider map) */ geo.rotateX(-Math.PI / 2); geo.translate(MW / 2, 0, MH / 2);
     const p = geo.attributes.position, uv = geo.attributes.uv;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), cx = clamp(x, 0, MW), cz = clamp(z, 0, MH), out = Math.hypot(x - cx, z - cz); p.setY(i, lerp(heightAt(cx, cz), SEA - 16, Math.min(1, out / E))); uv.setXY(i, x / MW, 1 - z / MH); }   // past the edge the ground picture is mirrored, so the bank has no streaks
     geo.computeVertexNormals();
@@ -181,20 +181,107 @@ const R3D = (() => {
     const sm = new T.MeshPhongMaterial({ color: C('#2a6a8c'), specular: C('#55707c'), shininess: 38, emissive: C('#04121c'), normalMap: waterNormal(), normalScale: new T.Vector2(0.6, 0.6) });
     sm.onBeforeCompile = sh => { sh.uniforms.uWave = waveU; sh.vertexShader = 'uniform float uWave;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y += sin(position.x * 0.021 + uWave * 1.3) * 1.6 + sin(position.z * 0.017 + uWave * 0.9) * 1.3 + sin((position.x + position.z) * 0.05 + uWave * 2.2) * 0.5;'); };
     seaMesh = new T.Mesh(sg, sm); seaMesh.position.set(MW / 2, SEA, MH / 2); seaMesh.receiveShadow = true; scene.add(seaMesh);
-    // the frame: a raised gold moulding with a darker inner lip, and an ornate piece on each corner
+    // the frame: a brass bar with a raised gold ridge along it, studs, and an ornate gold piece on each corner (Phase 4C: brass and gold)
     const gold = new T.MeshStandardMaterial({ color: C('#d8a93a'), metalness: 0.92, roughness: 0.32, fog: false }), dark = new T.MeshStandardMaterial({ color: C('#8a6418'), metalness: 0.85, roughness: 0.45, fog: false });
-    if (envCube) { gold.envMap = envCube; gold.envMapIntensity = 1.2; dark.envMap = envCube; }
+    const brass = new T.MeshStandardMaterial({ color: C('#b8893e'), metalness: 0.88, roughness: 0.4, fog: false });
+    if (envCube) { gold.envMap = envCube; gold.envMapIntensity = 1.2; dark.envMap = envCube; brass.envMap = envCube; brass.envMapIntensity = 0.9; }
     const x0 = -BAND, z0 = -BAND, x1 = MW + BAND, z1 = MH + BAND, w = 46;
-    const bar = (cx, cz, sx, sz, h, y, m) => { const b = new T.Mesh(new T.BoxGeometry(sx, h, sz), m); b.position.set(cx, y, cz); b.castShadow = false; b.receiveShadow = true; scene.add(b); };
+    const bar = (cx, cz, sx, sz, h, y, m) => { const b = new T.Mesh(new T.BoxGeometry(sx, h, sz), m); b.position.set(cx, y, cz); b.castShadow = false; b.receiveShadow = true; scene.add(b); return b; };
     for (const [cx, cz, sx, sz] of [[(x0 + x1) / 2, z0 - w / 2, x1 - x0 + 2 * w, w], [(x0 + x1) / 2, z1 + w / 2, x1 - x0 + 2 * w, w], [x0 - w / 2, (z0 + z1) / 2, w, z1 - z0], [x1 + w / 2, (z0 + z1) / 2, w, z1 - z0]]) {
-      bar(cx, cz, sx, sz, 30, SEA + 2, gold);
-      bar(cx, cz, sx > sz ? sx : w * 0.42, sx > sz ? w * 0.42 : sz, 6, SEA + 20, gold);   // the raised ridge along the middle
+      bar(cx, cz, sx, sz, 34, SEA + 1, brass);
+      bar(cx, cz, sx > sz ? sx : w * 0.42, sx > sz ? w * 0.42 : sz, 6, SEA + 20, gold);   // the raised gold ridge along the middle
     }
-    for (const [cx, cz] of [[x0, z1 + 0], [x1, z1], [x0, z0], [x1, z0]]) cornerPiece(cx + (cx < 0 ? -w / 2 : w / 2), cz + (cz < 0 ? -w / 2 : w / 2), gold, dark);
+    const globes = (typeof FRAME !== 'undefined' && FRAME.globes) || {};
+    for (const [cx, cz, key] of [[x0, z1, 'sw'], [x1, z1, 'se'], [x0, z0, 'nw'], [x1, z0, 'ne']]) cornerPiece(cx + (cx < 0 ? -w / 2 : w / 2), cz + (cz < 0 ? -w / 2 : w / 2), gold, dark, globes[key] || 'plain');
     for (const [ax, az, bx, bz] of [[x0, z0 - w / 2, x1, z0 - w / 2], [x0, z1 + w / 2, x1, z1 + w / 2], [x0 - w / 2, z0, x0 - w / 2, z1], [x1 + w / 2, z0, x1 + w / 2, z1]]) {   // small studs along the frame
       const n = Math.round(Math.hypot(bx - ax, bz - az) / 420); for (let i = 1; i < n; i++) { const t = i / n, st = new T.Mesh(new T.SphereGeometry(6, 10, 8), dark); st.position.set(ax + (bx - ax) * t, SEA + 23, az + (bz - az) * t); scene.add(st); }
     }
+    buildTable(x0 - w, z0 - w, x1 + w, z1 + w);
   }
+  // ---------- Phase 4C step C8: the table, the carved steps, and the dark glass that reflects the board ----------
+  const TABLE_Y = SEA - 2, STEP_W = 16, STEP_D = 4;   // the table top; each carved step down toward the bar
+  const glassU = { tScreen: { value: null }, uVP: { value: null }, uStr: { value: 0 }, uEdge: { value: null }, uSea: { value: SEA }, uWood: { value: null }, uWoodRep: { value: 1 / 900 } };
+  const GLASS = { strength: 0, target: 1, tex: null, w: 0, h: 0, copies: 0, ema: 1 / 60, visible: false, skip: 0, mesh: null, lastT: 0, force: null };
+  function woodTexture() {
+    const n = 1024, c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'), R = mulberry32(5150), N = makeNoise(612);
+    const img = g.createImageData(n, n), d = img.data;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      // long grain running along x, gently wavy, with darker growth lines and a warm polish
+      const wv = N(x / 260, y / 90) * 26 + N(x / 70 + 9, y / 30) * 5, ring = Math.sin((y + wv) * 0.21) * 0.5 + 0.5, fine = N(x / 9 + 3, y / 1.6) * 0.5 + N(x / 30, y / 4 + 7) * 0.5;
+      const k = 0.62 + ring * 0.22 + (fine - 0.5) * 0.28, i = (y * n + x) * 4;
+      d[i] = Math.min(255, 118 * k + 18); d[i + 1] = Math.min(255, 62 * k + 8); d[i + 2] = Math.min(255, 30 * k + 4); d[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    for (let i = 0; i < 4; i++) { const kx = R() * n, ky = R() * n, r = 10 + R() * 14; const gr = g.createRadialGradient(kx, ky, 1, kx, ky, r * 2.4); gr.addColorStop(0, 'rgba(40,18,6,0.9)'); gr.addColorStop(0.35, 'rgba(70,32,12,0.55)'); gr.addColorStop(1, 'rgba(70,32,12,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(kx, ky, r * 2.4, r, 0, 0, Math.PI * 2); g.fill(); }
+    const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.encoding = T.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
+  }
+  function buildTable(X0, Z0, X1, Z1) {
+    const pad = (typeof FRAME !== 'undefined' && FRAME.tablePad) || 1700, wood = woodTexture();
+    const woodMat = new T.MeshStandardMaterial({ map: wood, roughness: 0.38, metalness: 0.0, fog: false }); if (envCube) { woodMat.envMap = envCube; woodMat.envMapIntensity = 0.35; }
+    const uvBox = (geo, rep) => { const p = geo.attributes.position, uv = geo.attributes.uv; geo.computeBoundingBox(); for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i)) / rep, (p.getZ(i) + p.getY(i) * 0.5) / rep); };
+    // the carved steps: three wooden rings, each a little lower, stepping down from the table to the bar
+    for (let k = 0; k < 3; k++) {
+      const o = STEP_W * (3 - k), top = TABLE_Y - STEP_D * (k + 1), h = top - (SEA - 40);
+      const ring = [[(X0 + X1) / 2, Z0 - o / 2, X1 - X0 + 2 * o, o], [(X0 + X1) / 2, Z1 + o / 2, X1 - X0 + 2 * o, o], [X0 - o / 2, (Z0 + Z1) / 2, o, Z1 - Z0], [X1 + o / 2, (Z0 + Z1) / 2, o, Z1 - Z0]];
+      for (const [cx, cz, sx, sz] of ring) { const geo = new T.BoxGeometry(sx, h, sz); geo.translate(cx, top - h / 2, cz); uvBox(geo, 900); const m = new T.Mesh(geo, woodMat); m.receiveShadow = true; scene.add(m); }
+    }
+    // the table top beyond the steps (under the glass), and the glass itself: four strips round the board
+    const gx0 = X0 - STEP_W * 3, gz0 = Z0 - STEP_W * 3, gx1 = X1 + STEP_W * 3, gz1 = Z1 + STEP_W * 3, TX0 = gx0 - pad, TZ0 = gz0 - pad, TX1 = gx1 + pad, TZ1 = gz1 + pad;
+    const strips = [[TX0, TZ0, TX1, gz0], [TX0, gz1, TX1, TZ1], [TX0, gz0, gx0, gz1], [gx1, gz0, TX1, gz1]];
+    glassU.uEdge.value = new T.Vector4(X0, Z0, X1, Z1); glassU.uWood.value = wood; glassU.uVP.value = new T.Matrix4();
+    const glassMat = new T.ShaderMaterial({ uniforms: glassU, fog: false, depthWrite: true,
+      vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: [
+        'uniform sampler2D tScreen; uniform sampler2D uWood; uniform mat4 uVP; uniform float uStr; uniform vec4 uEdge; uniform float uSea; uniform float uWoodRep; varying vec3 vW;',
+        'void main(){',
+        '  vec3 wood = texture2D(uWood, vW.xz * uWoodRep).rgb; wood = wood * wood;',   // (sRGB to linear, roughly)
+        '  vec3 col = wood * 0.2 + vec3(0.004, 0.005, 0.007);',                        // dark glass over polished wood
+        '  vec3 V = normalize(cameraPosition - vW); float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 3.0); col += vec3(0.05, 0.055, 0.06) * fres;',
+        '  if (uStr > 0.002) {',
+        '    float x = vW.x, z = vW.z, xr = x < uEdge.x ? 2.0 * uEdge.x - x : (x > uEdge.z ? 2.0 * uEdge.z - x : x), zr = z < uEdge.y ? 2.0 * uEdge.y - z : (z > uEdge.w ? 2.0 * uEdge.w - z : z);',
+        '    float dist = length(vec2(xr - x, zr - z)) * 0.5, yr = mix(uSea + 18.0, 0.0, smoothstep(46.0, 300.0, dist));',   // the bar near the edge, the land farther in
+        '    vec4 c = uVP * vec4(xr, yr, zr, 1.0); vec2 uv = c.xy / c.w * 0.5 + 0.5;',
+        '    float inView = step(0.0, c.w) * smoothstep(0.0, 0.04, uv.x) * smoothstep(0.0, 0.04, uv.y) * smoothstep(0.0, 0.04, 1.0 - uv.x) * smoothstep(0.0, 0.04, 1.0 - uv.y);',
+        '    vec3 refl = texture2D(tScreen, clamp(uv, 0.001, 0.999)).rgb; refl = refl * refl;',
+        '    col += refl * uStr * 0.42 * inView * exp(-dist / 520.0) * (0.6 + 0.4 * fres);',
+        '  }',
+        '  gl_FragColor = vec4(pow(col, vec3(0.4545)), 1.0);',
+        '}'].join('\n') });
+    for (const [a, b, c, d] of strips) {
+      const tableGeo = new T.PlaneGeometry(c - a, d - b); tableGeo.rotateX(-Math.PI / 2); tableGeo.translate((a + c) / 2, TABLE_Y, (b + d) / 2);
+      const gm = new T.Mesh(tableGeo, glassMat); gm.renderOrder = 0; scene.add(gm); if (!GLASS.mesh) GLASS.mesh = gm;
+    }
+  }
+  // after each frame: when the glass is in view and the game runs smoothly, keep a copy of the picture for it to reflect
+  const v2copy = available ? new T.Vector2(0, 0) : null;
+  function glassAfterRender(dt) {
+    if (!glassU.uEdge.value) return;
+    const want = (typeof FRAME !== 'undefined' ? FRAME.reflection : 0.55) || 0, fpsMin = (typeof FRAME !== 'undefined' && FRAME.fadeBelowFps) || 40;
+    // real time between frames, smoothed: slower than fadeBelowFps (or the game already lowering its detail) fades the reflection out
+    const now = performance.now(), fs = GLASS.lastT ? Math.min(0.25, (now - GLASS.lastT) / 1000) : 1 / 60; GLASS.lastT = now;
+    glassFade(fs, want, fpsMin);
+    const c = camCenter(), M = 1.5 * 820 / cam.z, E = glassU.uEdge.value;
+    GLASS.visible = c.x < E.x + M || c.x > E.z - M || c.z < E.y + M || c.z > E.w - M;
+    glassU.uStr.value = GLASS.visible ? GLASS.strength : 0;
+    if (!GLASS.visible || GLASS.strength <= 0) return;
+    if ((GLASS.skip = (GLASS.skip + 1) % 2) !== 0) return;   // a fresh copy every other frame is plenty
+    const W = glCanvas.width, H = glCanvas.height;
+    if (!GLASS.tex || GLASS.w !== W || GLASS.h !== H) {
+      if (GLASS.tex) GLASS.tex.dispose();
+      GLASS.tex = new T.DataTexture(null, W, H, T.RGBFormat); GLASS.tex.minFilter = GLASS.tex.magFilter = T.LinearFilter; GLASS.tex.generateMipmaps = false; GLASS.tex.needsUpdate = true;
+      GLASS.w = W; GLASS.h = H; glassU.tScreen.value = GLASS.tex;
+      renderer.initTexture ? renderer.initTexture(GLASS.tex) : null;
+    }
+    try { renderer.copyFramebufferToTexture(v2copy, GLASS.tex); GLASS.copies++; } catch (e) { GLASS.strength = 0; }
+  }
+  function glassFade(fs, want, fpsMin) {
+    GLASS.ema += (fs - GLASS.ema) * Math.min(1, fs * 3);
+    const slow = GLASS.ema > 1 / fpsMin || quality >= 2;
+    GLASS.target = GLASS.force !== null ? GLASS.force : slow ? 0 : want;
+    GLASS.strength += (GLASS.target - GLASS.strength) * Math.min(1, fs * (GLASS.target < GLASS.strength ? 1.4 : 0.8));   // fades out within a second or two, back in a little slower
+    if (GLASS.strength < 0.01 && GLASS.target === 0) GLASS.strength = 0;
+  }
+  function glassBeforeRender() { if (glassU.uVP.value) glassU.uVP.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); }
 
   // ---------- living water and small wildlife: splashes, a jumping fish, birds, butterflies, frogs ----------
   // Each is a handful of tiny shapes from a small fixed pool, appearing now and then near where you are looking.
@@ -250,15 +337,65 @@ const R3D = (() => {
   // tests and screenshots: start every kind of creature at once near the middle of the view
   function lifeDemo() { for (const k of ['splash', 'fish', 'flock', 'fly', 'frog']) life.t[k] = 0; const keep = lifeScale; for (let i = 0; i < 4; i++) { lifeScale = 1; for (const k of Object.keys(life.t)) life.t[k] = 0; syncLife(0.016, true); } lifeScale = keep; }
   const lifeCount = () => Object.assign({ quality, scale: lifeScale },  Object.fromEntries(Object.keys(LIFE_CAP).map(k => [k, life[k].filter(q => q.on).length])));
-  function cornerPiece(x, z, gold, dark) {
+  function cornerPiece(x, z, gold, dark, globe) {
     const g = new T.Group(); g.position.set(x, SEA + 10, z);
     const base = new T.Mesh(new T.CylinderGeometry(52, 58, 18, 8), gold); base.rotation.y = Math.PI / 8; base.position.y = 0; g.add(base);
     const ring = new T.Mesh(new T.TorusGeometry(38, 6, 8, 24), dark); ring.rotation.x = Math.PI / 2; ring.position.y = 11; g.add(ring);
-    const boss = new T.Mesh(new T.SphereGeometry(20, 16, 12), gold); boss.position.y = 16; boss.scale.y = 0.75; g.add(boss);
-    const tip = new T.Mesh(new T.ConeGeometry(7, 22, 10), gold); tip.position.y = 38; g.add(tip);
+    if (globe && CONTINENTS[globe]) g.add(globeBall(globe, gold));   /* Phase 4C: a round gold ball with a continent pressed into it */
+    else { const boss = new T.Mesh(new T.SphereGeometry(20, 16, 12), gold); boss.position.y = 16; boss.scale.y = 0.75; g.add(boss);
+      const tip = new T.Mesh(new T.ConeGeometry(7, 22, 10), gold); tip.position.y = 38; g.add(tip); }
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, leaf = new T.Mesh(new T.ConeGeometry(7, 34, 6), i % 2 ? dark : gold); leaf.position.set(Math.cos(a) * 46, 12, Math.sin(a) * 46); leaf.rotation.set(0, -a, Math.PI / 2); leaf.rotation.order = 'YZX'; g.add(leaf);
       const pearl = new T.Mesh(new T.SphereGeometry(5, 8, 6), gold); pearl.position.set(Math.cos(a + Math.PI / 8) * 34, 15, Math.sin(a + Math.PI / 8) * 34); g.add(pearl); }
-    g.traverse(o => { o.castShadow = false; }); scene.add(g);
+    g.traverse(o => { o.castShadow = false; }); g.userData.globe = globe || 'plain'; scene.add(g); cornerGroups.push(g);
+  }
+  // ---------- Phase 4C: the corner globes ----------
+  // rough outlines of the continents (longitude, latitude), enough to read at the size of a corner ball
+  const CONTINENTS = {
+    northAmerica: { at: [-100, 45], shapes: [[[-168,65],[-162,70],[-156,71],[-140,70],[-128,70],[-115,68],[-95,72],[-85,70],[-80,63],[-90,58],[-82,55],[-78,60],[-70,60],[-64,58],[-60,53],[-56,50],[-66,45],[-70,42],[-76,38],[-76,35],[-81,31],[-80,26],[-82,25],[-84,30],[-90,29],[-97,26],[-97,21],[-92,18],[-88,16],[-84,11],[-79,9],[-82,8],[-86,12],[-92,14],[-96,16],[-105,20],[-106,23],[-112,30],[-115,32],[-117,33],[-121,35],[-124,40],[-124,46],[-127,50],[-133,55],[-140,59],[-150,60],[-155,58],[-165,60]],
+      [[-73,78],[-60,82],[-35,83],[-20,80],[-20,72],[-32,68],[-42,60],[-50,62],[-55,68],[-58,75]]] },
+    southAmerica: { at: [-60, -18], shapes: [[[-80,9],[-75,11],[-72,12],[-62,10],[-55,6],[-50,1],[-44,-3],[-35,-6],[-35,-10],[-39,-15],[-40,-22],[-48,-26],[-53,-34],[-58,-38],[-62,-41],[-65,-46],[-68,-52],[-72,-54],[-74,-50],[-73,-42],[-72,-30],[-70,-18],[-76,-14],[-80,-6],[-81,-2],[-80,1],[-78,4]]] },
+    europe: { at: [15, 50], shapes: [] },
+    africa: { at: [20, 3], shapes: [[[-17,21],[-16,28],[-10,30],[-6,35],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[38,22],[43,12],[51,12],[48,4],[40,-3],[39,-10],[40,-15],[35,-24],[33,-28],[27,-34],[20,-35],[17,-30],[12,-18],[13,-10],[9,-1],[9,4],[4,6],[-5,5],[-8,4],[-13,8],[-17,14]], [[44,-25],[47,-25],[50,-15],[49,-12],[44,-16]]] },
+    asia: { at: [95, 42], shapes: [[[-10,36],[-9,43],[-2,44],[-4,48],[2,51],[8,54],[10,58],[5,62],[14,68],[25,71],[40,68],[45,68],[60,70],[70,73],[80,73],[100,77],[115,74],[130,72],[140,72],[160,70],[170,67],[180,67],[180,64],[170,60],[163,58],[156,51],[160,58],[150,59],[140,54],[137,49],[140,45],[132,43],[128,39],[126,35],[121,32],[122,28],[118,24],[110,21],[108,18],[106,10],[104,9],[101,13],[100,7],[103,1],[98,8],[98,16],[94,17],[92,22],[88,22],[85,20],[80,15],[78,8],[73,17],[72,22],[67,25],[60,25],[57,26],[56,24],[52,24],[48,28],[50,30],[44,12],[42,15],[38,20],[35,28],[34,31],[36,36],[30,36],[27,37],[26,40],[24,38],[22,37],[20,40],[16,38],[18,40],[13,45],[12,44],[16,41],[10,44],[3,43],[-1,38],[-5,36]],
+      [[130,31],[135,34],[140,36],[142,40],[141,45],[139,40],[133,34]], [[-5,50],[-3,56],[-6,58],[-2,58],[1,52]], [[109,1],[117,7],[119,1],[116,-4],[110,-3]], [[95,5],[106,-6],[104,-6],[95,3]]] },
+    australia: { at: [134, -26], shapes: [[[114,-22],[113,-26],[115,-34],[118,-35],[124,-33],[131,-31],[135,-35],[138,-35],[141,-38],[147,-38],[150,-37],[153,-32],[153,-25],[150,-22],[146,-19],[145,-15],[142,-11],[141,-13],[136,-12],[136,-15],[130,-12],[126,-14],[122,-17]], [[131,-1],[141,-3],[150,-10],[141,-9]], [[172,-34],[178,-38],[174,-41],[167,-46],[171,-44]], [[145,-41],[148,-41],[147,-43.5]]] }
+  };
+  CONTINENTS.europe.shapes = CONTINENTS.asia.shapes; CONTINENTS.africa.shapes = CONTINENTS.africa.shapes.concat(CONTINENTS.asia.shapes);   // (Europe and Africa share the Old World outlines)
+  const cornerGroups = []; let worldMaps = null;
+  function globeMaps() {   // one world picture for every ball: polished gold seas, the land pressed in a little deeper and duller
+    if (worldMaps) return worldMaps;
+    const W = 1024, H = 512, mask = document.createElement('canvas'); mask.width = W; mask.height = H; const g = mask.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff';
+    const P = ([lo, la]) => [(lo + 180) / 360 * W, (90 - la) / 180 * H], seen = new Set();
+    for (const k of ['northAmerica', 'southAmerica', 'asia', 'africa', 'australia']) for (const sh of CONTINENTS[k].shapes) { if (seen.has(sh)) continue; seen.add(sh); g.beginPath(); sh.forEach((q, i) => { const [x, y] = P(q); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.fill(); }
+    const col = document.createElement('canvas'); col.width = W; col.height = H; const c2 = col.getContext('2d');
+    c2.fillStyle = '#e2b64a'; c2.fillRect(0, 0, W, H);
+    c2.globalCompositeOperation = 'source-over'; c2.filter = 'blur(1.5px)'; c2.globalAlpha = 0.9; c2.drawImage(mask, 0, 0); c2.filter = 'none'; c2.globalAlpha = 1;
+    // turn the white land into an antique gold, darker at the shore line (the pressed edge)
+    const id = c2.getImageData(0, 0, W, H), d = id.data, md = g.getImageData(0, 0, W, H).data;
+    for (let i = 0; i < d.length; i += 4) { const m = d[i + 2] / 255 > 0.5 ? (d[i + 2] - 74) / 181 : 0, land = Math.max(0, Math.min(1, m)), edge = md[i] > 128 ? 0 : 0;
+      d[i] = 226 - 70 * land; d[i + 1] = 182 - 66 * land; d[i + 2] = 74 - 40 * land; }
+    c2.putImageData(id, 0, 0);
+    const bump = document.createElement('canvas'); bump.width = W; bump.height = H; const b2 = bump.getContext('2d');
+    b2.fillStyle = '#fff'; b2.fillRect(0, 0, W, H); b2.filter = 'blur(2px) invert(1)'; b2.drawImage(mask, 0, 0); b2.filter = 'none';   // land low (dark), seas high
+    const rough = document.createElement('canvas'); rough.width = W; rough.height = H; const r2 = rough.getContext('2d');
+    r2.fillStyle = 'rgb(55,55,55)'; r2.fillRect(0, 0, W, H); r2.globalAlpha = 0.85; r2.filter = 'blur(1px)'; r2.drawImage(mask, 0, 0); r2.filter = 'none';
+    const tex = c => { const t = new T.CanvasTexture(c); t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
+    const map = tex(col); map.encoding = T.sRGBEncoding;
+    return (worldMaps = { map, bump: tex(bump), rough: tex(rough) });
+  }
+  function globeBall(key, gold) {
+    const M = globeMaps(), R = 31;
+    const mat = new T.MeshStandardMaterial({ map: M.map, bumpMap: M.bump, bumpScale: 2.2, roughnessMap: M.rough, roughness: 1, metalness: 0.92, fog: false });
+    if (envCube) { mat.envMap = envCube; mat.envMapIntensity = 1.25; }
+    const ball = new T.Mesh(new T.SphereGeometry(R, 40, 28), mat); ball.position.y = 14 + R * 0.82; ball.name = 'globe:' + key;
+    // turn the ball so its continent faces the camera, north up on the screen
+    const [lo, la] = CONTINENTS[key].at, rad = Math.PI / 180, d = new T.Vector3(Math.cos(la * rad) * Math.cos(lo * rad), Math.sin(la * rad), -Math.cos(la * rad) * Math.sin(lo * rad));
+    const t = new T.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).normalize(), Y = new T.Vector3(0, 1, 0);
+    const nA = Y.clone().sub(d.clone().multiplyScalar(Y.dot(d))).normalize(), nB = Y.clone().sub(t.clone().multiplyScalar(Y.dot(t))).normalize();
+    const A = new T.Matrix4().makeBasis(d, nA, d.clone().cross(nA)), B = new T.Matrix4().makeBasis(t, nB, t.clone().cross(nB));
+    ball.quaternion.setFromRotationMatrix(B.multiply(A.transpose()));
+    return ball;
   }
   // ---------- the river and its stone bridges ----------
   let riverMesh = null;
@@ -2251,7 +2388,9 @@ const R3D = (() => {
     const P = window.__prof; if (P) { const t = (k, f) => { const a = performance.now(); f(); const d = performance.now() - a; if (d > (P[k] || 0)) P[k] = d; };   // tests: the slowest time of each step
       t('camera', () => placeCamera(dt)); t('water', () => syncWater(dt)); t('scenery', syncScenery); t('buildings', () => syncBuildings(dt)); t('units', () => syncUnits(dt)); t('rally', syncRally); t('fx', syncFx); t('life', () => syncLife(dt)); t('draw', () => renderer.render(scene, camera)); t('overlay', () => overlay(g)); return; }
     placeCamera(dt); syncWater(dt); syncScenery(); syncBuildings(dt); syncUnits(dt); syncRally(); syncFx(); syncLife(dt);
+    glassBeforeRender();
     renderer.render(scene, camera);
+    glassAfterRender(dt);   /* Phase 4C: keep a copy of the picture for the glass round the board to reflect */
     overlay(g);
   }
   function setActive(v) {
@@ -2298,7 +2437,7 @@ const R3D = (() => {
   // tests: how a unit's figure is posed right now
   function poseOf(u) { const md = unitModels.get(u.id); if (!md || !md.legs) return null; return { hipL: md.legs[0].hip.rotation.x, hipR: md.legs[1].hip.rotation.x, armR: md.arms[1].sh.rotation.x, bodyX: md.body.rotation.x, bodyY: md.body.position.y, heading: md.heading, horse: md.horse ? md.horse.legs[0].hip.rotation.x : null, animated: md.animated, flat: !!md.artModel, ghost: md.ghost ? md.ghost.visible : null, emis: md.mats[0] && md.mats[0].emissive ? md.mats[0].emissive.r : null }; }
   function prepare() { if (!ready) init(); placeCamera(0); }   // tests: aim the camera without drawing
-  const borderInfo = () => ({ sea: !!seaMesh, band: BAND, seaLevel: SEA, black: scene && scene.background && scene.background.getHex() === 0 });
+  const borderInfo = () => ({ sea: !!seaMesh, band: BAND, seaLevel: SEA, black: scene && scene.background && scene.background.getHex() === 0, table: TABLE_Y, steps: 3, glass: !!GLASS.mesh, globes: cornerGroups.length });
   const modelOf = b => { const md = bModels.get(b.id); return md ? { x: Math.round(md.g.position.x), z: Math.round(md.g.position.z), par: !!md.g.parent, vis: md.g.visible, y: +md.g.position.y.toFixed(1), kids: md.g.children.length, inner: md.g.children[0] ? md.g.children[0].children.length : 0, sy: +md.g.scale.y.toFixed(2) } : null; };   // tests
   // tests only: switch parts of the scene off to see what the drawing time is spent on
   function debugView(o) {
@@ -2311,7 +2450,12 @@ const R3D = (() => {
     const per = {}; for (const m of treeMeshes) { const n = m.geometry.index ? m.geometry.index.count / 3 : m.geometry.attributes.position.count / 3, k = Math.round(n); per[k] = (per[k] || 0) + m.count; }
     return { per, trees: treeMeshes.length, treeCount: trees.length, grassChunks: grass ? grass.length : 0, calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
   }
-  return { debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
+  // (tests) the glass: how strong its reflection is now, how many copies of the picture it has taken, and the corner globes;
+  // glassForce(v) holds the strength at v (null lets the game decide); glassFeed(sec, n) runs n frames of the fading rule as if each took sec
+  const glassInfo = () => ({ strength: +GLASS.strength.toFixed(3), target: GLASS.target, copies: GLASS.copies, visible: GLASS.visible, ema: +GLASS.ema.toFixed(4), quality, globes: cornerGroups.map(g => [Math.round(g.position.x), Math.round(g.position.z), g.userData.globe]) });
+  const glassForce = v => { GLASS.force = v; if (v !== null) GLASS.strength = v; };
+  const glassFeed = (sec, n) => { const want = (typeof FRAME !== 'undefined' ? FRAME.reflection : 0.55) || 0, fpsMin = (typeof FRAME !== 'undefined' && FRAME.fadeBelowFps) || 40; for (let i = 0; i < n; i++) glassFade(sec, want, fpsMin); return glassInfo(); };
+  return { glassInfo, glassForce, glassFeed, debugView, modelOf, poseOf, prepare, iconOf, borderInfo, isReady: () => ready, rebuildModel, glbStatus, lifeCount, lifeDemo, LIFE_CAP, treeDetail: on => { treeDetailWant = on; try { localStorage.setItem('sd-trees', on ? 'detailed' : 'simple'); } catch (e) {} if (setTreeDetail) setTreeDetail(on); }, treeDetailOn: () => treeDetailWant, leafColor: (r, g2, b2) => leafDecid && leafDecid.color.setRGB(r, g2, b2), quality: () => quality, available, get active() { return active; }, setActive, render, groundAt, project, pick, pickResource, panAxes, heightAt, setFog };
 })();
 
 const speeches = [];

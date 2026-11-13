@@ -186,3 +186,15 @@ const MOAT = { fillPerSecond: 18 };   // how fast one citizen fills (the moat's 
 // strikes it takes to kill on active spikes: ordinary people one; these armored kinds two (a mounted knight's first strike
 // kills the horse). The owner's own side walks over them safely.
 const SPIKES = { armored: ['knight', 'sword', 'king'], siegeDamage: 120 };
+
+// ---------- Phase 4C step C8: the table, the frame and the glass ----------
+// The board sits on a polished wooden table: land, a band of moving water, then a brass and gold bar; where the bar
+// meets the table the wood steps down like crown molding; beyond, dark glass over the wood reflects the board.
+const FRAME = {
+  // the gold ball on each corner and the continent pressed into it, by the map's corners (north is the top of the map):
+  // northAmerica, southAmerica, europe, africa, asia, australia (or 'plain' for a smooth ball)
+  globes: { nw: 'northAmerica', ne: 'asia', sw: 'southAmerica', se: 'australia' },
+  reflection: 0.55,    // how strongly the glass reflects the board (0 turns the reflection off)
+  fadeBelowFps: 40,    // the reflection fades away while the game runs slower than this, and comes back when it is smooth
+  tablePad: 900        // how far the table (and its glass) reaches beyond the frame; past it, black
+};

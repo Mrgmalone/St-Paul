@@ -467,3 +467,5 @@ button,#catBar,#cmdbar,#side,#top{touch-action:manipulation}
 #match .mwin{font-size:18px;color:#fff3d6;font-weight:600}
 .rvwin{font-size:16px;color:#ffd98a;margin:0 0 8px;font-weight:600}
 @media (max-width:640px){ #match .ml{min-width:0;width:100%;text-align:center} #match .mrow{font-size:17px} }
+/* Phase 4C step C8: the minimap keeps the map's own shape on the wider map */
+#mini{height:auto!important;aspect-ratio:var(--mapAR,1.6)}

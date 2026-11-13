@@ -3,8 +3,8 @@
 // Loaded in order by index.html; all files share one global scope.
 
 // ---------- constants & helpers ----------
-// the land: 128 by 80 squares (it was 96 by 56) so the castle and several peoples have room to grow
-const TILE = 32, COLS = 128, ROWS = 80, MW = COLS * TILE, MH = ROWS * TILE;
+// the land: 148 by 80 squares (it was 96 by 56, then 128 by 80; Phase 4C widened it to the east) so the castle and up to five peoples have room to grow
+const TILE = 32, COLS = 148, ROWS = 80, MW = COLS * TILE, MH = ROWS * TILE;
 const AF = (COLS * ROWS) / (64 * 42);   // how much bigger than the first map, for scattering things evenly
 const EX = 29, EXP = EX * TILE;          // the enemy camp sits 29 tiles farther east than it first did
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -82,7 +82,12 @@ const roadE = [], roadSE = [], roadSS = [];
 bezier({ x: 2790, y: 1000 }, { x: 3050, y: 1060 }, { x: 3300, y: 1260 }, { x: 3536, y: 1296 }, 40, roadE);
 bezier({ x: 2300, y: 1470 }, { x: 2450, y: 1700 }, { x: 2600, y: 1950 }, { x: 2640, y: 2128 }, 40, roadSE);
 bezier({ x: 1640, y: 1540 }, { x: 1690, y: 1760 }, { x: 1660, y: 1950 }, { x: 1680, y: 2128 }, 40, roadSS);
-const ROADS = [road, roadN, roadS, roadE, roadSE, roadSS];
+// Phase 4C: the wider east: the east road runs on, a road from the south road's end runs east along the north, and a road joins the two
+const roadE2 = [], roadNE = [], roadEE = [];
+bezier({ x: 3536, y: 1296 }, { x: 3780, y: 1330 }, { x: 4030, y: 1250 }, { x: 4250, y: 1220 }, 30, roadE2);
+bezier({ x: 2800, y: 700 }, { x: 3200, y: 560 }, { x: 3780, y: 420 }, { x: 4250, y: 480 }, 50, roadNE);
+bezier({ x: 4250, y: 480 }, { x: 4380, y: 700 }, { x: 4330, y: 980 }, { x: 4250, y: 1220 }, 30, roadEE);
+const ROADS = [road, roadN, roadS, roadE, roadSE, roadSS, roadE2, roadNE, roadEE];
 function roadDist(x, y) { let m = 1e9; for (const rd of ROADS) for (const p of rd) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < m) m = d; } return Math.sqrt(m); }
 
 const HOME = { dx: 352, dy: -96 };   // your castle sits well inside the map, with room all round it
@@ -436,7 +441,8 @@ const MOUNTAINS = [
   { x: 1560, y: 420, len: 330, w: 95, ang: 0.12, h: 150 },    // between the north road and the main road
   { x: 1880, y: 1160, len: 320, w: 110, ang: -0.22, h: 140 }, // between the main road and the south road
   { x: 2330, y: 1700, len: 260, w: 70, ang: 0.05, h: 110 },   // the far south
-  { x: 150, y: 210, len: 230, w: 120, ang: 0.6, h: 150 }      // behind your castle, to the north-west
+  { x: 150, y: 210, len: 230, w: 120, ang: 0.6, h: 150 },     // behind your castle, to the north-west
+  { x: 3950, y: 1880, len: 260, w: 90, ang: -0.35, h: 130 }    // Phase 4C: in the new east, south of the east road
 ];
 const EG = 16, EW = Math.ceil(MW / EG) + 2, EH = Math.ceil(MH / EG) + 2;
 let ELEV = null, MOUNT = null;

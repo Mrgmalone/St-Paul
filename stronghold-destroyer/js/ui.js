@@ -203,11 +203,11 @@ const UI = (() => {
     const bar = $('selBar').firstElementChild; bar.style.width = (f * 100).toFixed(0) + '%'; bar.style.background = f > 0.6 ? '#4fd65a' : f > 0.3 ? '#f2c230' : '#e8432f';
   }
   // --- minimap ---
-  const mini = $('mini');
+  const mini = $('mini'); document.documentElement.style.setProperty('--mapAR', (MW / MH).toFixed(3));
   function buildMiniBase() {
-    miniBase = document.createElement('canvas'); miniBase.width = 352; miniBase.height = 232;
-    const g = miniBase.getContext('2d'), sx = 352 / MW, sy = 232 / MH;
-    g.drawImage(terrain, 0, 0, 352, 232);
+    miniBase = document.createElement('canvas'); miniBase.width = 352; miniBase.height = Math.round(352 * MH / MW);   /* the map's own shape */
+    const g = miniBase.getContext('2d'), sx = 352 / MW, sy = miniBase.height / MH;
+    g.drawImage(terrain, 0, 0, 352, miniBase.height);
     g.fillStyle = 'rgba(16,40,14,0.9)'; for (const t of trees) { g.beginPath(); g.arc(t.x * sx, (t.y - 10) * sy, 2.2, 0, Math.PI * 2); g.fill(); }
     g.fillStyle = '#8f8b82'; for (const r of rocks) g.fillRect(r.x * sx - 1, r.y * sy - 1, 2.5, 2.5);
     miniBaseT = trees.length;
