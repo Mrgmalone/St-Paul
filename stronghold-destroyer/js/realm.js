@@ -25,14 +25,15 @@ const ARMY_CAP = [3, 6, 10, 14, 18];
 // ---------- the start: four rivals, each a different faction, one of them (not your own faction) a trading friend ----------
 function realmStart() {
   REALM.on = true; REALM.rivals = []; REALM.rogueT = ROGUES.first;
+  if (typeof applyMatch === 'function') applyMatch();   /* the front page's choices: how many rivals, their factions, a friend (match.js) */
   const facs = FACTION_ORDER.slice(); for (let i = facs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [facs[i], facs[j]] = [facs[j], facs[i]]; }
   RIVALS.sites.slice(0, RIVALS.count).forEach(([c, r], i) => {
-    const fac = facs[i % facs.length], f = FACTIONS[fac];
+    const fac = typeof rivalFaction === 'function' ? rivalFaction(i, REALM.rivals.map(R => R.fac)) : facs[i % facs.length], f = FACTIONS[fac];
     REALM.rivals.push({ id: i, fac, name: RIVALS.lords[i], team: 'enemy', friend: false, stage: 1, defeated: false,
       res: { food: f.start.food, wood: f.start.wood, stone: 0, iron: 0, gold: 20 }, pace: RIVALS.pace[DIFF.key] || 1,
       placeT: 6 + i * 2, trainT: 25 + i * 4, workerT: 20, raidT: (RIVALS.raid.first[DIFF.key] || 450) + i * 75, tickT: i * 0.25, built: 0, site: { c, r } });
   });
-  if (RIVALS.friend) { const cands = REALM.rivals.filter(R => R.fac !== FACKEY); const F = cands[Math.floor(Math.random() * cands.length)]; if (F) { F.friend = true; F.team = 'friend'; } }
+  if (RIVALS.friend && REALM.rivals.length >= 2) { const c0 = REALM.rivals.filter(R => R.fac !== FACKEY), cands = c0.length ? c0 : REALM.rivals; const F = cands[Math.floor(Math.random() * cands.length)]; if (F) { F.friend = true; F.team = 'friend'; } }   /* a friend only when there is still someone to fight */
   for (const R of REALM.rivals) setUpRival(R);
 }
 function setUpRival(R) {
@@ -293,7 +294,7 @@ function updateRogues(dt) {
 function showRivalsPop() {
   const p = document.getElementById('rivalsPop'); if (!p) return;
   const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-  p.innerHTML = '<h3>Your rivals</h3>' + REALM.rivals.map(R => { const f = FACTIONS[R.fac];
+  p.innerHTML = '<h3>Your rivals</h3>' + (typeof winRuleText === 'function' ? `<div class="rvwin">${winRuleText()}</div>` : '') + REALM.rivals.map(R => { const f = FACTIONS[R.fac];
     const status = R.defeated ? '<span class="rvx">fallen</span>' : R.friend ? '<span class="rvf">trading friend</span>' : '<span class="rve">enemy</span>';
     return `<div class="rvrow"><canvas width="44" height="52" data-emb="${R.fac}"></canvas><div><div class="rvn">${R.name} ${status}</div>
       <div class="rvd">${f.name} (${f.epithet}) · stage ${R.stage}, the ${stageName(R.stage)}${R.defeated ? '' : ` · ${rivalArmy(R).length} soldiers`}${R.defeated || R.friend ? '' : ` · next raid in ${mmss(Math.max(0, R.raidT))}`}</div>

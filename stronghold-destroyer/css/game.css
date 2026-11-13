@@ -454,3 +454,16 @@ body.phone #btnHide{min-height:44px;padding:2px 12px;font-size:15px}
 /* every tap on a button counts at once (no waiting to see if it is a double-tap zoom) */
 button,#catBar,#cmdbar,#side,#top{touch-action:manipulation}
 @media (max-height:500px){ body.phone #cmdbar,body.phone #cmdbar.none{max-width:min(52%,460px)} }
+/* Phase 4C step C7: the match setup on the front page */
+#match{display:flex;flex-direction:column;gap:10px;align-items:center;margin:0 auto 18px;max-width:900px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(20,18,16,.72)}
+#match .mrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;font-size:19px;color:#ffd98a}
+#match .mrow[hidden]{display:none}
+#match .ml{min-width:140px;text-align:right;font-weight:700}
+#match .mbtn{min-height:48px;min-width:64px;font-size:18px;padding:6px 16px;margin:0;background:linear-gradient(#34302b,#24211e);color:var(--ink)}
+#match .mbtn.on{background:linear-gradient(#4a3c22,#33290f);color:var(--gold);outline:2px solid var(--gold)}
+#match .msel{display:inline-flex;align-items:center;gap:6px;font-size:17px;color:var(--ink)}
+#match select{min-height:48px;font-size:17px;padding:4px 10px;border-radius:10px;background:#24211e;color:var(--ink);border:1px solid var(--line)}
+#match small{font-size:15px;color:#d9c9a3}
+#match .mwin{font-size:18px;color:#fff3d6;font-weight:600}
+.rvwin{font-size:16px;color:#ffd98a;margin:0 0 8px;font-weight:600}
+@media (max-width:640px){ #match .ml{min-width:0;width:100%;text-align:center} #match .mrow{font-size:17px} }

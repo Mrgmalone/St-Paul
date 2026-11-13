@@ -8,7 +8,7 @@ const { chromium } = require('playwright'); const env = require('./env');
   for (const s of [0, 1, 2, 3, 4, null, null]) {
     const p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await env.use3d(p, { drawMs: 999999 }); p.on('pageerror', e => errs.push(e.message));
     await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
-    await p.goto(env.GAME_REAL + (s === null ? '' : '?start=' + s)); await p.waitForTimeout(500);
+    await p.goto(env.GAME_REAL + (s === null ? '?rivals=4' : '?start=' + s));   /* (a random start with all four rivals; since Phase 4C the game's own default is three) */ await p.waitForTimeout(500);
     await p.evaluate(() => { window.__now = 0; window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); } }; window.__step(2); });
     await p.click('.fac[data-fac="psychana"]'); await p.click('.fac[data-fac="psychana"] .fgo');
     const r = await p.evaluate(() => { window.__step(4); SD.setRaid(99999); const k = SD.keep();

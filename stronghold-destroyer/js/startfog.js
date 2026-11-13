@@ -7,12 +7,53 @@
 
 // ---------- a random start (decided as the page loads, before the land is made) ----------
 const START_SITES = [[14, 26]].concat(RIVALS.sites.map(s => s.slice()));   // tiles of a keep's corner: the west meadow, then the four rival sites
-let START_AT = 0;
+let START_AT = 0, START_REGION = 'west', START_RANDOM = false;
+// Phase 4C step C7: every game, you and each rival start somewhere new. The places are drawn at random beside the roads
+// (so nobody starts shut in by forest), clear of the river and the mountains, with room between every camp. You may ask
+// for a part of the map (west, north, east or south) on the front page; Random is the default.
+const START_REGIONS = ['west', 'north', 'east', 'south'];
+const regionOf = (x, y) => x < MW * 0.3 ? 'west' : x > MW * 0.7 ? 'east' : y < MH / 2 ? 'north' : 'south';
+function matchPrefs() {
+  let m = {}; try { m = JSON.parse(localStorage.getItem('sd-match') || '{}') || {}; } catch (e) { m = {}; }
+  const q = new URLSearchParams(location.search); if (q.get('region')) m.region = q.get('region'); if (q.get('rivals')) m.rivals = +q.get('rivals');
+  return m;
+}
+function randomCamps(region, n) {
+  const RNo = makeNoise(808), riverX = y => 1236 + Math.sin(y / 250) * 95 + (RNo(y / 180, 3) - 0.5) * 120;   // (the same line the river is drawn along)
+  const cands = [];
+  for (const rd of ROADS) for (let k = 0; k < rd.length; k++) {   // anywhere along each road (not only at its drawn points), either side
+    const t = 1 + Math.random() * (rd.length - 3), i = Math.floor(t), f = t - i, a = rd[i], b = rd[i + 1], ang = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
+    const side = Math.random() < 0.5 ? -1 : 1, off = 130 + Math.random() * 110, x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
+    cands.push({ x: x + Math.cos(ang) * off * side, y: y + Math.sin(ang) * off * side });
+  }
+  // never where you started in your last five games
+  let recent = []; try { recent = JSON.parse(localStorage.getItem('sd-starts') || '[]') || []; } catch (e) { recent = []; }
+  const ok = (p, mine) => p.x > 12 * TILE && p.x < MW - 12 * TILE && p.y > 9 * TILE && p.y < MH - 9 * TILE && Math.abs(p.x - riverX(p.y)) > (mine ? 380 : 290)
+    && MOUNTAINS.every(M => Math.hypot(p.x - M.x, p.y - M.y) > M.len + 170);
+  const good = cands.filter(p => ok(p, false)), mixed = () => { const a = good.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  // Random: each part of the map is equally likely (the roads are not spread evenly, so pick the part first)
+  const want = START_REGIONS.includes(region) ? region : START_REGIONS[Math.floor(Math.random() * START_REGIONS.length)];
+  for (let tries = 0; tries < 500; tries++) {
+    const relax = tries < 250 ? 1 : tries < 400 ? 0.9 : 0.8;
+    const mine = good.filter(p => ok(p, true) && (tries >= 450 || regionOf(p.x, p.y) === want) && !recent.some(q => Math.hypot(p.x - q[0], p.y - q[1]) < 160));
+    const P = mine[Math.floor(Math.random() * mine.length)]; if (!P) continue;
+    const out = [P];
+    for (const p of mixed()) { if (out.length >= n) break; if (Math.hypot(p.x - P.x, p.y - P.y) < 1150 * relax) continue; if (out.slice(1).some(o => Math.hypot(p.x - o.x, p.y - o.y) < 880 * relax)) continue; out.push(p); }
+    if (out.length >= n) { try { localStorage.setItem('sd-starts', JSON.stringify([[Math.round(P.x), Math.round(P.y)]].concat(recent).slice(0, 5))); } catch (e) {} return out.map(p => [Math.round(p.x / TILE - 1.5), Math.round(p.y / TILE - 1.5)]); }
+  }
+  return null;
+}
 (() => {
   if (LEGACY) return;   // the older tests keep the old map
   const q = new URLSearchParams(location.search).get('start');
-  START_AT = q !== null && START_SITES[+q] ? +q : Math.floor(Math.random() * START_SITES.length);
+  if (q !== null && START_SITES[+q]) START_AT = +q;   // (tests: ?start=0..4 pins one of the five old places)
+  else {
+    const camps = randomCamps(matchPrefs().region || 'random', 5);
+    if (camps) { START_RANDOM = true; START_AT = -1; START_SITES.length = 0; for (const s of camps) START_SITES.push(s); START_AT = 0; }
+    else START_AT = Math.floor(Math.random() * START_SITES.length);
+  }
   const [c, r] = START_SITES[START_AT];
+  START_REGION = regionOf((c + 1.5) * TILE, (r + 1.5) * TILE);
   HOME.dx = (c - 3) * TILE; HOME.dy = (r - 29) * TILE;
   PLAYER_START.x = 270 + HOME.dx; PLAYER_START.y = 1070 + HOME.dy;
   // the rivals take the other four places

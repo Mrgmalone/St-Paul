@@ -5,7 +5,7 @@ const CIV = process.argv[2] || 'cyyoung', MINUTES = +(process.argv[3] || 20);
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack||'').split('\n').slice(1,3).join(' ')));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
   await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
-  await p.goto(process.env.ARMY ? require('./env').GAME : require('./env').GAME_REAL);   // the real game (no starting army); ARMY=1 for the old start
+  await p.goto(process.env.ARMY ? require('./env').GAME : require('./env').GAME_REAL + (process.env.RIVALS ? '?rivals=' + process.env.RIVALS : ''));   /* RIVALS=1..4 (Phase 4C: the game's own default is 3) */   // the real game (no starting army); ARMY=1 for the old start
   await p.evaluate(() => { const fs = window.__raf.splice(0); fs.forEach(f => f(0)); window.__now = 0; });
   if (process.env.DIFF) await p.evaluate(k => SD.setDiff(k), process.env.DIFF);   // DIFF=easy|medium|hard
   if (process.env.ARMY) await p.click(`.civ[data-civ="${CIV}"]`);   // the old peoples (older tests)
