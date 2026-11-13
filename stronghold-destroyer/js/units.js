@@ -254,6 +254,7 @@ function playerBrain(u) {
   }
 }
 function enemyBrain(u, dt) {
+  if (u.rogue) { rogueBrain(u, dt); return; }   // bandits: steal and run
   u.think -= dt;
   if (u.type === 'civ') { enemyWorker(u, dt); return; }
   if (u.type === 'ram') { ramBrain(u); return; }

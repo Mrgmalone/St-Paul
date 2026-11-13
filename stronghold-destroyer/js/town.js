@@ -172,10 +172,11 @@ function showMarket(b) {
       <table style="border-collapse:collapse;font-size:15px;margin-top:6px"><tr style="color:#d9c9a3;font-size:13px"><th style="text-align:left">Goods</th><th>You have</th><th>Buy</th><th>Sell</th></tr>` +
       MARKET.map(([k, name, lot, buy, sell]) => `<tr><td style="padding:3px 8px 3px 0">${name}${lot > 1 ? ` <small style="color:#d9c9a3">(${lot})</small>` : ''}</td><td style="text-align:center"><b id="mkHave-${k}"></b></td>
         <td style="padding:2px"><button class="sm" data-mk="buy:${k}" style="min-width:86px"></button></td><td style="padding:2px"><button class="sm" data-mk="sell:${k}" style="min-width:86px"></button></td></tr>`).join('') +
-      `</table>${fixRow}<div style="font-size:13px;color:#d9c9a3;margin-top:6px;max-width:420px">Buying always costs more than making it yourself, and selling pays less than buying. A happy town gets better prices; an upset town pays a market tax. Bought weapons go to the Armory. Esc closes.</div>`;
+      `</table>${fixRow}${REALM.on ? friendTradeHtml() : ''}<div style="font-size:13px;color:#d9c9a3;margin-top:6px;max-width:420px">Buying always costs more than making it yourself, and selling pays less than buying. A happy town gets better prices; an upset town pays a market tax. Bought weapons go to the Armory. Esc closes.</div>`;
     p.dataset.site = 'mk' + b.id;
   }
   document.getElementById('mkGold').textContent = Math.floor(res.gold); document.getElementById('mkMsg').textContent = b.mkMsg || '';
+  if (REALM.on) { refreshFriendTrade(p); const fm = document.getElementById('ftMsg'); if (fm) fm.textContent = b.ftMsg || ''; }
   const m = marketMul(), pct = Math.round((m - 1) * 100);
   document.getElementById('mkMood').textContent = pct < 0 ? `${-pct}% cheaper: your people are happy` : pct > 0 ? `${pct}% market tax: your people are upset` : 'normal';
   document.getElementById('mkMood').style.color = pct < 0 ? '#9fe8a8' : pct > 0 ? '#ffb38a' : '';
@@ -183,7 +184,8 @@ function showMarket(b) {
     const bt = `Buy ${pr.buy}g`, st = `Sell ${pr.sell}g`; if (bb.textContent !== bt) bb.textContent = bt; if (sb.textContent !== st) sb.textContent = st; bb.style.opacity = res.gold >= pr.buy ? 1 : 0.45; sb.style.opacity = haveOf(k) >= lot ? 1 : 0.45; }
   p.hidden = false;
 }
-document.getElementById('storePop').addEventListener('click', e => { const t = e.target.closest('[data-mk]'); if (t && storeShown && storeShown.kind === 'market') { const [act, key] = t.dataset.mk.split(':'); trade(storeShown, act, key); } });
+document.getElementById('storePop').addEventListener('click', e => { const ft = e.target.closest('[data-ft]'); if (ft && storeShown && storeShown.kind === 'market') { const [act, key] = ft.dataset.ft.split(':'); storeShown.ftMsg = friendTrade(act, key); AudioSys.ui('select'); updateHud(); showMarket(storeShown); return; }
+  const t = e.target.closest('[data-mk]'); if (t && storeShown && storeShown.kind === 'market') { const [act, key] = t.dataset.mk.split(':'); trade(storeShown, act, key); } });
 const weaponPrice = w => priceOf(MARKET.find(r => r[0] === w)).buy;   // the armory charges the same as the market
 function buyWeapon(w) {
   if (!started || won) return;

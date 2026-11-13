@@ -176,9 +176,113 @@ function defeatRival(R) {
   showBanner(`<b>${R.name}</b>'s ${FACTIONS[R.fac].name} have fallen: their keep is destroyed and their people scatter.`, 6);
 }
 
-// ---------- the trading friend (filled in below) and rogues ----------
-function updateFriendTrade(dt) {}
-function updateRogues(dt) {}
+// ---------- the trading friend ----------
+// Once you have a market, the friend trades with you there: she sells her spare goods and buys yours. Her prices sit
+// between your market's buying and selling prices (so neither side can buy from one and sell to the other at a profit),
+// shaped by her faction: a Ticanologue friend sells at half, a Cy Young friend sells food at half. What can be traded
+// follows the lower of your two stages: food and wood from the start, stone from the Homestead, iron from the Hold.
+const TRADE_GOODS = [['food', 'Food', 1], ['wood', 'Wood', 1], ['stone', 'Stone', 2], ['iron', 'Iron', 3]];
+const TRADE_RESERVE = { food: 120, wood: 100, stone: 30, iron: 10 };
+const tradeFriend = () => REALM.rivals.find(R => R.friend && !R.defeated) || null;
+function friendPrices(R, k) {
+  const row = MARKET.find(r => r[0] === k), mk = priceOf(row), lot = row[2];
+  let sell = Math.round((mk.buy + mk.sell) / 2), buy = mk.sell + Math.round((mk.buy - mk.sell) / 4);
+  if (facRule(R.fac, 'marketBuyMul', 1) < 1 || (k === 'food' && R.fac === 'cyyoung')) sell = Math.round(sell * 0.5);
+  sell = Math.max(sell, mk.sell + 1); buy = Math.min(buy, mk.buy - 1, sell - 1);
+  return { lot, sell, buy };
+}
+const tradeOpen = (R, stage) => !!R && stage <= Math.min(R.stage, stageN);
+const myHave = k => k === 'food' ? Math.floor(res.food) : Math.floor(res[k] || 0);
+function friendTrade(act, k) {   // act 'buy': you buy from her; 'sell': you sell to her. Returns a message.
+  const R = tradeFriend(), g = TRADE_GOODS.find(x => x[0] === k); if (!R || !g) return 'No trading friend.';
+  if (!tradeOpen(R, g[2])) return `${g[1]} is traded from stage ${g[2]} for both of you.`;
+  const { lot, sell, buy } = friendPrices(R, k);
+  if (act === 'buy') {
+    if ((R.res[k] || 0) - TRADE_RESERVE[k] < lot) return `${R.name} has no ${g[1].toLowerCase()} to spare.`;
+    if (res.gold < sell) return `You need ${sell} gold.`;
+    R.res[k] -= lot; R.res.gold += sell; res.gold -= sell; if (k === 'food') addFood('crops', lot); else res[k] += lot;
+    R.traded = (R.traded || 0) + 1; return `Bought ${lot} ${g[1].toLowerCase()} from ${R.name} for ${sell} gold.`;
+  }
+  if (myHave(k) < lot) return `You have no ${g[1].toLowerCase()} to sell.`;
+  if ((R.res.gold || 0) < buy) return `${R.name} cannot pay just now.`;
+  if (k === 'food') spendFood(lot); else res[k] -= lot; R.res[k] = (R.res[k] || 0) + lot; R.res.gold -= buy; res.gold += buy;
+  R.traded = (R.traded || 0) + 1; return `Sold ${lot} ${g[1].toLowerCase()} to ${R.name} for ${buy} gold.`;
+}
+function friendTradeHtml() {   // the rows added to your market's box
+  const R = tradeFriend(); if (!R) return '';
+  return `<h3 style="margin-top:12px">TRADE WITH ${R.name.toUpperCase()}</h3><div style="font-size:15px;color:#9fe8a8">${FACTIONS[R.fac].name}, your trading friend · stage ${R.stage}</div>
+    <table style="border-collapse:collapse;font-size:15px;margin-top:4px">` + TRADE_GOODS.map(([k, name, st]) => `<tr><td style="padding:3px 8px 3px 0">${name}</td>
+      <td style="padding:2px"><button class="sm" data-ft="buy:${k}" style="min-width:110px"></button></td><td style="padding:2px"><button class="sm" data-ft="sell:${k}" style="min-width:110px"></button></td></tr>`).join('') +
+    `</table><div id="ftMsg" style="min-height:20px;color:#9fe8a8;font-weight:600;font-size:15px"></div>`;
+}
+function refreshFriendTrade(p) {
+  const R = tradeFriend(); if (!R) return;
+  for (const [k, , st] of TRADE_GOODS) { const pr = friendPrices(R, k), bb = p.querySelector(`[data-ft="buy:${k}"]`), sb = p.querySelector(`[data-ft="sell:${k}"]`); if (!bb) continue;
+    const open = tradeOpen(R, st); bb.textContent = open ? `Buy ${pr.lot}: ${pr.sell}g` : `stage ${st}`; sb.textContent = open ? `Sell ${pr.lot}: ${pr.buy}g` : `stage ${st}`;
+    bb.style.opacity = open && (R.res[k] || 0) - TRADE_RESERVE[k] >= pr.lot && res.gold >= pr.sell ? 1 : 0.45; sb.style.opacity = open && myHave(k) >= pr.lot && R.res.gold >= pr.buy ? 1 : 0.45; }
+}
+let friendToldT = 0;
+function updateFriendTrade(dt) {   // tell you once, when you first have a market, that the friend will trade
+  const R = tradeFriend(); if (!R || R.told) return;
+  if ((friendToldT += dt) < 2) return; friendToldT = 0;
+  if (structures.some(b => b.team === 'player' && b.kind === 'market' && b.done && !b.dead)) { R.told = true; showBanner(`<b>${R.name}</b> (${FACTIONS[R.fac].name}) is your trading friend: open your market to trade.`, 5); }
+}
+
+// ---------- rogue bandits: no one's men ----------
+// Small bands come in from the edge of the map, make for your nearest store, steal and run off the map again.
+// They fight whoever stands in their way (a rival's people too); kill them before they get away with the goods.
+function spawnRogues() {
+  const k = playerKeep(); if (!k) return;
+  const n = ROGUES.band[0] + Math.floor(Math.random() * (ROGUES.band[1] - ROGUES.band[0] + 1));
+  // an edge point far from every camp, on the land
+  let at = null;
+  for (let t = 0; t < 40 && !at; t++) {
+    const side = Math.floor(Math.random() * 4), f = 0.1 + Math.random() * 0.8;
+    const E = 230, x = side === 0 ? f * MW : side === 1 ? MW - E : side === 2 ? f * MW : E, y = side === 0 ? E : side === 1 ? f * MH : side === 2 ? MH - E : f * MH;   // well inside the land, clear of the shore
+    const fr = nearestFree(Math.floor(x / TILE), Math.floor(y / TILE)); if (!fr) continue;
+    const px = fr.c * TILE + 16, py = fr.r * TILE + 16; if (circleBlocked(px, py, 8) || campDist(px, py) < 700 || Math.hypot(px - k.x, py - k.y) < 700) continue;
+    if (!findPath(px, py, k.x, k.y1 + 40).length) continue; at = { x: px, y: py };
+  }
+  if (!at) return;
+  for (let i = 0; i < n; i++) {
+    let sp = null; for (let t = 0; t < 12 && !sp; t++) { const fr = nearestFree(Math.floor(at.x / TILE) + (i % 3) - 1 + (t % 3) - 1, Math.floor(at.y / TILE) + Math.floor(i / 3) + Math.floor(t / 3) - 1); if (fr && !circleBlocked(fr.c * TILE + 16, fr.r * TILE + 16, 8) && findPath(fr.c * TILE + 16, fr.r * TILE + 16, k.x, k.y1 + 40).length) sp = fr; }
+    if (!sp) continue;   // each bandit on its own clear square
+    const u = makeUnit('rogue', i % 2 ? 'spear' : 'sword', sp.c * TILE + 16, sp.r * TILE + 16);
+    Object.assign(u, { rogue: true, name: 'Bandit', exit: { x: at.x, y: at.y }, sub: 'toStore', post: { x: at.x, y: at.y } });
+  }
+  raidPing = { x: at.x, y: at.y, t: 0 };
+  showBanner(`<b>Bandits</b> (no one's men) are coming for your stores. Stop them before they get away with your goods.`, 4);
+}
+function rogueStore(u) {   // your nearest store with something in it
+  let best = null, bd = 1e9;
+  for (const b of structures) { if (b.dead || b.team !== 'player' || b.done === false || !DROPS[b.kind]) continue; const d = Math.hypot(b.x - u.x, b.y - u.y); if (d < bd) { bd = d; best = b; } }
+  return best;
+}
+function rogueBrain(u, dt) {
+  const walk = (x, y) => { if (!u.path.length || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length && (u.noWay = (u.noWay || 0) + 1) > 3 && u.sub === 'toStore') { u.sub = 'flee'; u.exit = { x: u.x, y: u.y }; } } followPath(u, dt); };   // no way at all: give up and go
+  if (u.hp < u.maxHp * 0.5 && u.sub !== 'flee') { u.sub = 'flee'; u.path = []; }   // badly hurt: run for it
+  if (u.order === 'attack' && alive(u.target) && edgeDist(u, u.target) < 60 && u.sub !== 'flee') return;   // fighting whoever blocks them
+  const foe = aggro(u, 70); if (foe && u.sub !== 'flee') { u.order = 'attack'; u.target = foe; u.repath = 0; return; }
+  u.order = u.sub === 'flee' ? 'move' : 'raid';
+  if (u.sub === 'toStore') {
+    const s = u.store && !u.store.dead ? u.store : (u.store = rogueStore(u)); if (!s) { u.sub = 'flee'; return; }
+    if (edgeDist(u, s) < 18) {   // steal
+      const st = ROGUES.steal, got = [];
+      for (const [k, v] of Object.entries(st)) { const have = k === 'food' ? res.food : res[k] || 0, take = Math.min(v, Math.floor(have)); if (take <= 0) continue; if (k === 'food') spendFood(take); else res[k] -= take; u.loot = (u.loot || 0) + take; got.push(`${take} ${k}`); }
+      if (got.length) floatText(s.x, s.y - 50, `Bandits stole ${got.join(', ')}!`, '#ffb38a');
+      u.sub = 'flee'; u.path = []; return;
+    }
+    const ap = approachPoint(u, s); walk(ap.x, ap.y); return;
+  }
+  if (u.sub === 'flee') {
+    if (Math.hypot(u.x - u.exit.x, u.y - u.exit.y) < 40) { u.dead = true; u.deathT = 99; selection.delete(u); return; }   // gone, with the loot
+    walk(u.exit.x, u.exit.y);
+  }
+}
+function updateRogues(dt) {
+  if ((REALM.rogueT -= dt) > 0) return;
+  REALM.rogueT = ROGUES.every * (0.8 + Math.random() * 0.4); spawnRogues();
+}
 
 // ---------- the rivals box: who you face ----------
 function showRivalsPop() {
