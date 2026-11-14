@@ -17,7 +17,7 @@ const SAVE_LETS = [
   'schoolLvl', 'schoolStudy', 'alePrice', 'taxTotal', 'feastUntil', 'doctorLvl', 'doctorStudy', 'warNow', 'indStage', 'indT', 'granaryOverT',
   'bugsOn', 'bugT', 'bugCalmT', 'oxFoodT', 'healers', 'soldierLvl', 'soldierStudy', 'solT', 'fireT', 'repT', 'rebuildQ',
   'raidTimer', 'raidCount', 'raidRouteI', 'enemyWallPlan', 'enemyWallT', 'nameSeq', 'growT', 'citT', 'sellT', 'healT', 'stealthT',
-  'armyMarch', 'marchT', 'friendToldT', 'r4T', 'guardT', 'healthT', 'groupT'
+  'armyMarch', 'marchT', 'friendToldT', 'r4T', 'guardT', 'healthT', 'groupT', 'lossTimes'
 ];
 const SAVE_CONSTS = { res: () => res, foodKinds: () => foodKinds, WEATHER: () => WEATHER, rally: () => rally, LORD: () => LORD };
 const saveGet = {}, saveSet = {};

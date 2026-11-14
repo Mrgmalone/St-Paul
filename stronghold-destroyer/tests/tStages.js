@@ -28,11 +28,12 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
       let victim = null; if (canPlace('stockpile', wc, wr - 1)) { victim = createBuilding('stockpile', wc, wr - 1); finishBuilding(victim); } else if (canPlace('stockpile', wc, wr)) { victim = createBuilding('stockpile', wc, wr); finishBuilding(victim); }
       out.victim = !!victim;
       const treesIn0 = SD.trees.filter(t => t.x >= (k.c - R) * TILE && t.x < (k.c + 3 + R) * TILE && t.y >= (k.r - R) * TILE && t.y < (k.r + 3 + R) * TILE).length;
-      // meet every requirement
-      for (const [kind, cnt] of Object.entries(q.buildings || {})) { const kk = kind === 'farmAny' ? 'farm' : kind; for (let i = countBuilt(kind, 'player'); i < cnt; i++) {
+      // meet every requirement (4D: the game's own list, which Medium and Hard raise)
+      const rows = needRows(n, playerHave()), nd = key => (rows.find(r => r.key === key) || { need: 0 }).need;
+      for (const [kind] of Object.entries(q.buildings || {})) { const cnt = nd('b:' + kind), kk = kind === 'farmAny' ? 'farm' : kind; for (let i = countBuilt(kind, 'player'); i < cnt; i++) {
         let placed = false; for (let rad = 4; rad < 30 && !placed; rad++) for (let a = 0; a < 24 && !placed; a++) { const c = k.c + 1 + Math.round(Math.cos(a / 24 * 6.283) * (R + rad)), rr = k.r + 1 + Math.round(Math.sin(a / 24 * 6.283) * (R + rad)); if (canPlace(kk, c, rr)) { const bb = createBuilding(kk, c, rr); finishBuilding(bb); placed = true; } } } }
-      while (myPeople() < q.people) { const f = nearestFree(k.c + 2, k.r + 6); makeUnit('player', 'civ', f.c * TILE + 16, f.r * TILE + 16); }
-      SD.res.stone = (q.stone || 0) + 5; SD.res.iron = (q.iron || 0) + 5; addFood('crops', Math.max(0, (q.food || 0) + 50 - SD.res.food));
+      while (myPeople() < nd('people')) { const f = nearestFree(k.c + 2, k.r + 6); makeUnit('player', 'civ', f.c * TILE + 16, f.r * TILE + 16); }
+      SD.res.stone = nd('stone') + 5; SD.res.iron = nd('iron') + 5; addFood('crops', Math.max(0, nd('food') + 50 - SD.res.food));
       mood = 90; window.__step(30);
       out.stage = stageN; out.wallMat = [...new Set(SD.structures.filter(w => w.castleRing && !w.dead && w.team === 'player').map(w => w.mat))].join(','); out.ring = SD.structures.filter(w => w.castleRing && !w.dead && w.team === 'player').length;   // your ring only (the rivals have their own)
       out.victimSafe = !victim || (!victim.dead && SD.structures.includes(victim) && !wallLine.some(([c, rr]) => c >= victim.c && c < victim.c + victim.w && rr >= victim.r && rr < victim.r + victim.h));

@@ -15,6 +15,7 @@ function formationSlots(n, x, y) {
   }
   return slots;
 }
+const CHASE_LEASH = 360;   // (4D) how far a soldier follows a foe he went for by himself before walking back
 function commandMove(list, x, y) {
   if (!list.length) return;
   const slots = formationSlots(list.length, x, y), free = list.slice();
@@ -24,7 +25,7 @@ function commandMove(list, x, y) {
     free.forEach((u, i) => { const d = (u.x - s.x) ** 2 + (u.y - s.y) ** 2; if (d < bd) { bd = d; bi = i; } });
     const u = free.splice(bi, 1)[0];
     if (u.onWall) dismount(u);
-    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; u.bestD = undefined; u.rerouted = false; u.progT = 0; if (u.type === 'civ') u.task = null;
+    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; u.bestD = undefined; u.rerouted = false; u.progT = 0; u.autoFrom = null; if (u.type === 'civ') u.task = null;
     u.path = findPath(u.x, u.y, s.x, s.y);
   }
   markers.push({ x, y, t: 0, col: '120,255,140' });
@@ -99,7 +100,7 @@ function mountStep(u, dt) {
   followPath(u, dt);
 }
 function commandAttack(list, t) {
-  for (const u of list) { if (u.onWall && edgeDist(u, t) > rangeOf(u) + 2) dismount(u); u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; }
+  for (const u of list) { if (u.onWall && edgeDist(u, t) > rangeOf(u) + 2) dismount(u); u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; u.autoFrom = null; }
   markers.push({ x: t.x, y: t.y, t: 0, col: '255,90,70', target: t });
 }
 function commandStop(list) { for (const u of list) { if (u.type === 'civ') { u.job = null; u.manualT = time; } u.order = 'idle'; u.target = null; u.path = []; u.moving = false; } }
@@ -255,6 +256,13 @@ function playerBrain(u) {
   if (u.guardOf && time - (u.cmdT || -99) >= 30 && guardPost(u)) return;
   if ((u.patrol || u.guardArea) && dutyBrain(u, frameDt)) return;   /* on patrol, or guarding an area (orders.js) */
   if (u.escort && escortBrain(u)) return;   // walking with a work group
+  // (4D) a fight a soldier starts by himself has a leash: past CHASE_LEASH from where it began he walks back. Before, a
+  // rival scout that came near and went home drew your soldiers after it into the rival's castle, where they died (and
+  // each death takes 3 from happiness). A fight you order yourself (commandAttack) still goes as far as you send them.
+  if (u.order === 'attack' && u.autoFrom && Math.hypot(u.x - u.autoFrom.x, u.y - u.autoFrom.y) > CHASE_LEASH) {
+    const h = u.autoFrom; u.autoFrom = null; if (u.onWall) dismount(u);
+    u.order = 'move'; u.target = null; u.dest = { x: h.x, y: h.y }; u.stuckT = 0; u.bestD = undefined; u.rerouted = false; u.progT = 0; u.path = findPath(u.x, u.y, h.x, h.y); return;
+  }
   if (u.order === 'attack' && !alive(u.target)) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
@@ -262,7 +270,7 @@ function playerBrain(u) {
   if (u.order === 'idle') {
     u.moving = false;
     const n = nearestEnemy(u, Math.max(u.onWall ? 0 : 110, rangeOf(u) + 20));
-    if (n) { u.order = 'attack'; u.target = n; u.repath = 0; }
+    if (n) { u.order = 'attack'; u.target = n; u.repath = 0; u.autoFrom = { x: u.x, y: u.y }; }
   }
 }
 function enemyBrain(u, dt) {

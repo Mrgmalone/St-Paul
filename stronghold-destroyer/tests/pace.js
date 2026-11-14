@@ -11,9 +11,14 @@ const FAC = process.argv[2] || 'cyyoung', MIN = +(process.argv[3] || 75), DIFF =
   const b = await chromium.launch(env.LAUNCH), p = await b.newPage({ viewport: { width: 1180, height: 820 } }); await env.use3d(p, { drawMs: 999999 });
   const errs = []; p.on('pageerror', e => errs.push(e.message + ' | ' + (e.stack || '').split('\n')[1]));
   await p.addInitScript(() => { window.__raf = []; window.requestAnimationFrame = f => { window.__raf.push(f); return 1; }; });
+  // SEED=n makes the map and every random choice repeat exactly, so the three difficulties can be compared on one map
+  if (process.env.SEED) await p.addInitScript(s => { let a = s >>> 0; Math.random = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }, +process.env.SEED);
   await p.goto(env.GAME_REAL + (process.env.RIVALS ? '?rivals=' + process.env.RIVALS : '')); await p.waitForTimeout(500);
   await p.evaluate(() => { window.__now = 0; window.__step = n => { for (let i = 0; i < n; i++) { window.__now += 50; const fs = window.__raf.splice(0); for (const f of fs) f(window.__now); } }; window.__step(2); });
   await p.evaluate(k => SD.setDiff(k), DIFF);
+  // count the deaths of your people by kind (each one takes 3 from happiness), for the log
+  await p.evaluate(() => { window.__deaths = {}; const k0 = kill; window.kill = function (t) { if (t && t.team === 'player' && t.kind === 'unit' && !t.dead && !isMachine(t)) { let foe = null, fd = 260; for (const o of units) { if (o.dead || !hostile(o.team, 'player')) continue; const d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } }
+      const c = t.type + (t.sick ? '(sick)' : '') + (time - (t.lastHurt || -99) < 5 ? '' : '(not in a fight)') + ' by ' + (foe ? foe.team + ':' + foe.type + (foe.owner !== undefined ? '@' + foe.owner : '') + (foe.scout ? '(scout)' : '') : 'nobody near') + (() => { const k = playerKeep(); if (!k) return ''; const d = Math.hypot(t.x - k.x, t.y - k.y); return d < 300 ? ' at the keep' : d < 650 ? ' near the keep' : ' far out (' + Math.round(d) + ')'; })(); window.__deaths[c] = (window.__deaths[c] || 0) + 1; } return k0(t); }; });
   await p.click(`.fac[data-fac="${FAC}"]`); await p.click(`.fac[data-fac="${FAC}"] .fgo`);
   await p.evaluate(() => {
     window.__step(3); document.getElementById('banner').style.display = 'none';
@@ -43,6 +48,8 @@ const FAC = process.argv[2] || 'cyyoung', MIN = +(process.argv[3] || 75), DIFF =
       pay(d); const bl = createBuilding(kind, at[0], at[1]); window.__placed.push([Math.round(time / 6) / 10, kind]); return !!bl;
     }
     window.__defend = () => { const k = playerKeep(); if (!k) return;
+      /* a sensible player defends at home: soldiers who chased a foe far from the castle are called back */
+      for (const u of units) if (!u.dead && u.team === 'player' && u.order === 'attack' && u.type !== 'civ' && u.type !== 'king' && !isMachine(u) && Math.hypot(u.x - k.x, u.y - k.y) > 800) commandMove([u], k.x + (u.id % 7 - 3) * 24, k.y + 130);
       const foes = units.filter(e => !e.dead && hostile('player', e.team) && e.team !== 'friend' && Math.hypot(e.x - k.x, e.y - k.y) < 650);
       for (const u of units) if (!u.dead && u.team === 'player' && u.type !== 'civ' && u.type !== 'king' && !isMachine(u) && u.order === 'idle' && foes.length) { const f = foes.reduce((a, e) => Math.hypot(e.x - u.x, e.y - u.y) < Math.hypot(a.x - u.x, a.y - u.y) ? e : a); commandAttack([u], f); } };
     window.__paceBot = () => {
@@ -117,11 +124,14 @@ const FAC = process.argv[2] || 'cyyoung', MIN = +(process.argv[3] || 75), DIFF =
   for (let s = 0; s < MIN * 12; s++) {   // every 5 game-seconds
     const r = await p.evaluate(NR => { if (NR) { SD.setRaid(1e9); REALM.rogueT = 1e9; for (const R of REALM.rivals) R.raidT = 1e9; } window.__step(100); window.__paceBot(); return { st: stageN, won, min: +(time / 60).toFixed(1) }; }, !!process.env.NORAIDS);
     if (r.st >= 5 || r.won) break;
-    if (s % 60 === 0) { const line = await p.evaluate(() => JSON.stringify({ min: +(time / 60).toFixed(1), stage: stageN, people: myPeople(), mood: Math.round(mood), food: Math.floor(res.food), wood: Math.floor(res.wood), stone: Math.floor(res.stone), iron: Math.floor(res.iron), gold: Math.floor(res.gold), tax, cap: foodCap(), farms: farms.filter(f => !f.dead && f.team === 'player' && f.done).map(f => f.kind[0] + staffOf(f)).join(''), gran: mineDone('granary').length, quarry: mineAll('quarry').map(q => (q.done === false ? 'building' : 'q') + staffOf(q) + '/' + (q.stock || 0) + (q.asleep ? 'zz' : '')).join(' ') + ' carts ' + units.filter(u => u.type === 'oxcart' && !u.dead).map(u => u.sub || '-').join(','), civ: units.filter(u => !u.dead && u.team === 'player' && u.type === 'civ').length, jobless: idleCount(), sold: units.filter(u => !u.dead && u.team === 'player' && u.type !== 'civ').length, why: (SD.moodReasons ? SD.moodReasons() : []).slice(0, 8) })); if (line !== last) console.log('   ', line); last = line; }
+    if (s % 60 === 0) { const line = await p.evaluate(() => JSON.stringify({ min: +(time / 60).toFixed(1), stage: stageN, people: myPeople(), mood: Math.round(mood), food: Math.floor(res.food), wood: Math.floor(res.wood), stone: Math.floor(res.stone), iron: Math.floor(res.iron), gold: Math.floor(res.gold), tax, cap: foodCap(), farms: farms.filter(f => !f.dead && f.team === 'player' && f.done).map(f => f.kind[0] + staffOf(f)).join(''), gran: mineDone('granary').length, quarry: mineAll('quarry').map(q => (q.done === false ? 'building' : 'q') + staffOf(q) + '/' + (q.stock || 0) + (q.asleep ? 'zz' : '')).join(' ') + ' carts ' + units.filter(u => u.type === 'oxcart' && !u.dead).map(u => u.sub || '-').join(','), civ: units.filter(u => !u.dead && u.team === 'player' && u.type === 'civ').length, jobless: idleCount(), sold: units.filter(u => !u.dead && u.team === 'player' && u.type !== 'civ').length, why: (SD.moodReasons ? SD.moodReasons() : []).slice(0, 8),
+      parts: { rate: Math.round(moodRate), sick: sickPen, crowd: crowdPen, ale: aleBonus, heal: relBonus, variety: varietyBonus, tax: TAXES[tax].mood, ration: RATIONS[ration].mood, full: fullGranary, fat: fatBonus, fear: fearGood + fearHard, unpaid: wagesUnpaid ? 1 : 0, starving: starving ? 1 : 0 },
+      sickNow: units.filter(u => !u.dead && u.team === 'player' && u.sick).length, deaths: window.__deaths,
+      rivalsAt: REALM.rivals.map(R => R.keep && playerKeep() ? R.id + ':' + Math.round(Math.hypot(R.keep.x - playerKeep().x, R.keep.y - playerKeep().y)) : R.id + ':-').join(' ') })); if (line !== last) console.log('   ', line); last = line; }
   }
   const out = await p.evaluate(() => ({ stages: window.__stages, end: { min: +(time / 60).toFixed(1), stage: stageN, people: myPeople(), mood: Math.round(mood), keep: playerKeep() ? Math.round(playerKeep().hp) + '/' + playerKeep().maxHp : 'fallen', won, rivals: REALM.rivals.map(R => (R.friend ? 'F' : '') + R.stage + (R.defeated ? 'x' : '')) }, placed: window.__placed.length,
     needNext: stageN < STAGES.length ? needRows(stageN + 1, playerHave()).filter(r => !r.ok).map(r => `${r.what} ${r.have}/${r.need}`) : [] }));
-  console.log('PACE', DIFF + (process.env.NORAIDS ? ' (raids held off)' : ''), FAC, JSON.stringify(out.stages.map(s => `stage ${s.stage}: ${s.min} min${s.last && s.last.length ? ' (last: ' + s.last.join('+') + ')' : ''}`)), JSON.stringify(out.end), 'still short:', JSON.stringify(out.needNext));
+  console.log('PACE', DIFF + (process.env.NORAIDS ? ' (raids held off)' : '') + (process.env.SEED ? ' map ' + process.env.SEED : ''), FAC, JSON.stringify(out.stages.map(s => `stage ${s.stage}: ${s.min} min${s.last && s.last.length ? ' (last: ' + s.last.join('+') + ')' : ''}`)), JSON.stringify(out.end), 'still short:', JSON.stringify(out.needNext));
   console.log('real time', Math.round((Date.now() - t0) / 1000), 's; errors', JSON.stringify(errs.slice(0, 5)));
   await b.close(); process.exit(errs.length ? 1 : 0);
 })();

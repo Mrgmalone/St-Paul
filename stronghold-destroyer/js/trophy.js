@@ -23,7 +23,8 @@ function trophyAdvice(rows) {
   if (r.key === 'stone') return `Get ${short} more stone: build a quarry beside the grey rocks (the Industry list) and keep workers there.`;
   if (r.key === 'iron') return `Get ${short} more iron: build an iron mine on the red iron ground (the Industry list).`;
   if (r.key === 'mood') {   // name the worst complaint and how to fix it
-    const fix = { 'there is no food: they are starving': 'they are starving: put more citizens on farms and berry bushes', 'rations are lean': 'rations are lean: set them to Normal (the Rule list)',
+    const fix = { 'they mourn the people who died': 'they mourn the people who died (each death takes 3 from happiness): guard the town with more soldiers, towers and walls, and the mourning passes',
+      'there is no food: they are starving': 'they are starving: put more citizens on farms and berry bushes', 'rations are lean': 'rations are lean: set them to Normal (the Rule list)',
       'the soldiers are unpaid': 'the soldiers are unpaid: raise gold (taxes, the market) or train fewer soldiers', 'taxes are high': 'taxes are high: lower them with the down arrow at the top',
       'the houses are crowded': 'the houses are crowded: build another house', 'the stocks frighten them': 'the stocks frighten them: take the stocks down',
       'they eat only one kind of food': 'they eat only one kind of food: add berries (citizens gather bushes), farm crops or bread from a bakery',

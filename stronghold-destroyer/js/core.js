@@ -693,7 +693,7 @@ function underAttackAlert(u) {
 function kill(t) {
   t.hp = 0; t.dead = true; t.deathT = 0;
   AudioSys.play(t.x0 !== undefined ? 'collapse' : isMachine(t) ? 'collapse' : 'fall', t.x, t.y);
-  if (t.team === 'player' && t.kind === 'unit' && !isMachine(t) && started) mood = Math.max(0, mood - 3);
+  if (t.team === 'player' && t.kind === 'unit' && !isMachine(t) && started) { mood = Math.max(0, mood - 3); if (typeof lossTimes !== 'undefined') lossTimes.push(time); }
   if (t.type === 'king' && t.team === 'player') { mood = Math.max(0, mood - 25); showBanner('<b>Your King has fallen!</b> Your people are shaken (mood -25). Guard your keep.', 6); AudioSys.ui('warn'); }
   selection.delete(t);
   if (t.kind === 'moat') { for (let i = 0; i < 10; i++) spawn('dust', t.x + RR(-14, 14), t.y - 8, t.y); floatText(t.x, t.y - 30, 'Moat filled in', '#ffb38a'); }

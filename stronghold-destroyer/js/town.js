@@ -9,6 +9,9 @@ let aleBonus = 0, aleCover = 0, aleT = 0, varietyBonus = 0, relCover = 0, relBon
 let fatBonus = 0, sickPen = 0, contentUntil = 0, leftCount = 0, returnT = 20, fullGranary = 0;
 function cheer(n, secs, msg) { mood = Math.min(100, mood + n); contentUntil = Math.max(contentUntil, time + secs); if (msg) { const k = playerKeep(); if (k) floatText(k.x, k.y - 160, msg, '#ffd27a'); } }
 let mood = 60, ration = 1, tax = 1, goldT = 0, settleT = 30, leaveT = 25, moodRate = 0;
+// (4D) when your people died: each death takes 3 from happiness at once (kill, in core.js), so the reasons list names it
+// for two minutes afterwards; before, a town losing soldiers in raids saw only its other complaints
+let lossTimes = []; const MOURN_SECS = 120;
 const moodName = () => mood >= 70 ? 'Happy' : mood >= 40 ? 'Steady' : mood >= 20 ? 'Unhappy' : 'Rebellious';
 const fatWork = u => (1 - 0.35 * (u.fat || 0)) * (u.sick > 0 ? 0.4 : 1) * drunkMul(u);   // the well-fed are lazy; the sick hardly work
 const countOf = k => structures.filter(b => b.kind === k && b.done && !b.dead && b.team === 'player').length;
@@ -21,6 +24,7 @@ function moodHtml() {
 const k0 = () => playerKeep();
 function moodReasons() {
   const r = [];
+  if (lossTimes.some(t => time - t < MOURN_SECS)) r.push('they mourn the people who died');
   if (starving) r.push('there is no food: they are starving');
   if (ration === 0) r.push('rations are lean');
   if (wagesUnpaid) r.push('the soldiers are unpaid');
@@ -38,6 +42,7 @@ function moodReasons() {
 function updateMood(dt, people) {
   const taverns = structures.filter(b => b.kind === 'tavern' && b.done && !b.dead && b.team === 'player').length;
   aleBonus = 0; aleCover = 0;
+  if (lossTimes.length && time - lossTimes[0] >= MOURN_SECS) lossTimes = lossTimes.filter(t => time - t < MOURN_SECS);
   if (IND()) {   /* the alehouse and tavern: the price you set decides the mood, the gold and the drunks */
     const A = INDUSTRY.ale, serve = taverns * A.tavernServes + countOf('alehouse') * A.alehouseServes, p = alePriceNow();
     if (serve && res.ale > 0 && people.length) { aleCover = Math.min(1, serve / people.length); aleBonus = Math.round(aleAt(A.mood, p) * aleCover);

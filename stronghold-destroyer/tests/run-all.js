@@ -8,11 +8,14 @@ const all = fs.readdirSync(__dirname).filter(f => /^t.*\.js$/.test(f)).map(f => 
 const pick = process.argv.slice(2).length ? process.argv.slice(2) : all;
 const slow = n => /3d|Tg|Art3d/.test(n);
 const run = n => new Promise(res => {
-  const t0 = Date.now(), p = spawn(process.execPath, [path.join(__dirname, n + '.js'), SP], { cwd: SP }); let out = '';
+  const t0 = Date.now(), p = spawn(process.execPath, [path.join(__dirname, n + '.js'), SP], { cwd: SP, detached: true }); let out = '', done = false;
   p.stdout.on('data', d => out += d); p.stderr.on('data', d => out += d);
-  const timer = setTimeout(() => p.kill('SIGKILL'), /SweepUI|Save/.test(n) ? 3600000 : 1200000);   /* (the button sweep taps every button on five screens; the save check reloads many games) */
-  p.on('close', code => { clearTimeout(timer); fs.writeFileSync(path.join(SP, n + '.log'), out);
-    const errs = /errors \[\]/.test(out) && !/errors \[\s*['"]/.test(out); res({ n, ok: code === 0 && errs, code, secs: Math.round((Date.now() - t0) / 1000) }); });
+  /* a check that runs too long is killed together with the browser it started (its own process group), otherwise the browser can hold the output open and the runner waits forever */
+  const killAll = () => { try { process.kill(-p.pid, 'SIGKILL'); } catch (e) { try { p.kill('SIGKILL'); } catch (e2) {} } };
+  const timer = setTimeout(killAll, /SweepUI|Save/.test(n) ? 3600000 : 1200000);   /* (the button sweep taps every button on five screens; the save check reloads many games) */
+  const finish = code => { if (done) return; done = true; clearTimeout(timer); fs.writeFileSync(path.join(SP, n + '.log'), out);
+    const errs = /errors \[\]/.test(out) && !/errors \[\s*['"]/.test(out); res({ n, ok: code === 0 && errs, code, secs: Math.round((Date.now() - t0) / 1000) }); };
+  p.on('close', finish); p.on('exit', code => setTimeout(() => { killAll(); finish(code); }, 3000));
 });
 (async () => {
   fs.mkdirSync(SP, { recursive: true });

@@ -53,6 +53,12 @@ async function main() {
     // opening another panel closes it
     await p.click('#btnTrophy'); await p.click('#btnMenu'); need(!(await look(p)).pop, 'opening Settings closes the trophy panel');
     await p.evaluate(() => UI.closePops());
+    // (4D sweep) a death lowers happiness by 3 at once: the reasons list and the trophy's advice name it, for two minutes
+    const mourn = await p.evaluate(() => { const k = playerKeep(), u = makeUnit('player', 'spear', k.x, k.y + 90); T.run(0.2); const m0 = mood; kill(u); T.run(0.2);
+      const adv = trophyAdvice([{ key: 'mood', what: 'Happiness', have: 10, need: 40, ok: false }]), now = moodReasons().includes('they mourn the people who died');
+      T.run(125); return { drop: +(m0 - mood).toFixed(1), now, adv, later: moodReasons().includes('they mourn the people who died') }; });
+    need(mourn.now && /mourn/.test(mourn.adv), 'after one of your people dies, the reasons and the trophy advice say they mourn: ' + mourn.adv);
+    need(!mourn.later, 'two minutes later the mourning is gone from the reasons');
     // the final stage
     await p.evaluate(() => T.stage(5)); await p.click('#btnTrophy');
     const fin = await p.evaluate(() => ({ txt: document.getElementById('trophyPop').textContent, rows: document.querySelectorAll('#trophyPop .ttab tr').length }));
