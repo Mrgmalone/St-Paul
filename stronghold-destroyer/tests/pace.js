@@ -102,6 +102,15 @@ const FAC = process.argv[2] || 'cyyoung', MIN = +(process.argv[3] || 75), DIFF =
       const army = Math.round((3 + 2 * stageN) * ({ easy: 1, medium: 1.25, hard: 1.6 }[DIFF.key] || 1));   // a sensible player keeps a bigger guard when the rivals are fiercer
       if (soldiers + trainQueue.length < army && res.gold > 30 + 6 * soldiers) { if (res.spear >= 1 && res.gold >= 15) { try { trainUnit('spear'); } catch (e) {} } else if (res.bow >= 1 && res.gold >= 15) { try { trainUnit('archer'); } catch (e) {} } }
       window.__defend();
+      // (bug hunt) an ox cart that has carried its load for over two minutes without arriving: say exactly where it is
+      for (const c of units.filter(u => u.type === 'oxcart' && !u.dead && u.team === 'player')) {
+        if (c.sub !== 'haul') { c._haulT = time; continue; } if (time - (c._haulT || time) < 120 || c._told) continue; c._told = true;
+        const drop = nearestDrop(c, 'stone'), ap = drop && approachPoint(c, drop), path = ap ? findPath(c.x, c.y, ap.x, ap.y) : [];
+        const tc = (x, y) => [Math.floor(x / TILE), Math.floor(y / TILE)], blk = (x, y) => { const [cc, rr] = tc(x, y); return tileBlocked(cc, rr) ? 'blocked' : 'open'; };
+        console.log('STUCKCART', JSON.stringify({ t: Math.round(time), cart: [Math.round(c.x), Math.round(c.y)], cartTile: blk(c.x, c.y), drop: drop && drop.kind, dropAt: drop && [drop.x0, drop.y0, drop.x1, drop.y1], ap: ap && [Math.round(ap.x), Math.round(ap.y)], apTile: ap && blk(ap.x, ap.y),
+          edge: drop && Math.round(edgeDist(c, drop)), apEdge: ap && drop && Math.round(edgeDist({ x: ap.x, y: ap.y, radius: c.radius }, drop)), pathLen: path.length, noPath: c.noPathT > time, cpath: c.path.length, moving: c.moving, stage: stageN,
+          ring: structures.filter(s => !s.dead && s.castleRing).length, gates: structures.filter(s => !s.dead && s.kind === 'gate' && s.team === 'player').length }));
+      }
     };
   });
   const t0 = Date.now(); let last = '';

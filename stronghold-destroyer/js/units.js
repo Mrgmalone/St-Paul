@@ -233,12 +233,17 @@ function cartBrain(u, dt) {
   const q = u.home; u.order = 'cart';
   if (!q || q.dead) { u.moving = false; return; }
   const walk = (x, y) => { if ((!u.path.length && !(u.noPathT > time)) || u.repath <= 0) { u.path = findPath(u.x, u.y, x, y); u.repath = 3; if (!u.path.length) u.noPathT = time + 2; } followPath(u, dt); };
+  // (4D bug sweep) each trip heads for a spot it can really reach (u.goTo), worked out once; a spot walled in by other
+  // buildings made a cart wait outside forever with its load
+  const target = (b, key) => { if (!u.goTo || u.goTo.key !== key || u.noPathT > time) { const r = reachApproach(u, b); u.goTo = { key, x: r ? r.p.x : approachPoint(u, b).x, y: r ? r.p.y : approachPoint(u, b).y }; u.path = r ? r.path : []; u.repath = 3; u.noPathT = 0; } return u.goTo; };
+  const there = g => Math.hypot(u.x - g.x, u.y - g.y) < 14;
   if (u.sub === 'haul') {
     const drop = nearestDrop(u, 'stone'); if (!drop) { u.moving = false; return; }
-    if (edgeDist(u, drop) <= 14) { q.produced = (q.produced || 0) + u.carry; res.stone += u.carry; floatText(u.x, u.y - 60, `+${u.carry} stone`, '#e0c088'); u.carry = 0; u.carryType = null; u.sub = 'back'; u.path = []; return; }
-    const ap = approachPoint(u, drop); walk(ap.x, ap.y); return;
+    const g = target(drop, 'd' + drop.id);
+    if (edgeDist(u, drop) <= 14 || (there(g) && edgeDist(u, drop) <= 34)) { q.produced = (q.produced || 0) + u.carry; res.stone += u.carry; floatText(u.x, u.y - 60, `+${u.carry} stone`, '#e0c088'); u.carry = 0; u.carryType = null; u.sub = 'back'; u.path = []; u.goTo = null; return; }
+    walk(g.x, g.y); return;
   }
-  if (edgeDist(u, q) > 20) { const ap = approachPoint(u, q); walk(ap.x, ap.y); return; }
+  if (edgeDist(u, q) > 20) { const g = target(q, 'q' + q.id); if (!(there(g) && edgeDist(u, q) <= 40)) { walk(g.x, g.y); return; } }
   u.moving = false; u.path = [];
   if ((q.stock || 0) >= 8) { const n = Math.min(q.stock, Math.round(24 * (u.strong || 1))); q.stock -= n; u.carry = n; u.carryType = 'stone'; u.sub = 'haul'; u.path = []; }
 }

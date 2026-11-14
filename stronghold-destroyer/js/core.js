@@ -572,6 +572,19 @@ function edgeDist(u, t) {
   }
   return Math.hypot(t.x - u.x, t.y - u.y) - u.radius - t.radius;
 }
+// (4D bug sweep) the nearest spot beside building t that u can really walk to, with its path (the plain approach spot can
+// be an open pocket walled in by other buildings: walking there never arrives). Tries the cheap spot first.
+function reachApproach(u, t) {
+  const reaches = (p, path) => path.length ? Math.hypot(path[path.length - 1].x - p.x, path[path.length - 1].y - p.y) < 20 : Math.hypot(p.x - u.x, p.y - u.y) < 16;
+  const a = approachPoint(u, t), pa = findPath(u.x, u.y, a.x, a.y); if (reaches(a, pa)) return { p: a, path: pa };
+  if (t.x0 === undefined) return null;
+  const pts = [];
+  for (let x = t.x0 - 13; x <= t.x1 + 13; x += 8) for (const y of [t.y0 - 13, t.y1 + 13]) pts.push({ x, y });
+  for (let y = t.y0 - 5; y <= t.y1 + 5; y += 8) for (const x of [t.x0 - 13, t.x1 + 13]) pts.push({ x, y });
+  const open = pts.filter(p => !circleBlocked(p.x, p.y, 7) && Math.hypot(p.x - a.x, p.y - a.y) > 6).sort((p, q) => Math.hypot(p.x - u.x, p.y - u.y) - Math.hypot(q.x - u.x, q.y - u.y));
+  for (const p of open.slice(0, 10)) { const path = findPath(u.x, u.y, p.x, p.y); if (reaches(p, path)) return { p, path }; }
+  return null;
+}
 function approachPoint(u, t) {
   if (t.x0 !== undefined) {
     const p = { x: clamp(u.x, t.x0 - 13, t.x1 + 13), y: clamp(u.y, t.y0 - 13, t.y1 + 13) };
