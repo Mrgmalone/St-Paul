@@ -451,11 +451,52 @@ Catalog.pdf (made by tools/catalog.js from the game itself).
   (100 people 1,859 ms against 1,854; 800 people 3,087 against 3,119; see the 4D table above). Help adds work only
   while it is open, plus a look for new panels every two seconds.
 
+## Phase 4E: the troop diamond, formations, tap-away boxes, pictures on phones (after the Help screen)
+
+Gerald's request: on a phone, small symbols and pictures, names only when tapped; a tap on a hint or suggestion (any
+box, the Art of War included) makes it go away, or a double tap; no Stage icon at the top (the trophy does that); the
+troop controls in a neat diamond at the bottom left instead of the bar across the bottom (stop, go, which way, what to
+do, patrol, add more people, with buttons round its sides); formations for any number of soldiers ("a very important
+upgrade to the way the troops move"); then a picture and a PDF of what the buttons do.
+
+- **The diamond** (js/ui4e.js, styles at the end of css/game.css). Nine diamond-shaped buttons: arrows on the four
+  points (the chosen soldiers walk five squares that way on the screen, whichever way the view is turned); Patrol,
+  Guard, Add and Stop between them; in the middle two walking soldiers with the number chosen, which open the seven
+  formations above it. Round the outside: People, Soldiers (choose all), Castle (back home), Let go on the corners;
+  Everyone and Citizens (and Hekaranok's bell) beside it. The buttons are the game's own, moved out of the old bottom
+  bar (#cmdbar, now hidden), so they keep their names and jobs. With nobody chosen the order buttons dim and say why.
+  At least 44 points on every screen; on a phone held sideways People joins the column and the formations open to the
+  right, clear of the trophy and the top bar. Assumptions (Gerald did not name them): the arrows are the "which way"
+  buttons; Add is "add more people" (tap soldiers to add them to the group), and now works with a mouse too.
+- **Formations** (js/formations.js): Free (the old block), Line, Column, Wedge, Square, Circle, Loose, for any number.
+  The group marches at the pace of the slowest (one more than 60 points behind may catch up), arrives together and
+  stands facing the way it went (in 3D and in the flat view); rows fill from the front with whoever is furthest
+  forward, so nobody walks through the others; in a line the bowmen stand behind the fighters; one knocked off his
+  place steps back into it (for 12 seconds after arriving). Choosing a formation with soldiers chosen forms them up
+  where they stand (facing up the screen); tapping the ground sends them in that shape. Soldiers in a chosen
+  formation stay in it (they are not taken for tower-door duty) until given a new order; a march counts as your
+  order, so no automatic duty takes them for 30 seconds. A blocked place moves to the nearest free point that is not
+  another's place. Measured on open ground in tests/tFormation.js.
+- **Boxes that are in the way:** one tap puts away a hint, a banner, an alert or the Art of War advice (the next tip
+  comes back); a double tap or double click on any box, away from its buttons, closes it the box's own way (tests/tDismiss.js).
+- **Top bar and phones:** the Stage chip is gone (the trophy shows the stage). On a phone the faction's name is its
+  shield, people read 12/15, happiness is a number, taxes are dots, Rivals, Goods and the weather are their signs, and
+  the five tabs show pictures (the open one its name); touching any of them shows its name.
+- **Help:** articles "The troop diamond", "Formations" and "Putting boxes away"; the touch, top bar, patrol, People
+  and advisor articles describe the new layout (92 articles; 68 sample questions).
+- **The guide:** design/Troop-Controls-Guide.pdf (4 pages: the numbered diamond and what each button does, good to
+  know, the formations menu, the seven formations seen from above, the phone) and design/Troop-Diamond.png, both made
+  from the game by tools/controls_guide.js, so they say what the game says.
+- Checks: tests/tDiamond.js (computer, iPad, iPhone both ways), tests/tFormation.js, tests/tDismiss.js; all 71 checks pass. Speed (tests/bench.js,
+  3D view, milliseconds per frame, the average of two runs in turns): 100 people 2,188 before and 2,113 after; 800
+  people 3,784 before and 3,625 after. No slowdown (the machine was slower this day than on the 4D day, so compare
+  only within a table).
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4D, play link version 53; the Help screen, version 54):** branch `upgrade-v2` holds Phases 4A to 4D and the
-Help screen, all built and checked; the Phase 4D and Help sections above list what each step does, the stage table, the
-tests, the speed and the art still needed. Open for Gerald: how strong the Medium and Hard raids should be (see D4).
+**Latest (Phase 4E, play link version 55):** branch `upgrade-v2` holds Phases 4A to 4E and the Help screen, all
+built and checked; the sections above list what each step does, the tests, the speed and the art still needed. Open for
+Gerald: how strong the Medium and Hard raids should be (see D4).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.
 Earlier: Phase 4B steps B1 to B8; its section lists what each step does, the numbers to confirm, the conflicts, what was
 simplified and the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
