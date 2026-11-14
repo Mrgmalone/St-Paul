@@ -146,7 +146,7 @@ function rivalTrain(R) {
 }
 function growRival(R) {
   const st = STAGES[R.stage], q = st.need || {};
-  { const mul = stageMul(st.n, true); R.res.stone -= Math.round((q.stone || 0) * mul); R.res.iron -= Math.round((q.iron || 0) * mul); } R.stage = st.n;   /* (the same table and difficulty as yours, times RIVAL_STAGE_MUL) */
+  if (q.stone) R.res.stone = Math.max(0, R.res.stone - rivalNeedOf(st.n, 'stone', q.stone)); if (q.iron) R.res.iron = Math.max(0, R.res.iron - rivalNeedOf(st.n, 'iron', q.iron)); R.stage = st.n;   /* (its own numbers, RIVAL_NEED: as before Phase 4D) */
   const k = R.keep; k.stage = R.stage; k.maxHp = st.keepHp; k.hp = Math.min(k.maxHp, k.hp + st.keepHp * 0.4); k.name = `${R.name}'s ${st.name}`;
   k.archerY = [0, 128, 92, 86, 110, 130][R.stage]; k.topH = [0, 125, 96, 92, 120, 140][R.stage];
   const n0 = floats.length; raiseRing(k, R.stage, R.team, { owner: R.id, fac: R.fac }); floats.length = n0;

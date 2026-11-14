@@ -74,7 +74,8 @@ const { chromium } = require('playwright'); const env = require('./env');
       window.__step(20);
       if (A.stage >= 2 && aStage2 === null) aStage2 = s; if (B.stage >= 2 && bStage2 === null) bStage2 = s;
     }
-    return { burned: A.name + ' ' + A.fac, aStage: A.stage, bStage: B.stage, aStage2, bStage2, aFood: Math.round(A.res.food), bFood: Math.round(B.res.food) }; });
+    return { burned: A.name + ' ' + A.fac, aStage: A.stage, bStage: B.stage, aStage2, bStage2, aFood: Math.round(A.res.food), bFood: Math.round(B.res.food),
+      bShort: B.stage < 2 ? needRows(2, rivalHave(B), true).filter(r => !r.ok).map(r => r.what + ' ' + r.have + '/' + r.need) : [] }; });
   console.log('growth', JSON.stringify(grow));
   need(grow.bStage >= 2, 'an untouched rival grows a stage by its economy'); need(grow.aStage2 === null || (grow.bStage2 !== null && grow.aStage2 > grow.bStage2), 'a rival whose farms are burned grows later (or not at all)');
   console.log('fails', JSON.stringify(fails)); console.log('errors', errs.slice(0, 5)); await b.close();

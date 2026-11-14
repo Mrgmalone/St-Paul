@@ -59,6 +59,10 @@ async function main() {
       T.run(125); return { drop: +(m0 - mood).toFixed(1), now, adv, later: moodReasons().includes('they mourn the people who died') }; });
     need(mourn.now && /mourn/.test(mourn.adv), 'after one of your people dies, the reasons and the trophy advice say they mourn: ' + mourn.adv);
     need(!mourn.later, 'two minutes later the mourning is gone from the reasons');
+    // (4D sweep) stone: when the quarry's pile is full and waits for its ox cart, the advice says to add a quarry or a stockpile
+    const stoneAdv = await p.evaluate(() => { const q = mineDone('quarry')[0]; if (!q) return { none: true }; const row = [{ key: 'stone', what: 'Stone', have: 0, need: 100, ok: false }];
+      q.stock = 10; const low = trophyAdvice(row); q.stock = 60; const full = trophyAdvice(row); q.stock = 0; return { low, full }; });
+    need(!stoneAdv.none && /quarry beside the grey rocks/.test(stoneAdv.low) && /pile is full/.test(stoneAdv.full) && /second quarry/.test(stoneAdv.full), 'stone advice names the full quarry pile and the fix: ' + JSON.stringify(stoneAdv));
     // the final stage
     await p.evaluate(() => T.stage(5)); await p.click('#btnTrophy');
     const fin = await p.evaluate(() => ({ txt: document.getElementById('trophyPop').textContent, rows: document.querySelectorAll('#trophyPop .ttab tr').length }));

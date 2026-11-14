@@ -21,17 +21,20 @@ function countBuilt(kind, team, owner) {
 // have: { people, mood, food, stone, iron, count(kind) } -> one row per requirement of stage n
 // the difficulty's share (Phase 4D): Medium and Hard ask more people, food, stone and iron, and a little more happiness
 const stagePace = () => (typeof STAGE_PACE !== 'undefined' && FACKEY && !LEGACY && STAGE_PACE[DIFF.key]) || { mul: 1, step: 0, mood: 0 };
-// the multiplier for stage n's people, food, stone and iron (yours by difficulty; a rival's by RIVAL_STAGE_MUL)
+// a rival's people, food, stone or iron for stage n: its own table (RIVAL_NEED, the numbers from before Phase 4D)
+function rivalNeedOf(n, key, base) { const t = typeof RIVAL_NEED !== 'undefined' && RIVAL_NEED[n]; return t && t[key] !== undefined ? t[key] : Math.round((base || 0) * stageMul(n, true)); }
+// the multiplier for stage n's people, food, stone and iron (yours by difficulty)
 function stageMul(n, rival) { if (rival) return typeof RIVAL_STAGE_MUL !== 'undefined' ? RIVAL_STAGE_MUL : 1; const P = stagePace(); return P.mul + (P.step || 0) * Math.max(0, n - 2); }
 function needRows(n, have, rival) {
   const st = STAGES[n - 1]; if (!st || !st.need) return [];
   const q = st.need, rows = [], P = stagePace(), mul = stageMul(n, rival), m = v => Math.round(v * mul);
   const counted = k => !rival && typeof STAGE_COUNTED !== 'undefined' && STAGE_COUNTED.includes(k);
-  if (q.people) rows.push({ key: 'people', what: 'People', have: have.people, need: rival ? m(q.people) : Math.round(q.people * (1 + (mul - 1) / 2)) });
+  if (q.people) rows.push({ key: 'people', what: 'People', have: have.people, need: rival ? rivalNeedOf(n, 'people', q.people) : Math.round(q.people * (1 + (mul - 1) / 2)) });
   if (q.mood) rows.push({ key: 'mood', what: 'Happiness', have: Math.round(have.mood), need: q.mood + (rival ? 0 : P.mood) });
-  if (q.food) rows.push({ key: 'food', what: 'Food in store', have: Math.floor(have.food), need: m(q.food) });
-  if (q.stone) rows.push({ key: 'stone', what: 'Stone (used up)', have: Math.floor(have.stone), need: m(q.stone) });
-  if (q.iron) rows.push({ key: 'iron', what: 'Iron (used up)', have: Math.floor(have.iron), need: m(q.iron) });
+  const g = (key, v) => rival ? rivalNeedOf(n, key, v) : m(v);
+  if (q.food) rows.push({ key: 'food', what: 'Food in store', have: Math.floor(have.food), need: g('food', q.food) });
+  if (q.stone) rows.push({ key: 'stone', what: 'Stone (used up)', have: Math.floor(have.stone), need: g('stone', q.stone) });
+  if (q.iron) rows.push({ key: 'iron', what: 'Iron (used up)', have: Math.floor(have.iron), need: g('iron', q.iron) });
   for (const [k, v] of Object.entries(q.buildings || {})) rows.push({ key: 'b:' + k, kind: k, what: NEED_LABEL[k] || (BUILD[k] ? BUILD[k].name : k), have: have.count(k), need: counted(k) ? Math.round(v * (1 + (mul - 1) / 2)) : v });
   for (const r of rows) r.ok = r.have >= r.need;
   return rows;
@@ -40,7 +43,7 @@ const myPeople = () => units.filter(u => u.team === 'player' && !u.dead && !isMa
 // the stored food the next stage asks for (Cy Young's automatic sale keeps this much back: only food beyond it is surplus)
 function nextStageFood(rival) {
   const n = (rival ? rival.stage : stageN) + 1, st = STAGES[n - 1]; if (!st || !st.need || !st.need.food) return 0;
-  return Math.round(st.need.food * stageMul(n, rival));
+  return rival ? rivalNeedOf(n, 'food', st.need.food) : Math.round(st.need.food * stageMul(n));
 }
 function playerHave() { return { people: myPeople(), mood, food: res.food, stone: res.stone, iron: res.iron, count: k => countBuilt(k, 'player') }; }
 

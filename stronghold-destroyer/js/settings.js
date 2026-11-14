@@ -56,7 +56,7 @@ const FACTION_BASE = { sHp: 1, sDmg: 1, sSpeed: 1, train: 1, gather: 1, carry: 1
 // checked and then spent (they become the new walls); buildings must be standing and finished.
 // grow: how many squares the castle grows in every direction; wall: the castle ring's material.
 // Phase 4D (Gerald: far too high before): these are the EASY numbers. Medium and Hard multiply people, food, stone and
-// iron by STAGE_PACE below and ask a little more happiness. The rivals grow by the same table times RIVAL_STAGE_MUL (below).
+// iron by STAGE_PACE below and ask a little more happiness. The rivals keep their own numbers (RIVAL_NEED, below).
 // (Before Phase 4D: stage 2 people 12, happiness 50, food 150, 3 houses; stage 3 people 22, 55, food 300, stone 150, 5 houses;
 // stage 4 people 35, 60, food 500, stone 300, iron 80; stage 5 people 50, 65, food 800, stone 500, iron 200.)
 const STAGES = [
@@ -84,10 +84,13 @@ const STAGES = [
 //   Medium: stage 2 x1.15, stage 3 x1.35, stage 4 x1.55, stage 5 x1.75.   Hard: x1.3, x1.7, x2.1, x2.5.
 const STAGE_PACE = { easy: { mul: 1, step: 0, mood: 0 }, medium: { mul: 1.15, step: 0.2, mood: 3 }, hard: { mul: 1.3, step: 0.4, mood: 6 } };
 const STAGE_COUNTED = ['house', 'stower'];
-// the rivals grow by the same table times this, at every difficulty (their difficulty is the speed of their economy,
-// RIVALS.pace), which keeps their growth about where it was before Phase 4D, so lowering your stages does not make
-// their raids come stronger sooner
-const RIVAL_STAGE_MUL = 1.6;
+// the rivals keep the people, food, stone and iron they needed before Phase 4D, at every difficulty (their difficulty
+// is the speed of their economy, RIVALS.pace), so lowering your stages does not make their raids come stronger sooner.
+// Their buildings follow STAGES. (4D bug sweep: the first try, the new table times 1.6, asked 13 people for stage 2
+// where a rival's stage 1 holds about 12, so on many maps a rival never grew at all, and it asked far more stone.)
+const RIVAL_NEED = { 2: { people: 12, food: 150 }, 3: { people: 22, food: 300, stone: 150 }, 4: { people: 35, food: 500, stone: 300, iron: 80 },
+  5: { people: 50, food: 800, stone: 500, iron: 200 } };
+const RIVAL_STAGE_MUL = 1.6;   // (only for a number RIVAL_NEED leaves out)
 
 // ---------- wages and taxes ----------
 // wages: gold each soldier is paid every minute. Unpaid soldiers make the people unhappy until the gold is found.

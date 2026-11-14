@@ -20,7 +20,13 @@ function trophyAdvice(rows) {
     return full ? 'Build another house: your houses are full, and each house raises a new citizen every few minutes.' : `Wait for ${short} more ${short === 1 ? 'citizen' : 'citizens'} to grow up, or build more houses: each house raises one every few minutes.`; }
   if (r.key === 'food' && typeof foodCap === 'function' && r.need > foodCap() - 10) return `Build another granary: yours hold only ${foodCap()} food, and this stage needs ${r.need} stored.`;
   if (r.key === 'food') return `Store ${short} more food: put citizens on farms and berry bushes, and keep a granary so it does not spoil.`;
-  if (r.key === 'stone') return `Get ${short} more stone: build a quarry beside the grey rocks (the Industry list) and keep workers there.`;
+  if (r.key === 'stone') {   // (4D) the usual hold-up is the ox cart, not the cutters: say so when a quarry's pile is full
+    const qs = typeof mineDone === 'function' ? mineDone('quarry') : [], maxQ = (typeof INDUSTRY !== 'undefined' && INDUSTRY.quarry && INDUSTRY.quarry.max) || 2;
+    if (qs.some(q => (q.stock || 0) >= 50)) return qs.length < maxQ
+      ? `Get ${short} more stone: your quarry's pile is full and waits for its ox cart, so build a second quarry (it brings its own cart) or a stockpile near the quarry for shorter trips.`
+      : `Get ${short} more stone: your quarry piles are full and wait for the ox carts, so build a stockpile near the quarries for shorter trips.`;
+    return `Get ${short} more stone: build a quarry beside the grey rocks (the Industry list) and keep workers there.`;
+  }
   if (r.key === 'iron') return `Get ${short} more iron: build an iron mine on the red iron ground (the Industry list).`;
   if (r.key === 'mood') {   // name the worst complaint and how to fix it
     const fix = { 'they mourn the people who died': 'they mourn the people who died (each death takes 3 from happiness): guard the town with more soldiers, towers and walls, and the mourning passes',
