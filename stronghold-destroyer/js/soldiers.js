@@ -44,7 +44,8 @@ function updateBattles() {
     if (!isSoldier(u)) continue;
     if (u.fightT > time - 2) u.inBattle = true;
     else if (u.inBattle && time - u.fightT > SOLDIERS.stars.battleEnds) {
-      u.inBattle = false; if ((u.vet || 0) < SOLDIERS.stars.max) { u.vet = (u.vet || 0) + 1; if (u.team === 'player') floatText(u.x, u.y - 64, `★ A battle survived (${u.vet})`, '#ffe08a'); }
+      u.inBattle = false; if ((u.vet || 0) < SOLDIERS.stars.max) { u.vet = (u.vet || 0) + 1; if (u.team === 'player') floatText(u.x, u.y - 64, `★ A battle survived (${u.vet})`, '#ffe08a');
+        if (u.team === 'player' && typeof CITIZEN_CALL !== 'undefined' && u.vet === CITIZEN_CALL.general.stars) showBanner(`<b>${typeof nameOf === 'function' ? nameOf(u) : 'A soldier'} is now a general</b> (${u.vet} battles). With generals about, more citizens come, and sooner.`, 5); }
     }
   }
 }

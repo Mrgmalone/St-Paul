@@ -150,7 +150,7 @@ const taxStageMul = () => FACKEY && !LEGACY ? ECONOMY.taxStageMul[stageN - 1] ||
 // ---------- buttons: only what this stage allows ----------
 function applyStageLocks() {
   document.querySelectorAll('.bb[data-b]').forEach(b => { const k = b.dataset.b; b.classList.toggle('locked', !unlocked(k, false)); });
-  document.querySelectorAll('[data-k]').forEach(b => { const k = b.dataset.k; b.classList.toggle('locked', !unlocked(k, true) || (IND() && k === 'civ')); });   /* citizens grow; they cannot be bought */
+  document.querySelectorAll('[data-k]').forEach(b => { const k = b.dataset.k; b.classList.toggle('locked', !unlocked(k, true)); });   /* (4F: citizens can be called again, by the Citizen button) */
   const chip = document.getElementById('vStage'); if (chip) chip.textContent = `Stage ${stageN} · ${stageName(stageN)}`;
 }
 // the stage box: where you stand, and what the next stage needs

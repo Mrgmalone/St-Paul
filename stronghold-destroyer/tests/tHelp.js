@@ -18,7 +18,8 @@ const QUESTIONS = [
   ['quary', 'quarry'], ['knigt', 'knight'], ['granery', 'granary'], ['hapiness', 'mood'], ['turn off the voice', 'sound-voice'], ['whether', 'weather'],
   ['bread', 'bread'], ['how many rivals', 'match-setup'], ['school', 'school'], ['my soldiers chase enemies', 'patrol-guard'], ['people mourning', 'mood'],
   ['formations', 'formations'], ['put my soldiers in a line', 'formations'], ['wedge', 'formations'], ['troop movement buttons', 'diamond'], ['the diamond', 'diamond'],
-  ['close a box', 'boxes'], ['get rid of the hint', 'boxes']
+  ['close a box', 'boxes'], ['get rid of the hint', 'boxes'],
+  ['how do I get more citizens', 'call-citizens'], ['buy citizens', 'call-citizens'], ['what is a general', ['call-citizens', 'veterans']]
 ];
 (async () => {
   const { p, need, done, SP } = await start('cyyoung', { start: 0 });

@@ -216,7 +216,7 @@ function canTrain(kind) {
   return !!playerKeep() && (WEAPON[kind] ? weaponRoute(kind) : (res.food >= c.food && res.wood >= c.wood && res.gold >= (c.gold || 0) && res.stone >= (c.stone || 0))) && (MACHINE[kind] || pop < popCap() || (kind !== 'civ' && draftable())) && queuedOf(kind) < QUEUE_MAX;
 }
 function trainUnit(kind) {
-  if (IND() && kind === 'civ') { showBanner('Citizens cannot be bought: they grow up in your houses, 3 to 5 minutes each. Build houses to raise more.', 4); return; }
+  if (IND() && kind === 'civ') { requestCitizen(); return; }   /* (4F: a citizen is called from the countryside; see callcitizens.js) */
   if (IND() && kind === 'trebuchet' && unlocked(kind, true)) { engineerTrebuchet(); return; }   /* an engineer builds it at his hut */
   if (!unlocked(kind, true)) { showBanner(`${KINDS[kind].name}s come at stage ${stageOfItem(kind, true)}, the ${stageName(stageOfItem(kind, true))}.`, 3); return; }
   if (!canTrain(kind)) {
@@ -409,9 +409,9 @@ function updateEconomy(dt) {
       q.t += dt;
       if (q.t >= q.dur) {
         trainQueue.splice(trainQueue.indexOf(q), 1);
-        const list = IND() ? finishTraining(q, k) : [makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20)], rp = rallyFor(q.kind), u = list[0];   /* a squad of ten, a sheet soldier, a knight with or without a horse */
+        const list = IND() ? (q.called ? [arriveCitizen(k)] : finishTraining(q, k)) : [makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20)], rp = rallyFor(q.kind), u = list[0];   /* a squad of ten, a sheet soldier, a knight with or without a horse */
         for (const v of list) commandMove([v], rp.x + RR(-25, 25), rp.y + RR(-20, 20));
-        floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8'); AudioSys.ui('ready');
+        if (!q.called) floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8'); AudioSys.ui('ready');
       }
     }
   }

@@ -24,7 +24,7 @@ const ARMY_CAP = [3, 6, 10, 14, 18];
 
 // ---------- the start: four rivals, each a different faction, one of them (not your own faction) a trading friend ----------
 function realmStart() {
-  REALM.on = true; REALM.rivals = []; REALM.rogueT = ROGUES.first;
+  REALM.on = true; REALM.rivals = []; REALM.rogueT = typeof ROGUES.first === 'object' ? (ROGUES.first[DIFF.key] || 600) : ROGUES.first;
   if (typeof applyMatch === 'function') applyMatch();   /* the front page's choices: how many rivals, their factions, a friend (match.js) */
   const facs = FACTION_ORDER.slice(); for (let i = facs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [facs[i], facs[j]] = [facs[j], facs[i]]; }
   RIVALS.sites.slice(0, RIVALS.count).forEach(([c, r], i) => {
@@ -34,6 +34,9 @@ function realmStart() {
       placeT: 6 + i * 2, trainT: 25 + i * 4, workerT: 20, raidT: (RIVALS.raid.first[DIFF.key] || 450) + i * 75, tickT: i * 0.25, built: 0, site: { c, r } });
   });
   if (RIVALS.friend && REALM.rivals.length >= 2) { const c0 = REALM.rivals.filter(R => R.fac !== FACKEY), cands = c0.length ? c0 : REALM.rivals; const F = cands[Math.floor(Math.random() * cands.length)]; if (F) { F.friend = true; F.team = 'friend'; } }   /* a friend only when there is still someone to fight */
+  /* (4F) the first enemy raids when the peace ends and each later enemy 75 seconds after the one before, whichever of
+     them is the trading friend (before, the friend took a turn, so the first raid could come 75 seconds late) */
+  REALM.rivals.filter(R => !R.friend).forEach((R, k) => { R.raidT = (RIVALS.raid.first[DIFF.key] || 600) + k * 75; });
   for (const R of REALM.rivals) setUpRival(R);
 }
 function setUpRival(R) {
@@ -171,6 +174,7 @@ function rivalRaid(R) {
   if (!way.length) way.push({ x: (R.keep.x + ap.x) / 2, y: (R.keep.y1 + ap.y) / 2 });
   raidSide(R, way);   /* each raid comes at you from a different side */
   for (const u of go) { u.raider = true; u.order = 'raid'; u.repath = 0; u.path = []; u.route = way.map(w => ({ x: w.x + RR(-24, 24), y: w.y + RR(-24, 24) })); }
+  if (typeof noteRaid === 'function') noteRaid(R, go);   /* (4F: beating it off counts as a war won) */
   raidPing = { x: R.keep.x, y: R.keep.y, t: 0 };
   showBanner(`<b>${R.name}</b> (${FACTIONS[R.fac].name}) sends ${go.length} soldiers against you${big ? ', with siege engines' : ''}!`, 4);
   AudioSys.ui && AudioSys.ui('warhorn');

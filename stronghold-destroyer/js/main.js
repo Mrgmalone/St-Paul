@@ -247,7 +247,8 @@ function startGame(key) {
   started = true; applyStageLocks();
   document.getElementById('pick').style.display = 'none';
   UI.paintIcons();
-  showBanner(`${DIFF.name} difficulty. <b>${Math.round(raidTimer / 60)} minutes of peace</b> to build before the war begins. Press Pause (P) any time to plan your castle.<br>You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);
+  const peaceMin = Math.round((REALM.on ? (RIVALS.raid.first[DIFF.key] || 600) : raidTimer) / 60);   /* (4F: the rivals' own first raid, not the old camp's timer) */
+  showBanner(`${DIFF.name} difficulty. <b>${peaceMin} minutes of peace</b> to build before the war begins. Press Pause (P) any time to plan your castle.<br>You lead the <b>${CIV.name}</b>. The war is already underway.<br>Put your civilians to work gathering food and wood, train soldiers at your keep,<br>and destroy the enemy watchtower in the northeast to stop the raids.<br>The enemy is walling in its camp. Strike early, or bring battering rams.<br><b>Press Help (or H) to see the controls.</b>`, 10);
   updateHud();
 }
 document.querySelectorAll('.civ').forEach(b => b.onclick = () => startGame(b.dataset.civ));

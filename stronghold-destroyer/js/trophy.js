@@ -17,7 +17,7 @@ function trophyAdvice(rows) {
   if (r.kind) { const tab = tabOfBuilding(r.kind), name = r.kind === 'farmAny' ? 'farm or wheat field' : (BUILD[r.kind] ? BUILD[r.kind].name : r.what).toLowerCase();
     return `Build ${short === 1 ? 'a' : short} ${name}${short === 1 ? '' : 's'}${tab ? ` (the ${tab} list)` : ''}; ${r.kind === 'farmAny' || r.kind === 'woodhut' || r.kind === 'quarry' ? 'a worker comes by itself' : short === 1 ? 'your builders put it up' : 'your builders put them up'}.`; }
   if (r.key === 'people') { const full = myPeople() + growing.length >= Math.floor(popCap() * GROW.room);
-    return full ? 'Build another house: your houses are full, and each house raises a new citizen every few minutes.' : `Wait for ${short} more ${short === 1 ? 'citizen' : 'citizens'} to grow up, or build more houses: each house raises one every few minutes.`; }
+    return full ? 'Build another house: your houses are full, and each house raises a new citizen every few minutes.' : `Get ${short} more ${short === 1 ? 'citizen' : 'citizens'}: call them with the Citizen button in the Town list, or wait for your houses to raise them.`; }
   if (r.key === 'food' && typeof foodCap === 'function' && r.need > foodCap() - 10) return `Build another granary: yours hold only ${foodCap()} food, and this stage needs ${r.need} stored.`;
   if (r.key === 'food') return `Store ${short} more food: put citizens on farms and berry bushes, and keep a granary so it does not spoil.`;
   if (r.key === 'stone') {   // (4D) the usual hold-up is the ox cart, not the cutters: say so when a quarry's pile is full

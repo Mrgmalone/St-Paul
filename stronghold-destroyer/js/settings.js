@@ -112,13 +112,31 @@ const RIVALS = {
   friend: true,
   pace: { easy: 0.65, medium: 1.0, hard: 1.35 },
   workersPerStage: [8, 15, 24, 32, 38],   // enough people to meet each stage's needs (workers + soldiers + the lord)
-  // seconds before a rival's first raid (each later rival waits 75 seconds more), and between its raids
-  raid: { first: { easy: 600, medium: 450, hard: 330 }, every: { easy: 300, medium: 240, hard: 170 }, minArmy: 4, largeArmy: 12 }
+  // seconds before a rival's first raid (each later rival waits 75 seconds more), and between its raids.
+  // Gerald (Phase 4F): ten minutes of peace to build at the start; five on Hard.
+  raid: { first: { easy: 600, medium: 600, hard: 300 }, every: { easy: 300, medium: 240, hard: 170 }, minArmy: 4, largeArmy: 12 }
 };
 
 // ---------- rogue bandits ----------
 // Small bands that belong to no rival: they come in from the edge of the map, steal from your stores and run off.
-const ROGUES = { first: 360, every: 240, band: [2, 4], steal: { food: 30, wood: 30, stone: 15, gold: 15 } };
+// (Phase 4F: the first band waits for the peace time to end, as the raids do)
+const ROGUES = { first: { easy: 600, medium: 600, hard: 300 }, every: 240, band: [2, 4], steal: { food: 30, wood: 30, stone: 15, gold: 15 } };
+
+// ---------- Phase 4F: calling citizens (the Citizen button in the Town list) ----------
+// Citizens still grow up in your houses by themselves. The Citizen button calls one more from the countryside: he
+// walks in along the road after a wait. Gerald: the unhappier the people, the longer the wait and the higher the cost
+// (below 20 happiness, several minutes); winning wars makes citizens cheaper and quicker, and generals in the field or
+// in camp bring more of them, so it balances out. A war won is a raid beaten off (most of the raiders fall while your
+// keep stands) or a rival defeated; a general is a soldier with 10 or more veteran stars.
+const CITIZEN_CALL = {
+  base: { food: 20, gold: 10, secs: 60 },                 // with happiness 50 to 69, no wars won and no generals
+  // [happiness at least, wait x, cost x]: 70 and up a little quicker and cheaper; below 20 four and a half minutes, cost x2.2
+  mood: [[70, 0.75, 0.85], [50, 1, 1], [35, 1.6, 1.25], [20, 2.5, 1.6], [0, 4.5, 2.2]],
+  win: { time: 0.85, cost: 0.85, max: 3, lasts: 600 },     // each war won in the last 10 minutes: 15% sooner and cheaper (up to three)
+  general: { stars: 10, time: 0.9, cost: 0.95, max: 3 },   // each general: 10% sooner, 5% cheaper (up to three); houses raise theirs sooner too
+  floor: 0.25,                                             // never sooner than a quarter of the base wait
+  queue: 5                                                 // at most five called at once
+};
 
 // ---------- Phase 4B: the industries ----------
 // Every list of five is by castle stage (Shack, Homestead, Hold, Castle, Stronghold).

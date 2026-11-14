@@ -37,7 +37,7 @@ const nameOf = u => u.pname || (u.pname = NAMES[(nameSeq * 7) % NAMES.length] + 
 let growT = 0;
 function updateGrowth(dt) {
   for (let i = growing.length - 1; i >= 0; i--) {
-    const g = growing[i]; g.t += dt;
+    const g = growing[i]; g.t += dt * (typeof growBoost === 'function' ? growBoost() : 1);   /* (4F: wars won and generals raise them sooner) */
     if (g.t < g.dur) continue;
     growing.splice(i, 1);
     const h = g.home && !g.home.dead ? g.home : playerKeep(); if (!h) continue;
@@ -128,7 +128,7 @@ function personHtml(u) {
     lnI('Work', JOB_OF(u)) + lnI('Happiness', `<span style="color:${col}">${m.v}</span>`) +
     `<div class="why">${m.why.concat(m.town.map(t => '- the town: ' + t)).slice(0, 5).map(t => `<div>${t}</div>`).join('') || '<div>nothing special</div>'}</div>` +
     lnI('Education', edu) + lnI('Worries', c.length ? c.slice(0, 2).join('; ') : 'none') + lnI('Earns', $.earns) + ($.tax ? lnI('Pays', $.tax) : '') +
-    (isSoldier(u) ? lnI('Battles survived', `${u.vet || 0} \u2605`) + lnI('Enemies felled', u.kills || 0) + (u.type === 'knight' ? lnI('Horse', u.mounted ? `mounted (${Math.max(0, Math.round(u.horseHp))} strength left)` : 'on foot') : '') : '');
+    (isSoldier(u) ? lnI('Battles survived', `${u.vet || 0} \u2605${typeof CITIZEN_CALL !== 'undefined' && (u.vet || 0) >= CITIZEN_CALL.general.stars ? ' \u00b7 a general' : ''}`) + lnI('Enemies felled', u.kills || 0) + (u.type === 'knight' ? lnI('Horse', u.mounted ? `mounted (${Math.max(0, Math.round(u.horseHp))} strength left)` : 'on foot') : '') : '');
 }
 function showCard(u) {
   cardOf = u; const p = document.getElementById('personPop'); p.innerHTML = personHtml(u); p.hidden = false;
@@ -242,7 +242,7 @@ function updateCitizens(dt) {   // game time (stops when paused)
   if (!IND() || !started) return;
   wrapTalk(); updateGrowth(dt); updateAlerts(dt);
   citT -= dt; if (citT > 0) return; citT = 1;
-  civButton(); updateSchooling();
+  if (typeof callButton === 'function') callButton(); else civButton(); updateSchooling(); if (typeof checkWars === 'function') checkWars();
 }
 function citizensFrame() {      // every drawn frame, paused or not: place the card and the tap icon, refresh the People list
   placeCard(); placeTap();
