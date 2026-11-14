@@ -324,10 +324,139 @@ flamethrower, berserker and mounted knight (today outfits on the existing jointe
 new buildings (today code-built models); the inside pictures for the building boxes and the People button face listed
 in 4B; optionally a more detailed continent relief for the corner globes.
 
+## Phase 4D: stage trophy, saved games, art in both views, and a bug sweep (branch upgrade-v2)
+
+**Gerald's decisions for 4D.** Ballista and trebuchet prices stay. Faction names stay as spelled. The 2D view stays:
+both views work, and every change of look shows in both.
+
+**D1, stage requirements and the trophy.**
+- The stage needs were far too high; they are now low enough that Easy reaches stage 2 in about two minutes. Each later
+  stage takes longer, and from stage 3 on Medium and Hard take longer than Easy (stage 2 comes at about the same
+  time on every difficulty: its numbers differ by only one or two people). The table is in `js/settings.js` (STAGES, lines 67, 70,
+  73 and 76 for stages 2 to 5; STAGE_PACE line 85; the rivals' own numbers, RIVAL_NEED, lines 91 and 92). Easy numbers are the table itself; Medium
+  and Hard multiply food, stone and iron by an amount that grows with each stage (Medium x1.15, 1.35, 1.55, 1.75; Hard
+  x1.3, 1.7, 2.1, 2.5), people and houses and stone towers by half as much, and ask 3 or 6 more happiness.
+  People rise less because more people also means more workers (the automatic games showed raising people sped things up).
+- Rivals keep the people, food, stone and iron they needed before 4D (RIVAL_NEED), at every difficulty (their
+  difficulty is their economy's speed); their buildings follow the new table. (The first try, the new table times 1.6,
+  asked 13 people for stage 2 where a rival's stage 1 holds about 12, so on many maps rivals never grew: found by the
+  rivals check in the bug sweep and fixed.)
+- Bug fixed: Cy Young's automatic food sale kept nothing back, so any stage asking more than 200 stored food was close to
+  impossible for Cy Young (and for a Cy Young rival). The sale now keeps what the next stage needs.
+- The trophy (just below Settings): have / need / tick for each requirement, one plain sentence on what to do next (it
+  names the worst happiness complaint and its fix, says when the granaries are too small for the food asked, and that
+  the mill grinds the same wheat the alehouse brews from), pauses the game, never opens by itself, says when the final
+  stage is reached. Large, high-contrast text; phone and iPad.
+- tests/pace.js plays a whole game on its own (pays its own way, raids on unless NORAIDS=1) and prints the minute each
+  stage is reached and what was last to be met. SEED=n plays the same map at every difficulty. Final results, map 7,
+  Cy Young, minutes to reach stages 2 / 3 / 4 / 5:
+
+  | Difficulty | Raids held off (the economy alone) | Raids on |
+  |---|---|---|
+  | Easy   | 2.3 / 7.4 / 14.5 / 27.3 | 2.3 / 7.8 / 13.7 / 23.8 |
+  | Medium | 2.3 / 8.4 / 18.9 / 33.6 | 2.6 / 9.0 / then the keep fell at 30.8 minutes |
+  | Hard   | 2.0 / 10.1 / 21.2 / 66.7 | 2.3 / 10.3 / then the keep fell at 23.2 minutes |
+
+  Every game reached stage 2 (in 2 to 2.6 minutes on every difficulty; the difference between difficulties grows
+  with each stage). Stone is what is met last at nearly every stage. With raids on, Medium and Hard rivals reach stage 3
+  by about 25 minutes and their raids overran this test player, which trains soldiers and builds wooden towers but no
+  walls; that is raid strength against a weak defender, a balance question for Gerald, not a fault. (Earlier timing
+  runs that reached stage 5 on Hard with raids on were made while the rival fault above kept rivals at stage 1.)
+
+**D2, saved games.** Named saves with the date and time, an autosave slot (every five game-minutes and when the page is
+put away), Load, Delete (second tap), Export to a .json file and Import, inside Settings (and "Load a saved game" on the
+front page). A save keeps the whole game; loading makes the page again from the saved starting places, so the land
+comes out the same. Saves live in this browser (IndexedDB, or local storage); export a file to keep one safe or move
+it to another device. On an iPad: Export opens the share sheet in the Claude app (Save to Files) or downloads to Files
+in Safari; Import opens the Files picker. (Not tried on a real iPad here: the checks run in a desktop browser.)
+Saving 800 people takes about 80 ms and makes a 1.2 MB file.
+
+**D3, art in both views.** The flat (2D) view is back: Settings, View (or V). Buildings and the sheet's soldiers that
+have no flat drawing are shown there as pictures of their 3D models, so a change of look shows in both views. Finished
+stand-ins: a full-height longbow; the flame trooper's copper fire-pot, hose and pilot flame; a horse and log wagon at
+the wood yard; a painted-style People face; richer inside pictures (light, outdoor scenes, the iron mine, church, abbey
+and great hall of their own). Painted pictures from files replace the drawn ones with no code change (art/buildings,
+art/units, art/inside, art/ui); design/IMAGE-PROMPTS.md has a ready prompt for each picture code cannot make.
+A picture catalogue of every person, soldier, engine, building and item is in design/Stronghold-Destroyer-Picture-
+Catalog.pdf (made by tools/catalog.js from the game itself).
+
+**D4, the bug sweep.** Eight long games of 30 game-minutes (all four factions, Easy to Hard, 1 to 4
+  rivals, the castle stepped through all five stages; tests/soak.js with STAGEUP), five-screen button sweep (144 buttons
+  and every panel on a computer, an iPad and a phone, both ways up; tests/tSweepUI.js), and the automatic timing games.
+  No crashes and no page errors anywhere. Found and fixed at the cause:
+  - Quarry ox cart waited forever with its load when the spot beside the keep it chose was walled in by other buildings
+    (stone stayed at nothing for half an hour, twice): each trip now heads for a spot it can really reach (tests/tCart.js).
+  - Cy Young's food sale kept nothing back (D1). No ale with an alehouse standing: the mill grinds the same wheat; the
+    trophy says so.
+  - Panels ran off the screen (building boxes, the market's by a thousand points, Settings with its saved games, the
+    rivals list, the escort box above the top): every open panel stays in the game area and scrolls (js/fixes4d.js).
+  - The top bar squeezed Settings, Help and Pause under their words and cut counters off: the counters wrap instead.
+  - Soldiers chased a foe into a rival's castle: an idle soldier who went for a rival scout followed it all the way
+    home and died there (11 deaths in 10 minutes on one Hard map with raids held off). A fight a soldier starts by
+    himself now has a leash (CHASE_LEASH in js/units.js, 360 points); fights you order go as far as you send them
+    (tests/tChase.js). On that map the deaths went from 11 to none, and happiness stayed up.
+  - Each death of your people takes 3 from happiness, but the reasons never said so, so a town losing soldiers saw
+    only "there is no ale". The reasons and the trophy now say "they mourn the people who died" for two minutes.
+  - The check runner could wait forever on a check whose browser outlived it; it now stops both.
+  - Stone is the usual hold-up, and the cause is the ox cart, not the cutters: the quarry's pile sits full at 60
+    while one cart carries 24 a trip. The trophy now says so when a pile is full ("build a second quarry (it brings
+    its own cart) or a stockpile near the quarry for shorter trips"); before, it only said "build a quarry".
+    The timing test player now builds that second quarry too.
+  - Not explained: in one Medium timing game no stone arrived for 35 minutes (both carts busy, the pile full), then
+    it came again. The stuck-cart detector had a fault and missed it (fixed); three more games on three maps, with the
+    detector fixed, showed no stuck cart. If it is seen again, tests/pace.js now prints where the cart is and why.
+  - Castle growth can never take stone or iron below nothing. Saves are stored as text made once (cheaper).
+  Checked and not bugs: the "dead" Add-worker buttons in the sweep had no free citizen to add (each adds one when there
+  is); soldiers flagged as wandering were walking to guard posts that moved when the castle grew.
+  After the rival fix the eight long games were played again (tests/.work/sweepF-*.log): no page errors (only "file
+  not found" for picture files Gerald has not sent yet, which the game does without). The keep stood to stage 5 in
+  four (both Easy, Medium with 1 and 2 rivals) and fell to raids in four (all three Hard, Medium with 4 rivals): the
+  long-game test player is a weak defender. Seen once each and not traced: a citizen going round while gathering, a
+  builder stuck once, two soldiers wandering while idle; a quarry never built in a town raids had cut to 6 people.
+  Slow frames in those games came with eight to ten browsers sharing the machine; the speed test below is the quiet
+  measure. Speed (tests/bench.js, a big battle in the 3D view, milliseconds per frame, the average of two runs taken in
+  turns on a quiet machine; this machine draws 3D in software with no graphics chip, so only the comparison counts,
+  not the size of the numbers):
+
+  | People | End of 4C (before) | 4D (after) | 4D with the Help screen |
+  |---|---|---|---|
+  | 100 | 1,856 | 1,854 | 1,859 |
+  | 800 | 3,098 | 3,119 | 3,087 |
+
+  No slowdown (the differences are within 1%, the run-to-run spread). The flat view at 800 people: 103 ms.
+
+**Art still needed** (stand-ins working today): painted, sheet-quality pictures for everything in design/IMAGE-PROMPTS.md
+(the five sheet soldiers, eleven buildings, 28 inside pictures, the People face). The corner globes stay code-made.
+
+## The Help screen with search and pictures (after Phase 4D)
+
+- Opens from the ? button and the H key, pauses the game, closes with the big X (or Escape, or Close). Large,
+  high-contrast text; fits an iPad and a phone both ways up. Works offline: everything is in the game's own files.
+- **All the help text is in one file: `js/helpdata.js`.** 14 topics, 89 articles. Each article has a picture, 3 to 6
+  short lines, most have a "How do I ...?" with numbered steps, and related links. Numbers come from the game itself
+  where they can ({cost:house}, {name:knight}, {stagetable}), so they stay right when the settings change.
+- Search shows results as you type: plain-word questions, other words for the same thing and common misspellings
+  (each article has its own search-word list), each result with a title, a one-line summary and a small picture. No
+  match: it says so and suggests nearby topics.
+- "What is this?" in every building box, a person's box and the panels opens the matching article (the context list
+  at the end of js/helpdata.js says which).
+- Pictures: the game's own 3D pictures for buildings, people and goods, drawn icons for the rest. **Gerald's own
+  pictures need no code change:** put art/help/<article id>.png (or art/help/cat-<topic id>.png for a topic card)
+  beside the game and it is used instead.
+- The source named for the content, the Master Guide PDF (Stronghold-Destroyer-Master-Guide.pdf), was not found on
+  Google Drive or in the files here, so the help was written from the game itself; no PDF/game differences could be
+  checked. The old help text (one long page) is replaced.
+- tests/tHelp.js: 61 sample questions (the right article in the top three for every one), every topic and article,
+  pausing, the X and the H key, the context links, and iPad and phone sizes. Speed: no change with Help in the game
+  (100 people 1,859 ms against 1,854; 800 people 3,087 against 3,119; see the 4D table above). Help adds work only
+  while it is open, plus a look for new panels every two seconds.
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4C, play link version 51):** branch `upgrade-v2` holds Phase 4A, Phase 4B and Phase 4C steps C0 to C9, all built and checked;
-the Phase 4C section above lists what each step does, the settings, the assumptions and the art still needed.
+**Latest (Phase 4D, play link version 53; the Help screen, version 54):** branch `upgrade-v2` holds Phases 4A to 4D and the
+Help screen, all built and checked; the Phase 4D and Help sections above list what each step does, the stage table, the
+tests, the speed and the art still needed. Open for Gerald: how strong the Medium and Hard raids should be (see D4).
+Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.
 Earlier: Phase 4B steps B1 to B8; its section lists what each step does, the numbers to confirm, the conflicts, what was
 simplified and the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
 
