@@ -16,7 +16,9 @@ const QUESTIONS = [
   ['ticanologue', 'faction-ticanologue'], ['healers', 'faction-hekaranok'], ['invisible berserkers', ['berserker', 'faction-psychana']], ['add worker', 'workers'],
   ['no free civilian', 'workers'], ['people tab', 'people-tab'], ['tap and hold', 'tap-hold'], ['catapult', 'siege'], ['rally point', 'rally-flags'], ['patrol', 'patrol-guard'],
   ['quary', 'quarry'], ['knigt', 'knight'], ['granery', 'granary'], ['hapiness', 'mood'], ['turn off the voice', 'sound-voice'], ['whether', 'weather'],
-  ['bread', 'bread'], ['how many rivals', 'match-setup'], ['school', 'school'], ['my soldiers chase enemies', 'patrol-guard'], ['people mourning', 'mood']
+  ['bread', 'bread'], ['how many rivals', 'match-setup'], ['school', 'school'], ['my soldiers chase enemies', 'patrol-guard'], ['people mourning', 'mood'],
+  ['formations', 'formations'], ['put my soldiers in a line', 'formations'], ['wedge', 'formations'], ['troop movement buttons', 'diamond'], ['the diamond', 'diamond'],
+  ['close a box', 'boxes'], ['get rid of the hint', 'boxes']
 ];
 (async () => {
   const { p, need, done, SP } = await start('cyyoung', { start: 0 });
