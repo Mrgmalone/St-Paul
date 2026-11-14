@@ -25,7 +25,7 @@ function commandMove(list, x, y) {
     free.forEach((u, i) => { const d = (u.x - s.x) ** 2 + (u.y - s.y) ** 2; if (d < bd) { bd = d; bi = i; } });
     const u = free.splice(bi, 1)[0];
     if (u.onWall) dismount(u);
-    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; u.bestD = undefined; u.rerouted = false; u.progT = 0; u.autoFrom = null; if (u.type === 'civ') u.task = null;
+    u.order = 'move'; u.target = null; u.dest = s; u.stuckT = 0; u.bestD = undefined; u.rerouted = false; u.progT = 0; u.autoFrom = null; u.march = null; u.faceAng = null; u.formed = null; if (u.type === 'civ') u.task = null;
     u.path = findPath(u.x, u.y, s.x, s.y);
   }
   markers.push({ x, y, t: 0, col: '120,255,140' });
@@ -100,7 +100,7 @@ function mountStep(u, dt) {
   followPath(u, dt);
 }
 function commandAttack(list, t) {
-  for (const u of list) { if (u.onWall && edgeDist(u, t) > rangeOf(u) + 2) dismount(u); u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; u.autoFrom = null; }
+  for (const u of list) { if (u.onWall && edgeDist(u, t) > rangeOf(u) + 2) dismount(u); u.order = 'attack'; u.target = t; u.path = []; u.repath = 0; u.autoFrom = null; u.march = null; }
   markers.push({ x: t.x, y: t.y, t: 0, col: '255,90,70', target: t });
 }
 function commandStop(list) { for (const u of list) { if (u.type === 'civ') { u.job = null; u.manualT = time; } u.order = 'idle'; u.target = null; u.path = []; u.moving = false; } }
@@ -111,7 +111,7 @@ const stalled = u => u.stT !== undefined && time - u.stT > 1.5;
 function followPath(u, dt) {
   if (u.stT === undefined || Math.hypot(u.x - u.stX, u.y - u.stY) > 4) { u.stX = u.x; u.stY = u.y; u.stT = time; }
   if (!u.path.length) { u.moving = false; return; }
-  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = u.speed * (u.speedMul || 1) * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
+  const wp = u.path[0], dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy), step = (u.march && typeof marchPace === 'function' ? marchPace(u) : u.speed) * (u.speedMul || 1) * dt * weatherSpeed() * (u.sick ? 0.72 : 1) * (1 - 0.18 * (u.fat || 0));
   if (d <= Math.max(step, 2.5)) {
     if (!circleBlocked(wp.x, wp.y, Math.min(7, u.radius * 0.8))) { u.x = wp.x; u.y = wp.y; }
     u.path.shift();
@@ -267,6 +267,7 @@ function playerBrain(u) {
     const n = nearestEnemy(u, 170);
     if (n) { u.target = n; u.repath = 0; } else { u.order = 'idle'; u.target = null; u.path = []; }
   }
+  if (u.order === 'idle' && u.formed && typeof keepFormation === 'function') keepFormation(u);   /* (4E) step into place in a formation */
   if (u.order === 'idle') {
     u.moving = false;
     const n = nearestEnemy(u, Math.max(u.onWall ? 0 : 110, rangeOf(u) + 20));
@@ -543,7 +544,7 @@ function updateHealth(dt) {
 }
 function updateGuards(dt) {
   guardT -= dt; if (guardT > 0) return; guardT = 1;
-  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal && !u.noGuard && !u.escort && !u.patrol && !u.guardArea;   /* flamethrowers go to war only; patrols and area guards keep their own duty */
+  const free = u => !u.dead && u.team === 'player' && u.order === 'idle' && !(time - (u.cmdT || -99) < 30) && !u.onWall && !u.toHeal && !u.noGuard && !u.escort && !u.patrol && !u.guardArea && !u.formed;   /* (4E: soldiers you put in a formation stay in it) */   /* flamethrowers go to war only; patrols and area guards keep their own duty */
   const king = units.find(u => u.type === 'king' && u.team === 'player' && !u.dead);
   // up to five knights keep close by the king
   const knights = units.filter(u => u.type === 'knight' && u.team === 'player' && !u.dead);
@@ -644,7 +645,7 @@ function updateUnit(u, dt) {
     if (u._pd !== u.dest) { u._pd = u.dest; u.bestD = undefined; u.rerouted = false; u.progT = 0; }   // a new destination starts afresh
     if (u.bestD === undefined || d < u.bestD - 6) { u.bestD = d; u.progT = 0; } else u.progT = (u.progT || 0) + dt;
     if (u.progT > 3 && !u.rerouted) { u.rerouted = true; u.progT = 0; u.bestD = d; const pth = findPath(u.x, u.y, u.dest.x, u.dest.y); if (pth.length) u.path = pth; }
-    if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5 || (u.progT > 3 && u.rerouted)) { u.order = 'idle'; u.path = []; u.moving = false; u.bestD = undefined; u.rerouted = false; u.progT = 0; settleSpot(u); }
+    if (!u.path.length || d < 3 || (u.stuckT > 0.6 && d < 45) || u.stuckT > 2.5 || (u.progT > 3 && u.rerouted)) { u.order = 'idle'; u.path = []; u.moving = false; u.bestD = undefined; u.rerouted = false; u.progT = 0; if (u.march && typeof marchArrived === 'function') marchArrived(u); else settleSpot(u); }   /* (4E: a formation's places are already spaced: no shove aside) */
   } else if (u.order === 'attack') attackStep(u, dt);
   else if (u.order === 'mount') mountStep(u, dt);
   else if (u.order === 'raid') { followPath(u, dt);   /* a raider who makes no way for 6 seconds skips to his next way-point */

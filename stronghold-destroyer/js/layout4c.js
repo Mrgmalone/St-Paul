@@ -95,7 +95,7 @@ function taxChip() {
     document.getElementById('taxDown').onclick = e => { e.stopPropagation(); setTax(tax - 1); };
     document.getElementById('taxUp').onclick = e => { e.stopPropagation(); setTax(tax + 1); };
   }
-  const v = document.getElementById('vTax'), txt = 'Tax ' + TAXES[tax].name; if (v.textContent !== txt) v.textContent = txt;
+  const v = document.getElementById('vTax'), txt = `<span class="wd">Tax ${TAXES[tax].name}</span><span class="ph" aria-label="Tax ${TAXES[tax].name}">${tax ? '&#9679;'.repeat(tax) : '&#9675;'}</span>`; if (v.innerHTML !== txt) v.innerHTML = txt;   /* (4E: on a phone, dots: none, one, two) */
   document.getElementById('taxDown').disabled = tax <= 0; document.getElementById('taxUp').disabled = tax >= TAXES.length - 1;
 }
 { const _uh = updateHud; updateHud = function () { _uh.apply(this, arguments); taxChip(); if (window.PHONE) PHONE.syncBar(); }; }

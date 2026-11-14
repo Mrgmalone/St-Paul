@@ -119,23 +119,21 @@ const UI = (() => {
   const paintIcons = (root = document) => root.querySelectorAll('canvas[data-icon]').forEach(paintIcon);
   // --- status bar ---
   function buildStatus() {
-    statusEl.innerHTML = `<span class="chip" id="cCiv"><b></b></span>
+    statusEl.innerHTML = `<span class="chip" id="cCiv" title="Your faction"><b class="wd"></b><canvas class="ph emb" width="60" height="70"></canvas></span>
       <span class="chip" title="Food"><canvas data-icon="r:food"></canvas><b id="vFood"></b><small id="vEat"></small></span>
       <span class="chip" title="Wood"><canvas data-icon="r:wood"></canvas><b id="vWood"></b></span>
       <span class="chip" title="Stone"><canvas data-icon="r:stone"></canvas><b id="vStone"></b></span>
       <span class="chip" title="Gold"><canvas data-icon="r:gold"></canvas><b id="vGold"></b></span>
       <span class="chip" title="People"><canvas data-icon="r:people"></canvas><b id="vPeople"></b><small id="vIdle"></small></span>
       <button class="chip" id="cMood" title="Mood: click to see what raises or lowers it"><canvas data-icon="r:mood"></canvas><b id="vMood"></b><small id="vMoodR"></small></button>
-      <button class="chip" id="cRivals" title="Your rivals: who they are, their faction, stage and standing"><b>&#9873; Rivals</b></button>
-      <button class="chip" id="cStage" title="Your castle's stage: click to see what the next stage needs"><b id="vStage">Stage 1</b></button>
+      <button class="chip" id="cRivals" title="Your rivals: who they are, their faction, stage and standing"><b>&#9873;<span class="wd"> Rivals</span></b></button>
       <span class="chip" title="Enemies left"><canvas data-icon="r:foes"></canvas><b id="vFoes"></b></span>
       <button class="chip" id="cGoods" title="Goods: click for the list"><canvas data-icon="r:goods"></canvas><b id="vGoods"></b></button>
       <span class="chip" title="Weather and wind"><b id="vWeather">☀ Clear</b><i id="vWind" style="display:inline-block;font-style:normal;color:#cfe3ff;transition:transform 1s">➤</i></span>
       <span class="chip" title="Next enemy raid"><canvas data-icon="r:raid"></canvas><b id="vRaid"></b></span>`;
     paintIcons(statusEl); built = true;
     $('cMood').onclick = () => toggle('moodPop');
-    $('cStage').onclick = () => { const p = $('stagePop'); if (p.hidden) showStagePop(); else p.hidden = true; };
-    $('cStage').hidden = LEGACY; $('cRivals').hidden = LEGACY;
+    $('cRivals').hidden = LEGACY;   /* (4E: the Stage chip is gone: the trophy shows the stage and what the next one needs) */
     $('cRivals').onclick = () => { const p = $('rivalsPop'); if (p.hidden) showRivalsPop(); else p.hidden = true; };
     $('cGoods').onclick = () => { const p = $('goodsPop'); p.hidden = !p.hidden; if (!p.hidden) p.innerHTML = goodsReport(); };
   }
@@ -143,12 +141,13 @@ const UI = (() => {
   function setStatus(d) {
     if (!built) buildStatus();
     const civB = $('cCiv').firstElementChild; civB.textContent = d.civ; civB.style.color = d.civColor;
+    { const em = $('cCiv').querySelector('canvas.emb'); if (em && em.dataset.fac !== String(FACKEY) && typeof drawEmblem === 'function' && FACKEY) { em.dataset.fac = FACKEY; drawEmblem(em.getContext('2d'), FACKEY, em.width, em.height); } $('cCiv').title = d.civ; }
     $('vFood').textContent = d.food; $('vEat').textContent = `eating ${d.eat}/min`; $('vWood').textContent = d.wood; $('vStone').textContent = d.stone; $('vGold').textContent = d.gold;
-    $('vPeople').textContent = `${d.pop} of ${d.cap}`; $('vIdle').textContent = d.idle ? `${d.idle} idle` : '';
-    const mv = $('vMood'); mv.textContent = `${d.mood} ${d.moodName}`; mv.style.color = d.moodColor;
+    { const t = `${d.pop}<span class="wd"> of </span><span class="ph">/</span>${d.cap}`; if ($('vPeople').innerHTML !== t) $('vPeople').innerHTML = t; } $('vIdle').textContent = d.idle ? `${d.idle} idle` : '';
+    const mv = $('vMood'); { const t = `${d.mood}<span class="wd"> ${d.moodName}</span>`; if (mv.innerHTML !== t) mv.innerHTML = t; } mv.style.color = d.moodColor;
     { const band = d.mood >= 70 ? 4 : d.mood >= 50 ? 3 : d.mood >= 35 ? 2 : d.mood >= 20 ? 1 : 0; if (band !== moodBand) { moodBand = band; const c = document.querySelector('#cMood canvas'); if (c) paintIcon(c); } }
     $('vMoodR').textContent = `${d.moodRate > 0 ? '+' : ''}${d.moodRate}/min`;
-    $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; $('vGoods').textContent = 'Goods';
+    $('vFoes').textContent = d.foes; $('vRaid').textContent = d.raid; if (!$('vGoods').firstChild) $('vGoods').innerHTML = '<span class="wd">Goods</span>';
     if (!$('goodsPop').hidden) setBox($('goodsPop'), goodsReport());
     if (storeShown && !$('storePop').hidden) { if (IND_BOX[storeShown.kind]) showIndBox(storeShown); else if (storeShown.kind === 'unit') showMachine(storeShown); else if (GUARD_TOWERS[storeShown.kind]) showTower(storeShown); else if (HALLS[storeShown.kind]) showInside(storeShown); else if (storeShown.kind === 'market') showMarket(storeShown); else if (!JOBS[storeShown.kind] && !STORE_KINDS[storeShown.kind]) showBasic(storeShown); else (JOBS[storeShown.kind] ? showSite : showStore)(storeShown); }
     if (!$('moodPop').hidden) setBox($('moodPop'), moodReport());

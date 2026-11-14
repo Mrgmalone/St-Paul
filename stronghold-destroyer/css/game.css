@@ -589,3 +589,67 @@ body.phone #saveList{max-height:38vh}
   .hlpBigPic{float:none;display:block;width:150px;margin:0 auto 10px}
   .hlpArt p,.hlpHow li{font-size:18px}
 }
+
+/* ---------- Phase 4E: the diamond of troop controls (bottom left), tap-away hints, phones show pictures ---------- */
+#cmdbar.gone4e{display:none!important}
+#diamond{position:absolute;left:8px;bottom:8px;z-index:6;--ds:50px;--dg:6px;--dG:calc(var(--ds)*3 + var(--dg)*2);
+  width:calc(var(--dG)*1.4142);height:calc(var(--dG)*1.4142);pointer-events:none;touch-action:manipulation}
+#diamond[hidden]{display:none}
+#diamond .dgrid{position:absolute;left:50%;top:50%;width:var(--dG);height:var(--dG);transform:translate(-50%,-50%) rotate(45deg);
+  display:grid;grid-template-columns:repeat(3,var(--ds));grid-template-rows:repeat(3,var(--ds));gap:var(--dg);pointer-events:none}
+#diamond button{margin:0;padding:0;min-width:0;min-height:0;font:inherit;cursor:pointer;color:#f3dfae;pointer-events:auto;-webkit-tap-highlight-color:transparent}
+#diamond .dc{width:var(--ds);height:var(--ds);border-radius:10px;display:flex;align-items:center;justify-content:center;position:relative;
+  background:linear-gradient(135deg,#3a2c1a,#1d150c);border:2px solid #b8913f;box-shadow:0 3px 8px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,230,170,.18)}
+#diamond .dc .ic{transform:rotate(-45deg);display:flex;width:64%;height:64%}
+#diamond .dc svg{width:100%;height:100%}
+#diamond .dc:hover{border-color:#f1d38f}
+#diamond .dc:active{background:linear-gradient(135deg,#5a4222,#2e2110)}
+#diamond .dc.on{background:linear-gradient(135deg,#f1d38f,#c99a4a);color:#1c140b;border-color:#fff1c8}
+#diamond .dc.dim{opacity:.42}
+#diamond .dc.arrow{color:#e9c97a}
+#diamond .dc.stop{border-color:#d0604a}
+#diamond .dc.mid{background:radial-gradient(circle at 50% 45%,#5b4220,#22180c);border-color:#f1d38f;border-width:2.5px}
+#diamond .dc.mid.open{box-shadow:0 0 0 3px #f1d38f,0 3px 8px rgba(0,0,0,.55)}
+#diamond #dCount{position:absolute;left:-8px;top:-8px;transform:rotate(-45deg);min-width:22px;height:22px;border-radius:11px;padding:0 4px;box-sizing:border-box;
+  background:#2f8f3a;color:#fff;font-size:14px;font-weight:700;line-height:22px;text-align:center;border:1.5px solid #c9f2c4}
+#diamond #dCount[hidden]{display:none}
+#diamond #dForm{position:absolute;right:-6px;bottom:-6px;width:20px;height:20px;transform:rotate(-45deg);color:#ffe7a8;background:#1d150c;border-radius:50%;border:1px solid #b8913f;display:flex}
+#diamond #dForm:empty{display:none}
+#diamond #dForm svg{width:100%;height:100%}
+#diamond .dsat{position:absolute;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 40%,#3a2c1a,#1a120a);border:2px solid #b8913f;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+#diamond .dsat .ic{display:flex;width:62%;height:62%}#diamond .dsat svg{width:100%;height:100%}
+#diamond .dsat.tl{left:0;top:0}#diamond .dsat.tr{right:0;top:0}#diamond .dsat.bl{left:0;bottom:0}#diamond .dsat.br{right:0;bottom:0}
+#diamond #btnPeople svg{width:34px;height:34px}
+#diamond .dside{position:absolute;left:calc(100% + 6px);bottom:0;display:flex;flex-direction:column-reverse;gap:6px;pointer-events:none}
+#diamond .dside .dsat{position:static}
+#diamond .dside .dsat[hidden]{display:none}
+#diamond.none .dsat.br{opacity:.45}
+#dFan{position:absolute;left:0;bottom:calc(100% + 8px);display:flex;flex-wrap:wrap;gap:6px;width:max-content;max-width:calc(100vw - 30px);pointer-events:auto;
+  background:rgba(20,14,8,.94);border:1.5px solid #b8913f;border-radius:12px;padding:6px;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+#dFan[hidden]{display:none}
+#dFan .dfm{width:52px;height:52px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(#3a2c1a,#1d150c);border:1.5px solid #8a6a2c}
+#dFan .dfm .ic{display:flex;width:70%;height:70%}#dFan .dfm svg{width:100%;height:100%}
+#dFan .dfm.on{background:linear-gradient(#f1d38f,#c99a4a);color:#1c140b;border-color:#fff1c8}
+#dInfo{display:none!important}
+body.phone #diamond{--ds:44px;--dg:5px;bottom:calc(var(--catH) + 6px);left:4px}
+body.phone #diamond .dsat{width:44px;height:44px}
+@media (max-height:500px){
+  body.phone #diamond{--ds:44px;--dg:3px}
+  /* (a phone on its side: People joins the column beside the diamond, clear of the trophy; the formations open to the right) */
+  body.phone #diamond #btnPeople{left:calc(100% + 6px);top:auto;bottom:141px}
+  body.phone #dFan{left:calc(100% + 56px);bottom:0;max-width:250px}
+}
+/* hints: one tap puts them away */
+#tips.adv{pointer-events:auto;cursor:pointer}
+#tips.gone4e{display:none!important}
+#banner.shown,#alertBar,#leftNote{cursor:pointer}
+#banner.shown,#alertBar:not([hidden]){pointer-events:auto!important}   /* (4E: a showing hint catches a tap, which puts it away) */
+/* a phone shows pictures and numbers; the words show when a button is touched */
+.ph{display:none}
+body.phone .ph{display:inline}body.phone canvas.ph{display:inline-block}
+body.phone .wd{display:none}
+#cCiv canvas.emb{width:26px;height:30px;vertical-align:middle}
+body.phone #status small{display:none}
+body.phone #catBar button:not(.on) span{display:none}
+body.phone #catBar button:not(.on) svg,body.phone #catBar button:not(.on) canvas{transform:scale(1.15)}

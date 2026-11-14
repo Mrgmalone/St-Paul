@@ -71,7 +71,7 @@ function updateWeather(dt) {
   WEATHER.rain += (w.rain - WEATHER.rain) * k; WEATHER.snow += (w.snow - WEATHER.snow) * k; WEATHER.wind += (w.wind - WEATHER.wind) * k;
   WEATHER.ang += Math.atan2(Math.sin(WEATHER.angT - WEATHER.ang), Math.cos(WEATHER.angT - WEATHER.ang)) * Math.min(1, dt / 8);
   WEATHER.cover = clamp(WEATHER.cover + (WEATHER.snow > 0.3 ? dt / 50 : -dt / (WEATHER.season === 3 ? 400 : 40)), 0, 1);   // snow settles on the ground, then melts
-  const el = document.getElementById('vWeather'); if (el) { el.textContent = `${SEASONS[WEATHER.season].name} · ${w.icon} ${w.name}`; const a = document.getElementById('vWind'); a.style.transform = `rotate(${WEATHER.ang}rad)`; a.style.opacity = 0.35 + WEATHER.wind * 0.65; a.title = `Wind ${WEATHER.wind > 0.7 ? 'strong' : WEATHER.wind > 0.35 ? 'moderate' : 'light'}`; }
+  const el = document.getElementById('vWeather'); if (el) { el.innerHTML = `<span class="wd">${SEASONS[WEATHER.season].name} · </span>${w.icon}<span class="wd"> ${w.name}</span>`;   /* (4E: on a phone only the sign shows) */ const a = document.getElementById('vWind'); a.style.transform = `rotate(${WEATHER.ang}rad)`; a.style.opacity = 0.35 + WEATHER.wind * 0.65; a.title = `Wind ${WEATHER.wind > 0.7 ? 'strong' : WEATHER.wind > 0.35 ? 'moderate' : 'light'}`; }
 }
 // every missile leaves through here: the wind pushes where it comes down
 function fire(a) {

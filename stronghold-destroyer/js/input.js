@@ -156,8 +156,8 @@ function issueAt0(sx, sy) {
   if (hit && hit.kind === 'keep' && hit.team === 'player' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   const node = hit ? null : pickResourceScreen(sx, sy);
   if (node && isField(node.kind) && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
-  if (node && civs.length) { commandGather(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
-  commandMove(sel, w.x, w.y);
+  if (node && civs.length) { commandGather(civs, node); if (sold.length) commandMarch(sold, w.x, w.y); return true; }
+  commandMarch(sel, w.x, w.y);   /* (4E) in the formation chosen in the diamond, marching together */
   return true;
 }
 

@@ -2117,6 +2117,7 @@ const R3D = (() => {
       else if (u.moving && md.px !== undefined) { const dx = u.x - md.px, dz = u.y - md.pz; if (dx * dx + dz * dz > 0.01) want = Math.atan2(dx, dz); }
       else if (u.type === 'civ' && u.sub === 'work' && u.task && u.task.node) { const c = nodeCenter(u.task.node); want = Math.atan2(c.x - u.x, c.y - u.y); }
       if (want === null && u.pose && u.restFace !== null && u.restFace !== undefined) want = u.restFace;
+      if (want === null && !u.moving && u.order === 'idle' && u.faceAng !== null && u.faceAng !== undefined) want = u.faceAng;   /* (4E) after a march: face the way they marched */
       if (want !== null) md.heading = angLerp(md.heading, want, Math.min(1, dt * (u.pose ? 3 : 10)));
       md.px = u.x; md.pz = u.y;
       md.root.rotation.y = md.heading;
