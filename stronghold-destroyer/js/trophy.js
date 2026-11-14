@@ -31,6 +31,10 @@ function trophyAdvice(rows) {
       'there is no house of healing or prayer': 'there is no house of healing or prayer: build a chapel or an apothecary', 'there is no house of prayer': 'there is no house of prayer: build a chapel',
       'bugs are spoiling the food in the granary': 'bugs are spoiling the food: build another granary or sell some food', 'the ale is dear': 'the ale is dear: lower the ale price in the alehouse box',
       'they pay taxes': 'they pay taxes: lower taxes with the down arrow at the top for a while' };
+    // (4D) no ale although an alehouse stands: say why (the mill grinds the same wheat)
+    if (typeof mineDone === 'function' && mineDone('alehouse').length) fix['there is no ale'] = mineDone('mill').length
+      ? 'there is no ale: your mill grinds the same wheat the alehouse brews from, so build another wheat field (or a hop farm and a brewery)'
+      : 'there is no ale: the alehouse brews from wheat, so build a wheat field and keep workers on it';
     const why = (typeof moodReasons === 'function' ? moodReasons() : []).find(w => fix[w]);
     return `Make your people happier (${r.have} of ${r.need}). The main complaint: ${why ? fix[why] : 'build an alehouse with a wheat field, and a chapel'}.`;
   }

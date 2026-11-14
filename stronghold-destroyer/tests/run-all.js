@@ -10,7 +10,7 @@ const slow = n => /3d|Tg|Art3d/.test(n);
 const run = n => new Promise(res => {
   const t0 = Date.now(), p = spawn(process.execPath, [path.join(__dirname, n + '.js'), SP], { cwd: SP }); let out = '';
   p.stdout.on('data', d => out += d); p.stderr.on('data', d => out += d);
-  const timer = setTimeout(() => p.kill('SIGKILL'), slow(n) ? 1200000 : 1200000);
+  const timer = setTimeout(() => p.kill('SIGKILL'), /SweepUI|Save/.test(n) ? 3600000 : 1200000);   /* (the button sweep taps every button on five screens; the save check reloads many games) */
   p.on('close', code => { clearTimeout(timer); fs.writeFileSync(path.join(SP, n + '.log'), out);
     const errs = /errors \[\]/.test(out) && !/errors \[\s*['"]/.test(out); res({ n, ok: code === 0 && errs, code, secs: Math.round((Date.now() - t0) / 1000) }); });
 });

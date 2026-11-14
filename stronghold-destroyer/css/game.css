@@ -530,3 +530,9 @@ body.phone #saveList{max-height:38vh}
 #loadPop[hidden]{display:none}
 #loadPop #saveSec{border-top:0;margin-top:0;padding-top:0;max-width:none}
 #loadPop .saveNew{display:none}
+/* (4D bug sweep) the top bar: the Settings, Help and Pause buttons never shrink under their words; on screens narrower
+   than the counters need, they wrap onto a second row instead of being cut off at the right */
+#btnMenu,#btnHelpTop,#btnPause{flex:0 0 auto}
+@media (min-width:601px) and (min-height:501px){ #status{flex-wrap:wrap!important;overflow:visible!important} }
+/* (4D bug sweep) the Help box counts its padding inside its height, so it never runs past the bottom */
+#help .box{box-sizing:border-box}

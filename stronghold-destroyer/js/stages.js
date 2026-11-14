@@ -112,7 +112,7 @@ function raiseRing(k, n, team, opts = {}) {
 function growCastle() {
   const k = playerKeep(); if (!k) return;
   const st = STAGES[stageN], q = st.need || {};   // STAGES[stageN] is the next stage (the table starts at stage 1)
-  { const mul = stageMul(st.n); res.stone -= Math.round((q.stone || 0) * mul); res.iron -= Math.round((q.iron || 0) * mul); }
+  { const mul = stageMul(st.n); res.stone = Math.max(0, res.stone - Math.round((q.stone || 0) * mul)); res.iron = Math.max(0, res.iron - Math.round((q.iron || 0) * mul)); }   /* (never below nothing) */
   stageN = st.n; k.stage = stageN;
   const add = st.keepHp - k.maxHp; k.maxHp = st.keepHp; k.hp = Math.min(k.maxHp, k.hp + Math.max(0, add));
   const n0 = floats.length; const r = raiseRing(k, stageN, 'player'); floats.length = n0;

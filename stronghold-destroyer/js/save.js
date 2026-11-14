@@ -177,15 +177,16 @@ const SaveStore = (() => {
   const fallback = fn => e => { useLS = true; return fn(); };
   return {
     where: () => viaLS() ? 'local storage' : 'IndexedDB',
-    put(meta, S) {
-      const lsPut = () => { const txt = JSON.stringify(S); localStorage.setItem('sd-save-' + meta.id, txt); const l = lsList().filter(m => m.id !== meta.id); l.push(meta); localStorage.setItem('sd-save-list', JSON.stringify(l)); return true; };
+    put(meta, S) {   // (4D sweep: the save is kept as one piece of text, made once: cheaper to store than the whole object)
+      const txt = typeof S === 'string' ? S : JSON.stringify(S);
+      const lsPut = () => { localStorage.setItem('sd-save-' + meta.id, txt); const l = lsList().filter(m => m.id !== meta.id); l.push(meta); localStorage.setItem('sd-save-list', JSON.stringify(l)); return true; };
       if (viaLS()) return Promise.resolve().then(lsPut);
-      return tx(['meta', 'data'], 'readwrite', (m, d) => { m.put(meta); d.put(S, meta.id); }).then(() => true, fallback(lsPut));
+      return tx(['meta', 'data'], 'readwrite', (m, d) => { m.put(meta); d.put(txt, meta.id); }).then(() => true, fallback(lsPut));
     },
     get(id) {
       const lsGet = () => { const t = localStorage.getItem('sd-save-' + id); return t ? JSON.parse(t) : null; };
       if (viaLS()) return Promise.resolve().then(lsGet);
-      return tx(['data'], 'readonly', d => d.get(id)).then(v => v || lsGet(), fallback(lsGet));
+      return tx(['data'], 'readonly', d => d.get(id)).then(v => (typeof v === 'string' ? JSON.parse(v) : v) || lsGet(), fallback(lsGet));   /* (older saves were kept as objects) */
     },
     list() {
       if (viaLS()) return Promise.resolve(lsList());
@@ -202,8 +203,8 @@ const canSave = () => started && !LEGACY && !!FACKEY && !won;
 function saveGame(name, id) {
   if (!canSave()) return Promise.reject(new Error(won ? 'The game is over.' : 'Start a game first.'));
   const S = snapshotGame(), meta = saveMeta(S, name, id || ('s' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36)));
-  S.meta = meta; SAVE.lastKB = Math.round(JSON.stringify(S).length / 1024);
-  return SaveStore.put(meta, S).then(() => meta);
+  S.meta = meta; const txt = JSON.stringify(S); SAVE.lastKB = Math.round(txt.length / 1024);
+  return SaveStore.put(meta, txt).then(() => meta);
 }
 function autoSave() { if (!canSave() || SAVE.busy) return Promise.resolve(null); SAVE.busy = true; SAVE.autoAt = time; return saveGame('Autosave', 'autosave').then(m => { SAVE.busy = false; refreshSaveList(); return m; }, e => { SAVE.busy = false; return null; }); }
 // loading: the page is made again with the saved starting places, then the game is put back

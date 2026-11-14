@@ -12,7 +12,7 @@ const FACTIONS = {
     name: 'Cy Young', epithet: 'the bread makers',
     field: '#2f5a2a', charge: '#e0b443', trim: '#e0b443', emblem: 'wheat',
     plays: 'Bake far more bread than anyone needs, sell the rest, and let the gold buy your way up the stages.',
-    strengths: ['Mill and bakeries make 4.5 times the food', 'Food beyond what the people need is sold for gold, every 10 seconds'],
+    strengths: ['Mill and bakeries make 4.5 times the food', 'Spare food is sold for gold every 10 seconds (what the next stage needs is kept back)'],
     weakness: 'No special power. Slow them early (raid their farms and mills) before the gold snowballs.',
     start: { king: 1, civilians: 5, food: 100, wood: 80 },
     rules: { bakeryMul: 4.5, sellAbove: 200, sellLot: 10, sellGold: 3, sellEvery: 10 }
@@ -56,7 +56,7 @@ const FACTION_BASE = { sHp: 1, sDmg: 1, sSpeed: 1, train: 1, gather: 1, carry: 1
 // checked and then spent (they become the new walls); buildings must be standing and finished.
 // grow: how many squares the castle grows in every direction; wall: the castle ring's material.
 // Phase 4D (Gerald: far too high before): these are the EASY numbers. Medium and Hard multiply people, food, stone and
-// iron by STAGE_PACE below and ask a little more happiness. The rivals grow by the same table at the same difficulty.
+// iron by STAGE_PACE below and ask a little more happiness. The rivals grow by the same table times RIVAL_STAGE_MUL (below).
 // (Before Phase 4D: stage 2 people 12, happiness 50, food 150, 3 houses; stage 3 people 22, 55, food 300, stone 150, 5 houses;
 // stage 4 people 35, 60, food 500, stone 300, iron 80; stage 5 people 50, 65, food 800, stone 500, iron 200.)
 const STAGES = [
@@ -73,7 +73,7 @@ const STAGES = [
     need: { people: 30, mood: 45, food: 250, stone: 360, iron: 70, buildings: { smithy: 1, market: 1, mill: 1, bakery: 1 } },
     unlock: { units: ['ram', 'catapult'], buildings: ['roundtower', 'greattower', 'abbey'] } },
   { n: 5, name: 'Stronghold', grow: 3, wall: 'thick', keepHp: 6500,
-    need: { people: 42, mood: 50, food: 400, stone: 600, iron: 180, buildings: { school: 1, stower: 2, church: 1 } },   // the school must stand before the Stronghold
+    need: { people: 42, mood: 50, food: 400, stone: 720, iron: 210, buildings: { school: 1, stower: 2, church: 1 } },   // the school must stand before the Stronghold
     unlock: { units: ['trebuchet'], buildings: [] } }
 ];
 
@@ -81,8 +81,8 @@ const STAGES = [
 // (2 to 5) food, stone and iron are multiplied by  mul + step x (n - 2)  (rounded), happiness rises by 'mood' points, and
 // people and the counted buildings (houses, stone towers) rise by half as much. (People rise less because more people
 // also means more workers, which makes the goods come faster: the automatic test games showed that.)
-//   Medium: stage 2 x1.15, stage 3 x1.4, stage 4 x1.65, stage 5 x1.9.   Hard: x1.3, x1.75, x2.2, x2.65.
-const STAGE_PACE = { easy: { mul: 1, step: 0, mood: 0 }, medium: { mul: 1.15, step: 0.25, mood: 3 }, hard: { mul: 1.3, step: 0.45, mood: 6 } };
+//   Medium: stage 2 x1.15, stage 3 x1.35, stage 4 x1.55, stage 5 x1.75.   Hard: x1.3, x1.7, x2.1, x2.5.
+const STAGE_PACE = { easy: { mul: 1, step: 0, mood: 0 }, medium: { mul: 1.15, step: 0.2, mood: 3 }, hard: { mul: 1.3, step: 0.4, mood: 6 } };
 const STAGE_COUNTED = ['house', 'stower'];
 // the rivals grow by the same table times this, at every difficulty (their difficulty is the speed of their economy,
 // RIVALS.pace), which keeps their growth about where it was before Phase 4D, so lowering your stages does not make
