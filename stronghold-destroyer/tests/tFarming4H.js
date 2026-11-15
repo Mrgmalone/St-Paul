@@ -11,6 +11,7 @@ const { start } = require('./lib4b');
   const { p, need, done } = await start('cyyoung', { start: 0 });
   const r = await p.evaluate(() => {
     const out = {}; res.wood = 9000; res.gold = 3000; res.stone = 2000; mood = 55;
+    Object.assign(FOOD_FIRST, { protect: 0, min: 0, low: 0, short: 0 });   /* (4I's food-first rule is checked in tTapField4I.js; here the field and farm alone) */
     T.people(40); T.run(2);
     // ---------- the Field ----------
     const fields = []; for (let i = 0; i < 5; i++) fields.push(T.put('wheatfarm'));
@@ -22,7 +23,8 @@ const { start } = require('./lib4b');
     out.plan = Object.assign({}, f.plan); out.planned = planTotal(f); T.act(f, 'crop+:grapes'); out.eleventh = planTotal(f); T.run(4);
     out.crew = { wheat: cropCount(f, 'wheat'), corn: cropCount(f, 'corn'), grapes: cropCount(f, 'grapes') };
     // each crop at its own pace: wheat fastest, grapes slowest (seconds of work for one, at the same mood)
-    const one = c => workersOf(f).find(u => u.crop === c); out.rate = { wheat: +farmRate(one('wheat'), f).toFixed(2), corn: +farmRate(one('corn'), f).toFixed(2), grapes: +farmRate(one('grapes'), f).toFixed(2) };
+    const one = c => workersOf(f).find(u => u.crop === c), plain = c => ({ job: f, crop: c, fat: 0, sick: 0 });   /* (a worker who is neither ill nor stout: one real worker may be either) */
+    out.rate = { wheat: +farmRate(plain('wheat'), f).toFixed(2), corn: +farmRate(plain('corn'), f).toFixed(2), grapes: +farmRate(plain('grapes'), f).toFixed(2) };
     // what comes in over two minutes
     f.made = {}; T.run(150);
     out.made = { wheat: Math.round(f.made.wheat || 0), corn: Math.round(f.made.corn || 0), grapes: Math.round(f.made.grapes || 0) };   /* (what was carried in: people eat the corn as it comes) */
@@ -75,11 +77,11 @@ const { start } = require('./lib4b');
   console.log(JSON.stringify(r));
   need(r.fiveFields && r.sixthWhy && r.size[0] === 4 && r.size[1] === 4 && r.staff === 10, `five fields of ten people, 4 by 4, and no sixth (${r.sixthWhy})`);
   need(r.fieldsAtCastle === 5 && r.staffAtCastle === 10, `fields no longer merge as the castle grows (${r.fieldsAtCastle} at the Castle, ${r.staffAtCastle} each)`);
-  need(r.start.wheat === 2 && r.startStaff === 2, `a new field starts with two people on wheat (${JSON.stringify(r.start)}, ${r.startStaff})`);
-  need(r.planned === 10 && r.eleventh === 10 && r.crew.wheat === 3 && r.crew.corn === 4 && r.crew.grapes === 3, `+ puts people on each crop, up to ten (${JSON.stringify(r.crew)})`);
+  need(r.start.corn === 2 && r.startStaff === 2, `a new field starts with two people on corn (4I) (${JSON.stringify(r.start)}, ${r.startStaff})`);
+  need(r.planned === 10 && r.eleventh === 10 && r.crew.wheat === r.plan.wheat && r.crew.corn === r.plan.corn && r.crew.grapes === r.plan.grapes && r.plan.wheat > 0 && r.plan.grapes > 0, `+ puts people on each crop, up to ten (${JSON.stringify(r.crew)} for ${JSON.stringify(r.plan)})`);
   need(r.rate.wheat < r.rate.corn && r.rate.corn < r.rate.grapes, `wheat grows fastest, then corn, grapes slowest (${JSON.stringify(r.rate)} seconds each)`);
   need(r.made.wheat > 0 && r.made.corn > 0 && r.made.grapes > 0, `all three crops come in (${JSON.stringify(r.made)})`);
-  need(r.afterRemove.plan === 1 && r.afterRemove.corn === 1 && r.afterRemove.staff === 7, `taking people off a crop frees them, and they stay off (${JSON.stringify(r.afterRemove)})`);
+  need(r.afterRemove.plan === r.plan.corn - 3 && r.afterRemove.corn === r.afterRemove.plan && r.afterRemove.staff === 7, `taking people off a crop frees them, and they stay off (${JSON.stringify(r.afterRemove)})`);
   need(r.mood.happy >= 1.2 && r.mood.upset <= 0.85 && r.mood.well >= 1.2 && r.mood.wellBuilt, `happy people grow food faster, upset slower; a well 25% faster (${JSON.stringify(r.mood)})`);
   need(r.twoFarms && r.thirdWhy && r.farmStaff === 5 && r.farmSize[0] === 4, `two farms of five people, no third (${r.thirdWhy})`);
   need(['chickens', 'cows', 'pigs', 'ducks'].every(k => r.raise.includes(k)) && r.ducksAt > 0 && r.farmCrew === 5, `a farm raises chickens, cows, pigs and ducks, and holds five (${r.raise}, ${r.farmCrew})`);
@@ -88,7 +90,7 @@ const { start } = require('./lib4b');
   need(r.lvl2 === 2 && r.lvl3NoStable === 2 && r.stable && r.lvl3 === 3, `the farm gets better with time, and its best with a stable (${r.lvl2}, ${r.lvl3NoStable}, ${r.lvl3})`);
   need(r.farmAfterRemove[0] === 2 && r.farmAfterRemove[1] === 2, `fewer people on the farm stay fewer (${r.farmAfterRemove})`);
   need(r.lookoutSees && r.warned, `a lookout tower sees around and rings the bell for raiders (${r.lookoutSees}, ${r.warned})`);
-  need(r.guards.field === 2 && r.guards.farm === 1 && r.guards.paid === 50 && r.guards.type === 'knight' && r.guards.onFoot && r.guards.hp >= r.guards.knightHp && r.guards.stage === 1, `Reserve gives knight-strength guards on foot at the Shack: two for a field, one for a farm (${JSON.stringify(r.guards)})`);
+  need(r.guards.field === 2 && r.guards.farm === 1 && r.guards.paid <= 0 && r.guards.type === 'knight' && r.guards.onFoot && r.guards.hp >= r.guards.knightHp && r.guards.stage === 1, `knight-strength guards on foot at the Shack, free (4I): two for a field, one for a farm (${JSON.stringify(r.guards)})`);
   need(r.guardFights && r.guardBack, `a guard goes after a raider near his field and comes back (${r.guardFights}, ${r.guardBack})`);
   const M = r.market;
   need(M.corn && M.cowSell[0] === M.cowSell[1] && M.cowSell[1] === M.cowSell[2] && M.cowBuy > M.cowSell[0], `animals always sell at the top price, whatever the mood or the school (${M.cowSell}, buy ${M.cowBuy})`);

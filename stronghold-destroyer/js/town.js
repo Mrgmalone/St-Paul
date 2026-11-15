@@ -318,6 +318,42 @@ function startJob(u) {
   if (!t) { u.job = null; floatText(u.x, u.y - 50, 'No trees near the hut', '#ffb38a'); return; }
   u.order = 'gather'; u.task = { type: 'wood', node: t }; u.sub = u.carry > 0 ? 'toKeep' : 'toNode'; u.path = []; u.repath = 0;
 }
+// ---------- Phase 4I (Gerald): food first ----------
+// "The people automatically need to go and pick the food crops... I should not have to direct the people to go and pick the
+// food. The food should be picked first. Even if I build the field, they need to go back and pick the food, and then
+// someone else gets the field." Measured in minutes of eating (FOOD_FIRST in settings.js):
+//  - below 'protect' minutes, no one picking food is called away to other work, and people with no job pick food;
+//  - below 'low', a workplace that does not make food gets no more hands (each keeps one);
+//  - below 'short', people leave work that does not make food, one each second, to pick food, until enough are picking.
+// Food work: the farm, a field with people on corn, the mill and bakeries.
+const isFoodSite = b => b.kind === 'farm' || b.kind === 'bakery' || b.kind === 'mill' || (b.kind === 'wheatfarm' && (typeof farmStyle !== 'function' || !farmStyle(b) || fieldPlan(b).corn > 0));
+const FOOD_LEAVE = { alehouse: 1, tavern: 1, brewery: 1, hopfarm: 1, vineyard: 2, orchard: 2, poleturner: 3, bowyer: 3, smithy: 3, stable: 4, waterpot: 4, ironmine: 5, quarry: 6, wheatfarm: 7, woodhut: 8 };   // who leaves first
+let foodCallT = -99;
+function foodFirst(civs) {
+  const people = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u)).length, eatMin = people * RATIONS[ration].eat * 60 / CIV.eatEvery, Q = FOOD_FIRST;
+  const F = { eatMin, protect: IND() && res.food < Math.max(Q.min, eatMin * Q.protect), low: IND() && res.food < eatMin * Q.low, short: IND() && res.food < eatMin * Q.short };
+  // people with no job who are cutting wood or carrying stone turn to picking food while food is needed (not if you sent them)
+  if (F.protect) {
+    const k = playerKeep(), onCount = new Map(); for (const o of civs) if (o.task && o.task.node && o.order === 'gather') onCount.set(o.task.node, (onCount.get(o.task.node) || 0) + 1);
+    for (const u of civs) {
+      if (u.job || u.order !== 'gather' || !u.task || u.task.type === 'food' || u.carry > 0 || isManual(u) || u.inSchool || u.engineer) continue;
+      let best = null, bd = 1e9; for (const n of bushes) { if (!nodeOk(n, 'food') || (onCount.get(n) || 0) >= 5 || (u.bad && u.bad.has(n))) continue; const d = Math.hypot(n.x - u.x, n.y - u.y); if (k && Math.hypot(n.x - k.x, n.y - k.y) > 750) continue; if (d < bd) { bd = d; best = n; } }
+      if (!best) break; commandGather([u], best); onCount.set(best, (onCount.get(best) || 0) + 1); floatText(u.x, u.y - 55, 'Food first: picking berries', '#ffd98a');
+    }
+  }
+  if (F.short) {
+    const pickers = civs.filter(u => !u.job && u.order === 'gather' && u.task && u.task.type === 'food').length + civs.filter(u => u.job && isFoodSite(u.job)).length;
+    if (pickers < Math.ceil(eatMin / Q.perPicker)) {
+      const w = civs.filter(u => u.job && !isFoodSite(u.job) && !u.engineer && !u.inSchool && u.order !== 'build' && u.order !== 'firefight' && !(u.breakUntil > time))
+        .sort((a, b) => (FOOD_LEAVE[a.job.kind] || 5) - (FOOD_LEAVE[b.job.kind] || 5))[0];
+      if (w) { const from = w.job.name; if (w.carry > 0 && w.carryType && w.carryType !== 'food') { res[w.carryType] = (res[w.carryType] || 0) + w.carry; w.carry = 0; }
+        w.job = null; w.order = 'idle'; w.task = null; w.crafting = null; w.ironWork = false; w.path = []; w.foodCallT = time;
+        floatText(w.x, w.y - 55, `Leaving the ${from.toLowerCase()} to pick food`, '#ffd98a');
+        if (time - foodCallT > 60) { foodCallT = time; showBanner('Food is short: your people leave other work to pick food first. Put people on corn in your fields and keep your farm working.', 4.5); } }
+    }
+  }
+  return F;
+}
 let jobT = 0;
 function updateJobs(dt) {
   jobT -= dt; if (jobT > 0) return; jobT = 1;
@@ -328,12 +364,17 @@ function updateJobs(dt) {
   for (const u of civs) if (u.job && (u.job.dead || (u.job.x0 !== undefined && !farms.includes(u.job) && !structures.includes(u.job)))) u.job = null;
   const sites = structures.concat(farms).filter(b => JOBS[b.kind] && b.team === 'player' && !b.dead && b.done && !b.asleep);
   for (const u of civs) if (u.job && u.job.asleep) { u.job = null; u.order = 'idle'; u.task = null; u.crafting = null; }
+  // (4I, Gerald: "the food needs to be picked first... that's a high rule") how much food there is against how fast it is eaten
+  const F = foodFirst(civs);
   for (const pass of IND() ? [1, 2] : [2]) for (const site of sites) {   /* every building gets one worker before any gets a second */
     let staff = civs.filter(u => u.job === site).length;
+    if (!isFoodSite(site) && (F.short || F.low && staff >= 1)) continue;   /* food is low: work that is not food gets at most one (none while food is short) */
     while (staff < (pass === 1 ? Math.min(1, jobWant(site)) : jobWant(site))) {
       // first an idle person; if nobody is idle, a gatherer with no job is called over, so every new workplace is staffed by itself
-      let free = civs.filter(u => !u.job && !u.inSchool && !u.engineer && u.order === 'idle' && !isManual(u));
-      if (!free.length) free = civs.filter(u => !u.job && !u.inSchool && !u.engineer && (u.order === 'gather' || u.order === 'move' || u.order === 'idle') && u.order !== 'build' && !(u.task && u.task.node && JOBS[u.task.node.kind]));
+      const picking = u => (u.foodCallT > time - 60) || (F.protect && !isFoodSite(site) && time - (u.foodPick || -99) < 15);   /* (4I: one picking food, or sent to, stays at it while food is needed) */
+      let free = civs.filter(u => !u.job && !u.inSchool && !u.engineer && u.order === 'idle' && !isManual(u) && !picking(u));
+      if (!free.length) free = civs.filter(u => !u.job && !u.inSchool && !u.engineer && (u.order === 'gather' || u.order === 'move' || u.order === 'idle') && u.order !== 'build' && !(u.task && u.task.node && JOBS[u.task.node.kind])
+        && !(F.protect && u.order === 'gather' && u.task && u.task.type === 'food') && !picking(u));   /* (4I) someone picking food is not called away while food is needed: someone else takes the work */
       if (!free.length) { if (!site.noStaffMsg) { site.noStaffMsg = true; floatText(site.x, site.y - site.topH - 10, `${site.name}: no free civilian. Train one at the keep (Town list).`, '#ffb38a'); } break; }
       site.noStaffMsg = false;
       free.sort((a, b) => Math.hypot(a.x - site.x, a.y - site.y) - Math.hypot(b.x - site.x, b.y - site.y));
@@ -374,7 +415,7 @@ function updateJobs(dt) {
   const onNode = n => onCount.get(n) || 0;
   for (const u of civs) {
     if (u.job || u.toHeal || u.inSchool || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
-    const want = res.food < 120 || foodKinds.berries + foodKinds.crops + (foodKinds.corn || 0) + (foodKinds.farm || 0) < res.wood * 0.6 ? 'food' : 'wood';
+    const want = (IND() ? F.protect : res.food < 120) || foodKinds.berries + foodKinds.crops + (foodKinds.corn || 0) + (foodKinds.farm || 0) < res.wood * 0.6 ? 'food' : 'wood';   /* (4I: food first) */
     for (const type of [want, want === 'food' ? 'wood' : 'food']) {
       const list = type === 'wood' ? trees : bushes; let best = null, bd = 1100;
       for (const n of list) { if (!nodeOk(n, type) || onNode(n) >= 5 || (u.bad && u.bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - u.x, c.y - u.y); if (IND() && k0() && Math.hypot(c.x - k0().x, c.y - k0().y) > 750) continue;   /* citizens stay near the castle */ if (d < bd) { bd = d; best = n; } }

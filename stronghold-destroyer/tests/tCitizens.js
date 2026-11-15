@@ -52,7 +52,7 @@ const { start } = require('./lib4b');
   need(hold.card && hold.who && !hold.sheet && /I am /.test(hold.spoken), 'holding a person: he speaks, and his card floats beside him');
   await p.screenshot({ path: SP + '/person-card.png' });
   // needs alerts, and the most urgent spoken
-  const al = await p.evaluate(() => { document.getElementById('personPop').hidden = true; cardOf = null; paused = false; stageN = 2; const f = T.put('wheatfarm'); T.run(6);
+  const al = await p.evaluate(() => { document.getElementById('personPop').hidden = true; cardOf = null; paused = false; stageN = 2; const f = T.put('wheatfarm'); T.run(2); for (const g of guardsOf(f)) { g.dead = true; g.hp = 0; } T.run(4);   /* (4I: a field comes with its guards; with them gone it needs a sentry) */
     const a = document.getElementById('alertBar').textContent; spendFood(Math.floor(SD.res.food)); SD.res.food = 0; T.run(6);
     return { sentry: /needs a sentry/.test(collectAlerts().map(x => x.text).join('|')), shown: !document.getElementById('alertBar').hidden, first: document.querySelector('#alertBar .al').textContent, spoken: window.__spoken.slice(-1)[0] }; });
   console.log('alerts', JSON.stringify(al));

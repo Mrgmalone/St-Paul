@@ -418,6 +418,7 @@ function civBrain(u, dt) {
   }
   if (u.order !== 'gather') { if (u.order === 'idle') u.moving = false; return; }
   const task = u.task;
+  if (task && task.type === 'food' && !u.job) u.foodPick = time;   /* (4I: food first: who has been picking food lately) */
   const load = (u.job && task && task.node === u.job && typeof farmLoad === 'function' && farmLoad(u, u.job)) || CIV.carry;   /* (4H: the slow grapes go in small baskets) */
   if (u.sub !== 'toKeep' && u.carry >= load) { u.sub = 'toKeep'; u.path = []; }
   if (u.sub === 'toNode' || u.sub === 'work') {

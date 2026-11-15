@@ -125,19 +125,22 @@ function farmControls(b) {   // built once (or when something is added); farmRef
     h += '<div style="font-size:14px;color:#d9c9a3;margin:2px 0 4px">Which animals this farm raises (tap to choose):</div><div style="display:flex;gap:6px;flex-wrap:wrap">';
     for (const k of FARMING.farm.animals) h += `<button class="sm${(b.raise || []).includes(k) ? ' on' : ''}" data-ind="raise:${k}" style="min-height:44px">${animalName(k)} <span id="fa-n-${k}"></span></button>`;
     h += '</div>';
+    // (4I) how many people work the farm, at the top beside the animals
+    h += `<div class="ln" style="align-items:center;margin-top:8px"><span style="min-width:72px">People</span><b style="display:flex;gap:6px;align-items:center">${B('farm-', '&minus;', big)}<span id="fa-staff" style="min-width:24px;text-align:center;font-size:18px"></span>${B('farm+', '+', big)}<small id="fa-rate" style="min-width:110px;color:#d9c9a3"></small></b></div>`;
   }
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
   if (!b.well) h += B('well', `Add a well (${FARMING.well.wood} wood)`);
   if (!b.lookout) h += B('lookout', `Add a lookout tower (${FARMING.lookout.wood} wood)`);
-  h += `<button class="sm" data-ind="guard" id="fc-guard">Reserve a guard (${FARMING.guard.gold} gold)</button>`;
+  h += `<button class="sm" data-ind="guard" id="fc-guard">Reserve a guard (free)</button>`;
   return h + '</div></div>';
 }
 function farmRefresh(b) {
   const st = farmStyle(b); if (!st) return;
   const set = (id, t) => { const el = document.getElementById(id); if (el && el.textContent !== String(t)) el.textContent = t; };
   if (st === 'field') { const P = fieldPlan(b); for (const c of FIELD_CROPS) { const on = cropCount(b, c); set('fc-n-' + c, P[c]); set('fc-r-' + c, P[c] ? `${on} at work · up to ${perMinute(b, on || P[c], c)} a minute` : ''); } }
-  else for (const k of FARMING.farm.animals) set('fa-n-' + k, (b.animals && b.animals[k]) || 0);
-  const g = document.getElementById('fc-guard'); if (g) { const n = guardsOf(b).length, mx = guardMax(b); g.disabled = n >= mx; g.style.opacity = n >= mx ? 0.5 : 1; g.textContent = n >= mx ? `Guards: ${n} of ${mx} (all on watch)` : `Reserve a guard (${FARMING.guard.gold} gold) · ${n} of ${mx}`; }
+  else { for (const k of FARMING.farm.animals) set('fa-n-' + k, (b.animals && b.animals[k]) || 0);
+    const n = staffOf(b); set('fa-staff', n); set('fa-rate', `of ${FARMING.farm.staff} · up to ${perMinute(b, n)} food a minute`); }
+  const g = document.getElementById('fc-guard'); if (g) { const n = guardsOf(b).length, mx = guardMax(b); g.disabled = n >= mx; g.style.opacity = n >= mx ? 0.5 : 1; g.textContent = n >= mx ? `Guards: ${n} of ${mx} (all on watch)` : `Reserve a guard (free) · ${n} of ${mx}`; }
 }
 function farmLines(b) {   // the lines above the controls
   const st = farmStyle(b), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`; if (!st) return '';
@@ -153,11 +156,12 @@ function farmLines(b) {   // the lines above the controls
   }
   h += ln('Growing speed', `${pct >= 0 ? '+' : ''}${pct}%: ${M > 1 ? 'your people are happy' : M < 1 ? 'your people are upset' : 'your people are content'}${b.well ? ', a well' : ''}`);
   h += ln('Well', b.well ? 'yes: grows 25% faster, and water for fires' : 'none') + ln('Lookout tower', b.lookout ? 'yes: watching for raiders' : 'none');
-  const gs = guardsOf(b); h += ln('Guards', gs.length ? `${gs.length} of ${guardMax(b)}: ${gs.map(u => u.name).join(', ')}` : `<span style="color:#ffb38a">none (up to ${guardMax(b)})</span>`);
+  const gs = guardsOf(b); h += ln('Guards', gs.length ? `${gs.length} of ${guardMax(b)}: ${gs.map(u => `${u.name} (${u.hp >= u.maxHp ? 'well' : Math.round(u.hp / u.maxHp * 100) + '% health'}${u.order === 'attack' ? ', fighting' : ''})`).join(', ')}` : `<span style="color:#ffb38a">none (up to ${guardMax(b)}): tap Reserve a guard</span>`);
   return h;
 }
 function farmAction(b, act) {   // true when it was one of ours
   if (!farmStyle(b)) return false;
+  if (act === 'farm+' || act === 'farm-') { siteAction(b, act === 'farm+' ? 'add' : 'remove'); return true; }   /* (4I: the farm's people, at the top of its box) */
   if (act.startsWith('crop+:') || act.startsWith('crop-:')) {
     const c = act.slice(6), P = fieldPlan(b), up = act[4] === '+';
     if (up) {
@@ -198,18 +202,22 @@ function guardSpotFor(b, i) {
   }
   const f = nearestFree(Math.floor(b.x1 / TILE) + 1, Math.floor(my / TILE)); return f ? { x: f.c * TILE + 16, y: f.r * TILE + 16 } : { x: b.x1 + 16, y: my };
 }
-function reserveGuard(b) {
-  const have = guardsOf(b).length, mx = guardMax(b), G = FARMING.guard, what = b.kind === 'farm' ? 'farm' : 'field';
-  if (b.done === false) { showBanner('Finish building it first.', 2); return; }
-  if (have >= mx) { showBanner(`This ${what} already has ${mx === 1 ? 'its guard' : `its ${mx} guards`}.`, 2.5); return; }
-  if (res.gold < G.gold) { showBanner(`A guard costs ${G.gold} gold. You have ${Math.floor(res.gold)}.`, 2.5); return; }
-  const pop = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length + trainQueue.filter(q => !MACHINE[q.kind]).length;
-  if (pop >= popCap()) { const d = draftable(); if (!d) { showBanner('Your houses are full and no free civilian can be called up. Build a house first.', 3.5); return; }
-    units.splice(units.indexOf(d), 1); selection.delete(d); floatText(d.x, d.y - 50, 'Called up to guard the ' + what, '#9fe8a8'); }
-  res.gold -= G.gold;
+function reserveGuard(b, quiet) {
+  // (4I, Gerald: "it comes with the building... he should be free like the knight that comes for the tower") no gold, and
+  // no place in your houses: he belongs to the field or farm
+  const have = guardsOf(b).length, mx = guardMax(b), what = b.kind === 'farm' ? 'farm' : 'field';
+  if (b.done === false) { if (!quiet) showBanner('Finish building it first.', 2); return null; }
+  if (have >= mx) { if (!quiet) showBanner(`This ${what} already has ${mx === 1 ? 'its guard' : `its ${mx} guards`}.`, 2.5); return null; }
   const sp = guardSpotFor(b, have), u = makeUnit('player', 'knight', sp.x, sp.y);
-  u.guardOf = b; u.guardSpot = sp; u.fieldGuard = true; u.cmdT = -99; u.mounted = false; u.kit = 'foot'; u.speed = SOLDIERS.knight.footSpeed; u.name = b.kind === 'farm' ? 'Farm Guard' : 'Field Guard';   /* a knight's strength, on foot */
-  floatText(sp.x, sp.y - 60, `${u.name} guards the ${what}`, '#9fe8a8'); AudioSys.ui('ready');
+  u.guardOf = b; u.guardSpot = sp; u.fieldGuard = true; u.gift = true; u.cmdT = -99; u.mounted = false; u.kit = 'foot'; u.speed = SOLDIERS.knight.footSpeed; u.name = b.kind === 'farm' ? 'Farm Guard' : 'Field Guard';   /* a knight's strength, on foot */
+  if (!quiet) { floatText(sp.x, sp.y - 60, `${u.name} takes his post`, '#9fe8a8'); AudioSys.ui('ready'); }
+  return u;
+}
+// a field or farm comes with its guards when it is finished (two for a field, one for a farm), as a tower comes with its knight
+function guardsComeWith(b) {
+  if (b.guardsCame || b.done === false || b.dead) return; b.guardsCame = true;
+  let n = 0; while (guardsOf(b).length < guardMax(b) && reserveGuard(b, true)) n++;
+  if (n) floatText(b.x, b.y - 70, `${n === 1 ? 'A guard comes' : n + ' guards come'} with the ${b.kind === 'farm' ? 'farm' : 'field'}`, '#9fe8a8');
 }
 
 // ---------- each second ----------
@@ -220,6 +228,7 @@ function updateFarming(dt) {
   for (const b of farms) {
     if (b.dead || b.team !== 'player' || b.done === false) continue;
     const st = farmStyle(b); if (!st) continue;
+    guardsComeWith(b);
     b.amount = b.max;   // (the new fields never run out: what they give depends on the people working them)
     if (st === 'field') { rebalance(b); if (staffOf(b)) b.lastCrop = (stripsOf(b)[0] || {}).crop || b.lastCrop; }
     else { const was = b.lvlSeen || 1, L = farmLvl(b); if (L.n > was) { showBanner(`Your farm has grown better: level ${L.n} of ${L.of}. Its animals breed faster and it holds more of them.`, 4); floatText(b.x, b.y - 60, `Farm level ${L.n}`, '#9fe8a8'); AudioSys.ui('bell'); } b.lvlSeen = L.n; }
@@ -244,3 +253,34 @@ const lookoutPos = b => ({ x: b.x0 + 14, y: b.y0 + 14 });    // the lookout towe
 const LIVESTOCK = { chickens: 1, ducks: 1, turkeys: 1, pigs: 1, sheep: 1, cows: 1 };
 function animalSell(k, n) { if (typeof takeAnimals === 'function') takeAnimals(k, n); }
 function animalBuy(k, n) { const f = mineDone('farm')[0]; if (!f) return false; f.animals = f.animals || {}; f.animals[k] = (f.animals[k] || 0) + n; f.raise = f.raise || FARMING.farm.startRaise.slice(); if (!f.raise.includes(k)) f.raise.push(k); return true; }
+
+// ---------- (4I) the box opens right beside the field or farm you tapped (on an iPad or a computer; a phone keeps its own) ----------
+(() => {
+  const p = document.getElementById('storePop'); if (!p) return;
+  let shownFor = null;
+  const home = () => { p.style.left = '10px'; p.style.top = '8px'; p.style.maxHeight = ''; p.style.overflowY = ''; p.style.maxWidth = ''; };
+  function spots(b, pr, cr) {
+    if (typeof R3D !== 'undefined' && R3D.active) R3D.prepare();
+    const pts = [[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]].map(([x, y]) => screenOf(x, y, 0)).map(q => ({ x: q.x + cr.left - pr.left, y: q.y + cr.top - pr.top }));
+    return { x0: Math.min(...pts.map(q => q.x)), x1: Math.max(...pts.map(q => q.x)), y0: Math.min(...pts.map(q => q.y)), y1: Math.max(...pts.map(q => q.y)) };
+  }
+  function beside(b) {
+    const par = p.offsetParent; if (!par || window.innerWidth < 700 || window.innerHeight < 520) { home(); return; }
+    const pr = par.getBoundingClientRect(), cr = canvas.getBoundingClientRect(), view = { x0: cr.left - pr.left, x1: cr.right - pr.left };
+    p.style.maxWidth = '430px'; p.style.maxHeight = (pr.height - 16) + 'px'; p.style.overflowY = 'auto';
+    const W = p.offsetWidth, H = Math.min(p.offsetHeight, pr.height - 16);
+    let S = spots(b, pr, cr);
+    const fitsRight = S.x1 + 16 + W <= view.x1 - 8, fitsLeft = S.x0 - 16 - W >= view.x0 + 8;
+    if (!fitsRight && !fitsLeft) {   /* no room on either side: the view slides so the field stands to one side and the box opens on the other */
+      const want = view.x1 - 16 - (S.x1 - S.x0) / 2, now = (S.x0 + S.x1) / 2, dx = now - want;
+      if (W + 32 + (S.x1 - S.x0) <= view.x1 - view.x0) { cam.x += dx / cam.z; if (typeof clampCam === 'function') clampCam(); S = spots(b, pr, cr); }
+    }
+    let left = S.x1 + 16; if (left + W > view.x1 - 8) left = S.x0 - 16 - W;   /* to the right of it, or else to the left */
+    p.style.left = clamp(left, 8, Math.max(8, pr.width - W - 8)) + 'px'; p.style.top = clamp((S.y0 + S.y1) / 2 - H / 2, 8, Math.max(8, pr.height - H - 8)) + 'px';
+  }
+  new MutationObserver(() => {
+    if (p.hidden) { if (shownFor) home(); shownFor = null; return; }
+    const b = storeShown; if (b === shownFor) return; shownFor = b;
+    if (b && farmStyle(b)) beside(b); else home();
+  }).observe(p, { attributes: true, attributeFilter: ['hidden'], childList: true });
+})();

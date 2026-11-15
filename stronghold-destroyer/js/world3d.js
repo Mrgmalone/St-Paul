@@ -2442,13 +2442,15 @@ const R3D = (() => {
   function pick(sx, sy) {
     let best = null, bd = 26;
     for (const u of units) { if (u.dead || u.inside) continue; const p = project(u.x, (isMachine(u) ? 18 : 22) + elev3D(u), u.y); if (!p.ok) continue; const d = Math.hypot(p.x - sx, p.y - sy) * Math.min(1.6, Math.max(0.7, 1 / cam.z)); if (d < bd) { bd = d; best = u; } }
-    if (best) return best;
     // a building is under the finger if the line of sight through that point passes through its block; the nearest wins
+    // (4I: your own fields and farms too: before, a tap on one found nothing, and its box could not be opened)
     v2.set(sx / vw * 2 - 1, -(sy / vh) * 2 + 1); ray.setFromCamera(v2, camera); let near = null, nd = 1e9;
-    for (const s of structures) { if (s.dead) continue; if (!inBox(sx, sy, s.x0, s.x1, s.y0, s.y1, s.topH || 40)) continue;
+    for (const s of structures.concat(farms.filter(f => f.team === 'player'))) { if (s.dead) continue; if (!inBox(sx, sy, s.x0, s.x1, s.y0, s.y1, s.topH || 40)) continue;
       const gy = heightAt((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2); pickBox.min.set(s.x0 - 2, gy - 2, s.y0 - 2); pickBox.max.set(s.x1 + 2, gy + (s.topH || 40), s.y1 + 2);
       if (ray.ray.intersectBox(pickBox, hit)) { const d = hit.distanceTo(ray.ray.origin); if (d < nd) { nd = d; near = s; } } }
-    return near;
+    // a tap on someone working a field or farm, or guarding it, opens the field or farm (they fill it; choose one from the People list)
+    if (best && near && isField(near.kind) && best.team === 'player' && (best.job === near || best.guardOf === near)) return near;
+    return best || near;
   }
   const pickBox = available ? new T.Box3() : null;
   function inBox(sx, sy, x0, x1, z0, z1, h) {

@@ -33,9 +33,10 @@ function centerOn(x, y) { cam.x = x - vw / cam.z / 2; cam.y = y - vh / cam.z / 2
 function pickAt(wx, wy, radius = 19) {
   let best = null, bd = radius;
   for (const u of units) { if (u.dead || u.inside) continue; const d = Math.hypot(u.x - wx, (u.y - 21 - elev2D(u)) - wy); if (d < bd + 4) { if (d < bd || !best) { bd = d; best = u; } } }
+  if (best && best.team === 'player' && ((best.job && isField(best.job.kind) && farms.includes(best.job)) || (best.guardOf && farms.includes(best.guardOf)))) { const f = best.job && farms.includes(best.job) ? best.job : best.guardOf; if (wx > f.x0 && wx < f.x1 && wy > f.y0 - 8 && wy < f.y1) return f; }   /* (4I: a tap on a field's worker opens the field) */
   if (best) return best;
   for (const s of structures) { if (s.dead) continue; const hw = (s.x1 - s.x0) / 2 + 6, top = s.topH; if (wx > s.x - hw && wx < s.x + hw && wy > s.y - top && wy < s.y + 2) return s; }
-  return null;
+  return farms.find(f => f.team === 'player' && !f.dead && wx > f.x0 && wx < f.x1 && wy > f.y0 - 8 && wy < f.y1) || null;   /* (4I: your fields and farms, in the flat view) */
 }
 const selectedList = () => [...selection].filter(alive);
 function selectOnly(list) { selection = new Set(list.filter(u => u.kind === 'unit' && u.team === 'player' && !u.dead && !u.inside && u.type !== 'oxcart')); }
@@ -157,7 +158,7 @@ function issueAt0(sx, sy) {
   }
   { const kg = sold.find(u => u.type === 'king'); if (hit && hit.kind === 'keep' && hit.team === 'player' && kg) { kg.leftKeep = false; kg.cmdT = -999; if (kg.onWall !== hit) { const ap = approachPoint(kg, hit); commandMove([kg], ap.x, ap.y); } floatText(hit.x, hit.y - 150, 'The King returns to the keep', '#ffe9a8'); const rest = sold.filter(u => u !== kg); if (!civs.length && !rest.length) return true; sold.splice(sold.indexOf(kg), 1); } }
   if (hit && hit.kind === 'keep' && hit.team === 'player' && civs.length) { commandDeposit(civs); if (sold.length) commandMove(sold, w.x, w.y); return true; }
-  const node = hit ? null : pickResourceScreen(sx, sy);
+  const node = hit && isField(hit.kind) && farms.includes(hit) ? hit : hit ? null : pickResourceScreen(sx, sy);   /* (4I: a field is found by the tap now) */
   if (node && isField(node.kind) && !node.done && civs.length) { commandBuild(civs, node); if (sold.length) commandMove(sold, w.x, w.y); return true; }
   if (node && civs.length) { commandGather(civs, node); if (sold.length) commandMarch(sold, w.x, w.y); return true; }
   commandMarch(sel, w.x, w.y);   /* (4E) in the formation chosen in the diamond, marching together */

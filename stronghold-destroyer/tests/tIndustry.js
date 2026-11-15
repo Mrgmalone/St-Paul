@@ -27,6 +27,7 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
   const r = await p.evaluate(() => {
     const out = {};
     T.people(40); SD.res.wood = 5000; SD.res.gold = 5000; SD.res.stone = 2000;
+    Object.assign(FOOD_FIRST, { protect: 0, min: 0, low: 0, short: 0 });   /* (4I's food-first rule is checked in tTapField4I.js: this town of 40 has little food) */
     // ---- the yard: four huts at the Shack; a fifth refused; two each; they merge as the castle grows ----
     const huts = []; for (let i = 0; i < 4; i++) huts.push(T.put('woodhut'));
     out.fifthRefused = !!indWhyNot('woodhut'); out.staff1 = maxStaff('woodhut');

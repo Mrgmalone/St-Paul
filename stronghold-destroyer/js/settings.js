@@ -189,6 +189,13 @@ const INDUSTRY = {
   granaryExpand: { wood: 60, stone: 40 }, engineersPerHut: 4
 };
 
+// ---------- Phase 4I: food first (Gerald: "the food needs to be picked first... that's a high rule") ----------
+// In minutes of eating (everyone's food for that long): below 'protect', people picking food are never called to other work
+// and people with no job pick food (at least 'min' food is always protected); below 'low', work that does not make food takes
+// no more hands; below 'short', people leave such work to pick food until there are enough pickers (one picker feeds
+// about 'perPicker' food a minute).
+const FOOD_FIRST = { protect: 4, min: 120, low: 2, short: 0.75, perPicker: 18 };
+
 // ---------- Phase 4H: fields and farms (Gerald, after 4G) ----------
 // "There should be two separate things, a field and a farm." Tap either one to choose what it makes and how many work there.
 const FARMING = {
@@ -197,13 +204,16 @@ const FARMING = {
   // for one person to bring in one (wheat is the fastest, corn next, grapes the slowest). Wheat goes to the mill for
   // bread, corn feeds your people straight from the granary, grapes go to the granary (the feast, the market).
   // load: how many one person carries to the stores at a time (the slow grapes go in smaller baskets, so they come in steadily)
-  field: { max: 5, staff: 10, startOn: 'wheat', startWorkers: 2,
-    crops: { wheat: { name: 'Wheat', every: 6, carry: 'wheat', load: 10 }, corn: { name: 'Corn', every: 8, carry: 'food', food: 'corn', load: 8 }, grapes: { name: 'Grapes', every: 15, carry: 'grapes', load: 4 } } },
+  // (4I: a new field starts with its two people on corn, so it feeds people at once; it was wheat, which feeds no one
+  // until there is a mill. The crops are quicker too, so a field pays its way.)
+  field: { max: 5, staff: 10, startOn: 'corn', startWorkers: 2,
+    crops: { wheat: { name: 'Wheat', every: 4, carry: 'wheat', load: 10 }, corn: { name: 'Corn', every: 5, carry: 'food', food: 'corn', load: 10 }, grapes: { name: 'Grapes', every: 10, carry: 'grapes', load: 5 } } },
   // the Farm: at most two, up to five people each. It raises the animals you tick (Gerald's four first; turkeys and
   // sheep stay because the feast needs them). The animals breed while their keepers work, and the keepers bring in eggs,
   // milk and meat (food, every 'every' seconds each). The farm gets better with time: level 2 after 'after' seconds of
   // work, level 3 after more and with a stable beside it; each level breeds faster (mul) and holds more (room).
-  farm: { max: 2, staff: 5, startWorkers: 2, every: 8, food: 'farm', load: 6,
+  // (4I: keepers bring in food about as fast as the old farm did: it was a third of that in 4H, and people went hungry)
+  farm: { max: 2, staff: 5, startWorkers: 2, every: 2.5, food: 'farm', load: 10,
     animals: ['chickens', 'cows', 'pigs', 'ducks', 'turkeys', 'sheep'], startRaise: ['chickens', 'cows', 'pigs', 'ducks'],
     levels: [{ after: 0, mul: 1, room: 1 }, { after: 360, mul: 1.25, room: 1.5 }, { after: 900, mul: 1.5, room: 2, stable: true }] },
   // happy people grow food faster (and so it reaches the granary faster); upset people slower
@@ -212,9 +222,10 @@ const FARMING = {
   well: { wood: 30, stone: 0, mul: 1.25 },
   // a lookout tower at a field or farm: it sees the land around and rings the bell when raiders come near
   lookout: { wood: 40, stone: 0, sight: 440, warn: 400 },
-  // Reserve: a guard with a knight's strength (even before you can train knights), no weapons from the armory needed.
-  // He costs gold and takes a place in your houses (if they are full, a civilian is called up), and stays with his field.
-  guard: { gold: 25, field: 2, farm: 1 },
+  // Guards: a knight's strength (even before you can train knights), on foot. They come with the field or farm when it is
+  // finished, free and with no place in your houses, as a tower comes with its knight (Gerald, 4I); Reserve brings a new
+  // one, free, if one falls. They stay with their field.
+  guard: { gold: 0, field: 2, farm: 1 },
   // (what a crop or an animal is worth at the market: INDUSTRY.market.makeCost above; animals always sell for the top price)
 };
 
