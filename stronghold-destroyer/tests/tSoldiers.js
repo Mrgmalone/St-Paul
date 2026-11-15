@@ -37,8 +37,9 @@ async function open(civ) {
   const wk = await walk('knight'); console.log('knight riding 1.5 s:', JSON.stringify(wk));
   if (!(wk.horseSwing > 0.4)) throw new Error('the horse does not trot');
   // standing still: nothing moves in the legs
-  await p.evaluate(() => { for (const u of Object.values(window.__sq)) { u.order = 'idle'; u.path = []; u.moving = false; u.holdFire = true; } }); await step(50);
-  const still = []; for (let i = 0; i < 8; i++) { await step(4); still.push((await p.evaluate(() => SD.R3D.poseOf(window.__sq.spear))).hipL); }
+  // (a chance illness sends a soldier walking to the keep, as it should: this check is about standing still, so it is cleared)
+  await p.evaluate(() => { for (const u of Object.values(window.__sq)) { u.order = 'idle'; u.path = []; u.moving = false; u.holdFire = true; u.sick = 0; u.sickT = 0; u.toHeal = false; } }); await step(50);
+  const still = []; for (let i = 0; i < 8; i++) { await step(4); still.push((await p.evaluate(() => { const u = window.__sq.spear; u.sick = 0; u.toHeal = false; return SD.R3D.poseOf(u); })).hipL); }
   console.log('spearman standing, leg angle over 1.6 s:', still.map(v => v.toFixed(3)).join(' '));
   if (Math.max(...still) - Math.min(...still) > 0.02) throw new Error('idle soldier is moving');
   console.log('errors', errs.slice(0, 5)); await b.close();
