@@ -551,11 +551,18 @@ named "Master Guide version three".
   - A new short article, "Using Help" (94 articles). tests/tHelp.js: the drop-down (computer, iPad, iPhone), 15 topic
     cards, questions only the guide answers, every part of the guide found by its title and opening with its words.
 - **Correction to 4E:** design/Troop-Diamond.png had its picture squeezed by the page layout, which hid buttons 14
-  and 15 (Everyone, Citizens). tools/controls_guide.js no longer lets the picture shrink. (The 4E PDF was not affected.)
+  and 15 (Everyone, Citizens). tools/controls_guide.js no longer lets the picture shrink, and the picture is now trimmed
+  to the diamond and its list (it had a blank lower half). The 4E PDF is remade from the same pictures.
+- **Fix after the play link went up (version 57):** in Help, each guide card named the card before it as its heading
+  (Trebuchet showed "Ballista"). The exporter now names the heading the cards sit under ("Siege engines and carts").
+  Only the 29 labels changed; every part's words, and the PDF's words, are the same.
+- **Checks:** the full suite passed, 72 of 72; tDismiss and tButtons were run again after the Help changes and passed;
+  tHelp passed again after the label fix. The published files were loaded in a browser: no page errors, the Topics
+  drop-down open with 15 rows, the search box ready, and "In the Master Guide" in the results.
 
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4F, play link version 56):** branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+**Latest (Phase 4F, play link version 57):** branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
 built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
 Gerald: how strong the Medium and Hard raids should be (see D4).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.
