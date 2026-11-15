@@ -598,6 +598,9 @@ or more troops in the formation. If you hit the add button, when I build a troop
   6, 12 and 17 raiders, each x1, x1.25, x1.5; Add marks the group, a mouse click adds, a trained soldier marches to the
   wedge and all six stand in it, Add off goes to the rally flag, Add with nobody chosen explains). tests/tCallCitizens.js:
   7 stars a general, 10 a five-star general, 6 not. tests/tHelp.js: four more questions.
+- **Full suite (after the fresh play link):** 72 of 73 passed. tS2 timed out in the suite (its mouse click on the bowyer
+  missed while two checks shared the machine, so the panel never opened and the next click waited); run alone it passed
+  (34 to 47 seconds in earlier suites). Not caused by 4G: Add is off by default, so the mouse click works as before.
 
 ## Where we left off (for a fresh session)
 
