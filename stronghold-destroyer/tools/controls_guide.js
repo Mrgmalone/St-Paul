@@ -85,7 +85,7 @@ const OPEN = n => {
     .shape b{color:#f1d38f;font-size:16px} .lg li{font-size:15.5px;line-height:1.3;margin:1px 0} small{color:#d9c79f}`;
   const half = 0.5;   // the pictures were taken at twice the size
   const diamondHtml = `<div class="pic" style="width:${parts.clip.width}px;height:${parts.clip.height}px"><img src="${b64(diamondPic)}" style="width:${parts.clip.width}px">${marks}</div>`;
-  fs.writeFileSync(path.join(OUT, '.guide-diamond.html'), `<!doctype html><meta charset="utf-8"><style>${css} body{display:inline-block}</style>
+  fs.writeFileSync(path.join(OUT, '.guide-diamond.html'), `<!doctype html><meta charset="utf-8"><style>${css} body{display:inline-block} .page{height:auto}</style>
     <div class="page" style="width:${parts.clip.width + 580}px"><h1>The troop diamond</h1><div class="row">${diamondHtml}<ol style="max-width:430px;margin:0">${legend}</ol></div></div>`);
   // ---------- 4. the guide ----------
   const html = `<!doctype html><meta charset="utf-8"><title>Stronghold Destroyer: Troop Controls</title><style>${css}
