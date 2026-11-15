@@ -8,6 +8,7 @@ const { start } = require('./lib4b');
   await p.evaluate(() => { window.__spoken = []; speechSynthesis.speak = u => { window.__spoken.push(u.text); setTimeout(() => u.onend && u.onend(), 20); }; });
   const r = await p.evaluate(() => {
     const out = {}, k = SD.keep(); SD.res.wood = 5000; SD.res.gold = 3000; SD.res.stone = 1000; T.people(12);
+    Object.assign(FOOD_FIRST, { protect: 0, min: 0, low: 0, short: 0 });   /* (4I's food-first rule is checked in tTapField4I.js: this town of 17 has little food) */
     // ---- unfought: half burns ----
     const h1 = T.put('house'); for (const u of units) if (u.team === 'player' && u.type === 'civ') u.hold4test = true;
     const savedCall = callFighters; callFighters = () => {};   // nobody comes (to see what an unfought fire does)
