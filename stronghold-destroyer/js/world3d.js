@@ -1311,6 +1311,7 @@ const R3D = (() => {
   const HERD_SHOW = { chickens: 6, ducks: 6, turkeys: 3, pigs: 4, sheep: 4, cows: 4, oxen: 2 }, HERD_PACE = { chickens: 6, ducks: 4.5, turkeys: 5, pigs: 5, sheep: 4, cows: 3.4, oxen: 3 };
   function syncHerd(b, md, dt) {
     const P = md.pen, A = b.animals || {}, want = {};
+    if (b.done !== false && !!P.pond !== ((b.raise || []).includes('ducks') || (A.ducks || 0) > 0)) { rebuildModel(b); return; }   /* (a pond once ducks are raised, gone when they are not) */
     for (const k in HERD_SHOW) want[k] = Math.min(HERD_SHOW[k], Math.max(0, Math.floor(A[k] || 0)));
     const pick = (a) => { const pond = a.kind === 'ducks' && P.pond && Math.random() < 0.6; if (pond) { const t = Math.random() * 6.28, r = Math.random() * P.pond.r * 0.8; return [P.pond.x + Math.cos(t) * r, P.pond.z + Math.sin(t) * r]; }
       for (let i = 0; i < 8; i++) { const x = (Math.random() * 2 - 1) * P.hw, z = (Math.random() * 2 - 1) * P.hd; if (Math.hypot(x - P.barn.x, z - P.barn.z) > P.barn.r && !(x < -P.hw + 12 && z < -P.hd + 12) && !(x > P.hw - 12 && z < -P.hd + 12)) return [x, z]; } return [0, 0]; };
