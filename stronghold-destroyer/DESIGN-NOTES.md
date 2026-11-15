@@ -676,7 +676,7 @@ hop farm kept; the farm level times, well and lookout costs (Claude's numbers).
 
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4H):** the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+**Latest (Phase 4H, the fresh play link https://claude.ai/artifact/4ah7F6R1GD71CrfrJacMEK version 2):** the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
 built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
 Gerald: whether a five-star general (10 stars) should count for more, and whether the raid numbers suit (Phase 4G).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.
