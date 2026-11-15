@@ -22,7 +22,7 @@ const SAVE_LETS = [
 const SAVE_CONSTS = { res: () => res, foodKinds: () => foodKinds, WEATHER: () => WEATHER, rally: () => rally, LORD: () => LORD };
 const saveGet = {}, saveSet = {};
 for (const n of SAVE_LETS) { try { saveGet[n] = new Function('return ' + n); saveSet[n] = new Function('v', n + ' = v'); saveGet[n](); } catch (e) { delete saveGet[n]; delete saveSet[n]; } }
-const SAVE_SKIP_KEYS = { m3: 1 };   // (pictures the 3D view hangs on things; it makes them again)
+const SAVE_SKIP_KEYS = { m3: 1, _gd: 1, _gdT: 1, _crew: 1, _crewT: 1 };   // (pictures the 3D view hangs on things; it makes them again; and working notes worked out afresh each moment)
 const TREE_FIXED = { kind: 1, x: 1, y: 1, s: 1, pine: 1, seed: 1, tone: 1, c: 1, r: 1, k: 1 }, ROCK_FIXED = { kind: 1, x: 1, y: 1, s: 1, seed: 1, iron: 1, hid3: 1 }, BUSH_FIXED = { kind: 1, x: 1, y: 1, max: 1, seed: 1 };
 // the trees are numbered once, before anything is cut down, so a save can name them
 trees.forEach((t, i) => { t.k = i; });

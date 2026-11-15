@@ -726,7 +726,8 @@ function separate() {   // people standing on each other step apart; only neighb
     }
   }
 }
-const goingDir = u => { if (!u.moving || !u.path || !u.path.length) return null; const wp = u.path[0], gx = wp.x - u.x, gy = wp.y - u.y, gl = Math.hypot(gx, gy); return gl < 0.5 ? null : { x: gx / gl, y: gy / gl, l: gl }; };
+// the way someone is walking (worked out once a moment, not for every person he passes)
+const goingDir = u => { if (u._gdT === time) return u._gd; u._gdT = time; if (!u.moving || !u.path || !u.path.length) return (u._gd = null); const wp = u.path[0], gx = wp.x - u.x, gy = wp.y - u.y, gl = Math.hypot(gx, gy); return (u._gd = gl < 0.5 ? null : { x: gx / gl, y: gy / gl, l: gl }); };
 function nudge(u, px, py, atWork) {
   const g = goingDir(u);
   if (g) { const back = px * g.x + py * g.y; if (back < 0) { px -= back * g.x; py -= back * g.y; } }   // never pushed back against his way

@@ -658,6 +658,18 @@ passers-by. 3D figures face the way they are going (the next point of their path
 well, two farms of five, ticked animals only, farm food, levels with the stable, the lookout, the guards, the market,
 the boxes); tests/tWalk4H.js; tests/tHelp.js (no "What is this?" anywhere).
 
+**Full suite:** 70 of 75 in one run; all five failures traced. tFormation, tGroups and tSoldiers: the game's chance
+illness sent a watched soldier walking to the keep (as designed); shown by making him ill on purpose (the same failure
+each time) and by the old build failing tFormation 1 run in 6. Those checks now clear illness for the soldiers they watch.
+tWater (butterflies by the shore): the old build fails it too, 1 run in 3 (they settle in the meadow when no shore spot
+is found quickly); left as it is. tTg2 timed out while another heavy check ran beside it; alone it passes.
+**Speed** (tests/bench.js, game logic only, 800 people in a big battle, ms a frame; this machine varies a lot): before
+6.0, 6.4, 6.3; after 7.6, 7.4, 6.9, 7.0, 8.2. About 1 ms more at 800 (the walking fix), far inside 16.7 ms; at 400 no
+change (2.9 against 3.0).
+**Guide pictures:** tools/guide3_shots.js passed 'player' as a building's direction, so every building it placed for the
+photographs was left out of the 3D pictures (the town photographs in the 4F and 4G guides had no houses, market, school
+and so on). Fixed; all 45 pictures retaken; the Field's and Farm's pictures show their crops and animals.
+
 **Waiting on Gerald:** ten in a field (he also said "up to five people can be in one field"); whether the guard should be
 free (he said it "comes with these buildings"; it costs 25 gold now); turkeys and sheep kept; the vineyard, orchard and
 hop farm kept; the farm level times, well and lookout costs (Claude's numbers).
