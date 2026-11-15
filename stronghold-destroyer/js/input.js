@@ -148,7 +148,7 @@ function issueAt0(sx, sy) {
     return true;
   }
   if (hit && hit.team === 'player' && hit.done === false && civs.length) { commandBuild(civs, hit); if (sold.length) commandMove(sold, w.x, w.y); return true; }
-  if (canMount(hit) && sold.some(u => u.type === 'archer')) { const arch = sold.filter(u => u.type === 'archer'); commandMount(arch, hit); const rest = sold.filter(u => u.type !== 'archer'); if (rest.length) commandMove(rest, w.x, w.y + 40); return true; }
+  if (canMount(hit) && sold.some(u => !isMachine(u) && u.type !== 'king')) { const arch = sold.filter(u => !isMachine(u) && u.type !== 'king'); commandMount(arch, hit); const rest = sold.filter(u => !arch.includes(u)); if (rest.length) commandMove(rest, w.x, w.y + 40); return true; }   /* (4J: any soldier may man a wall or tower) */
   if (hit && hit.team === 'player' && hit.done && JOBS[hit.kind] && civs.length) {
     let added = 0;
     if (hit.asleep) { hit.asleep = false; floatText(hit.x, hit.y - hit.topH - 24, `${hit.name} wakes up`, '#9fe8a8'); }
@@ -182,7 +182,7 @@ canvas.addEventListener('pointerdown', e => {
     if (orderMode && e.button === 2) { cancelOrder(); return; }
     if (settingRally && e.button === 0) { setRallyAt(p.x, p.y); return; }
     if (settingRally && e.button === 2) { settingRally = null; rallyButtons(); showBanner('Rally point unchanged.', 1.5); return; }
-    if (e.button === 0) { drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false }; if (!placing && !tearing) holdStart(p);
+    if (e.button === 0) { if (editWalls && !placing) setEditWalls(false); drag = { sx: p.x, sy: p.y, x: p.x, y: p.y, box: false, shift: e.shiftKey, touch: false }; if (!placing && !tearing) holdStart(p);
       if (IND() && placing && isLine(placing.kind) && !placing.start) { placeAt(p.x, p.y, false); drag.lineStart = true; } }   /* a wall drawn with the mouse held down starts here */
     else if (e.button === 2) { if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else issueAt(p.x, p.y); }
     else if (e.button === 1) { pinch = { mid: true, x: p.x, y: p.y, cx: cam.x, cy: cam.y }; e.preventDefault(); }
@@ -199,6 +199,7 @@ function panBy(x0, y0, x1, y1) {   // move the view so the ground under the fing
 // a box drawn round a crowd picks the soldiers in it (civilians only when there are no soldiers)
 const boxPick = list => IND() && list.some(u => u.type !== 'civ' && u.type !== 'king') ? list.filter(u => u.type !== 'civ' && u.type !== 'king') : list;
 function touchDown(p) {
+  if (editWalls && !placing) setEditWalls(false);   /* (4J: the walls stand up again when you touch anything else) */
   document.body.classList.add('touch'); fling.x = fling.y = 0; clearTimeout(TOUCH.hold);
   if (orderMode && pointers.size === 1) { TOUCH.mode = 'order'; orderDown(p); return; }   /* a patrol route is drawn with one finger */
   if (TOUCH.mode === 'order' && pointers.size >= 2) { orderRec = null; }
@@ -273,7 +274,7 @@ document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; docu
 canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
-  if (e.pointerType === 'mouse') { mouse.x = p.x; mouse.y = p.y; mouse.inside = true; if (orderRec) { orderMove(p); return; } holdMove(p); if (drag && placing) recordRoute(p.x, p.y); }
+  if (e.pointerType === 'mouse') { if (!(placing && placing.pending)) { mouse.x = p.x; mouse.y = p.y; } mouse.inside = true; if (orderRec) { orderMove(p); return; } holdMove(p); if (drag && placing) recordRoute(p.x, p.y); }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
   if (pinch && pinch.mid) { cam.x = pinch.cx - (p.x - pinch.x) / cam.z; cam.y = pinch.cy - (p.y - pinch.y) / cam.z; clampCam(); return; }
   if (pinch && pointers.size >= 2) {
@@ -337,7 +338,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
   if (e.key === 'Escape' && settingRally) { settingRally = null; rallyButtons(); return; }
-  if (e.key === 'Escape') { if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); else if (UI.closePops()) {} else if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else selection.clear(); }
+  if (e.key === 'Escape') { if (editWalls) setEditWalls(false); if (placing && placing.pending) { hideCompass(); return; } if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); else if (UI.closePops()) {} else if (tearing) { tearing = false; tearButton(); } else if (placing) cancelPlacing(); else selection.clear(); }
   if (['1', '2', '3', '4', '5'].includes(e.key)) UI.showTab(['town', 'castle', 'army', 'rule', 'industry'][+e.key - 1]);
   if (e.key === 'Tab') { e.preventDefault(); UI.toggleHide(); }
   if (e.key === 'h' || e.key === 'H') toggleHelp();
@@ -383,7 +384,7 @@ function endGame(title, text) {
   setTimeout(() => { document.getElementById('endTitle').textContent = title; document.getElementById('endText').textContent = text; document.getElementById('win').style.display = 'flex'; }, 1500);
 }
 function updateHud() {
-  { const tb = document.getElementById('btnTurn'), on = !!(placing && !isLine(placing.kind) && started); if (tb.hidden === on) tb.hidden = !on; if (on) { const t = 'faces ' + DIR_NAME[placing.dir || 0]; const el = document.getElementById('turnDir'); if (el.textContent !== t) el.textContent = t; } }
+  { const tb = document.getElementById('btnTurn'); if (!tb.hidden) tb.hidden = true; }   /* (4J: the Turn button and its text are gone; the compass turns it, and R still works) */
   if (!started) return;
   const mine = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && !u.gift).length;
   const pop = mine + trainQueue.filter(q => !MACHINE[q.kind]).length;

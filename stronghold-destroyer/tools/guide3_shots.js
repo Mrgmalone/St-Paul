@@ -130,6 +130,12 @@ async function buildTown(p, stage = 2) {
       return { x: r.left + sx0, y: r.top + sy0, width: sx1 - sx0, height: sy1 - sy0 }; });
     save('fieldfarm', await p.screenshot({ clip: c, ...JPG }));
     await p.evaluate(() => T.showBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top'])); });
+  // (4J) markers over the buildings that are asking, and the compass
+  await tryShot('marks', async () => { await p.evaluate(() => { UI.closePops(); const bs = ['bowyer', 'alehouse', 'poleturner'].map(k => structures.find(b => b.kind === k && b.team === 'player')).filter(Boolean); bs.forEach(b => { b.fire = 1; });
+      const b0 = bs[0] || SD.keep(); cam.z = 1.2; SD.centerOn(b0.x, b0.y); T.quiet(); alertT = 0; updateAlerts(99); window.__step(6); citizensFrame(); });
+    save('marks', await p.screenshot(JPG)); await p.evaluate(() => { for (const b of structures) if (b.fire) b.fire = 0; alertT = 0; updateAlerts(99); }); });
+  await tryShot('compass', async () => { await p.evaluate(() => { UI.closePops(); startPlacing('house'); const k = SD.keep(); cam.z = 1.2; SD.centerOn(k.x + 200, k.y + 150); window.__step(3); const s = SD.scr(k.x + 220, k.y + 170, 0); placeAt(s.x, s.y, false); window.__step(3); });
+    save('compass', await p.screenshot(JPG)); await p.evaluate(() => { cancelPlacing(); }); });
   // (4I) a tap on the field: its box opens right beside it
   await tryShot('tapbox', async () => {
     const q = await p.evaluate(() => { UI.closePops(); const f = farms.find(b => b.kind === 'wheatfarm' && b.team === 'player'); cam.z = 1.3; SD.centerOn((f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2); T.hideBits(['tips']); T.quiet(); window.__step(3);

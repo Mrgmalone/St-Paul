@@ -7,8 +7,8 @@
 
 // ---------- one voice for the whole game (alerts now, the Art of War advisor later) ----------
 const VOICE = (() => {
-  let on = true, lastAt = {}, speaking = false, speakUntil = 0, voice = null;
-  try { on = localStorage.getItem('sd-voice') !== 'off'; } catch (e) {}
+  let on = true, vol = 1, lastAt = {}, speaking = false, speakUntil = 0, voice = null;
+  try { on = localStorage.getItem('sd-voice') !== 'off'; const v = parseFloat(localStorage.getItem('sd-voicevol')); if (v >= 0 && v <= 1) vol = v; } catch (e) {}
   const pickVoice = () => { try { const vs = speechSynthesis.getVoices(); voice = vs.find(v => /en[-_]GB/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || vs[0] || null; } catch (e) {} };
   try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
   // say a line aloud; a line already said within 'again' seconds is not repeated; a person may have his own pitch
@@ -20,12 +20,12 @@ const VOICE = (() => {
     lastAt[key] = now;
     try {
       if (opts.interrupt) speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text); if (voice) u.voice = voice; u.rate = opts.rate || 1; u.pitch = opts.pitch || 1; u.volume = 1;
+      const u = new SpeechSynthesisUtterance(text); if (voice) u.voice = voice; u.rate = opts.rate || 1; u.pitch = opts.pitch || 1; u.volume = vol;
       speaking = true; speakUntil = now + 2 + text.length * 0.08; u.onend = u.onerror = () => { speaking = false; };
       speechSynthesis.speak(u); VOICE.last = text; return true;
     } catch (e) { speaking = false; return false; }
   }
-  return { say, get on() { return on; }, set on(v) { on = v; try { localStorage.setItem('sd-voice', v ? 'on' : 'off'); } catch (e) {} if (!v) try { speechSynthesis.cancel(); } catch (e) {} }, last: '' };
+  return { say, get vol() { return vol; }, set vol(v) { vol = Math.max(0, Math.min(1, v)); try { localStorage.setItem('sd-voicevol', String(vol)); } catch (e) {} }, get on() { return on; }, set on(v) { on = v; try { localStorage.setItem('sd-voice', v ? 'on' : 'off'); } catch (e) {} if (!v) try { speechSynthesis.cancel(); } catch (e) {} }, last: '' };
 })();
 
 // ---------- growing: citizens are born in your houses and grow up; they cannot be bought ----------
@@ -212,7 +212,8 @@ function collectAlerts() {
   if (bugsOn) add(8, 'Bugs are spoiling the food in the granary. Rest some farms or sell food.');
   else if (res.food > foodCap() * 0.92) add(5, 'The granary is nearly full.');
   if (typeof wagesUnpaid !== 'undefined' && wagesUnpaid) add(7, 'Your soldiers have not been paid.');
-  const sick = units.filter(u => u.team === 'player' && !u.dead && u.sick).length; if (sick >= 3) add(4, `${sick} of your people are ill.`);
+  const sick = units.filter(u => u.team === 'player' && !u.dead && u.sick).length;
+  if (sick > 10) add(6, `${sick} of your people are ill. ${mineDone('apothecary').length ? 'Add carers to your apothecary (up to five), or build another.' : 'Build an apothecary (or a house of prayer) to care for them.'}`);   /* (4J: only when more than ten) */
   for (const b of structures.concat(farms)) {
     if (b.team !== 'player' || b.dead || b.done === false || b.asleep) continue;
     const nm = b.name;
@@ -227,11 +228,34 @@ function collectAlerts() {
   if (myPeople() >= popCap()) add(3, 'Your houses are full: build a house so more citizens can grow up.');
   return A.sort((a, b) => b.prio - a.prio);
 }
+// ---------- (4J, Gerald) which building is asking: a marker over it, and the same marker in the alert's words ----------
+// "a red exclamation point over the building... a different colour for each building... the Fletcher with the blue circle,
+// the farm with the red square". Each building that has an alert gets its own colour and shape, kept while the game runs.
+const MARK_COLS = ['#e0302a', '#2f7fe0', '#8a3fd0', '#e8a020', '#25a850', '#e040a0', '#20b8c8', '#a08060'], MARK_SHAPES = ['circle', 'triangle', 'square', 'diamond', 'star'], MARK_COLNAME = ['red', 'blue', 'purple', 'orange', 'green', 'pink', 'teal', 'brown'];
+let markSeq = 0;
+function markOf(b) { if (b.markN === undefined) b.markN = markSeq++; return { col: MARK_COLS[b.markN % 8], colName: MARK_COLNAME[b.markN % 8], shape: MARK_SHAPES[b.markN % 5] }; }
+function markSvg(b, px = 30) {
+  const m = markOf(b), f = m.col, sh = { circle: `<circle cx="16" cy="16" r="14"/>`, triangle: `<polygon points="16,2 30,28 2,28"/>`, square: `<rect x="3" y="3" width="26" height="26" rx="3"/>`, diamond: `<polygon points="16,1 31,16 16,31 1,16"/>`, star: `<polygon points="16,1 20,12 31,12 22,19 26,30 16,23 6,30 10,19 1,12 12,12"/>` }[m.shape];
+  return `<svg class="mk" width="${px}" height="${px}" viewBox="0 0 32 32" role="img" aria-label="${m.colName} ${m.shape}"><g fill="${f}" stroke="#fff" stroke-width="2.2" stroke-linejoin="round">${sh}</g><text x="16" y="${m.shape === 'triangle' ? 25 : 22}" text-anchor="middle" font-size="19" font-weight="900" fill="#fff" stroke="#000" stroke-width=".6" font-family="sans-serif">!</text></svg>`;
+}
+let markEls = new Map(), markLayer = null, markList = [];
+function placeMarks() {
+  if (!markLayer) { markLayer = document.createElement('div'); markLayer.id = 'markLayer'; document.getElementById('alertBar').parentNode.appendChild(markLayer); }
+  const live = new Set();
+  for (const b of markList) {
+    if (!b || b.dead) continue; live.add(b.id);
+    let el = markEls.get(b.id); if (!el) { el = document.createElement('div'); el.className = 'bmark'; el.innerHTML = markSvg(b, 34); markEls.set(b.id, el); markLayer.appendChild(el); }
+    const q = screenOf(b.x, (b.y0 + b.y1) / 2, (b.topH || 40) + 26 + (R3D.active ? elev3D(b) : 0)), W = (typeof vw !== 'undefined' ? vw : 9999), H = (typeof vh !== 'undefined' ? vh : 9999);
+    el.hidden = !(q.ok !== false && q.x > -20 && q.y > -20 && q.x < W + 20 && q.y < H + 20); el.style.left = q.x - 17 + 'px'; el.style.top = q.y - 36 + 'px';
+  }
+  for (const [id, el] of markEls) if (!live.has(id)) { el.remove(); markEls.delete(id); }
+}
 function updateAlerts(dt) {
   alertT -= dt; if (alertT > 0) return; alertT = 5;
   alerts = collectAlerts();
   const el = document.getElementById('alertBar');
-  el.innerHTML = alerts.slice(0, 3).map((a, i) => `<div class="al${a.prio >= 7 ? ' hot' : ''}${i ? ' sm' : ''}">${a.text}</div>`).join('');
+  markList = [...new Set(alerts.filter(a => a.at && a.at.x0 !== undefined).map(a => a.at))];
+  el.innerHTML = alerts.slice(0, 3).map((a, i) => `<div class="al${a.prio >= 7 ? ' hot' : ''}${i ? ' sm' : ''}">${a.at && a.at.x0 !== undefined ? markSvg(a.at, i ? 20 : 26) + ' ' : ''}${a.text}</div>`).join('');
   el.hidden = !alerts.length;
   const top = alerts[0]; if (top && top.prio >= 4) VOICE.say(top.text, { key: 'alert:' + top.text, again: 90 });   // only the most urgent is spoken
 }
@@ -245,7 +269,8 @@ function updateCitizens(dt) {   // game time (stops when paused)
   if (typeof callButton === 'function') callButton(); else civButton(); updateSchooling(); if (typeof checkWars === 'function') checkWars();
 }
 function citizensFrame() {      // every drawn frame, paused or not: place the card and the tap icon, refresh the People list
-  placeCard(); placeTap();
+  placeCard(); placeTap(); placeMarks();
   if (cardOf && !document.getElementById('personPop').hidden && (peopleT -= 0.016) <= 0) { peopleT = 1; const p = document.getElementById('personPop'), h = personHtml(cardOf); if (p._h !== h) { p._h = h; p.innerHTML = h; } }
 }
-{ const b = document.getElementById('btnVoice'), show = () => { b.textContent = 'Voice: ' + (VOICE.on ? 'On' : 'Off'); }; b.onclick = () => { VOICE.on = !VOICE.on; show(); }; show(); }
+{ const b = document.getElementById('btnVoice'), show = () => { b.textContent = 'Voice: ' + (VOICE.on ? 'On' : 'Off'); }; b.onclick = () => { VOICE.on = !VOICE.on; show(); }; show();
+  const sl = document.getElementById('volVoice'); if (sl) { sl.value = Math.round(VOICE.vol * 100); sl.oninput = e => { VOICE.vol = e.target.value / 100; if (VOICE.vol > 0 && !VOICE.on) { VOICE.on = true; show(); } }; } }   /* (4J: voice volume beside Sound and Music) */

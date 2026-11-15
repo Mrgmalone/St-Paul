@@ -681,3 +681,19 @@ body.phone #catBar button:not(.on) svg,body.phone #catBar button:not(.on) canvas
   .hlpMinis{grid-template-columns:1fr} .hlpUl li{font-size:18px}
 }
 .hlpGuide .hlpBigPic{width:min(130px,28%)}
+
+/* (4J) markers over the buildings that are asking for something, and the same marker in the alert's words */
+#markLayer{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+.bmark{position:absolute;width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));animation:bmarkPulse 1.6s ease-in-out infinite}
+.bmark[hidden]{display:none}
+@keyframes bmarkPulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+#alertBar .al svg.mk{vertical-align:middle;margin-right:4px}
+
+/* (4J) the compass that opens when a building is let go: tap the way its front should face */
+#compass{position:absolute;z-index:8;width:160px;height:160px;border-radius:50%;background:rgba(24,17,10,.88);border:2px solid #d9a93a;box-shadow:0 4px 14px rgba(0,0,0,.7)}
+#compass[hidden]{display:none}
+#compass .cmpT{position:absolute;left:50%;top:-34px;transform:translateX(-50%);white-space:nowrap;background:rgba(24,17,10,.92);color:#ffe2a8;font-size:15px;padding:3px 10px;border-radius:8px}
+#compass button{position:absolute;width:56px;height:56px;border-radius:50%;border:2px solid #f1d38f;background:linear-gradient(#f1d38f,#c99a4a);color:#2a1a08;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;cursor:pointer}
+#compass .cmp b{font-size:18px} #compass .cmp i{font-style:normal;font-size:15px}
+#compass .cmpN{left:52px;top:2px} #compass .cmpS{left:52px;bottom:2px} #compass .cmpW{left:2px;top:52px} #compass .cmpE{right:2px;top:52px}
+#compass .cmpX{left:60px;top:60px;width:40px;height:40px;background:#5a2a20;color:#fff;border-color:#c06a50;font-size:22px}

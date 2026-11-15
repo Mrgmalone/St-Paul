@@ -54,6 +54,9 @@ const rangeOf = u => (u.onWall ? u.range * WALL_INFO[u.onWall.kind].rng : u.rang
 function structAt(c, r) { for (const o of structures) if (!o.dead && o.team === 'player' && c >= o.c && c < o.c + o.w && r >= o.r && r < o.r + o.h) return o; return null; }
 function wallAccess(b) {
   if (!b || b.kind !== 'highwall') return b;
+  const found = highWallStairs(b); return found || b;   /* (4J: ladders are built in: soldiers climb a high wall anywhere; stairs and towers are still the way up when they stand beside it) */
+}
+function highWallStairs(b) {
   const seen = new Set([b.id]), q = [b];
   while (q.length) {
     const w = q.shift();
@@ -66,10 +69,9 @@ function wallAccess(b) {
   }
   return null;
 }
-const canMount = b => b && !b.dead && b.team === 'player' && b.done !== false && WALL_POSTS[b.kind];
+const canMount = b => b && !b.dead && b.team === 'player' && b.done !== false && !b.low && WALL_POSTS[b.kind];
 function postsFree(b) { return WALL_POSTS[b.kind] - units.filter(o => !o.dead && o.onWall === b).length; }
 function commandMount(list, b) {
-  if (b.kind === 'highwall' && !wallAccess(b)) { showBanner('Build Stairs beside this High Wall (Castle tab) so archers can climb it.', 3.5); return; }
   for (const u of list) { if (u.onWall) dismount(u); u.order = 'mount'; u.mountTarget = b; u.target = null; u.path = []; u.repath = 0; }
   markers.push({ x: b.x, y: b.y, t: 0, col: '120,200,255' });
 }
@@ -537,7 +539,7 @@ function kingWatch(u, k) {
   showBanner(`<b>The King sees ${fresh.length} ${fresh.length > 1 ? 'enemies' : 'enemy'}</b> coming from the ${from}, still far off. Ready your defences!`, 4);
   raidPing = { x: mx, y: my, t: 0, from: 'the ' + from }; AudioSys.ui('warn');
 }
-let guardT = 0;
+let guardT = 0, raidSeenT = -99;
 const GUARD_TOWERS = { lookout: 1, roundtower: 1 };
 let healthT = 0;
 function updateHealth(dt) {
@@ -577,6 +579,15 @@ function updateGuards(dt) {
   const knights = units.filter(u => u.type === 'knight' && u.team === 'player' && !u.dead);
   let kg = knights.filter(u => u.guardOf === king && king).length;
   for (const u of knights) { if (!king || kg >= 5) break; if (!u.guardOf && free(u)) { u.guardOf = king; kg++; floatText(u.x, u.y - 60, 'I guard the King!', '#9fe8a8'); } }
+  // (4J, Gerald) when raiders come, idle soldiers climb onto the nearest wall or tower to fight from it, and come down again
+  // once it is quiet: "on and off the walls quickly, as needed to fight"
+  { const foes = king ? units.filter(e => !e.dead && hostile('player', e.team) && e.type !== 'civ' && !isMachine(e) && Math.hypot(e.x - king.x, e.y - king.y) < 750) : [];
+    if (foes.length) { raidSeenT = time;
+      let sent = 0; for (const u of units) { if (sent >= 6) break; if (u.team !== 'player' || u.dead || u.onWall || isMachine(u) || u.type === 'king' || u.type === 'civ' || !free(u) || u.order !== 'idle' || u.gift) continue;
+        const ranged = u.type === 'archer' || u.kit === 'longbow' || u.kit === 'crossbow'; if (!ranged) continue;
+        let post = null, bd = 260; for (const o of structures) if (canMount(o) && o.kind !== 'keep' && postsFree(o) > 0 && !(o.noMountUntil > time)) { const d = edgeDist(u, o); if (d < bd && foes.some(e => Math.hypot(e.x - o.x, e.y - o.y) < 420)) { bd = d; post = o; } }
+        if (post) { commandMount([u], post); u.autoMounted = true; u.cmdT = -99; sent++; } } }
+    else if (time - raidSeenT > 20) for (const u of units) if (u.autoMounted && u.onWall && u.team === 'player' && !u.dead && u.onWall.kind !== 'lookout' && u.onWall.kind !== 'roundtower' && time - (u.cmdT || -99) > 20) { dismount(u); u.autoMounted = false; u.order = 'idle'; } }
   // every lookout and round tower wants two at the door: knights, macemen or spearmen
   for (const t of structures) {
     if (t.dead || t.team !== 'player' || !GUARD_TOWERS[t.kind] || t.done === false) continue;

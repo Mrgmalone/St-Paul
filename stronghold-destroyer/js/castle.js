@@ -9,6 +9,7 @@ const BUILD = {
   wall:   { name: 'Wall',  w: 1, h: 1, wood: 8,   time: 3,  hp: 300, topH: 40 },
   gate:   { name: 'Gate',  w: 1, h: 1, wood: 15,  time: 5,  hp: 400, topH: 44 },
   gtower: { name: 'Tower', w: 2, h: 2, wood: 120, time: 20, hp: 700, topH: 122 },
+  lowwall: { name: 'Low Brick Wall', w: 1, h: 1, wood: 0, stone: 3, time: 4, hp: 520, topH: 30 },   // (4J: the low brick wall like the castle's first ring; nobody stands on it)
   highwall: { name: 'High Wall', w: 1, h: 1, wood: 0, stone: 6, time: 6, hp: 900, topH: 104 },
   stairs: { name: 'Stairs', w: 1, h: 1, wood: 0, stone: 4, time: 4, hp: 500, topH: 96 },
   stower: { name: 'Stone Tower', w: 2, h: 2, wood: 20, stone: 60, time: 28, hp: 1600, topH: 158 },
@@ -76,8 +77,9 @@ function canPlace(kind, c, r, dir = 0) {
   }
   return true;
 }
-function makeBuildingObj(kind, c, r, dir = 0) {
-  const d = Object.assign({}, BUILD[kind], dimsOf(kind, dir));
+function makeBuildingObj(kind0, c, r, dir = 0) {
+  const kind = kind0 === 'lowwall' ? 'wall' : kind0;   /* (4J: a low brick wall is a wall of brick that cannot be stood on) */
+  const d = Object.assign({}, BUILD[kind0], dimsOf(kind0, dir));
   const b = { id: nextId++, kind, team: 'player', name: d.name, c, r, w: d.w, h: d.h, dir,
     x0: c * TILE, y0: r * TILE, x1: (c + d.w) * TILE, y1: (r + d.h) * TILE, x: (c + d.w / 2) * TILE, y: (r + d.h) * TILE,
     maxHp: Math.round(d.hp * (['wall', 'gate', 'gtower', 'highwall', 'stairs', 'stower', 'greattower', 'lookout', 'roundtower'].includes(kind) ? CIV.bldHp : 1)), hp: d.hp * 0.1, done: false, progress: 0, buildTime: d.time * learnTime(), flash: 0, dead: false, deathT: 0, radius: d.w * 16, wobble: 0, topH: d.topH };
@@ -87,6 +89,7 @@ function makeBuildingObj(kind, c, r, dir = 0) {
   if (kind === 'roundtower') Object.assign(b, { range: 290, fireRate: 1.5, arrowDmg: 8, archerY: 150, shots: 2 });
   if (kind === 'greattower') Object.assign(b, { range: 290, fireRate: 1.4, arrowDmg: 9, archerY: 170, shots: 2 });
   if (isField(kind)) Object.assign(b, { amount: 0, max: 40 });
+  if (kind0 === 'lowwall') Object.assign(b, { mat: 'brick', low: true });
   return b;
 }
 function createBuilding(kind, c, r, dir = 0) {
@@ -156,7 +159,7 @@ const cm = v => Math.round((v || 0) * learnCost());   // the school: building co
 const afford = d => res.wood >= cm(d.wood) && res.gold >= cm(d.gold) && res.stone >= cm(d.stone);
 const pay = d => { res.wood -= cm(d.wood); res.gold -= cm(d.gold); res.stone -= cm(d.stone); };
 const lacking = d => res.wood < cm(d.wood) ? 'wood' : res.stone < cm(d.stone) ? 'stone' : 'gold';
-const isLine = k => k === 'wall' || k === 'highwall' || k === 'moat';
+const isLine = k => k === 'wall' || k === 'lowwall' || k === 'highwall' || k === 'moat';
 function startPlacing(kind) {
   if (!started || won) return;
   if (!unlocked(kind, false)) { showBanner(`The ${BUILD[kind].name} comes at stage ${stageOfItem(kind, false)}, the ${stageName(stageOfItem(kind, false))}.`, 3); return; }
@@ -164,12 +167,18 @@ function startPlacing(kind) {
   { const why = indWhyNot(kind); if (why) { showBanner(why, 3.5); return; } }
   if ((kind === 'garden' || kind === 'stocks') && structures.filter(b => b.kind === kind && !b.dead && b.team === 'player').length >= 3) { showBanner(`You can have at most 3 ${kind === 'garden' ? 'gardens' : 'sets of stocks'}.`, 2.5); return; }
   tearing = false; tearButton();
-  placing = { kind, start: null, dir: lastDir };
-  showBanner(isLine(kind) ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Click near your keep to place the ${BUILD[kind].name}. Press R (or the Turn button) to turn it; the arrow shows its front. Right-click or Esc cancels.`, 4.5);
+  placing = { kind, start: null, dir: lastDir, pending: null };
+  showBanner(isLine(kind) ? 'Click where the wall starts, then where it ends. Right-click or Esc cancels.' : `Drag the ${BUILD[kind].name} where you want it and let go: a compass opens, and you tap the way it should face. Right-click or Esc cancels.`, 4.5);
   updateHud();
 }
-function cancelPlacing() { placing = null; updateHud(); }
+function cancelPlacing() { placing = null; if (compassEl) compassEl.hidden = true; updateHud(); }
 let lastDir = 0;
+// (4J, Gerald) "the walls drop down so you can draw them... the game keeps going... they pop back up once you click on something else"
+let editWalls = false;
+const WALLISH = { wall: 1, highwall: 1, gate: 1, stairs: 1 };
+const wallsDownNow = () => editWalls || !!(placing && isLine(placing.kind) && placing.kind !== 'moat');
+function setEditWalls(on) { editWalls = !!on; const b = document.getElementById('btnEditWalls'); if (b) b.classList.toggle('on', editWalls); }
+
 // fix a glitch: remove anything that is stuck or jittering and rebuild it fresh where it stands, keeping what it is and what it was doing
 function fixUnit(u) {
   if (!u || u.dead) return;
@@ -286,6 +295,12 @@ function placeAt(sx, sy, keepGoing) {
     if (first) { assignBuilders(first); AudioSys.ui('place'); }
     placing = keepGoing ? { kind, start: null } : null; updateHud(); return;
   }
+  // (4J, Gerald) "the first click or tap, you drag it to where you want it. When you release, the compass comes up and you tap
+  // the direction": a building that has a front waits for its compass before it is set down
+  if (IND() && !placing.noCompass && FRONT_KINDS(kind)) {   /* (tapping elsewhere moves the compass) */
+    const t0 = tileFor(kind, w.x, w.y, placing.dir || 0);
+    if (canPlace(kind, t0.c, t0.r, placing.dir || 0)) { placing.pending = { sx, sy, wx: w.x, wy: w.y, keepGoing }; mouse.x = sx; mouse.y = sy; mouse.inside = true; showCompass(sx, sy); return; }
+  }
   const dir = placing.dir || 0, tf = tileFor(kind, w.x, w.y, dir); c = tf.c; r = tf.r;
   if (!canPlace(kind, c, r, dir)) { showBanner(kind === 'stairs' ? 'Stairs must stand right beside one of your High Walls.' : kind === 'quarry' ? 'A quarry must stand beside a grey rock.' : 'You cannot build there. Build on open ground near your keep.', 2.5); return; }
   if (!afford(d)) { showBanner(`Not enough ${lacking(d)}.`, 2); placing = null; updateHud(); return; }
@@ -293,6 +308,30 @@ function placeAt(sx, sy, keepGoing) {
   { const nb = createBuilding(kind, c, r, dir); nb.dropT = performance.now(); assignBuilders(nb); } AudioSys.ui('place');
   if (!keepGoing) placing = null; else placing = { kind, start: null, dir };
   updateHud();
+}
+// buildings with a front (a 1 by 1 piece such as a stocks or a water pot has none worth turning)
+const FRONT_KINDS = k => BUILD[k] && (BUILD[k].w > 1 || BUILD[k].h > 1) && !isLine(k) && !isField(k);
+let compassEl = null;
+function showCompass(sx, sy) {
+  if (!compassEl) {
+    compassEl = document.createElement('div'); compassEl.id = 'compass'; compassEl.hidden = true;
+    compassEl.innerHTML = '<div class="cmpT">Which way should it face?</div>' + [['N', 2, 'away'], ['E', 3, 'right'], ['S', 0, 'toward you'], ['W', 1, 'left']].map(([l, d, n]) => `<button class="cmp cmp${l}" data-dir="${d}" aria-label="Face ${n}"><b>${l}</b><i>${'▲▶▼◀'['NESW'.indexOf(l)]}</i></button>`).join('') + '<button class="cmpX" aria-label="Cancel">&times;</button>';
+    document.getElementById('alertBar').parentNode.appendChild(compassEl);
+    compassEl.addEventListener('pointerdown', e => e.stopPropagation(), true);
+    compassEl.addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (!b) return; if (b.classList.contains('cmpX')) { hideCompass(); return; } finishCompass(+b.dataset.dir); });
+    compassEl.addEventListener('mouseover', e => { const b = e.target.closest('.cmp'); if (b && placing) placing.dir = lastDir = +b.dataset.dir; });   /* the building shows its front as you point */
+  }
+  compassEl.style.left = sx - 80 + 'px'; compassEl.style.top = sy - 80 + 'px'; compassEl.hidden = false;
+}
+function hideCompass() { if (compassEl) compassEl.hidden = true; if (placing) placing.pending = null; }
+function finishCompass(dir) {
+  if (!placing || !placing.pending) { hideCompass(); return; }
+  const P = placing.pending; placing.dir = lastDir = dir; placing.pending = null; compassEl.hidden = true;
+  const kind = placing.kind, d = BUILD[kind], tf = tileFor(kind, P.wx, P.wy, dir);
+  if (!canPlace(kind, tf.c, tf.r, dir)) { showBanner('You cannot build there with its front that way. Tap somewhere else.', 2.5); return; }
+  if (!afford(d)) { showBanner(`Not enough ${lacking(d)}.`, 2); placing = null; updateHud(); return; }
+  pay(d); { const nb = createBuilding(kind, tf.c, tf.r, dir); nb.dropT = performance.now(); assignBuilders(nb); } AudioSys.ui('place');
+  placing = P.keepGoing ? { kind, start: null, dir } : null; updateHud();
 }
 function drawPlacement(g) {
   const k = playerKeep(); if (!k) return;
@@ -762,3 +801,5 @@ function drawQuarry(g, b, P) {
 }
 document.querySelectorAll('.bb[data-b]').forEach(b => b.onclick = () => startPlacing(b.dataset.b));
 
+
+document.getElementById('btnEditWalls').onclick = e => { e.stopPropagation(); setEditWalls(!editWalls); if (editWalls) { cancelPlacing(); showBanner('The walls are down so you can see and draw them. Pick Wall, Low Brick Wall or High Wall and draw. The game keeps going. Tap anywhere else and they stand up again.', 5); } };

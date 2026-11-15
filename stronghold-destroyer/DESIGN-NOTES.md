@@ -708,9 +708,29 @@ beside them, sending a citizen to the field; the guards; food first). tFarming4H
 switch food-first off where a town of 40 has little food, or remove the field's guards to see the sentry alert).
 Master Guide: a photograph of a tap opening the field's box beside it; the farm's and field's boxes retaken.
 
+## Phase 4J: final touches (Gerald, before a break until the next Saturday)
+
+- **Which building is asking:** citizens.js markOf/markSvg/placeMarks. Each building with an alert gets its own colour (8) and shape
+  (5) with a "!" floating over it (a DOM layer, #markLayer), and the alert's words carry the same marker.
+- **Compass:** castle.js showCompass/finishCompass. Placing a building with a front (more than one square, not a wall or field):
+  drag, let go, a compass (N E S W, x) opens; a tap on a direction sets it down facing that way (N = away, E = right, S = toward
+  you, W = left); tapping elsewhere moves it; Esc or x cancels. The Turn button and its text are gone (R still turns).
+- **Low brick wall** (BUILD.lowwall, Homestead, 3 stone): a 'wall' of brick with b.low, drawn 0.68 high, never mountable.
+- **Men on walls and towers:** any soldier (not machines or the king) may be sent onto any mountable wall or tower; a high wall
+  needs no stairs now (they are still used when beside it); the palisade has a plank walkway (3D) wide enough for a man; when
+  raiders come within 750 of the king idle archers/longbowmen/crossbowmen climb to the nearest wall or tower that has a raider
+  within 420 (up to 6 a second), and come down 20 s after it is quiet (units.js updateGuards).
+- **Edit Walls** (Castle list): editWalls / wallsDownNow in castle.js; wall, high wall, gate and stairs models scale to 0.1 and
+  back (smoothly) while you edit or draw a wall; the game keeps running; any other touch, click or Esc ends it.
+- **Ill people:** the alert comes only above ten (it said three before). The apothecary is a workplace now: up to five carers
+  (two come by themselves), care speed 1 + 0.5 per extra carer + 0.15 per school level (none: 0.3 of the base); its box shows
+  carers, the sick near it and the school's level. The school's box shows pupils in class.
+- **Voice:** a Voice volume slider beside the Voice on/off button in Settings (kept in this browser).
+- Checks: tests/tFinal4J.js. Help: new article "Which building is asking"; placing, healing, walls and sound articles updated.
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4I, the fresh play link https://claude.ai/artifact/4ah7F6R1GD71CrfrJacMEK version 4):** a tap opens a field's or farm's box beside it; food first; guards free (section above). Before that, Phase 4H (version 2): the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+**Latest (Phase 4J, final touches: markers, compass, low wall, men on walls, Edit Walls, apothecary carers, voice volume; section above).** Before that (Phase 4I, the fresh play link https://claude.ai/artifact/4ah7F6R1GD71CrfrJacMEK version 4):** a tap opens a field's or farm's box beside it; food first; guards free (section above). Before that, Phase 4H (version 2): the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
 built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
 Gerald: whether a five-star general (10 stars) should count for more, and whether the raid numbers suit (Phase 4G).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.

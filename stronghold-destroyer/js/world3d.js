@@ -877,6 +877,9 @@ const R3D = (() => {
       const ew = nbw(1, 0) || nbw(-1, 0), ns = nbw(0, 1) || nbw(0, -1), logM = woodVM(8, 34), R = mulberry32(b.c * 131 + b.r * 17);
       const row = (alongX) => { for (let i = 0; i < 5; i++) { const o = -12.8 + i * 6.4, h = 31 + R() * 6, lg = cyl(3.1, 3.4, h, logM, alongX ? o : 0, h / 2, alongX ? 0 : o, 7); add(lg); const tip = mesh(new T.ConeGeometry(3.1, 5, 7), logM, alongX ? o : 0, h + 2.5, alongX ? 0 : o); add(tip); } add(box(alongX ? 32 : 2, 2.4, alongX ? 2 : 32, woodHM(32, 3), alongX ? 0 : 3.4, 20, alongX ? 3.4 : 0)); };
       if (ew || !ns) row(true); if (ns) row(false);
+      // (4J) a plank walkway on the inside of the palisade, wide enough to hold a man, with its posts: soldiers stand on it
+      const plank = woodHM(32, 3); if (ew || !ns) add(box(32, 2.6, 14, plank, 0, 24, 12)); if (ns) add(box(14, 2.6, 32, plank, 12, 24, 0));
+      for (const [px, pz] of [[-12, 17], [12, 17], [17, -12], [17, 12]]) if ((px === -12 || px === 12 ? (ew || !ns) : ns)) add(cyl(1.2, 1.4, 24, woodVM(3, 24), px, 12, pz, 6));
     } else if (b.kind === 'wall') {
       add(box(32, 30, 32, stoneM(32, 30), 0, 15, 0));
       add(box(32, 1.5, 22, texMat('stoneDark', 1, 1), 0, 30.4, 0));
@@ -1228,7 +1231,7 @@ const R3D = (() => {
       const collar = mesh(new T.TorusGeometry(3.2, 0.9, 6, 14), std('#5a3a20', { roughness: 0.7 }), 0, 24.5, 7.6); collar.rotation.x = 0.75; H.add(collar);
       const blanket = mesh(new T.CylinderGeometry(6, 6, 9, 12, 1, true, -1.1, 2.2), std(PAL.player.tunic, { roughness: 0.9, side: T.DoubleSide }), 0, 22, -1); blanket.rotation.x = Math.PI / 2; H.add(blanket);
     }
-    if (b.kind === 'wall' && b.mat === 'thick') inner.scale.set(1, 1.45, 1); else if (b.kind === 'wall' && b.mat === 'stone') inner.scale.set(1, 1.15, 1);   // the castle ring gets taller as it grows
+    if (b.kind === 'wall' && b.mat === 'thick') inner.scale.set(1, 1.45, 1); else if (b.kind === 'wall' && b.mat === 'stone') inner.scale.set(1, 1.15, 1); else if (b.kind === 'wall' && b.low) inner.scale.set(1, 0.68, 1);   /* (4J: the low brick wall) */   // the castle ring gets taller as it grows
     inner.traverse(o => { if (o.isMesh && o.material && !info.mats.includes(o.material) && o.material.emissive) info.mats.push(o.material); });
     scene.add(g);
     return info;
@@ -2295,7 +2298,7 @@ const R3D = (() => {
       if (b.dead) { if (!md.rubble) { md.g.visible = false; md.rubble = (b.kind === 'farm' || b.kind === 'moat' || b.kind === 'pit') ? null : rubble(b); } if (Math.random() < 0.05) spawn('smoke', b.x + RR(-25, 25), b.y - RR(5, 25), b.y); continue; }
       if (b.dropT) { const k = 1 - (performance.now() - b.dropT) / 380; md.g.position.y = md.baseY + Math.max(0, k) * k * 18; if (k <= 0) { b.dropT = 0; md.g.position.y = md.baseY; } }
       const prog = b.done === false ? Math.max(0.06, b.progress) : 1;
-      md.inner.scale.y = prog;
+      { const wk = WALLISH[b.kind] && wallsDownNow() ? 0.1 : b.kind === 'wall' && b.low ? 0.68 : 1; md.wk = md.wk === undefined ? wk : md.wk + (wk - md.wk) * Math.min(1, dt * 9); md.inner.scale.y = prog * md.wk; }   /* (4J: walls drop while you draw them, and rise again) */
       if (md.scaffold) md.scaffold.visible = b.done === false;
       const fk = b.flash > 0 ? b.flash * 0.45 : 0;
       for (const mt of md.mats) mt.emissive.setRGB(fk, fk, fk);

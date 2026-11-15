@@ -65,7 +65,7 @@ const STAGES = [
       buildings: ['house', 'farm', 'wheatfarm', 'woodhut', 'stockpile', 'granary', 'wall', 'gate', 'gtower', 'pit', 'poleturner', 'bowyer', 'armory', 'garden', 'alehouse', 'waterpot'] } },
   { n: 2, name: 'Homestead', grow: 2, wall: 'brick', keepHp: 2200,
     need: { people: 8, mood: 35, food: 80, buildings: { house: 2, woodhut: 1, farmAny: 1 } },
-    unlock: { units: [], buildings: ['quarry', 'tavern', 'brewery', 'hopfarm', 'highwall', 'stairs', 'lookout', 'chapel', 'stocks', 'moat', 'mill', 'apothecary'] } },
+    unlock: { units: [], buildings: ['quarry', 'tavern', 'brewery', 'hopfarm', 'lowwall', 'highwall', 'stairs', 'lookout', 'chapel', 'stocks', 'moat', 'mill', 'apothecary'] } },
   { n: 3, name: 'Hold', grow: 3, wall: 'stone', keepHp: 3200,
     need: { people: 16, mood: 40, food: 200, stone: 100, buildings: { house: 4, quarry: 1, tavern: 1 } },
     unlock: { units: ['sword', 'maceman', 'ballista', 'knight'], buildings: ['smithy', 'ironmine', 'market', 'bakery', 'stower', 'school', 'engineerhut', 'stable', 'vineyard', 'orchard', 'church'] } },

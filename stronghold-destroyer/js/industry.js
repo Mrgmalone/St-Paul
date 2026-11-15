@@ -27,10 +27,10 @@ function indMax(kind) {
 }
 const IND_STAFF = { quarry: () => INDUSTRY.quarry.staff, woodhut: () => lv(INDUSTRY.yard.staff), wheatfarm: () => FARMING.field.staff,
   mill: () => stageN >= 3 ? INDUSTRY.mill.staffLate : INDUSTRY.mill.staffEarly, bakery: () => INDUSTRY.mill.bakeryStaff,
-  alehouse: () => 1, waterpot: () => 1, bowyer: () => 2, stable: () => 4, farm: () => FARMING.farm.staff, vineyard: () => 3, orchard: () => 3, apothecary: () => 1 };
+  alehouse: () => 1, waterpot: () => 1, bowyer: () => 2, stable: () => 4, farm: () => FARMING.farm.staff, vineyard: () => 3, orchard: () => 3, apothecary: () => 5 };   // (4J: the apothecary holds five carers)
 const indStaff = k => IND_STAFF[k] ? IND_STAFF[k]() : 3;
 // how many come by themselves; more can be added from the building's box (Fill adds as many as it holds)
-const IND_AUTO = { wheatfarm: 2, woodhut: 2, quarry: 2, farm: 2, stable: 4 };
+const IND_AUTO = { wheatfarm: 2, woodhut: 2, quarry: 2, farm: 2, stable: 4, apothecary: 2 };
 const jobWant = site => { if (!IND()) return JOBS[site.kind]; const w = typeof farmWant === 'function' ? farmWant(site) : undefined; return w !== undefined ? w : Math.min(indStaff(site.kind), IND_AUTO[site.kind] || 1); };   /* (4H: a field wants what its crops plan, a farm what you set) */
 // may another of this kind be placed now? (an empty string means yes)
 function indWhyNot(kind) {
@@ -302,7 +302,8 @@ const trebOk = () => !IND() || schoolLvl >= 3;
 // ---------- houses of healing and prayer ----------
 const HEAL_KINDS = ['apothecary', 'chapel', 'church', 'abbey'];
 let healers = [];
-function healRate(b) { const H = INDUSTRY.health[b.kind]; let r = H.heal; if (b.kind === 'apothecary' && doctorLvl) r *= INDUSTRY.health.doctorMul; if (b.kind === 'abbey') r *= myRule('abbeyHealMul', 1); return r; }
+function healRate(b) { const H = INDUSTRY.health[b.kind]; let r = H.heal;
+  if (b.kind === 'apothecary') r *= staffOf(b) ? 1 + 0.5 * (staffOf(b) - 1) + 0.15 * Math.min(3, schoolLvl) : 0.3;   /* (4J: more carers, quicker care, and the school's learning helps: five carers at the top level work about 3.5 times as fast as one) */ if (b.kind === 'apothecary' && doctorLvl) r *= INDUSTRY.health.doctorMul; if (b.kind === 'abbey') r *= myRule('abbeyHealMul', 1); return r; }
 function healerFor(u) { let best = 0; for (const b of healers) if (Math.hypot(b.x - u.x, b.y - u.y) < INDUSTRY.health[b.kind].r) best = Math.max(best, healRate(b)); return best; }
 function healthMood(n) {
   let cap = 0, best = 0, sum = 0;
@@ -388,6 +389,7 @@ function showIndBox(b) {
     h += lnI('Learning', `level ${schoolLvl} of 3`) + (schoolStudy ? lnI('Teaching now', `level ${schoolStudy.lvl}: ${Math.round(schoolStudy.t / schoolStudy.dur * 100)}%`) : '');
     h += lnI('Each level', 'wastes 10% less material, builds 10% cheaper and 15% quicker; from level 2, better market prices');
     h += lnI('Engineers', `${engineers().length} (room for ${mineDone('engineerhut').length * INDUSTRY.engineersPerHut})`) + lnI('Trebuchets', schoolLvl >= 3 ? 'allowed at the Stronghold' : 'need level 3 and the Stronghold');
+    h += lnI('Pupils in class now', units.filter(u => !u.dead && u.inSchool).length) + lnI('Teaching', schoolStudy ? `level ${schoolStudy.lvl}` : 'nothing now');
     h += lnI("Soldiers' lessons", `level ${soldierLvl} of 5${soldierStudy ? ` (learning level ${soldierStudy.lvl}: ${Math.round(soldierStudy.t / soldierStudy.dur * 100)}%)` : ''}`);
     h += `<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${soldierLvl < 5 && !soldierStudy ? B('slessons', `Soldiers' lessons, level ${soldierLvl + 1} (${SOLDIERS.lessons.levels[soldierLvl][0]} gold)`) : ''}${schoolLvl < 3 && !schoolStudy ? B('study', `Teach level ${schoolLvl + 1} (${INDUSTRY.school.levels[schoolLvl][0]} gold)`) : ''}${B('engineer', `Train an engineer (${INDUSTRY.school.engineerCost} gold)`)}</div>`;
   } else if (b.kind === 'engineerhut') {
@@ -397,6 +399,7 @@ function showIndBox(b) {
   } else if (HEAL_KINDS.includes(b.kind)) {
     const H = INDUSTRY.health[b.kind];
     h += lnI('Heals', `the sick and wounded within ${H.r} points, ${Math.round(healRate(b) * 10) / 10} times as fast as the keep`) + lnI('Cheers', `up to ${H.serves} people`);
+    if (b.kind === 'apothecary') { const sick = units.filter(u => u.team === 'player' && !u.dead && u.sick && Math.hypot(u.x - b.x, u.y - b.y) < H.r).length; h += lnI('Carers', `${staffOf(b)} of ${indStaff('apothecary')} (more carers heal faster)`) + lnI('Sick near it', sick) + lnI('Learning', `school level ${schoolLvl} of 3 (helps the carers)`); }
     if (b.kind === 'apothecary') { h += lnI('Doctor', doctorLvl ? 'smarter (heals twice as fast)' : doctorStudy ? `studying: ${Math.round(doctorStudy.t / doctorStudy.dur * 100)}%` : 'can learn more at the Stronghold'); if (!doctorLvl && !doctorStudy) h += `<div class="row" style="margin-top:8px">${B('doctor', `Make the doctor smarter (${INDUSTRY.health.doctorCost} gold)`)}</div>`; }
   } else if (b.kind === 'feastbox') {
     const cost = feastCost();

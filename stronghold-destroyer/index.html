@@ -68,7 +68,7 @@
     <h3>MENU</h3>
     <button id="btnHelp">Help and controls (H)</button>
     <div class="row"><button id="btnTrees">Trees: Detailed</button><span style="font-size:14px;color:#d9c9a3">Simple runs faster on slower computers</span></div>
-    <div class="row"><button id="btnVoice">Voice: On</button><span style="font-size:14px;color:#d9c9a3">spoken alerts and advice</span></div>
+    <div class="row"><button id="btnVoice">Voice: On</button><label class="vol">Voice volume<input type="range" id="volVoice" min="0" max="100"></label></div>
     <div class="row"><button id="btnWeather">Weather: On</button><span style="font-size:14px;color:#d9c9a3">rain, snow and wind</span></div>
     <div class="row"><button id="btnOutline">Outlines: On</button><span style="font-size:14px;color:#d9c9a3">people hidden behind walls</span></div>
     <div class="row"><button id="btnMusic">Music: On</button><label class="vol">Music volume<input type="range" id="volMusic" min="0" max="100"></label></div>
@@ -140,11 +140,13 @@
       <button class="tab" data-tab="castle" title="Castle (key 2)" aria-expanded="false"><span class="tl">Castle</span><span class="key">2</span><span class="chev">&#9662;</span></button>
       <div class="pane" data-pane="castle">
         <button class="bb ib" data-b="wall"><canvas data-icon="b:wall"></canvas>Wall<small>8 wood each</small><span class="why"></span></button>
+        <button class="bb ib" id="btnEditWalls"><canvas data-icon="b:wall"></canvas>Edit Walls<small>walls drop flat to draw them</small><span class="why"></span></button>
         <button class="bb ib" id="btnTear"><canvas data-icon="b:wall"></canvas>Tear Down<small>get back half the cost</small><span class="why"></span></button>
         <button class="bb ib" data-b="gate"><canvas data-icon="b:gate"></canvas>Gate<small>15 wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="gtower"><canvas data-icon="b:gtower"></canvas>Tower<small>120 wood</small><span class="why"></span></button>
         <button class="bb ib" data-b="moat"><canvas data-icon="b:moat"></canvas>Moat<small>free &middot; dug by workers</small><span class="why"></span></button>
         <button class="bb ib" data-b="pit"><canvas data-icon="b:pit"></canvas>Spike Pit<small>10 wood &middot; hidden trap</small><span class="why"></span></button>
+        <button class="bb ib" data-b="lowwall"><canvas data-icon="b:lowwall"></canvas>Low Brick Wall<small>3 stone each &middot; low, cannot be climbed</small><span class="why"></span></button>
         <button class="bb ib" data-b="highwall"><canvas data-icon="b:highwall"></canvas>High Wall<small>6 stone each</small><span class="why"></span></button>
         <button class="bb ib" data-b="stairs"><canvas data-icon="b:stairs"></canvas>Stairs<small>4 stone &middot; climb high walls</small><span class="why"></span></button>
         <button class="bb ib" data-b="stower"><canvas data-icon="b:stower"></canvas>Stone Tower<small>60 stone &middot; 20 wood</small><span class="why"></span></button>
