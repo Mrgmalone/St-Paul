@@ -77,7 +77,7 @@ const OPEN = n => {
     @page{size:Letter;margin:0} .page{width:8.5in;height:11in;box-sizing:border-box;padding:0.42in 0.5in;overflow:hidden;page-break-after:always;break-after:page}
     h1{font-size:30px;color:#f1d38f;margin:0 0 6px} h2{font-size:22px;color:#f1d38f;margin:14px 0 6px}
     p,li{font-size:17px;line-height:1.38} ol,ul{padding-left:24px;margin:4px 0} li{margin:2px 0}
-    .pic{position:relative;display:inline-block;border:2px solid #b8913f;border-radius:12px;overflow:hidden;background:#000}
+    .pic{position:relative;display:inline-block;flex-shrink:0;border:2px solid #b8913f;border-radius:12px;overflow:hidden;background:#000}   /* (never squeezed: the right edge holds buttons 14 and 15) */
     .pic img{display:block} .mk{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#e2b13c;color:#1b1209;
       font:bold 15px Arial,sans-serif;line-height:24px;text-align:center;border:2px solid #fff3d6;box-shadow:0 1px 4px #000}
     .row{display:flex;gap:22px;align-items:flex-start} .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -86,7 +86,7 @@ const OPEN = n => {
   const half = 0.5;   // the pictures were taken at twice the size
   const diamondHtml = `<div class="pic" style="width:${parts.clip.width}px;height:${parts.clip.height}px"><img src="${b64(diamondPic)}" style="width:${parts.clip.width}px">${marks}</div>`;
   fs.writeFileSync(path.join(OUT, '.guide-diamond.html'), `<!doctype html><meta charset="utf-8"><style>${css} body{display:inline-block}</style>
-    <div class="page" style="width:${parts.clip.width + 470}px"><h1>The troop diamond</h1><div class="row">${diamondHtml}<ol style="max-width:430px;margin:0">${legend}</ol></div></div>`);
+    <div class="page" style="width:${parts.clip.width + 580}px"><h1>The troop diamond</h1><div class="row">${diamondHtml}<ol style="max-width:430px;margin:0">${legend}</ol></div></div>`);
   // ---------- 4. the guide ----------
   const html = `<!doctype html><meta charset="utf-8"><title>Stronghold Destroyer: Troop Controls</title><style>${css}
     .big{zoom:1.55;margin:4px auto 10px} .cols{columns:2;column-gap:26px} .cols li{break-inside:avoid} .center{text-align:center}

@@ -1,4 +1,4 @@
-// Phase 4B step B3, citizens: they grow in your houses (3-5 minutes) and cannot be bought; every building gets one worker
+// Phase 4B step B3, citizens: they grow in your houses (3-5 minutes); every building gets one worker
 // before any gets a second; they gather near the castle; some study at the school. The People tab lists them and pauses the
 // game; a quick tap on a person shows his trade's icon; holding him a second makes him speak and opens his card (beside him
 // on an iPad, sliding up from the bottom on a phone). Needs alerts are shown, and the most urgent is spoken.
@@ -9,7 +9,7 @@ const { start } = require('./lib4b');
   const r = await p.evaluate(() => {
     const out = {}, civs = () => units.filter(u => u.team === 'player' && !u.dead && u.type === 'civ');
     out.civLocked = document.querySelector('.tb[data-k="civ"]').classList.contains('locked');
-    const q0 = trainQueue.length; SD.res.food = 500; trainUnit('civ'); out.notBought = trainQueue.length === q0;
+    const q0 = trainQueue.length; SD.res.food = 500; trainUnit('civ'); out.notBought = trainQueue.length === q0; trainQueue.length = q0;   /* (4F: a call may be queued; it is taken back so the growing checks below see only the houses) */
     T.run(6); out.growing = growing.length; out.growDur = growing.length ? Math.round(growing[0].dur) : 0;
     const n0 = civs().length; growing[0].t = growing[0].dur - 0.5; T.run(2); out.grewUp = civs().length - n0;
     // one each first: as many buildings as free people, each wanting two or more
@@ -22,7 +22,7 @@ const { start } = require('./lib4b');
     return out;
   });
   console.log(JSON.stringify(r));
-  need(r.civLocked && r.notBought, 'citizens cannot be bought');
+  need(!r.civLocked, 'the Citizen button is open (Phase 4F: citizens can be called again, for food and gold; tCallCitizens checks the calling)');
   need(r.growing >= 1 && r.growDur >= 180 && r.growDur <= 300, 'citizens grow up in 3 to 5 minutes');
   need(r.grewUp === 1, 'a grown citizen joins the town');
   need(r.oneEach.split(',').every(n => n === '1'), 'every building gets one worker before any gets a second');

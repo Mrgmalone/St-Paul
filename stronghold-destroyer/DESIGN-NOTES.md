@@ -492,10 +492,57 @@ upgrade to the way the troops move"); then a picture and a PDF of what the butto
   people 3,784 before and 3,625 after. No slowdown (the machine was slower this day than on the 4D day, so compare
   only within a table).
 
+## Phase 4F: ten minutes of peace, calling citizens, wars won and generals, the Master Guide version 3 (after 4E)
+
+Gerald's request: the build time at the start up to 10 minutes (5 on Hard); citizens can be built or called again from
+the Town list; unhappy people make them slower and dearer (below 20% happiness about 3 to 5 minutes each); winning wars
+makes them cheaper and makes more come; a couple of generals in the field or the camp make more come too ("a balancing
+act"); then the gameplay guide rebuilt from his version 2 with every new feature and pictures of what things look like,
+named "Master Guide version three".
+
+- **Peace:** RIVALS.raid.first and ROGUES.first in settings.js: 600 seconds on Easy and Medium, 300 on Hard, for the
+  first rival raid and the first bandits. The opening banner says "10 (or 5) minutes of peace". The enemy rivals' first
+  raids are 75 seconds apart, counted after the trading friend is chosen (before, when rival 0 was the friend, the first
+  raid came 75 seconds late).
+- **Calling citizens** (js/callcitizens.js; numbers in CITIZEN_CALL in settings.js): the Citizen button in the Town list
+  calls one more citizen from the countryside; he walks in along the road when his wait is over ("... answers your
+  call"). The houses still raise their own. The button's label (touch it, or rest the mouse on it) shows "food · gold
+  · m:ss" for right now. Base 20 food, 10 gold, 60 seconds; happiness bands 70+ (x0.75 time, x0.85 cost), 50+ (x1),
+  35+ (x1.6, x1.25), 20+ (x2.5, x1.6), below 20 (x4.5 = 4:30, x2.2). Each war won (up to 3, each counting 10 minutes):
+  time and cost x0.85. Each general (up to 3): time x0.9, cost x0.95. Never under a quarter of the base wait. Houses
+  full or 5 already on the way: none can be called. Wars won and generals also make the houses raise children sooner
+  (the same factors). Measured: happiness 80 → 17 food, 9 gold, 0:45; 60 → 20, 10, 1:00; 40 → 25, 13, 1:36; 25 → 32,
+  16, 2:30; 10 → 44, 22, 4:30. Two wars won at 60: 0:43 and 14 food; three generals at 60: 0:44.
+- **Wars won:** a rival raid is over when none of its raiders is still raiding; it is won when at least 6 in 10 of them
+  fell and your keep stands; a rival defeated is a war won too. A Victory banner says so. Saved with the game
+  (warWins, raidGroups).
+- **Generals:** a soldier with 10 or more veteran stars. A banner when one earns his tenth star; his box says
+  "a general".
+- **Assumptions for Gerald to confirm:** a general = 10+ stars; a war won = 60% of a raid fell (or a rival defeated),
+  counting 10 minutes, at most 3 at once; all the numbers above.
+- **Help:** a new "Calling citizens" article; Citizens, Veterans (generals), Raids and Getting started updated
+  (93 articles). tests/tHelp.js: 3 more questions.
+- **Checks:** tests/tCallCitizens.js (peace on each difficulty, the button, the terms, calling and arrival, wars won,
+  generals, a raid beaten off, the limits). tests/tCitizens.js: its 4B check "citizens cannot be bought" now checks
+  that the Citizen button is open (Gerald reversed that rule in 4F).
+- **The Master Guide version 3** (design/Stronghold-Destroyer-Master-Guide-v3.pdf, 66 pages, 9.4 MB): built on
+  Gerald's version 2 (its 17 sections, wording and look), larger letters, NEW marks on everything added since, and
+  CORRECTED marks where version 2 no longer matched the game (peace time, the Fix button, double-click, ladder men,
+  stage 5 towers, spikes for swordsmen, the globes, the trophy's ticks, the stage numbers now printed, the People tab,
+  calling citizens). Photographs of the real game throughout (the front page, the main screen numbered, the trophy,
+  the mood box, People, a citizen's and a general's box, building boxes, the Citizen button, the banners, Help,
+  Settings and the saved games, the diamond numbered, the phone, the views, fog, the table's corners, a battle).
+  Made in two steps: tools/guide3_shots.js takes the pictures and reads the live numbers into tests/.work/guide3
+  (ONLY=name,name retakes some), then tools/master_guide.js lays out the pages (tables split with their headings,
+  headings kept with what follows) and prints the PDF. The design-sheet art and the 4E formation pictures it uses are
+  in design/guide3-art.
+- **Correction to 4E:** design/Troop-Diamond.png had its picture squeezed by the page layout, which hid buttons 14
+  and 15 (Everyone, Citizens). tools/controls_guide.js no longer lets the picture shrink. (The 4E PDF was not affected.)
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4E, play link version 55):** branch `upgrade-v2` holds Phases 4A to 4E and the Help screen, all
-built and checked; the sections above list what each step does, the tests, the speed and the art still needed. Open for
+**Latest (Phase 4F, play link version 56):** branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
 Gerald: how strong the Medium and Hard raids should be (see D4).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.
 Earlier: Phase 4B steps B1 to B8; its section lists what each step does, the numbers to confirm, the conflicts, what was
