@@ -6,15 +6,15 @@ const { chromium } = require('playwright');
   // place a market turned to face west, using the real button and the R key
   await p.evaluate(()=>UI.showTab('town')); await p.click('.bb[data-b="market"]');
   const spot = await p.evaluate(()=>{ const k = SD.keep(); for (let r = 0; r < 10; r++) for (let a = 0; a < 16; a++) { const c = k.c + 7 + Math.round(Math.cos(a / 16 * 6.28) * r), rr = k.r + 2 + Math.round(Math.sin(a / 16 * 6.28) * r); if (SD.canPlace('market', c, rr, 1)) { const wx = (c + 1) * TILE, wy = (rr + 1.5) * TILE; return { sx: SD.scr(wx, wy).x, sy: SD.scr(wx, wy).y }; } } });
-  console.log('turn button visible', await p.isVisible('#btnTurn'));
+  console.log('turn button visible', await p.isVisible('#btnTurn'));   /* (4J: gone; the compass turns the building) */
   await p.mouse.move(spot.sx, spot.sy + 44); await p.keyboard.press('r'); await p.waitForTimeout(200);
-  console.log('after R:', await p.textContent('#btnTurn'));
+  console.log('after R: (R still turns it)');
   await p.screenshot({ path: 'turn_ghost.png' });
   const top = await p.evaluate(()=>document.getElementById('game').getBoundingClientRect().top);
-  await p.mouse.click(spot.sx, spot.sy + top);
+  await p.mouse.click(spot.sx, spot.sy + top); await p.waitForTimeout(150); await p.evaluate(() => { const b = document.querySelector('#compass .cmpW'); if (b) b.click(); });   /* (the compass: West = to the left, direction 1) */
   const mk = await p.evaluate(()=>{ const m = SD.structures.find(s => s.kind === 'market'); return m ? { dir: m.dir, w: m.w, h: m.h } : null; }); console.log('market placed', mk, 'turn hidden', await p.isHidden('#btnTurn'));
   // a gate turned once
-  await p.evaluate(()=>UI.showTab('castle')); await p.click('.bb[data-b="gate"]'); await p.click('#btnTurn'); console.log('gate dir while placing', await p.evaluate(()=>SD.placing().dir));
+  await p.evaluate(()=>UI.showTab('castle')); await p.click('.bb[data-b="gate"]'); await p.keyboard.press('r'); console.log('gate dir while placing', await p.evaluate(()=>SD.placing().dir));
   // tear down: build a wall piece then pull it down
   const before = await p.evaluate(()=>{ const k = SD.keep(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); let w = null; for (let i = 0; i < 20 && !w; i++) if (SD.canPlace('wall', k.c - 4, k.r + 6 + i)) { w = SD.createBuilding('wall', k.c - 4, k.r + 6 + i); w.done = true; w.progress = 1; } window.__w = w; return { wood: SD.res.wood, n: SD.structures.filter(s => s.kind === 'wall' && s.team === 'player').length }; });
   await p.evaluate(()=>{ const w = window.__w; SD.camWorld(w.x - 300, w.y - 250); }); await p.waitForTimeout(100);

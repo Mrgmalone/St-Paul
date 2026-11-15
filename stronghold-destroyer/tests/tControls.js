@@ -53,9 +53,11 @@ const { start } = require('./lib4b');
   await touch('touchStart', pl.a.x, pl.a.y); await touch('touchMove', (pl.a.x + pl.b.x) / 2, (pl.a.y + pl.b.y) / 2); await touch('touchMove', pl.b.x, pl.b.y);
   const mid = await p.evaluate(() => ({ placing: !!placing, ghostAt: [Math.round(mouse.x), Math.round(mouse.y)] }));
   await touch('touchEnd');
+  const compassOpened = await p.evaluate(() => !!placing && !!placing.pending && !document.getElementById('compass').hidden);   /* (4J: a compass opens; tap South = toward you) */
+  await p.evaluate(() => { const b = document.querySelector('#compass .cmpS'); if (b) b.click(); });
   const placed = await p.evaluate(h0 => { const hs = structures.filter(s => s.kind === 'house'); return { houses: hs.length - h0, last: hs.length ? [hs[hs.length - 1].c, hs[hs.length - 1].r] : null }; }, pl.houses);
   console.log('place', JSON.stringify({ label: pl.label, mid, placed, target: [pl.b.c, pl.b.r] }));
-  need(/toward you/.test(pl.label), 'the Turn button says the building faces toward you');
+  need(compassOpened, 'letting go opens the compass (4J; the Turn button and its text are gone)');
   need(mid.placing && placed.houses === 1 && Math.abs(placed.last[0] - pl.b.c) <= 1 && Math.abs(placed.last[1] - pl.b.r) <= 1, 'a finger drags the house to its spot and lifting sets it down there');
   // ---- a wall drawn with one finger stroke ----
   const wl = await p.evaluate(() => { startPlacing('wall'); const k = SD.keep(), cr = document.getElementById('game').getBoundingClientRect(); const a = screenOf(k.x + 250, k.y + 330, 0), b = screenOf(k.x + 250 + 6 * TILE, k.y + 330, 0);

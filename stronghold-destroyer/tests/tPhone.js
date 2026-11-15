@@ -19,6 +19,7 @@ async function phone(devName, land) {
   const s2 = { placing: await p.evaluate(() => placing && placing.kind), side: await vis('#side') };
   const tgt = await p.evaluate(() => { const k = SD.keep(), cr = document.getElementById('game').getBoundingClientRect(); for (let rad = 4; rad < 14; rad++) { const f = nearestFree(k.c + rad, k.r + 5); if (f && canPlace('house', f.c, f.r)) { SD.centerOn(f.c * TILE + 32, f.r * TILE + 32); window.__drawMs = 0; window.__step(1); window.__drawMs = 999999; const s = screenOf(f.c * TILE + 32, f.r * TILE + 32, 0), x = s.x + cr.left, y = s.y + cr.top, onMap = (a, b) => document.elementFromPoint(a, b) === document.getElementById('game'); if (onMap(x, y) && onMap(x + 40, y - 30)) return { x, y, h0: structures.filter(b => b.kind === 'house').length }; } }   /* (the finger must land on open map, not on a bar) */ return null; });
   await touch('touchStart', tgt.x + 40, tgt.y - 30); await touch('touchMove', tgt.x + 20, tgt.y - 15); await touch('touchMove', tgt.x, tgt.y); await touch('touchEnd');
+  await p.evaluate(() => { const b = document.querySelector('#compass .cmpS'); if (b) b.click(); });
   const s3 = await p.evaluate(h0 => ({ houses: structures.filter(b => b.kind === 'house').length - h0, placing: !!placing }), tgt.h0);
   // the same category tapped again folds it
   await p.waitForTimeout(450);   /* (a person's next tap comes a moment after the finger lifts; a tap at once after a quick drag only stops the browser's fling) */

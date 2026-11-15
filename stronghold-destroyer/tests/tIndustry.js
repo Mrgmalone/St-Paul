@@ -113,7 +113,7 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
   need(box.pic && box.fill && box.iron && /on iron/.test(box.text), 'the yard box: level, iron split, Fill and the inside picture');
   await p.evaluate(() => { const y = mineDone('woodhut')[0]; SD.cam.z = 1; SD.centerOn(y.x, y.y - 40); window.__drawMs = 0; window.__step(3); window.__drawMs = 999999; });
   await p.screenshot({ path: SP + '/industry-yard.png' });
-  const sbox = await p.evaluate(() => { showIndBox(mineDone('school')[0]); window.__step(2); return document.getElementById('storePop').textContent.replace(/\s+/g, ' ').slice(0, 300); });
+  const sbox = await p.evaluate(() => { showIndBox(mineDone('school')[0]); window.__step(2); return document.getElementById('storePop').textContent.replace(/\s+/g, ' ').slice(0, 1500); });
   console.log('school box:', sbox); need(/level 3 of 3/.test(sbox) && /Train an engineer/.test(sbox), 'the school box');
   await p.screenshot({ path: SP + '/industry-school.png' });
   console.log('fails', JSON.stringify(fails)); console.log('errors', errs.slice(0, 5)); await b.close();

@@ -33,7 +33,7 @@ async function run(devName) {
   await p.tap('#side .bb[data-b="house"]'); await p.waitForTimeout(150);
   const hs = await p.evaluate(() => { const O = window.__O; const map = (x, y) => document.elementFromPoint(x, y) === document.getElementById('game'); for (let dc = -8; dc <= 8; dc += 2) for (let dr = -8; dr <= 4; dr += 2) { const c = Math.floor(O.x / TILE) + dc, r = Math.floor(O.y / TILE) + dr; if (!canPlace('house', c, r)) continue; const s = window.__scr(c * TILE + 32, r * TILE + 32); if (map(s.x, s.y) && map(s.x + 30, s.y - 20)) return { x: s.x, y: s.y, c, r, h0: structures.filter(b => b.kind === 'house').length }; } return null; });
   let placed = false;
-  if (hs && await onMap(hs.x, hs.y) && await onMap(hs.x + 30, hs.y - 20)) { await drag([[hs.x + 30, hs.y - 20], [hs.x + 15, hs.y - 10], [hs.x, hs.y]], 0); placed = await p.evaluate(h0 => structures.filter(b => b.kind === 'house').length === h0 + 1 && !placing, hs.h0); }
+  if (hs && await onMap(hs.x, hs.y) && await onMap(hs.x + 30, hs.y - 20)) { await drag([[hs.x + 30, hs.y - 20], [hs.x + 15, hs.y - 10], [hs.x, hs.y]], 0); await p.evaluate(() => { const b = document.querySelector('#compass .cmpS'); if (b) b.click(); }); placed = await p.evaluate(h0 => structures.filter(b => b.kind === 'house').length === h0 + 1 && !placing, hs.h0); }
   await p.evaluate(() => { if (placing) cancelPlacing(); selection.clear(); });   // (each step stands on its own)
   await p.waitForTimeout(900); await p.evaluate(() => { SD.centerOn(window.__O.x, window.__O.y); window.__draw(); });
   // 5) two citizens tapped onto a moat fill it; a soldier then walks straight over the filled square
