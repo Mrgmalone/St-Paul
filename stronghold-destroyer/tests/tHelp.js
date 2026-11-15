@@ -88,20 +88,19 @@ const QUESTIONS = [
   const nav = await p.evaluate(() => { document.querySelector('.hlpRel .hlpLink').click(); const a = document.querySelector('.hlpArt').dataset.id; document.querySelector('.hlpBack').click(); return [a, (document.querySelector('.hlpArt') || {}).dataset && document.querySelector('.hlpArt').dataset.id]; });
   need(nav[0] && nav[0] !== 'quarry' && nav[1] === 'quarry', 'a related link opens its article and Back returns: ' + JSON.stringify(nav));
   await p.evaluate(() => toggleHelp());
-  // ---- "What is this?" ----
+  // ---- Phase 4H (Gerald): no "What is this?" button in any box ----
   const ctx = await p.evaluate(async () => {
     SD.res.wood = 9000; SD.res.stone = 9000; SD.res.gold = 9000; T.stage(3); const out = {};
-    const open = id => { const a = document.querySelector(`#${id} .whatIs`); if (!a) return null; a.click(); const r = (document.querySelector('.hlpArt') || {}).dataset; const got = r && r.id; toggleHelp(); return got; };
-    for (const [k, want] of [['granary', 'granary'], ['woodhut', 'wood-yard'], ['market', 'market'], ['church', 'healing'], ['alehouse', 'ale']]) {
-      const b = T.put(k); if (!b) { out[k] = 'not placed'; continue; } if (k === 'market') showMarket(b); else if (STORE_KINDS[k]) showStore(b); else showSite(b); await new Promise(r => setTimeout(r, 30)); out[k] = [open('storePop'), want]; T.close(); }
-    document.getElementById('moodPop').hidden = false; document.getElementById('moodPop').innerHTML = '<h3>MOOD</h3>'; await new Promise(r => setTimeout(r, 30)); out.mood = [open('moodPop'), 'mood']; document.getElementById('moodPop').hidden = true;
-    document.getElementById('menuPop').hidden = false; await new Promise(r => setTimeout(r, 30)); out.settings = [open('menuPop'), 'settings']; document.getElementById('menuPop').hidden = true;
-    openTrophy(); await new Promise(r => setTimeout(r, 30)); out.trophy = [open('trophyPop'), 'trophy']; closeTrophy();
+    const has = id => !!document.querySelector(`#${id} .whatIs`);
+    for (const k of ['granary', 'woodhut', 'market', 'church', 'alehouse', 'wheatfarm', 'farm']) {
+      const b = T.put(k); if (!b) { out[k] = 'not placed'; continue; } if (k === 'market') showMarket(b); else if (STORE_KINDS[k]) showStore(b); else showSite(b); await new Promise(r => setTimeout(r, 2100)); out[k] = has('storePop') ? 'has the button' : 'none'; T.close(); }
+    document.getElementById('moodPop').hidden = false; document.getElementById('moodPop').innerHTML = '<h3>MOOD</h3>'; await new Promise(r => setTimeout(r, 30)); out.mood = has('moodPop') ? 'has the button' : 'none'; document.getElementById('moodPop').hidden = true;
+    openTrophy(); await new Promise(r => setTimeout(r, 30)); out.trophy = has('trophyPop') ? 'has the button' : 'none'; closeTrophy();
     return out; });
-  need(Object.values(ctx).every(v => Array.isArray(v) && v[0] === v[1]), '"What is this?" opens the matching article from building boxes and panels: ' + JSON.stringify(ctx));
+  need(Object.values(ctx).every(v => v === 'none'), 'no box or panel carries a "What is this?" button: ' + JSON.stringify(ctx));
   const person = await p.evaluate(async () => { const u = T.people(1, 'archer')[0]; T.run(1); if (typeof showCard === 'function') showCard(u); else { cardOf = u; const pp = document.getElementById('personPop'); pp.hidden = false; pp.innerHTML = '<h3>ARCHER</h3>'; } await new Promise(r => setTimeout(r, 40));
-    const a = document.querySelector('#personPop .whatIs'); const id = a && a.dataset.help; if (a) a.click(); const got = (document.querySelector('.hlpArt') || {}).dataset; if (!document.getElementById('help').classList.contains('hide')) toggleHelp(); document.getElementById('personPop').hidden = true; return [id, got && got.id]; });
-  need(person[0] === 'archer' && person[1] === 'archer', 'a person’s box links to his article: ' + JSON.stringify(person));
+    const a = document.querySelector('#personPop .whatIs'); document.getElementById('personPop').hidden = true; return !!a; });
+  need(!person, 'a person’s box carries no "What is this?" button');
   console.log(JSON.stringify({ cats: cats.length, arts: arts.length, ctx, person }));
   await done();
   // ---- iPad and phone ----

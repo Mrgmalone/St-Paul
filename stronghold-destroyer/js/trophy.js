@@ -14,7 +14,7 @@ function trophyAdvice(rows) {
   const miss = rows.filter(r => !r.ok); if (!miss.length) return 'Everything is ready: your castle grows into the next stage in a moment.';
   const order = r => r.kind ? 0 : { people: 1, food: 2, stone: 3, iron: 4, mood: 5 }[r.key] || 6;
   const r = miss.slice().sort((a, b) => order(a) - order(b))[0], short = r.need - r.have;
-  if (r.kind) { const tab = tabOfBuilding(r.kind), name = r.kind === 'farmAny' ? 'farm or wheat field' : (BUILD[r.kind] ? BUILD[r.kind].name : r.what).toLowerCase();
+  if (r.kind) { const tab = tabOfBuilding(r.kind), name = r.kind === 'farmAny' ? 'farm or field' : (BUILD[r.kind] ? BUILD[r.kind].name : r.what).toLowerCase();
     return `Build ${short === 1 ? 'a' : short} ${name}${short === 1 ? '' : 's'}${tab ? ` (the ${tab} list)` : ''}; ${r.kind === 'farmAny' || r.kind === 'woodhut' || r.kind === 'quarry' ? 'a worker comes by itself' : short === 1 ? 'your builders put it up' : 'your builders put them up'}.`; }
   if (r.key === 'people') { const full = myPeople() + growing.length >= Math.floor(popCap() * GROW.room);
     return full ? 'Build another house: your houses are full, and each house raises a new citizen every few minutes.' : `Get ${short} more ${short === 1 ? 'citizen' : 'citizens'}: call them with the Citizen button in the Town list, or wait for your houses to raise them.`; }
@@ -34,16 +34,16 @@ function trophyAdvice(rows) {
       'the soldiers are unpaid': 'the soldiers are unpaid: raise gold (taxes, the market) or train fewer soldiers', 'taxes are high': 'taxes are high: lower them with the down arrow at the top',
       'the houses are crowded': 'the houses are crowded: build another house', 'the stocks frighten them': 'the stocks frighten them: take the stocks down',
       'they eat only one kind of food': 'they eat only one kind of food: add berries (citizens gather bushes), farm crops or bread from a bakery',
-      'there is no ale': 'there is no ale: build an alehouse and a wheat field, since the alehouse brews its ale from wheat',
+      'there is no ale': 'there is no ale: build an alehouse and a field growing wheat, since the alehouse brews its ale from wheat',
       'there is no house of healing or prayer': 'there is no house of healing or prayer: build a chapel or an apothecary', 'there is no house of prayer': 'there is no house of prayer: build a chapel',
       'bugs are spoiling the food in the granary': 'bugs are spoiling the food: build another granary or sell some food', 'the ale is dear': 'the ale is dear: lower the ale price in the alehouse box',
       'they pay taxes': 'they pay taxes: lower taxes with the down arrow at the top for a while' };
     // (4D) no ale although an alehouse stands: say why (the mill grinds the same wheat)
     if (typeof mineDone === 'function' && mineDone('alehouse').length) fix['there is no ale'] = mineDone('mill').length
-      ? 'there is no ale: your mill grinds the same wheat the alehouse brews from, so build another wheat field (or a hop farm and a brewery)'
-      : 'there is no ale: the alehouse brews from wheat, so build a wheat field and keep workers on it';
+      ? 'there is no ale: your mill grinds the same wheat the alehouse brews from, so put more people on wheat in your fields (or build a hop farm and a brewery)'
+      : 'there is no ale: the alehouse brews from wheat, so build a field and keep workers on its wheat';
     const why = (typeof moodReasons === 'function' ? moodReasons() : []).find(w => fix[w]);
-    return `Make your people happier (${r.have} of ${r.need}). The main complaint: ${why ? fix[why] : 'build an alehouse with a wheat field, and a chapel'}.`;
+    return `Make your people happier (${r.have} of ${r.need}). The main complaint: ${why ? fix[why] : 'build an alehouse with a field growing wheat, and a chapel'}.`;
   }
   return 'Keep building up your town.';
 }

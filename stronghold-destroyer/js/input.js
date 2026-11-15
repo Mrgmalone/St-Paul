@@ -49,7 +49,7 @@ function pickResource(wx, wy) {
 }
 const STORE_KINDS = { stockpile: 1, granary: 1, armory: 1, keep: 1 };
 let storeShown = null;
-const OUTPUT = { woodhut: 'wood', farm: 'food (crops)', wheatfarm: 'wheat', hopfarm: 'hops', quarry: 'stone' };
+const OUTPUT = { woodhut: 'wood', farm: 'food (crops)', wheatfarm: 'wheat', hopfarm: 'hops', quarry: 'stone' };   /* (4H: the new field and farm say more in their own lines) */
 // little pictures of the people inside a building
 function figureSvg(u) {
   const lk = u.look || {}, fat = u.fat || 0, bw = 8 + fat * 5, cx = 9, tun = u.sick ? '#8fa874' : lk.female && u.type === 'civ' ? '#9a5a6a' : (u.pal && u.pal.tunic) || '#8a7550';
@@ -77,17 +77,18 @@ function showSite(b) {
     html += ln('Makes', rc.out + (inp ? ` from ${inp}` : '')) + ln('Rate', n ? `up to ${Math.round(per * n * workMul())} ${rc.out} a minute${n > 1 ? ` (${n}x)` : ''}` : 'none (no workers)');
     if (Object.keys(rc.inp).length) html += ln('Skill', `uses ${Math.round(craftCost(b) * 100)}% of the usual material`);
     if (b.kind === 'quarry') html += ln('Cut stone waiting for the cart', b.stock || 0);
-  } else if (OUTPUT[b.kind]) html += ln('Makes', OUTPUT[b.kind]) + ln('Speed', n > 1 ? `${n}x one worker` : 'one worker');
+  } else if (OUTPUT[b.kind] && !(typeof farmStyle === 'function' && farmStyle(b))) html += ln('Makes', OUTPUT[b.kind]) + ln('Speed', n > 1 ? `${n}x one worker` : 'one worker');
   html += ln('Made so far', Math.floor(b.produced || 0)) + indSiteHtml(b);
   if (INDOOR[b.kind] && b.done !== false) html += insideHtml(b, 'Working inside');
   // the buttons are built once per building; only the figures above them refresh, so a click is never lost
-  if (p.dataset.site !== String(b.id) || !document.getElementById('siteInfo')) {
-    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3><div id="siteInfo"></div>${fixRow}<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button><button class="sm" data-site="sleep" id="siteSleep"></button></div>` + indSiteButtons(b) + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
+  const fst = typeof farmStyle === 'function' ? farmStyle(b) : '', key = fst ? farmBoxKey(b) : String(b.id);   /* (4H: a field's people are set crop by crop below) */
+  if (p.dataset.site !== key || !document.getElementById('siteInfo')) {
+    p.innerHTML = `<h3>${b.name.toUpperCase()}</h3>${fst ? farmControls(b) : ''}<div id="siteInfo"></div>${fixRow}<div class="row" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${fst === 'field' ? '' : '<button class="sm" data-site="add">+ Add worker</button><button class="sm" data-site="remove">&minus; Remove worker</button>'}<button class="sm" data-site="sleep" id="siteSleep"></button></div>` + indSiteButtons(b) + (b.kind === 'smithy' ? `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><b style="color:#ffd98a;font-size:14px">Make:</b><button class="sm" data-site="make:sword">Swords</button><button class="sm" data-site="make:mace">Maces</button><button class="sm" data-site="make:armor">Knight armor</button></div>` : '') +
       '<div style="font-size:13px;color:#d9c9a3;margin-top:6px">Workers you remove (or free by sleeping a building) go gathering, and can be called up as soldiers when your houses are full. Esc closes.</div>';
-    p.dataset.site = String(b.id);
+    p.dataset.site = key;
   }
   if (b.kind === 'smithy') document.querySelectorAll('#storePop [data-site^="make:"]').forEach(x => x.classList.toggle('on', x.dataset.site === 'make:' + (b.make || 'sword')));
-  document.getElementById('siteInfo').innerHTML = html; document.getElementById('siteSleep').textContent = b.asleep ? 'Wake (Z)' : 'Sleep (Z)'; p.hidden = false;
+  document.getElementById('siteInfo').innerHTML = html; document.getElementById('siteSleep').textContent = b.asleep ? 'Wake (Z)' : 'Sleep (Z)'; if (fst) farmRefresh(b); p.hidden = false;
 }
 function siteAction(b, act) {
   if (!b || b.dead) return;
@@ -101,9 +102,11 @@ function siteAction(b, act) {
     if (staffOf(b) >= maxStaff(b.kind)) { showBanner(`${b.name} already has ${maxStaff(b.kind)} workers, its most.`, 2.5); return; }
     const free = units.filter(u => u.team === 'player' && !u.dead && u.type === 'civ' && !u.job && !(u.breakUntil > time)).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
     if (!free) { showBanner('No free civilian: train one at the keep, or put another building to sleep.', 3); return; }
-    b.asleep = false; free.job = b; free.manualT = -99; free.order = 'idle'; free.task = null; startJob(free);
+    b.asleep = false; if (typeof farmStyle === 'function' && farmStyle(b) === 'farm') b.want = Math.min(FARMING.farm.staff, staffOf(b) + 1);   /* (4H: the farm keeps the number you set) */
+    free.job = b; free.manualT = -99; free.order = 'idle'; free.task = null; startJob(free);
     floatText(b.x, b.y - b.topH - 20, `${b.name}: ${staffOf(b)} workers`, '#9fe8a8');
   } else if (act === 'remove') {
+    if (typeof farmStyle === 'function' && farmStyle(b) === 'farm') b.want = Math.max(0, staffOf(b) - 1);   /* (4H: and it stays down: too much food, fewer people) */
     const w = units.filter(u => u.job === b && !u.dead).pop(); if (!w) return;
     w.job = null; w.order = 'idle'; w.task = null; w.crafting = null; floatText(w.x, w.y - 50, 'Freed to gather', '#e9dcbc');
   }
@@ -115,7 +118,7 @@ function showStore(b) {
   const p = document.getElementById('storePop'), ln = (a, v) => `<div class="ln"><span>${a}</span><b>${v}</b></div>`, F = Math.floor;
   let html = `<h3>${b.name.toUpperCase()}</h3>`;
   if (b.kind === 'stockpile' || b.kind === 'keep') html += ln('Wood', F(res.wood)) + ln('Stone', F(res.stone)) + ln('Iron', F(res.iron)) + ln('Hops', F(res.hops)) + ln('Wheat', F(res.wheat)) + ln('Flour', F(res.flour));
-  if (b.kind === 'granary' || b.kind === 'keep') html += granaryHtml() + ln('Berries', F(foodKinds.berries)) + ln('Crops', F(foodKinds.crops)) + ln('Bread', F(foodKinds.bread)) + ln('Ale', F(res.ale));
+  if (b.kind === 'granary' || b.kind === 'keep') html += granaryHtml() + ln('Berries', F(foodKinds.berries)) + ln('Crops', F(foodKinds.crops)) + ln('Corn', F(foodKinds.corn || 0)) + ln('Eggs, milk and meat', F(foodKinds.farm || 0)) + ln('Bread', F(foodKinds.bread)) + ln('Grapes', F(res.grapes || 0)) + ln('Ale', F(res.ale));
   if (b.kind === 'armory' || b.kind === 'keep') html += ln('Swords', res.sword) + ln('Maces', res.mace) + ln('Spears', res.spear) + ln('Bows', res.bow) + ln('Knight armor', res.armor);
   const q = structures.filter(o => o.kind === 'quarry' && o.team === 'player' && !o.dead && o.stock);
   if ((b.kind === 'stockpile' || b.kind === 'keep') && q.length) html += ln('Cut stone waiting at quarries', q.reduce((a, o) => a + o.stock, 0));

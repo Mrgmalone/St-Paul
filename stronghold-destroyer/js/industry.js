@@ -17,27 +17,29 @@ function indMax(kind) {
   const I = INDUSTRY;
   if (kind === 'woodhut') return lv(I.yard.max);
   if (kind === 'quarry') return I.quarry.max;
-  if (kind === 'wheatfarm') return lv(I.fields.max);
+  if (kind === 'wheatfarm') return FARMING.field.max;   // (4H: five fields at every stage)
+  if (kind === 'farm') return FARMING.farm.max;          // (4H: two farms)
   if (kind === 'mill') return stageN >= 3 ? I.mill.maxLate : I.mill.maxEarly;
   if (kind === 'bakery') return I.mill.bakeries * mineDone('mill').length;
   if (kind === 'school' || kind === 'market') return 1;
   if (kind === 'stable') return mineDone('farm').length;
   return Infinity;
 }
-const IND_STAFF = { quarry: () => INDUSTRY.quarry.staff, woodhut: () => lv(INDUSTRY.yard.staff), wheatfarm: () => lv(INDUSTRY.fields.staff),
+const IND_STAFF = { quarry: () => INDUSTRY.quarry.staff, woodhut: () => lv(INDUSTRY.yard.staff), wheatfarm: () => FARMING.field.staff,
   mill: () => stageN >= 3 ? INDUSTRY.mill.staffLate : INDUSTRY.mill.staffEarly, bakery: () => INDUSTRY.mill.bakeryStaff,
-  alehouse: () => 1, waterpot: () => 1, bowyer: () => 2, stable: () => 4, farm: () => 4, vineyard: () => 3, orchard: () => 3, apothecary: () => 1 };
+  alehouse: () => 1, waterpot: () => 1, bowyer: () => 2, stable: () => 4, farm: () => FARMING.farm.staff, vineyard: () => 3, orchard: () => 3, apothecary: () => 1 };
 const indStaff = k => IND_STAFF[k] ? IND_STAFF[k]() : 3;
 // how many come by themselves; more can be added from the building's box (Fill adds as many as it holds)
 const IND_AUTO = { wheatfarm: 2, woodhut: 2, quarry: 2, farm: 2, stable: 4 };
-const jobWant = site => IND() ? Math.min(indStaff(site.kind), IND_AUTO[site.kind] || 1) : JOBS[site.kind];
+const jobWant = site => { if (!IND()) return JOBS[site.kind]; const w = typeof farmWant === 'function' ? farmWant(site) : undefined; return w !== undefined ? w : Math.min(indStaff(site.kind), IND_AUTO[site.kind] || 1); };   /* (4H: a field wants what its crops plan, a farm what you set) */
 // may another of this kind be placed now? (an empty string means yes)
 function indWhyNot(kind) {
   if (!IND()) return '';
   const have = mineAll(kind).length, max = indMax(kind), nm = indName(kind);
   if (kind === 'bakery' && !mineDone('mill').length) return 'Build a Mill first: each mill keeps five bakeries going.';
   if (kind === 'stable' && !mineDone('farm').length) return 'The stable stands inside a farm: build a Farm first.';
-  if (have >= max) return kind === 'woodhut' || kind === 'wheatfarm' || kind === 'mill' ? `You have the most ${nm}s the ${stageName(stageN)} allows (${max}). As the castle grows they merge into fewer, bigger ones.`
+  if (have >= max) return kind === 'woodhut' || kind === 'mill' ? `You have the most ${nm}s the ${stageName(stageN)} allows (${max}). As the castle grows they merge into fewer, bigger ones.`
+    : kind === 'wheatfarm' || kind === 'farm' ? `You can have ${max === 5 ? 'five' : max === 2 ? 'two' : max} ${nm}s, each holding up to ${indStaff(kind)} people.`
     : `You can have ${max === 1 ? 'one' : max} ${max === 1 ? nm : nm + 's'}${kind === 'bakery' ? ' (five for each mill)' : ''}.`;
   return '';
 }
@@ -46,7 +48,7 @@ const yardName = n => n >= 3 ? 'Wood and Iron Yard' : n >= 2 ? 'Wood Yard' : "Wo
 
 // ---------- growing: the castle's industries merge into fewer, bigger ones ----------
 function mergeOnGrowth() {
-  for (const kind of ['woodhut', 'wheatfarm', 'mill']) {
+  for (const kind of ['woodhut', 'mill']) {   /* (4H: fields no longer merge: five of them, ten people each) */
     const list = mineDone(kind), max = indMax(kind); if (list.length <= max) continue;
     list.sort((a, b) => (b.produced || 0) - (a.produced || 0));   // the busiest stay
     const keepers = list.slice(0, max);
@@ -135,12 +137,19 @@ const horsesAll = () => mineDone('stable').reduce((a, s) => a + (s.horses || 0),
 function updateFarms(dt) {
   for (const f of mineDone('farm')) {
     if (!f.animals) { f.animals = Object.assign({}, INDUSTRY.farmStart); f.bornT = {}; }
-    if (!staffOf(f)) continue;   // the animals breed while their keepers work
+    if (IND() && f.team === 'player') {   // (4H: the farm raises the animals you tick, and gets better with time)
+      if (!f.raise) f.raise = FARMING.farm.startRaise.slice();
+      for (const k of FARMING.farm.animals) if (!(f.animals[k] >= 0)) f.animals[k] = 0;
+    }
+    const keepers = staffOf(f); if (!keepers) continue;   // the animals breed while their keepers work
+    const L = IND() && f.team === 'player' ? farmLvl(f) : { mul: 1, room: 1 }, pace = L.mul * (f.raise ? (0.6 + 0.2 * keepers) * farmMoodMul() * (f.well ? FARMING.well.mul : 1) : 1);
+    if (f.raise) f.workedT = (f.workedT || 0) + dt;
     for (const [k, [every, cap]] of Object.entries(INDUSTRY.animals)) {
       if (k === 'horses') continue;
-      const from = k === 'oxen' ? f.animals.cows : f.animals[k];   // bulls born to the cows become oxen
-      if (from < (k === 'oxen' ? 2 : 1) || f.animals[k] >= cap) continue;
-      f.bornT[k] = (f.bornT[k] || 0) + dt; if (f.bornT[k] < every) continue; f.bornT[k] = 0; f.animals[k]++;
+      if (f.raise && !f.raise.includes(k === 'oxen' ? 'cows' : k)) continue;   // only what this farm raises is born (oxen come from the cows)
+      const from = k === 'oxen' ? f.animals.cows : f.animals[k], room = Math.round(cap * L.room);   // bulls born to the cows become oxen
+      if (from < (k === 'oxen' ? 2 : 1) || f.animals[k] >= room) continue;
+      f.bornT[k] = (f.bornT[k] || 0) + dt * pace; if (f.bornT[k] < every) continue; f.bornT[k] = 0; f.animals[k]++;
     }
     f.leatherT = (f.leatherT || 0) + dt;
     if (f.leatherT >= INDUSTRY.leatherEvery && f.animals.cows >= 2) { f.leatherT = 0; res.leather = (res.leather || 0) + 1; }
@@ -160,10 +169,11 @@ function indBlock(site) {
   return '';
 }
 // the stable must stand inside (beside) a farm
-const nearFarm = (cx, cy) => mineDone('farm').some(f => Math.hypot(f.x - cx, (f.y0 + f.y1) / 2 - cy) < 110);
+const nearFarm = (cx, cy) => mineDone('farm').some(f => Math.hypot(f.x - cx, (f.y0 + f.y1) / 2 - cy) < 130);   /* (4H: the farm is bigger now) */
 
 // ---------- sentries for fields and farms ----------
 function postSentry(b) {
+  if (typeof farmStyle === 'function' && farmStyle(b) && guardsOf(b).length >= guardMax(b)) { showBanner(`This ${b.kind === 'farm' ? 'farm' : 'field'} already has all the guards it takes (${guardMax(b)}).`, 2.5); return; }
   const sold = units.filter(u => u.team === 'player' && !u.dead && !isMachine(u) && u.type !== 'civ' && u.type !== 'king' && !u.gift && !u.guardOf && !u.onWall && u.order === 'idle')
     .sort((p, q) => Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y))[0];
   if (!sold) { showBanner('No idle soldier to post as a sentry. Train a spearman or archer.', 3); return; }
@@ -235,6 +245,9 @@ const FEAST_BOX = { kind: 'feastbox', name: 'The Feast', x: 0, y: 0 };
 function indPrice(row) {
   const [k, , lot] = row, M = INDUSTRY.market, L = Math.min(3, schoolLvl), m = marketMul(), fm = myRule('marketBuyMul', 1), base = (M.makeCost[k] || 2) * lot;
   if (k === 'food' || k === 'bread') { const p = Math.max(1, Math.round(base * 1.5 * m * fm)); return { buy: p, sell: p }; }   // food costs the same to buy and to sell
+  if (k === 'corn') { const p = Math.max(1, Math.round(base * 1.5 * m * fm)); return { buy: p, sell: p }; }   // (4H: corn is food too)
+  if (typeof LIVESTOCK !== 'undefined' && LIVESTOCK[k]) {   // (4H) animals always sell for the top price, whatever the school or the mood
+    const sell = Math.max(1, Math.floor(base * Math.max(...M.sell) * 1.25 * fm)); return { buy: Math.max(sell + 1, Math.ceil(base * M.buy[L] * m * fm)), sell }; }
   const buy = Math.max(2, Math.ceil(base * M.buy[L] * m * fm));
   return { buy, sell: Math.max(1, Math.min(buy - 1, Math.floor(base * M.sell[L] * (2 - m) * fm))) };
 }
@@ -317,12 +330,13 @@ function indSiteHtml(b) {
     h += lnI('Yards allowed now', indMax('woodhut'));
   }
   if (b.kind === 'quarry') { const ox = oxenOf(b).length; h += lnI('Oxen', `${ox} of ${lv(INDUSTRY.quarry.oxen)} (each eats ${lv(INDUSTRY.quarry.oxFood)} food a minute)`) + lnI('Work', `one always stays at the stone; the rest walk out in pairs with each ox cart (${units.filter(u => u.cartPal && u.cartPal.home === b).length} out now)`); }
-  if (b.kind === 'farm' && b.animals) h += lnI('Animals', Object.entries(b.animals).map(([k, v]) => `${v} ${k}`).join(', ')) + lnI('Leather made', Math.floor(res.leather || 0));
+  if (typeof farmStyle === 'function' && farmStyle(b)) h += farmLines(b);
+  else if (b.kind === 'farm' && b.animals) h += lnI('Animals', Object.entries(b.animals).map(([k, v]) => `${v} ${k}`).join(', ')) + lnI('Leather made', Math.floor(res.leather || 0));
   if (b.kind === 'stable') h += lnI('Horses', `${b.horses || 0} (for mounted knights)`) + lnI('Needs', `${indStaff('stable')} people to run (has ${staffOf(b)})`) + lnI('Oxen at your farms', animalsAll('oxen'));
   if (b.kind === 'bowyer') h += lnI('Cows at your farms', `${animalsAll('cows')} (needs 2)`);
   if (b.kind === 'mill') h += lnI('Mills allowed now', `${indMax('mill')}${stageN >= 3 ? ', each keeps 5 bakeries going' : ''}`);
   if (b.kind === 'bakery') h += lnI('Bakeries allowed', `${indMax('bakery')} (five for each mill)`) + (bakeryMulOf(b) > 1 ? lnI('Cy Young bakers', `${bakeryMulOf(b)} times the bread`) : '');
-  if (isField(b.kind) || b.kind === 'farm') { const s = sentryOf(b); h += lnI('Sentry', s ? `${s.name} on watch` : '<span style="color:#ffb38a">none: this field needs a sentry</span>'); }
+  if ((isField(b.kind) || b.kind === 'farm') && !(typeof farmStyle === 'function' && farmStyle(b))) { const s = sentryOf(b); h += lnI('Sentry', s ? `${s.name} on watch` : '<span style="color:#ffb38a">none: this field needs a sentry</span>'); }
   h += groupsHtml(b);
   if (b.kind === 'alehouse' || b.kind === 'tavern') h += lnI('Ale price', `${INDUSTRY.ale.prices[alePrice]}${warNow && alePrice < 2 ? ' (raised for wartime)' : ''}`) + lnI('Serves', `${b.kind === 'alehouse' ? INDUSTRY.ale.alehouseServes : INDUSTRY.ale.tavernServes} people`);
   return h;
@@ -330,13 +344,15 @@ function indSiteHtml(b) {
 function indSiteButtons(b) {
   if (!IND()) return '';
   const B = (a, t) => `<button class="sm" data-ind="${a}">${t}</button>`;
-  let h = B('fill', '+ Fill it up');
+  let h = typeof farmStyle === 'function' && farmStyle(b) === 'field' ? '' : B('fill', '+ Fill it up');   /* (4H: a field fills crop by crop, below) */
   if (b.kind === 'woodhut') h += B('iron+', 'More on iron') + B('iron-', 'More on wood');
-  if (isField(b.kind) || b.kind === 'farm') h += B('sentry', 'Post a sentry');
+  if (isField(b.kind) || b.kind === 'farm') h += B('sentry', typeof farmStyle === 'function' && farmStyle(b) ? 'Post one of your soldiers' : 'Post a sentry');
   if (b.kind === 'alehouse' || b.kind === 'tavern') h += INDUSTRY.ale.prices.map((p, i) => `<button class="sm${alePrice === i ? ' on' : ''}" data-ind="ale:${i}">${p}</button>`).join('');
-  return `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${h}</div>` + groupsButtons(b);
+  return `<div class="row" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${h}</div>` + groupsButtons(b);   /* (4H: the field's and farm's own controls sit at the top of the box: farmControls) */
 }
 function indAction(b, act) {
+  if (typeof farmAction === 'function' && farmAction(b, act)) return;   /* (4H: crops, animals, the well, the lookout, the guards) */
+  if (act === 'fill' && typeof farmStyle === 'function' && farmStyle(b) === 'farm') b.want = FARMING.farm.staff;
   if (act === 'fill') { let n = 0; while (staffOf(b) < indStaff(b.kind)) { const before = staffOf(b); siteAction(b, 'add'); if (staffOf(b) === before) break; n++; } if (n) floatText(b.x, b.y - (b.topH || 30) - 30, `+${n} workers`, '#9fe8a8'); }
   else if (act === 'iron+' || act === 'iron-') { b.ironChosen = true; b.ironN = clamp((b.ironN || 0) + (act === 'iron+' ? 1 : -1), 0, indStaff('woodhut')); }
   else if (act === 'sentry') postSentry(b);
@@ -401,6 +417,7 @@ function updateIndustry(dt) {
   indT -= dt; if (indT > 0) return; indT = 1;
   checkMarketLoss();
   updateGroups(1); quarryPairs(); updateEngineers(1); renameAll(); indWarCheck(); updateYards(); updateQuarries(1); updateFarms(1); updateGranary(1); updateHealHouses(1);
+  if (typeof updateFarming === 'function') updateFarming(1);
 }
 
 // ---------- Phase 4C: quarry workers walk out in pairs with the ox carts; engineers build trebuchets ----------

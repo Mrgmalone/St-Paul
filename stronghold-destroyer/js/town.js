@@ -104,8 +104,8 @@ document.getElementById('feast').onclick = () => {
 
 // ---------- economy: stores, upkeep, training ----------
 const res = { food: 100, wood: 80, gold: 0, stone: 0, mace: 0, armor: 0, hops: 0, ale: 0, iron: 0, bow: 0, spear: 0, sword: 0, wheat: 0, flour: 0, grapes: 0, apples: 0, leather: 0 };
-const foodKinds = { berries: 0, crops: 100, bread: 0 };
-const FOOD_NAME = { berries: 'berries', crops: 'crops', bread: 'bread' };
+const foodKinds = { berries: 0, crops: 100, bread: 0, corn: 0, farm: 0 };   /* (4H: corn from the fields; eggs, milk and meat from the farms) */
+const FOOD_NAME = { berries: 'berries', crops: 'crops', bread: 'bread', corn: 'corn', farm: 'eggs, milk and meat' };
 function addFood(kind, n) { foodKinds[kind] = (foodKinds[kind] || 0) + n; res.food += n; }
 function spendFood(n) {
   res.food -= n;
@@ -148,7 +148,9 @@ const hasArmory = () => countOf('armory') > 0;
 const MARKET = [
   ['wood', 'Wood', 10, 20, 8], ['stone', 'Stone', 10, 30, 12], ['iron', 'Iron', 5, 30, 12], ['hops', 'Hops', 10, 30, 12], ['wheat', 'Wheat', 10, 30, 12], ['flour', 'Flour', 10, 45, 18],
   ['grapes', 'Grapes', 10, 30, 12], ['apples', 'Apples', 10, 30, 12], ['leather', 'Leather', 5, 40, 16],
-  ['food', 'Food (crops)', 10, 25, 10], ['bread', 'Bread', 10, 40, 16], ['ale', 'Ale', 5, 40, 16],
+  ['food', 'Food (crops)', 10, 25, 10], ['corn', 'Corn', 10, 30, 12], ['bread', 'Bread', 10, 40, 16], ['ale', 'Ale', 5, 40, 16],
+  // (4H) the farm's animals: they always sell for the top price
+  ['chickens', 'Chickens', 2, 40, 16], ['ducks', 'Ducks', 2, 40, 16], ['turkeys', 'Turkeys', 1, 36, 14], ['pigs', 'Pigs', 1, 60, 24], ['sheep', 'Sheep', 1, 52, 20], ['cows', 'Cows', 1, 100, 40],
   ['bow', 'Bow', 1, BUY.bow, 12], ['spear', 'Spear', 1, BUY.spear, 8], ['sword', 'Sword', 1, BUY.sword, 16], ['mace', 'Mace', 1, BUY.mace, 12], ['armor', 'Knight armor', 1, BUY.armor, 28]
 ];
 const WEAPONS = { bow: 1, spear: 1, sword: 1, mace: 1, armor: 1 };
@@ -158,20 +160,23 @@ const marketMul = () => mood >= 50 ? 1 - (mood - 50) / 50 * 0.25 : 1 + (50 - moo
 const priceOf = row => IND() ? indPrice(row) : priceOf0(row);
 const priceOf0 = row => { const [, , , buy, sell] = row, m = marketMul(), fm = myRule('marketBuyMul', 1);   // Ticanologue buys at half price
   const b = fm < 1 ? Math.max(2, Math.ceil(buy * m * fm)) : Math.max(Math.ceil(buy * m), Math.ceil(sell * 1.6)); return { buy: b, sell: Math.min(Math.round(sell * (2 - m)), b - 1) }; };
-const haveOf = k => Math.floor(k === 'food' ? (foodKinds.crops || 0) + (foodKinds.berries || 0) : k === 'bread' ? (foodKinds.bread || 0) : (res[k] || 0));
+const haveOf = k => Math.floor(k === 'food' ? (foodKinds.crops || 0) + (foodKinds.berries || 0) : k === 'bread' ? (foodKinds.bread || 0) : k === 'corn' ? (foodKinds.corn || 0) : LIVESTOCK[k] ? animalsAll(k) : (res[k] || 0));
 function trade(b, act, key) {
   const row = MARKET.find(r => r[0] === key); if (!row || !b || b.dead || b.done === false) return;
   const [, name, lot] = row, { buy, sell } = priceOf(row);
   if (act === 'buy') {
     if (WEAPONS[key] && !hasArmory()) { showBanner('Build an Armory first: bought weapons are stored there.', 3); return; }
+    if (LIVESTOCK[key] && !mineDone('farm').length) { showBanner('Build a Farm first: bought animals go to your farm.', 3); return; }
     if (res.gold < buy) { showBanner(`${lot > 1 ? lot + ' ' : 'A '}${name.toLowerCase()} costs ${buy} gold. You have ${Math.floor(res.gold)}.`, 2.5); return; }
     res.gold -= buy;
-    if (key === 'food') addFood('crops', lot); else if (key === 'bread') addFood('bread', lot); else res[key] += lot;
+    if (key === 'food') addFood('crops', lot); else if (key === 'bread') addFood('bread', lot); else if (key === 'corn') addFood('corn', lot); else if (LIVESTOCK[key]) animalBuy(key, lot); else res[key] += lot;
     b.mkMsg = `Bought ${lot > 1 ? lot + ' ' : ''}${name.toLowerCase()} for ${buy} gold.`;
   } else {
     if (haveOf(key) < lot) { showBanner(`You need ${lot} ${name.toLowerCase()} to sell. You have ${haveOf(key)}.`, 2.5); return; }
     if (key === 'food') { let n = lot; for (const k of ['berries', 'crops']) { const t = Math.min(n, foodKinds[k] || 0); foodKinds[k] -= t; n -= t; } res.food -= lot; }
     else if (key === 'bread') { foodKinds.bread -= lot; res.food -= lot; }
+    else if (key === 'corn') { foodKinds.corn -= lot; res.food -= lot; }
+    else if (LIVESTOCK[key]) animalSell(key, lot);
     else res[key] -= lot;
     res.gold += sell;
     b.mkMsg = `Sold ${lot > 1 ? lot + ' ' : ''}${name.toLowerCase()} for ${sell} gold.`;
@@ -305,6 +310,7 @@ function startJob(u) {
   const site = u.job;
   if (site.kind === 'engineerhut') { engineerJob(u); return; }
   if (CRAFT[site.kind] || u.ironWork) { u.order = 'craft'; u.sub = 'toSite'; u.path = []; u.repath = 0; u.crafting = null; u.task = null; return; }
+  if (typeof farmJob === 'function' && farmJob(u, site)) return;   /* (4H: the new fields and farms) */
   if (site.kind === 'hopfarm' || site.kind === 'wheatfarm' || site.kind === 'vineyard' || site.kind === 'orchard') { u.order = 'gather'; u.task = { type: FIELD_TYPE[site.kind], node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
   if (site.kind === 'stable' || site.kind === 'waterpot') { const ap = approachPoint(u, site); if (edgeDist(u, site) > 40) { commandMove([u], ap.x, ap.y); u.cmdT = -99; } else u.order = 'idle'; return; }
   if (site.kind === 'farm') { u.order = 'gather'; u.task = { type: 'food', node: site }; u.sub = 'toNode'; u.path = []; u.repath = 0; return; }
@@ -368,7 +374,7 @@ function updateJobs(dt) {
   const onNode = n => onCount.get(n) || 0;
   for (const u of civs) {
     if (u.job || u.toHeal || u.inSchool || u.order !== 'idle' || isManual(u) || u.breakUntil > time || u.carry > 0 && false) continue;
-    const want = res.food < 120 || foodKinds.berries + foodKinds.crops < res.wood * 0.6 ? 'food' : 'wood';
+    const want = res.food < 120 || foodKinds.berries + foodKinds.crops + (foodKinds.corn || 0) + (foodKinds.farm || 0) < res.wood * 0.6 ? 'food' : 'wood';
     for (const type of [want, want === 'food' ? 'wood' : 'food']) {
       const list = type === 'wood' ? trees : bushes; let best = null, bd = 1100;
       for (const n of list) { if (!nodeOk(n, type) || onNode(n) >= 5 || (u.bad && u.bad.has(n))) continue; const c = nodeCenter(n), d = Math.hypot(c.x - u.x, c.y - u.y); if (IND() && k0() && Math.hypot(c.x - k0().x, c.y - k0().y) > 750) continue;   /* citizens stay near the castle */ if (d < bd) { bd = d; best = n; } }

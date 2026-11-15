@@ -22,6 +22,8 @@ const potLevel = p => Math.min(FIRE.potMax, 1 + Math.floor((time - (p.builtAt ||
 function nearestWater(u, team) {
   let best = null, bd = 1e9;
   for (const p of structures) if (p.kind === 'waterpot' && !p.dead && p.done !== false && p.team === team) { const d = Math.hypot(p.x - u.x, p.y - u.y); if (d < bd) { bd = d; best = p; } }
+  const wl = typeof wellNear === 'function' ? wellNear(u, team) : null;   /* (4H: a well at a field or farm gives a full bucket) */
+  if (wl && wl.d < 900 && wl.d < bd) return { at: wl.at, pot: null, well: true };
   if (best && bd < 900) return { at: best, pot: best };
   // no pot near: the river (the nearest open bank)
   let rb = null, rd = 1e9; const c0 = Math.floor(u.x / TILE), r0 = Math.floor(u.y / TILE);
@@ -36,7 +38,7 @@ function fireBrain(u, dt) {
   if (u.sub === 'toWater') {
     const w = u.water || (u.water = nearestWater(u, u.team)); if (!w) { u.sub = 'toFire'; u.bucket = 0; return; }   /* no water anywhere: they beat at the flames */
     const tx = w.pot ? w.pot.x : w.at.x, ty = w.pot ? w.pot.y1 + 10 : w.at.y;
-    if (Math.hypot(u.x - tx, u.y - ty) < 40 || stalled(u) && Math.hypot(u.x - tx, u.y - ty) < 70) { u.bucket = w.pot ? potLevel(w.pot) : 0.5; u.sub = 'toFire'; u.path = []; u.carryType = 'water'; return; }
+    if (Math.hypot(u.x - tx, u.y - ty) < 40 || stalled(u) && Math.hypot(u.x - tx, u.y - ty) < 70) { u.bucket = w.pot ? potLevel(w.pot) : w.well ? 1 : 0.5; u.sub = 'toFire'; u.path = []; u.carryType = 'water'; return; }
     walk(tx, ty); return;
   }
   if (edgeDist(u, b) > 14 && !(stalled(u) && edgeDist(u, b) < 40)) { const ap = approachPoint(u, b); walk(ap.x, ap.y); return; }

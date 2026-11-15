@@ -228,7 +228,7 @@ function startGame(key) {
   }
   Object.assign(PAL.player, { tunic: ARMY.crimson, tunicDark: ARMY.crimsonDark, shield: ARMY.crimson });   // every civilisation's army wears Gerald's crimson and gold
   PAL.civ.trim = CIV.color;
-  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = testArmy ? 2 : 0; res.bow = testArmy ? 2 : 0; res.stone = 0;   // stage 1: a shack in the woods, only wood and food
+  res.food = CIV.food; res.wood = CIV.wood; foodKinds.berries = 0; foodKinds.bread = 0; foodKinds.corn = 0; foodKinds.farm = 0; foodKinds.crops = CIV.food; res.sword = 0; res.spear = testArmy ? 2 : 0; res.bow = testArmy ? 2 : 0; res.stone = 0;   // stage 1: a shack in the woods, only wood and food
   Object.assign(keep, { hp: CIV.keepHp, maxHp: CIV.keepHp, fireRate: CIV.keepRate, arrowDmg: CIV.keepDmg, range: CIV.keepRange });
   spawnPlayerPeople(testArmy, fac ? FACTIONS[fac].start.civilians : 5); spawnKing(); if (testArmy && keep) giftKnight(keep, ''); startPalisade();   // the king is the only fighter you start with, on foot
   centerOn(keep.x + 90, keep.y - 10);   // open the game looking at your castle

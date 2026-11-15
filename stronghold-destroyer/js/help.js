@@ -1,6 +1,6 @@
 'use strict';
-// Stronghold Destroyer — the Help screen: search, category cards with pictures, short articles, and a "What is this?"
-// link in every box. All the words live in ONE file, js/helpdata.js (HELP_DATA); this file only shows them.
+// Stronghold Destroyer — the Help screen: search, category cards with pictures and short articles (the "What is this?"
+// link that every box carried was taken off in Phase 4H, at Gerald's word). All the words live in ONE file, js/helpdata.js (HELP_DATA); this file only shows them.
 // Opens with the ? button or the H key; reading it pauses the game (unless enemies are close); the big X closes it.
 // It opens on the search box with a Topics drop-down listing the categories (Gerald, Phase 4F). The whole Master Guide is
 // in it too (js/guidedata.js, GUIDE_DATA, made by tools/master_guide.js): the topic "The Master Guide", and the search
@@ -33,7 +33,7 @@ const HELP_ICONS = {
   raid: '<path d="M10 54 L40 24 M30 14 L50 34" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M54 54 L24 24 M34 14 L14 34" stroke="#c8202a" stroke-width="6" stroke-linecap="round"/>',
   search: '<circle cx="26" cy="26" r="16" fill="none" stroke="currentColor" stroke-width="5"/><path d="M38 38 L56 56" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>'
 };
-const HELPUI_OPEN = { want: null };   // (an article a "What is this?" link asked for)
+const HELPUI_OPEN = { want: null };   // (an article openArticle asked for)
 const HELPUI = (() => {
   const H = typeof HELP_DATA !== 'undefined' ? HELP_DATA : null, box = document.querySelector('#help .box');   /* (a top-level const is not a window property) */
   if (!H || !box) { console.error('Help: the help data or the help box is missing'); return null; }
@@ -180,28 +180,19 @@ const HELPUI = (() => {
     closeDrop(); if (t.dataset.art) show({ kind: 'art', id: t.dataset.art }); else if (t.dataset.cat) show({ kind: 'cat', id: t.dataset.cat });
   });
   show({ kind: 'home' }, false);
-  // opening: fresh at the topics (unless a "What is this?" link asked for an article)
+  // opening: fresh at the topics (unless openArticle asked for an article)
   const helpEl = document.getElementById('help');
   new MutationObserver(() => { const open = !helpEl.classList.contains('hide');
     if (open && !HELPUI_OPEN.want) { q.value = ''; show({ kind: 'home' }, false); openDrop(); if (opener === 'mouse') setTimeout(() => q.focus(), 30); }
     if (!open) closeDrop(); HELPUI_OPEN.want = null; opener = null; }).observe(helpEl, { attributes: true, attributeFilter: ['class'] });
   function openArticle(id) { HELPUI_OPEN.want = id; closeDrop(); if (helpEl.classList.contains('hide')) toggleHelp(); q.value = ''; last = []; show({ kind: byId.has(id) ? 'art' : catOf.has(id) ? 'cat' : 'home', id }, false); }
-  // ---------- "What is this?" in every box ----------
+  // ---------- Phase 4H (Gerald: "Remove the question 'What is this?'... just let them be"): the boxes no longer carry a
+  // "What is this?" button. ctxOf still says which article fits a box (the Help search uses the same articles). ----------
   const ctxOf = el => {
     const M = H.context || {};
     if (el.id === 'storePop') { const b = storeShown; if (!b) return null; return (M.buildings || {})[b.kind] || (b.kind === 'feastbox' ? 'feast' : 'buildings'); }
     if (el.id === 'personPop') { const u = typeof cardOf !== 'undefined' && cardOf; if (!u) return 'citizens'; const key = u.kit && u.kit !== 'foot' ? u.kit : u.type; return (M.units || {})[key] || (u.type === 'civ' ? 'citizens' : 'units'); }
     return (M.panels || {})[el.id] || null;
   };
-  function addLink(el) {
-    if (el.hidden || el.id === 'loadPop') return; const id = ctxOf(el); if (!id) return;
-    let a = el.querySelector(':scope > .whatIs');
-    if (!a) { a = document.createElement('button'); a.className = 'whatIs'; a.type = 'button'; a.textContent = 'What is this?'; a.setAttribute('aria-label', 'What is this? Opens the help article'); const h = el.querySelector(':scope > h3'); if (h) h.insertAdjacentElement('afterend', a); else el.prepend(a); }
-    a.dataset.help = id;
-  }
-  document.addEventListener('click', e => { const a = e.target.closest('.whatIs'); if (!a) return; e.stopPropagation(); openArticle(a.dataset.help); }, true);
-  const watch = el => { const mo = new MutationObserver(() => { mo.disconnect(); addLink(el); mo.observe(el, { childList: true, attributes: true, attributeFilter: ['hidden'] }); }); mo.observe(el, { childList: true, attributes: true, attributeFilter: ['hidden'] }); addLink(el); };
-  const watchAll = () => { for (const el of document.querySelectorAll('.pop')) if (!el.dataset.hw) { el.dataset.hw = '1'; watch(el); } };
-  watchAll(); setInterval(watchAll, 2000);   // (panels made later, such as the trophy's)
   return { search, searchGuide, show, openArticle, openDrop, closeDrop, articles: H.articles, categories: CATS, guide: GARTS, ctxOf };
 })();

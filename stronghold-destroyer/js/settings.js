@@ -155,8 +155,8 @@ const INDUSTRY = {
   // stone quarries (from the Homestead): at most two, ten people each; oxen by stage (the second comes free at the
   // Castle); oxen eat food each minute and cost more to replace as you grow; on foot, people gather stone only nearby
   quarry: { max: 2, staff: 10, oxen: [0, 1, 1, 2, 2], oxFood: [0, 2, 3, 4, 5], oxReplace: [[0, 0], [40, 10], [60, 20], [90, 35], [120, 50]], oxSpeed: [1, 1, 1.15, 1.3, 1.45], footStone: 320 },
-  // wheat fields: how many may stand and how many people each holds (they merge as the castle grows); each wants a sentry
-  fields: { max: [5, 5, 3, 2, 2], staff: [3, 5, 7, 10, 10] },
+  // wheat fields (until Phase 4H: they merged as the castle grew). Now the Field: see FARMING below (five, ten people each).
+  fields: { max: [5, 5, 5, 5, 5], staff: [10, 10, 10, 10, 10] },
   // the mill: before the Hold up to two small mills of two people; from the Hold one mill that comes with five bakeries of three
   mill: { maxEarly: 2, staffEarly: 2, maxLate: 1, staffLate: 3, bakeries: 5, bakeryStaff: 3 },
   // bread: one baker makes about 6 loaves a minute from 3 flour (fifteen bakers feed about twenty people every couple of minutes);
@@ -172,7 +172,9 @@ const INDUSTRY = {
   // the market: non-food goods sell for (buy) and buy for (sell) these multiples of what they cost to make, by school level;
   // food costs the same to buy and to sell. Happy or upset people still move prices (up to 25% cheaper, 40% dearer).
   market: { buy: [2.5, 2.5, 2.0, 1.8], sell: [1.2, 1.2, 1.5, 1.6], destroyedMood: -30,
-    makeCost: { wood: 1, stone: 1.5, iron: 3, hops: 1, wheat: 1, flour: 2, food: 1, bread: 1.5, ale: 3, bow: 12, spear: 8, sword: 20, mace: 16, armor: 40 } },
+    makeCost: { wood: 1, stone: 1.5, iron: 3, hops: 1, wheat: 1, flour: 2, food: 1, bread: 1.5, ale: 3, bow: 12, spear: 8, sword: 20, mace: 16, armor: 40,
+      // (4H) the field's crops (grapes the slowest, so worth the most) and the farm's animals (worth far more; they always sell at the top price)
+      corn: 1.5, grapes: 3, chickens: 8, ducks: 8, turkeys: 14, pigs: 24, sheep: 20, cows: 40 } },
   // the school (from the Hold): three levels of learning (gold, seconds); each level wastes less material (10%), builds
   // cheaper and quicker (10% and 15%), and from level 2 trades better
   school: { levels: [[150, 60], [300, 90], [600, 120]], waste: 0.1, buildCost: 0.1, buildTime: 0.15, engineerCost: 40 },
@@ -181,10 +183,39 @@ const INDUSTRY = {
   health: { apothecary: { heal: 1.5, mood: 2, r: 420, serves: 10 }, chapel: { heal: 1.5, mood: 5, r: 520, serves: 20 }, church: { heal: 2, mood: 6, r: 620, serves: 35 },
     abbey: { heal: 3, mood: 7, r: 720, serves: 50 }, doctorCost: 400, doctorTime: 120, doctorMul: 2 },
   // animals at the farm (and horses at the stable): born every so many seconds while their keepers work, up to a cap
-  animals: { cows: [40, 8], pigs: [30, 10], oxen: [60, 6], chickens: [15, 20], turkeys: [25, 8], sheep: [35, 8], horses: [70, 8] },
-  farmStart: { cows: 2, pigs: 2, oxen: 2, chickens: 3, turkeys: 1, sheep: 1 }, leatherEvery: 45,
+  animals: { cows: [40, 8], pigs: [30, 10], oxen: [60, 6], chickens: [15, 20], ducks: [18, 16], turkeys: [25, 8], sheep: [35, 8], horses: [70, 8] },
+  farmStart: { cows: 2, pigs: 2, oxen: 2, chickens: 3, ducks: 2, turkeys: 1, sheep: 1 }, leatherEvery: 45,
   // the granary's Expand (from the Hold), and the school's engineers (each Engineer's Hut houses four)
   granaryExpand: { wood: 60, stone: 40 }, engineersPerHut: 4
+};
+
+// ---------- Phase 4H: fields and farms (Gerald, after 4G) ----------
+// "There should be two separate things, a field and a farm." Tap either one to choose what it makes and how many work there.
+const FARMING = {
+  // the Field (it was the Wheat Field): at most five, up to ten people each, at every stage (they no longer merge as the
+  // castle grows). It grows up to three crops at once; you choose how many people work on each. every: seconds of work
+  // for one person to bring in one (wheat is the fastest, corn next, grapes the slowest). Wheat goes to the mill for
+  // bread, corn feeds your people straight from the granary, grapes go to the granary (the feast, the market).
+  // load: how many one person carries to the stores at a time (the slow grapes go in smaller baskets, so they come in steadily)
+  field: { max: 5, staff: 10, startOn: 'wheat', startWorkers: 2,
+    crops: { wheat: { name: 'Wheat', every: 6, carry: 'wheat', load: 10 }, corn: { name: 'Corn', every: 8, carry: 'food', food: 'corn', load: 8 }, grapes: { name: 'Grapes', every: 15, carry: 'grapes', load: 4 } } },
+  // the Farm: at most two, up to five people each. It raises the animals you tick (Gerald's four first; turkeys and
+  // sheep stay because the feast needs them). The animals breed while their keepers work, and the keepers bring in eggs,
+  // milk and meat (food, every 'every' seconds each). The farm gets better with time: level 2 after 'after' seconds of
+  // work, level 3 after more and with a stable beside it; each level breeds faster (mul) and holds more (room).
+  farm: { max: 2, staff: 5, startWorkers: 2, every: 8, food: 'farm', load: 6,
+    animals: ['chickens', 'cows', 'pigs', 'ducks', 'turkeys', 'sheep'], startRaise: ['chickens', 'cows', 'pigs', 'ducks'],
+    levels: [{ after: 0, mul: 1, room: 1 }, { after: 360, mul: 1.25, room: 1.5 }, { after: 900, mul: 1.5, room: 2, stable: true }] },
+  // happy people grow food faster (and so it reaches the granary faster); upset people slower
+  mood: { happyAt: 70, happy: 1.25, upsetBelow: 40, upset: 0.8 },
+  // a well at a field or farm: it grows 25% faster, and water carriers fight fires near it from the well
+  well: { wood: 30, stone: 0, mul: 1.25 },
+  // a lookout tower at a field or farm: it sees the land around and rings the bell when raiders come near
+  lookout: { wood: 40, stone: 0, sight: 440, warn: 400 },
+  // Reserve: a guard with a knight's strength (even before you can train knights), no weapons from the armory needed.
+  // He costs gold and takes a place in your houses (if they are full, a civilian is called up), and stays with his field.
+  guard: { gold: 25, field: 2, farm: 1 },
+  // (what a crop or an animal is worth at the market: INDUSTRY.market.makeCost above; animals always sell for the top price)
 };
 
 // ---------- Phase 4B: soldiers ----------

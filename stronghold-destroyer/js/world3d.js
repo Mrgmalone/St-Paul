@@ -1165,12 +1165,39 @@ const R3D = (() => {
       const n = 7 * 7 * 3, vines = new T.InstancedMesh(b.kind === 'vineyard' ? new T.SphereGeometry(2.6, 7, 5) : new T.ConeGeometry(2.4, 14, 6), std(b.kind === 'vineyard' ? '#5e3a78' : '#4f8a3a', { roughness: 0.85 }), n);   // grapes in purple clusters
       vines.castShadow = true; info.wheat = vines; info.wheatN = n; add(vines);
     } else if (b.kind === 'farm' || b.kind === 'wheatfarm') {
-      const soil = mesh(new T.PlaneGeometry(60, 60), texMat('soil', 2, 4), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
-      const n = 7 * 7 * 3, wheat = new T.InstancedMesh(new T.CylinderGeometry(0.35, 0.7, 11, 4), std('#d8b450', { roughness: 0.8 }), n);
-      wheat.castShadow = true; info.wheat = wheat; info.wheatN = n; add(wheat);
-      const post = woodVM(3, 9);
-      for (const [x, z] of [[-30, -30], [30, -30], [-30, 30], [30, 30], [0, -30], [0, 30]]) add(cyl(1.4, 1.4, 9, post, x, 4.5, z, 6));
-      for (const z of [-30, 30]) { add(box(60, 1.3, 1.3, woodHM(60, 2), 0, 7, z)); add(box(60, 1.3, 1.3, woodHM(60, 2), 0, 4, z)); }
+      // (4H: fields and farms are three squares now; the Field grows strips of wheat, corn and grapes, the Farm is a pen of animals)
+      const W = b.x1 - b.x0, D = b.y1 - b.y0, hw = W / 2 - 2, hd = D / 2 - 2, pen = b.kind === 'farm' && b.team === 'player' && IND();
+      const soil = mesh(new T.PlaneGeometry(W - 4, D - 4), pen ? std('#6f8a3a', { roughness: 1 }) : texMat('soil', 2 * W / 64, 4 * D / 64), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
+      if (pen) farmPen(b, info, add, hw, hd);
+      else if (b.kind === 'wheatfarm') fieldCrops(info, add, hw, hd);
+      else {
+        const cols = Math.max(7, Math.floor((W - 8) / 8.3)), n = cols * cols * 3, wheat = new T.InstancedMesh(new T.CylinderGeometry(0.35, 0.7, 11, 4), std('#d8b450', { roughness: 0.8 }), n);
+        wheat.castShadow = true; info.wheat = wheat; info.wheatN = n; info.wheatCols = cols; add(wheat);
+      }
+      const post = woodVM(3, 9), rail = woodHM(W, 2), step = W / Math.max(2, Math.round(W / 24));
+      for (let x = -hw; x <= hw + 0.1; x += step) for (const z of [-hd, hd]) add(cyl(1.4, 1.4, 9, post, x, 4.5, z, 6));
+      for (let z = -hd + step; z < hd - 0.1; z += step) for (const x of [-hw, hw]) add(cyl(1.4, 1.4, 9, post, x, 4.5, z, 6));
+      for (const z of [-hd, hd]) for (const y of [7, 4]) add(box(hw * 2, 1.3, 1.3, rail, 0, y, z));
+      for (const x of [-hw, hw]) for (const y of [7, 4]) add(box(1.3, 1.3, hd * 2, rail, x, y, 0));
+    }
+    // (4H) a well and a lookout tower at a field or farm, in its northern corners
+    if ((b.kind === 'farm' || b.kind === 'wheatfarm') && (b.well || b.lookout)) {
+      const hw = (b.x1 - b.x0) / 2, hd = (b.y1 - b.y0) / 2;
+      if (b.well) {   // a round stone well with a little roof, a winch and a bucket
+        const W = new T.Group(); W.position.set(hw - 14, 0, -hd + 14); inner.add(W);
+        W.add(cyl(5.5, 6, 7, stoneM(34, 7), 0, 3.5, 0, 14)); W.add(cyl(4.3, 4.3, 0.6, std('#2a4a66', { roughness: 0.2, metalness: 0.2 }), 0, 6.4, 0, 12));
+        for (const x of [-5, 5]) W.add(box(1.2, 14, 1.2, woodVM(2, 14), x, 10, 0));
+        const roof = mesh(new T.CylinderGeometry(0.4, 8, 5, 4, 1), thatchM(16, 6), 0, 19, 0); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.7); W.add(roof);
+        const wl = cyl(0.8, 0.8, 10, std('#6b4a2a'), 0, 14, 0, 6); wl.rotation.z = Math.PI / 2; W.add(wl); W.add(cyl(1.2, 1, 2, std('#7a5a34'), 0, 10, 0, 8));
+        info.wellAt = { x: hw - 14, z: -hd + 14 };
+      }
+      if (b.lookout) {   // a timber lookout on four tall posts, a railed platform, a roof and a ladder
+        const L = new T.Group(); L.position.set(-hw + 14, 0, -hd + 14); inner.add(L); const pv = woodVM(3, 44);
+        for (const [x, z] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) L.add(cyl(1.1, 1.3, 40, pv, x, 20, z, 6));
+        L.add(box(16, 1.4, 16, woodHM(16, 2), 0, 36, 0)); for (const [x, z, w, d] of [[0, -7.5, 16, 0.8], [0, 7.5, 16, 0.8], [-7.5, 0, 0.8, 16], [7.5, 0, 0.8, 16]]) L.add(box(w, 4, d, woodHM(16, 4), x, 39, z));
+        const roof = mesh(new T.CylinderGeometry(0.5, 12.5, 8, 4, 1), thatchM(24, 8), 0, 48, 0); roof.rotation.y = Math.PI / 4; L.add(roof);
+        for (const x of [-2, 2]) L.add(box(0.7, 36, 0.7, std('#6b4a2a'), x, 18, 7.6)); for (let y = 4; y < 36; y += 4) L.add(box(4.6, 0.6, 0.6, std('#6b4a2a'), 0, y, 7.6));
+      }
     }
     // scaffolding shown while a building goes up
     if (b.done === false && b.kind !== 'moat' && b.kind !== 'pit') {
@@ -1180,10 +1207,7 @@ const R3D = (() => {
       for (let y = 12; y < H; y += 16) { sc.add(box(hw * 2, 1, 1, pm, 0, y, hd)); sc.add(box(hw * 2, 1, 1, pm, 0, y, -hd)); }
       g.add(sc); info.scaffold = sc;
     }
-    if (b.kind === 'farm' && b.team === 'player' && IND()) {   // the animal farm: a pen in one corner with cows and pigs
-      const fence = woodHM(30, 2); for (const [x, z, w, d] of [[-16, -16, 28, 1.2], [-16, -2, 28, 1.2], [-30, -9, 1.2, 14], [-2, -9, 1.2, 14]]) add(box(w, 1.2, d, fence, x, 5, z));
-      for (const [x, z, col, s] of [[-22, -11, '#f2ece0', 1], [-12, -8, '#5a3a24', 1], [-24, -5, '#e0a0a0', 0.6], [-8, -13, '#e8b0b0', 0.6]]) { add(box(9 * s, 5 * s, 4.5 * s, std(col, { roughness: 1 }), x, 4 * s + 1, z)); add(box(3 * s, 3 * s, 3 * s, std(col, { roughness: 1 }), x + 5.5 * s, 6 * s + 1, z)); }
-    }
+    /* (4H: the animal farm's pen and its animals are made by farmPen below; the animals walk about in syncBuildings) */
     if (b.kind === 'woodhut' && (b.lvl || 1) >= 3) {   // the hitching area: a wagon and its horse
       // (4D) a four-wheeled wagon loaded with logs, its shafts, and a brown work horse in harness, standing ready
       const W = new T.Group(); W.position.set(-24, 0, 24); W.scale.setScalar(0.62); inner.add(W); const wa = o => { W.add(o); return o; };
@@ -1208,6 +1232,102 @@ const R3D = (() => {
     inner.traverse(o => { if (o.isMesh && o.material && !info.mats.includes(o.material) && o.material.emissive) info.mats.push(o.material); });
     scene.add(g);
     return info;
+  }
+  // ---------- Phase 4H: the Field's crops and the Farm's animals ----------
+  function fieldCrops(info, add, hw, hd) {   // a grid of plants; each column shows the crop of the strip it stands in
+    const step = 8.4, cols = Math.floor((hw * 2 - 4) / step), rows = Math.floor((hd * 2 - 4) / step), cells = cols * rows;
+    const F = info.field = { cols, rows, step, x0: -(cols - 1) * step / 2, z0: -(rows - 1) * step / 2, cells, key: '' };
+    const inst = (geo, mat, n) => { const m = new T.InstancedMesh(geo, mat, n); m.castShadow = true; m.count = n; m.frustumCulled = false; const z = new T.Matrix4().makeScale(0, 0, 0); for (let i = 0; i < n; i++) m.setMatrixAt(i, z); add(m); return m; };
+    F.wheat = inst(new T.CylinderGeometry(0.4, 0.8, 15, 4), std('#d8b450', { roughness: 0.8 }), cells * 3);
+    F.stalk = inst(new T.CylinderGeometry(0.6, 1.0, 28, 5), std('#5f8f3a', { roughness: 0.85 }), cells);
+    F.leaf = inst(new T.ConeGeometry(3.6, 14, 4), std('#6fa04a', { roughness: 0.85 }), cells);
+    F.cob = inst(new T.CylinderGeometry(1.2, 1.4, 6, 6), std('#e8c440', { roughness: 0.7 }), cells);
+    F.vine = inst(new T.ConeGeometry(3, 12, 5), std('#4f7f34', { roughness: 0.85 }), cells);
+    F.grape = inst(new T.SphereGeometry(1.8, 6, 5), std('#5e3a78', { roughness: 0.6 }), cells * 3);
+    F.post = inst(new T.CylinderGeometry(0.55, 0.55, 17, 5), woodVM(2, 17), cells);
+  }
+  function syncField(b, md) {
+    const F = md.field, strips = typeof stripsOf === 'function' ? stripsOf(b) : [{ crop: 'wheat', x0: b.x0, x1: b.x1, fallow: false }], cx = (b.x0 + b.x1) / 2;
+    const ripe = b.done === false ? 0 : b.team === 'player' && IND() ? 1 : Math.max(0.15, b.amount / b.max);
+    const key = strips.map(q => `${q.crop}:${Math.round(q.x0)}:${q.fallow ? 1 : 0}`).join('|') + '/' + ripe.toFixed(1); if (key === F.key) return; F.key = key;
+    const R = mulberry32(b.id * 13 + 5), mtx = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), v = new T.Vector3(), sc = new T.Vector3();
+    const put = (m, i, x, y, z, s, tilt = 0.3, sy = s) => { e.set((R() - 0.5) * tilt, R() * 6.28, (R() - 0.5) * tilt); q.setFromEuler(e); mtx.compose(v.set(x, y * sy, z), q, sc.set(s, sy, s)); m.setMatrixAt(i, mtx); };
+    const hide = (m, i) => { mtx.makeScale(0, 0, 0); m.setMatrixAt(i, mtx); };
+    for (let c = 0; c < F.cols; c++) {
+      const x = F.x0 + c * F.step, st = strips.find(o => x + cx >= o.x0 - 0.5 && x + cx < o.x1 + 0.5) || strips[strips.length - 1], g = (st.fallow ? 0.35 : 1) * ripe;
+      for (let r = 0; r < F.rows; r++) {
+        const k = c * F.rows + r, z = F.z0 + r * F.step, jx = (R() - 0.5) * 2.4, jz = (R() - 0.5) * 2.4;
+        for (let j = 0; j < 3; j++) { if (st.crop === 'wheat' && g > 0) put(F.wheat, k * 3 + j, x + jx + (j - 1) * 2.2, 7.5, z + jz + (j % 2 ? 1.6 : -1.2), 1, 0.3, g); else hide(F.wheat, k * 3 + j); }
+        if (st.crop === 'corn' && g > 0) { put(F.stalk, k, x + jx, 14, z + jz, 1, 0.12, g); put(F.leaf, k, x + jx, 12, z + jz, 1, 0.2, g); put(F.cob, k, x + jx + 1.6, 17, z + jz, 1, 0.5, g); }
+        else { hide(F.stalk, k); hide(F.leaf, k); hide(F.cob, k); }
+        if (st.crop === 'grapes' && g > 0) { put(F.vine, k, x + jx, 6, z + jz, 1, 0.2, g); put(F.post, k, x, 8.5, z, 1, 0, Math.max(0.5, g));
+          for (let j = 0; j < 3; j++) put(F.grape, k * 3 + j, x + jx + (j - 1) * 2.1, 11 + (j % 2) * 1.8, z + jz + (j === 1 ? 1.4 : -0.6), 1, 0, g); }
+        else { hide(F.vine, k); hide(F.post, k); for (let j = 0; j < 3; j++) hide(F.grape, k * 3 + j); }
+      }
+    }
+    for (const m of [F.wheat, F.stalk, F.leaf, F.cob, F.vine, F.grape, F.post]) m.instanceMatrix.needsUpdate = true;
+  }
+  function farmPen(b, info, add, hw, hd) {   // a grassy pen with a little barn, a trough, and a pond when ducks are raised
+    const barn = new T.Group(); barn.position.set(-hw + 15, 0, hd - 13); add(barn);
+    barn.add(box(24, 13, 17, woodHM(24, 13), 0, 6.5, 0)); barn.add(box(6, 9, 0.8, std('#3a2414'), 0, 4.5, 8.7));
+    for (const s of [-1, 1]) { const rf = box(26, 1.4, 11.5, thatchM(26, 11), 0, 16.5, s * 4.6); rf.rotation.x = s * 0.62; barn.add(rf); }
+    add(box(13, 3, 4.5, woodHM(13, 3), -hw + 38, 1.6, hd - 7)); add(box(11.5, 0.4, 3.2, std('#6b8fb0', { roughness: 0.2 }), -hw + 38, 3.1, hd - 7));
+    const ducks = (b.raise || []).includes('ducks') || ((b.animals || {}).ducks || 0) > 0;
+    const pond = ducks ? { x: hw - 18, z: hd - 18, r: 12 } : null;
+    if (pond) { const pm = mesh(new T.CircleGeometry(pond.r, 20), std('#4f86ad', { roughness: 0.15, metalness: 0.15 }), pond.x, 0.9, pond.z, false); pm.rotation.x = -Math.PI / 2; add(pm);
+      const rim = mesh(new T.RingGeometry(pond.r, pond.r + 1.6, 20), std('#6a5a3a', { roughness: 1 }), pond.x, 0.85, pond.z, false); rim.rotation.x = -Math.PI / 2; add(rim); }
+    info.pen = { hw: hw - 6, hd: hd - 6, herd: [], pond, barn: { x: -hw + 15, z: hd - 13, r: 16 }, holder: info.inner };
+  }
+  // the animals: small figures with legs that walk about the pen
+  function animalModel(kind) {
+    const g = new T.Group(), legs = [], m = c => std(c, { roughness: 0.95 });
+    const body = (w, h, d, col, y) => { const o = box(w, h, d, m(col), 0, y, 0); g.add(o); return o; };
+    const leg = (x, z, h, col, r = 0.7) => { const p = new T.Group(); p.position.set(x, h, z); const l = cyl(r, r * 0.8, h, m(col), 0, -h / 2, 0, 5); p.add(l); g.add(p); legs.push(p); };
+    let head = null;
+    if (kind === 'cows' || kind === 'oxen') {
+      const col = kind === 'oxen' ? '#7a5232' : '#f0ebe0'; body(7, 6, 13, col, 8);
+      if (kind === 'cows') for (const [x, y, z] of [[3.6, 9, 1], [-3.6, 8, -3], [3.6, 7.5, -4.5]]) g.add(box(0.2, 2.6, 3, m('#2a2420'), x, y, z));
+      head = box(4.4, 4.4, 5, m(col), 0, 10, 8.4); g.add(head); g.add(box(4.6, 1.8, 1.4, m('#e0a898'), 0, 8.6, 10.9));
+      for (const s of [-1, 1]) g.add(box(1, 1, 2.6, m(kind === 'oxen' ? '#e8dcc0' : '#d8d0c0'), s * 2.6, 12.8, 8));
+      for (const [x, z] of [[-2.4, 4.6], [2.4, 4.6], [-2.4, -4.6], [2.4, -4.6]]) leg(x, z, 5.5, col, 0.9);
+    } else if (kind === 'pigs') {
+      body(5.6, 4.6, 9, '#e8a8a8', 5); head = box(4, 3.8, 3, m('#e8a8a8'), 0, 5.8, 5.6); g.add(head); g.add(box(2, 1.6, 1, m('#d08888'), 0, 5.2, 7.4));
+      for (const [x, z] of [[-1.8, 3], [1.8, 3], [-1.8, -3], [1.8, -3]]) leg(x, z, 3, '#d89898', 0.7);
+    } else if (kind === 'sheep') {
+      const wool = sph(4, m('#f2efe6'), 0, 6.4, 0, 9); wool.scale.set(1, 0.85, 1.35); g.add(wool); head = box(2.6, 3, 3, m('#3a342c'), 0, 7.4, 5.6); g.add(head);
+      for (const [x, z] of [[-1.8, 3], [1.8, 3], [-1.8, -3], [1.8, -3]]) leg(x, z, 3.6, '#3a342c', 0.6);
+    } else if (kind === 'turkeys') {
+      const b0 = sph(2.6, m('#5a4030'), 0, 4.6, 0, 8); b0.scale.set(1, 1, 1.25); g.add(b0); const fan = mesh(new T.CircleGeometry(4, 10, 0, Math.PI), std('#6a4a30', { side: T.DoubleSide, roughness: 0.9 }), 0, 6, -2.8); fan.rotation.x = -0.3; g.add(fan);
+      head = sph(1, m('#c84a3a'), 0, 7.4, 2.6, 6); g.add(head); for (const x of [-0.8, 0.8]) leg(x, 0, 2.4, '#c8a070', 0.3);
+    } else {   // chickens and ducks
+      const duck = kind === 'ducks', col = duck ? '#f4f1ea' : '#f2ece0', b0 = sph(1.8, m(duck ? '#e8e0cc' : col), 0, 3, 0, 8); b0.scale.set(1, 0.9, 1.35); g.add(b0);
+      head = sph(1.1, m(duck ? '#2f6a3a' : col), 0, 4.8, 1.8, 6); g.add(head);
+      g.add(box(duck ? 1.4 : 0.6, 0.5, 1.2, m(duck ? '#e8a030' : '#e8b030'), 0, 4.6, 3)); if (!duck) g.add(box(0.4, 1, 1, m('#d83a2a'), 0, 6, 1.8));
+      for (const x of [-0.6, 0.6]) leg(x, 0, 1.6, duck ? '#e8a030' : '#e0b040', 0.25);
+    }
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+    return { g, legs, head };
+  }
+  const HERD_SHOW = { chickens: 6, ducks: 6, turkeys: 3, pigs: 4, sheep: 4, cows: 4, oxen: 2 }, HERD_PACE = { chickens: 6, ducks: 4.5, turkeys: 5, pigs: 5, sheep: 4, cows: 3.4, oxen: 3 };
+  function syncHerd(b, md, dt) {
+    const P = md.pen, A = b.animals || {}, want = {};
+    for (const k in HERD_SHOW) want[k] = Math.min(HERD_SHOW[k], Math.max(0, Math.floor(A[k] || 0)));
+    const pick = (a) => { const pond = a.kind === 'ducks' && P.pond && Math.random() < 0.6; if (pond) { const t = Math.random() * 6.28, r = Math.random() * P.pond.r * 0.8; return [P.pond.x + Math.cos(t) * r, P.pond.z + Math.sin(t) * r]; }
+      for (let i = 0; i < 8; i++) { const x = (Math.random() * 2 - 1) * P.hw, z = (Math.random() * 2 - 1) * P.hd; if (Math.hypot(x - P.barn.x, z - P.barn.z) > P.barn.r && !(x < -P.hw + 12 && z < -P.hd + 12) && !(x > P.hw - 12 && z < -P.hd + 12)) return [x, z]; } return [0, 0]; };
+    for (const k in want) {   // as many of each kind as the farm has (a few of each shown)
+      const have = P.herd.filter(a => a.kind === k);
+      for (let i = have.length; i < want[k]; i++) { const a = Object.assign(animalModel(k), { kind: k, wait: Math.random() * 3, phase: Math.random() * 6 }); [a.x, a.z] = pick(a); [a.tx, a.tz] = pick(a); a.g.position.set(a.x, 0.6, a.z); P.holder.add(a.g); P.herd.push(a); }
+      for (let i = want[k]; i < have.length; i++) { P.holder.remove(have[i].g); P.herd.splice(P.herd.indexOf(have[i]), 1); }
+    }
+    for (const a of P.herd) {   // wander: walk to a spot, stand a while (pecking, grazing), then another
+      if (a.wait > 0) { a.wait -= dt; for (const l of a.legs) l.rotation.x *= 0.8; if (a.head) a.head.position.y += (Math.sin(time * 6 + a.phase) * 0.02); continue; }
+      const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz), sp = HERD_PACE[a.kind] * dt;
+      if (d < 0.6) { a.wait = 1 + Math.random() * 4; [a.tx, a.tz] = pick(a); continue; }
+      a.x += dx / d * Math.min(sp, d); a.z += dz / d * Math.min(sp, d); a.phase += dt * 10;
+      a.g.position.set(a.x, 0.6 + (a.kind === 'chickens' ? Math.abs(Math.sin(a.phase)) * 0.5 : 0), a.z);
+      a.g.rotation.y = angLerp(a.g.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8));
+      a.legs.forEach((l, i) => { l.rotation.x = Math.sin(a.phase + (i % 2 ? Math.PI : 0)) * 0.6; });
+    }
   }
   function rubble(b) {
     const g = new T.Group(), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2; g.position.set(cx, heightAt(cx, cz), cz);
@@ -2188,12 +2308,14 @@ const R3D = (() => {
         if (b.tx !== undefined) a.root.rotation.y = angLerp(a.root.rotation.y, Math.atan2(b.tx - b.x, b.ty - (b.y0 + b.y1) / 2), Math.min(1, dt * 6));
         a.root.visible = b.done !== false;
       }
+      if (md.field) syncField(b, md);   // (4H: the Field's strips of crops)
+      if (md.pen) syncHerd(b, md, dt);   // (4H: the Farm's animals walk about)
       if (md.wheat) {
-        const n = Math.round((b.done ? b.amount / b.max : 0) * md.wheatN);
+        const n = Math.round((b.done ? b.amount / b.max : 0) * md.wheatN), cols = md.wheatCols || 7, x0 = -(cols - 1) * 8.3 / 2;
         if (n !== md.shownWheat) {
           md.shownWheat = n; const R = mulberry32(b.id); let k = 0;
-          for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) for (let j = 0; j < 3; j++, k++) {
-            const x = -25 + c * 8.3 + (R() - 0.5) * 3, z = -25 + r * 8.3 + (R() - 0.5) * 3, show = k < n;
+          for (let r = 0; r < cols; r++) for (let c = 0; c < cols; c++) for (let j = 0; j < 3; j++, k++) {
+            const x = x0 + c * 8.3 + (R() - 0.5) * 3, z = x0 + r * 8.3 + (R() - 0.5) * 3, show = k < n;
             const mtx = new T.Matrix4().compose(new T.Vector3(x, 5.5, z), new T.Quaternion().setFromEuler(new T.Euler((R() - 0.5) * 0.3, 0, (R() - 0.5) * 0.3)), new T.Vector3(show ? 1 : 0, show ? 1 : 0, show ? 1 : 0));
             md.wheat.setMatrixAt(k, mtx);
           }

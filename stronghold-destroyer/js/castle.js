@@ -4,7 +4,7 @@
 
 // ---------- castle building ----------
 const BUILD = {
-  farm:   { name: 'Farm',  w: 2, h: 2, wood: 60,  time: 10, hp: 200, topH: 12 },
+  farm:   { name: 'Farm',  w: 4, h: 4, wood: 60,  time: 10, hp: 300, topH: 12 },   // (4H: bigger, for five people and their animals)
   house:  { name: 'House', w: 2, h: 2, wood: 50,  time: 12, hp: 400, topH: 80 },
   wall:   { name: 'Wall',  w: 1, h: 1, wood: 8,   time: 3,  hp: 300, topH: 40 },
   gate:   { name: 'Gate',  w: 1, h: 1, wood: 15,  time: 5,  hp: 400, topH: 44 },
@@ -23,7 +23,7 @@ const BUILD = {
   granary: { name: 'Granary', w: 2, h: 2, wood: 40, time: 10, hp: 350, topH: 72 },
   hopfarm: { name: 'Hop Farm', w: 2, h: 2, wood: 40, time: 10, hp: 200, topH: 30 },
   brewery: { name: 'Brewery', w: 2, h: 2, wood: 50, time: 12, hp: 350, topH: 66 },
-  wheatfarm: { name: 'Wheat Field', w: 2, h: 2, wood: 40, time: 10, hp: 200, topH: 14 },
+  wheatfarm: { name: 'Field', w: 4, h: 4, wood: 40, time: 10, hp: 300, topH: 14 },   // (4H: the Field grows wheat, corn and grapes; room for ten)
   mill: { name: 'Mill', w: 2, h: 2, wood: 60, time: 14, hp: 350, topH: 110 },
   bakery: { name: 'Bakery', w: 2, h: 2, wood: 50, time: 12, hp: 350, topH: 64 },
   chapel: { name: 'House of Prayer', w: 2, h: 2, wood: 80, gold: 40, time: 18, hp: 600, topH: 104 },
@@ -506,19 +506,33 @@ function drawWorkshop(g, b, P) {
   flashOver(g, b.flash > 0 ? b.flash * 0.5 : 0, cx - 32, gy - 58, 70, 58);
 }
 function drawFarm(g, b, P) {
-  const M = mats(), x0 = b.x0 + 2, y0 = b.y0 + 2, w = b.x1 - b.x0 - 4, h = b.y1 - b.y0 - 4;
-  g.fillStyle = M.soil; g.fillRect(x0, y0, w, h);
+  const M = mats(), x0 = b.x0 + 2, y0 = b.y0 + 2, w = b.x1 - b.x0 - 4, h = b.y1 - b.y0 - 4, st = typeof farmStyle === 'function' ? farmStyle(b) : '';
+  g.fillStyle = st === 'farm' ? '#6f8a3a' : M.soil; g.fillRect(x0, y0, w, h);
   const sg = g.createLinearGradient(x0, y0, x0 + w, y0 + h); sg.addColorStop(0, 'rgba(255,230,180,0.12)'); sg.addColorStop(1, 'rgba(0,0,0,0.18)'); g.fillStyle = sg; g.fillRect(x0, y0, w, h);
-  const grown = b.done ? b.amount / b.max : 0, n = Math.round(grown * 7);
-  for (let row = 0; row < 7; row++) for (let k = 0; k < 7; k++) {
-    if (k >= n + (row % 2)) continue;
-    const sx = x0 + 5 + k * 8.5, sy = y0 + 8 + row * 8;
-    g.strokeStyle = P('#9a8a3a'); g.lineWidth = 1; g.beginPath(); g.moveTo(sx, sy); g.quadraticCurveTo(sx - 0.5, sy - 3, sx - 1, sy - 6.5); g.moveTo(sx + 2, sy); g.quadraticCurveTo(sx + 2.4, sy - 3, sx + 3, sy - 5.5); g.moveTo(sx + 1, sy); g.lineTo(sx + 1, sy - 7); g.stroke();
-    for (const [hx, hy] of [[sx - 1, sy - 7.5], [sx + 3, sy - 6.5], [sx + 1, sy - 8.5]]) {
-      g.fillStyle = P('#8a6a24'); g.beginPath(); g.ellipse(hx + 0.3, hy + 0.3, 1.1, 2.1, 0.2, 0, Math.PI * 2); g.fill();
-      g.fillStyle = P('#e2c25a'); g.beginPath(); g.ellipse(hx, hy, 0.9, 1.9, 0.2, 0, Math.PI * 2); g.fill();
+  if (st === 'farm') {   // (4H) the pen: a little barn, and the animals the farm raises walking about
+    g.fillStyle = '#7a4a2a'; g.fillRect(x0 + 4, y0 + h - 22, 24, 18); g.fillStyle = '#c9a24a'; g.fillRect(x0 + 2, y0 + h - 26, 28, 5);
+    const COL = { chickens: '#f2ece0', ducks: '#e8e0cc', turkeys: '#5a4030', pigs: '#e8a8a8', sheep: '#f6f3ea', cows: '#f0ebe0', oxen: '#7a5232' }, SZ = { chickens: 2, ducks: 2, turkeys: 2.6, pigs: 3.4, sheep: 3.4, cows: 4.6, oxen: 4.6 };
+    let i = 0; for (const k in COL) for (let n = 0; n < Math.min(k === 'chickens' || k === 'ducks' ? 6 : 3, (b.animals || {})[k] || 0); n++, i++) {
+      const R = mulberry32(b.id * 31 + i), t = time * (0.05 + R() * 0.05) + R() * 6.28, ax = x0 + 10 + (0.5 + 0.45 * Math.sin(t)) * (w - 20), ay = y0 + 10 + (0.5 + 0.42 * Math.cos(t * 1.3 + R())) * (h - 34);
+      g.fillStyle = COL[k]; g.beginPath(); g.ellipse(ax, ay, SZ[k] * 1.3, SZ[k], 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 0.6; g.stroke();
+      if (k === 'cows') { g.fillStyle = '#2a2420'; g.fillRect(ax - 1, ay - 1.5, 2, 2); }
+    }
+  } else {
+    const strips = st === 'field' ? stripsOf(b) : [{ crop: 'wheat', x0: b.x0, x1: b.x1, fallow: false }], grown = !b.done ? 0 : st === 'field' ? 1 : b.amount / b.max, cols = Math.floor((w - 6) / 8.5), rows = Math.floor((h - 8) / 8), n = Math.round(grown * cols);
+    for (let row = 0; row < rows; row++) for (let k = 0; k < cols; k++) {
+      if (st !== 'field' && k >= n + (row % 2)) continue;
+      const sx = x0 + 5 + k * 8.5, sy = y0 + 8 + row * 8, sp = strips.find(q => sx >= q.x0 - 1 && sx < q.x1 + 1) || strips[strips.length - 1], tall = sp.fallow ? 0.4 : 1;
+      if (sp.crop === 'corn') { g.strokeStyle = P('#5f8f3a'); g.lineWidth = 1.4; g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx, sy - 9 * tall); g.stroke(); if (!sp.fallow) { g.fillStyle = P('#e8c440'); g.fillRect(sx + 0.6, sy - 7, 1.8, 3); } continue; }
+      if (sp.crop === 'grapes') { g.fillStyle = P('#4f7f34'); g.beginPath(); g.arc(sx, sy - 3 * tall, 2.4 * tall, 0, Math.PI * 2); g.fill(); if (!sp.fallow) { g.fillStyle = P('#5e3a78'); for (const [hx, hy] of [[-1, -1], [1.2, -0.4], [0, 1]]) { g.beginPath(); g.arc(sx + hx, sy - 2 + hy, 1, 0, Math.PI * 2); g.fill(); } } continue; }
+      g.strokeStyle = P('#9a8a3a'); g.lineWidth = 1; g.beginPath(); g.moveTo(sx, sy); g.quadraticCurveTo(sx - 0.5, sy - 3 * tall, sx - 1, sy - 6.5 * tall); g.moveTo(sx + 2, sy); g.quadraticCurveTo(sx + 2.4, sy - 3 * tall, sx + 3, sy - 5.5 * tall); g.moveTo(sx + 1, sy); g.lineTo(sx + 1, sy - 7 * tall); g.stroke();
+      if (!sp.fallow) for (const [hx, hy] of [[sx - 1, sy - 7.5], [sx + 3, sy - 6.5], [sx + 1, sy - 8.5]]) {
+        g.fillStyle = P('#8a6a24'); g.beginPath(); g.ellipse(hx + 0.3, hy + 0.3, 1.1, 2.1, 0.2, 0, Math.PI * 2); g.fill();
+        g.fillStyle = P('#e2c25a'); g.beginPath(); g.ellipse(hx, hy, 0.9, 1.9, 0.2, 0, Math.PI * 2); g.fill();
+      }
     }
   }
+  if (b.well) { const wx = b.x1 - 14, wy = b.y0 + 14; g.fillStyle = '#8a8478'; g.beginPath(); g.arc(wx, wy, 6, 0, Math.PI * 2); g.fill(); g.fillStyle = '#2a4a66'; g.beginPath(); g.arc(wx, wy, 4, 0, Math.PI * 2); g.fill(); }
+  if (b.lookout) { const lx = b.x0 + 14, ly = b.y0 + 14; g.strokeStyle = '#6b4a28'; g.lineWidth = 2; g.beginPath(); g.moveTo(lx - 6, ly + 6); g.lineTo(lx - 4, ly - 34); g.moveTo(lx + 6, ly + 6); g.lineTo(lx + 4, ly - 34); g.stroke(); g.fillStyle = '#c9a24a'; g.fillRect(lx - 9, ly - 42, 18, 8); }
   // split-rail fence
   const posts = [[x0, y0], [x0 + w, y0], [x0, y0 + h], [x0 + w, y0 + h], [x0 + w / 2, y0], [x0 + w / 2, y0 + h]];
   g.strokeStyle = '#6b4a28'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x0, y0 - 4); g.lineTo(x0 + w, y0 - 4); g.moveTo(x0, y0 + h - 4); g.lineTo(x0 + w, y0 + h - 4); g.stroke();

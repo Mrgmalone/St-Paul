@@ -11,7 +11,7 @@ const unlocked = (kind, isUnit, stage = stageN) => LEGACY || !FACKEY || stageOfI
 const stageName = n => STAGES[n - 1] ? STAGES[n - 1].name : '';
 
 // ---------- what a side has, measured against the next stage ----------
-const NEED_LABEL = { house: 'Houses', woodhut: "Woodcutter's huts", farmAny: 'Farms or wheat fields', quarry: 'Quarries', tavern: 'Taverns', smithy: 'Blacksmiths', market: 'Markets',
+const NEED_LABEL = { house: 'Houses', woodhut: "Woodcutter's huts", farmAny: 'Farms or fields', quarry: 'Quarries', tavern: 'Taverns', smithy: 'Blacksmiths', market: 'Markets',
   mill: 'Mills', bakery: 'Bakeries', stower: 'Stone towers', school: 'School' };
 function countBuilt(kind, team, owner) {
   const ok = b => !b.dead && b.done !== false && b.team === team && (owner === undefined || b.owner === owner);

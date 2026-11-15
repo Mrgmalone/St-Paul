@@ -404,7 +404,8 @@ function civBrain(u, dt) {
   }
   if (u.order !== 'gather') { if (u.order === 'idle') u.moving = false; return; }
   const task = u.task;
-  if (u.sub !== 'toKeep' && u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
+  const load = (u.job && task && task.node === u.job && typeof farmLoad === 'function' && farmLoad(u, u.job)) || CIV.carry;   /* (4H: the slow grapes go in small baskets) */
+  if (u.sub !== 'toKeep' && u.carry >= load) { u.sub = 'toKeep'; u.path = []; }
   if (u.sub === 'toNode' || u.sub === 'work') {
     if (!nodeOk(task.node, task.type) && !(task.type === 'food' && task.node && u.sub === 'work')) {
       const n = u.job && isField(u.job.kind) && !u.job.dead ? u.job : nearestNode(task.type, u.job ? u.job.x : u.x, u.job ? u.job.y : u.y, u.job ? (u.job.kind === 'woodhut' ? yardReach() : 460) : 500, u.bad);
@@ -412,6 +413,15 @@ function civBrain(u, dt) {
       else if (n !== task.node) { task.node = n; u.sub = 'toNode'; u.path = []; }
     }
   }
+  // (4H: on the new fields and farms each worker has his own place to work: in his crop's strip, or among the animals)
+  const spot = u.job && task.node === u.job && typeof farmSpot === 'function' ? farmSpot(u, task.node) : null;
+  if (spot && u.sub === 'toNode') {
+    const d = Math.hypot(spot.x - u.x, spot.y - u.y);
+    if (d <= 5 || stalled(u) && d <= 26) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
+    if (!u.path.length || u.repath <= 0) { u.path = findPath(u.x, u.y, spot.x, spot.y); u.repath = 3; }
+    followPath(u, dt); return;
+  }
+  if (spot && u.sub === 'work' && Math.hypot(spot.x - u.x, spot.y - u.y) > 24) { u.sub = 'toNode'; u.path = []; return; }   /* his place moved (the crops changed) */
   if (u.sub === 'toNode') {
     const c = nodeCenter(task.node), d = Math.hypot(c.x - u.x, c.y - u.y), reach = nodeReach(task.node);
     if (d <= reach || stalled(u) && d <= reach + 22) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
@@ -432,19 +442,20 @@ function civBrain(u, dt) {
     }
     if (u.attackAnim === 0) { u.attackAnim = 0.001; if (task.type === 'wood') AudioSys.play('chop', u.x, u.y); else if (task.type === 'stone') AudioSys.play('stoneHit', u.x, u.y); }
     u.workT += dt;
-    const rate = 1 / fatWork(u) * (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' || task.type === 'grapes' || task.type === 'apples' ? 1.1 : 0.8) / (CIV.gather * workMul());
+    if (spot && !farmHasAnimals(task.node)) { u.waitMsgT = (u.waitMsgT || 0) - dt; if (u.waitMsgT <= 0) { floatText(task.node.x, task.node.y - 50, 'The farm has no animals to tend: tick some in its box', '#ffb38a'); u.waitMsgT = 12; } return; }
+    const rate = (spot && farmRate(u, task.node)) || 1 / fatWork(u) * (task.type === 'stone' ? 0.9 : task.type === 'wood' ? 0.55 : task.type === 'hops' || task.type === 'wheat' || task.type === 'grapes' || task.type === 'apples' ? 1.1 : 0.8) / (CIV.gather * workMul());   /* (4H: each crop its own pace; happy people faster) */
     if (u.workT >= rate) {
-      u.workT -= rate; task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = task.node.kind === 'bush' ? 'berries' : 'crops';
+      u.workT -= rate; if (!spot) task.node.amount -= 1; u.carry++; u.carryType = task.type; if (task.type === 'food') u.carryKind = (spot && farmFoodKind(u, task.node)) || (task.node.kind === 'bush' ? 'berries' : 'crops');
       if (task.type === 'wood' && task.node.amount <= 0) fellTree(task.node);
       if (task.type === 'stone' && task.node.amount <= 0) breakRock(task.node);
       if (task.type === 'stone' && Math.random() < 0.5) spawn('chip', task.node.x + RR(-6, 6), task.node.y - 12, task.node.y);
-      if (u.carry >= CIV.carry) { u.sub = 'toKeep'; u.path = []; }
+      if (u.carry >= load) { u.sub = 'toKeep'; u.path = []; }
     }
   } else if (u.sub === 'toKeep') {
     const drop = nearestDrop(u, u.carryType || task.type);
     if (!drop) { u.order = 'idle'; u.task = null; return; }
     if (edgeDist(u, drop) <= 10 || stalled(u) && edgeDist(u, drop) <= 30) {
-      if (u.carry > 0) { if (u.job) u.job.produced = (u.job.produced || 0) + u.carry; if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
+      if (u.carry > 0) { if (u.job) u.job.produced = (u.job.produced || 0) + u.carry; if (typeof noteMade === 'function') noteMade(u, u.carry); if (u.carryType === 'food') addFood(u.carryKind || 'crops', u.carry); else res[u.carryType] += u.carry; floatText(u.x, u.y - 50, `+${u.carry} ${u.carryType}`, u.carryType === 'food' ? '#ffb38a' : '#e0c088'); }
       u.carry = 0; u.sub = 'toNode'; u.path = []; u.bad.clear();
       return;
     }
