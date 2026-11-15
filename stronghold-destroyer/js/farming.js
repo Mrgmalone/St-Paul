@@ -49,7 +49,8 @@ function stripsOf(b) {
 // where a worker stands to work: in his crop's strip (a field) or among the animals (a farm), each in his own place
 function farmSpot(u, b) {
   const st = farmStyle(b); if (!st || u.job !== b) return null;
-  const mates = units.filter(o => !o.dead && o.type === 'civ' && o.job === b && (st === 'farm' || o.crop === u.crop)).sort((p, q) => p.id - q.id);
+  if (b._crewT !== time) { b._crewT = time; b._crew = workersOf(b).sort((p, q) => p.id - q.id); }   /* (worked out once a moment, not for every worker) */
+  const mates = st === 'farm' ? b._crew : b._crew.filter(o => o.crop === u.crop);
   const i = Math.max(0, mates.indexOf(u)), n = Math.max(1, mates.length), y0 = b.y0 + 12, y1 = b.y1 - 12;
   let x0 = b.x0 + 12, x1 = b.x1 - 12;
   if (st === 'field') { const s = stripsOf(b).find(q => q.crop === u.crop); if (s) { x0 = s.x0 + 4; x1 = s.x1 - 4; } }

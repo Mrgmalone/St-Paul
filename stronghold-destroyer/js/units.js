@@ -353,6 +353,20 @@ function gearOf(u) {
 }
 const nodeCenter = n => isField(n.kind) ? { x: (n.x0 + n.x1) / 2, y: (n.y0 + n.y1) / 2 } : n.kind === 'tree' ? { x: n.c * TILE + 16, y: n.r * TILE + 16 } : n.kind === 'rock' ? { x: Math.floor(n.x / TILE) * TILE + 16, y: Math.floor((n.y - 6) / TILE) * TILE + 16 } : { x: n.x, y: n.y };
 const nodeReach = n => isField(n.kind) ? 30 : n.kind === 'tree' ? 33 : n.kind === 'rock' ? 30 : 24;
+// (4H) the places round a bush, tree or rock where people stand to work, spaced so they never stand on each other: the
+// free one nearest the way he comes (a place someone else has taken, or that is blocked, is passed over)
+function workSlot(u, node, c, reach) {
+  if (isField(node.kind)) return null;
+  const r = reach - (node.kind === 'bush' ? 4 : 7), n = Math.max(4, Math.floor(Math.PI * 2 * r / (u.radius * 2 + 1))), from = Math.atan2(u.y - c.y, u.x - c.x);   /* places a person's width apart */
+  const mates = units.filter(o => o !== u && !o.dead && o.task && o.order === 'gather' && (o.task.node === node || Math.hypot(o.x - c.x, o.y - c.y) < reach + 40));   /* (and those at work at a bush beside it) */
+  let best = null, bd = 1e9;
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r;
+    if (circleBlocked(x, y, 6) || mates.some(o => { const os = o.slot && o.slot.node === node ? o.slot : o; return Math.hypot(os.x - x, os.y - y) < u.radius * 1.6; })) continue;
+    let da = Math.abs(a - from); if (da > Math.PI) da = 2 * Math.PI - da; if (da < bd) { bd = da; best = { x, y }; }
+  }
+  if (best) best.node = node; u.slot = best; return best;
+}
 const nodeOk = (n, type) => n && !n.gone && n.done !== false && (type === 'wood' || type === 'stone' ? n.amount > 0 : n.amount >= 1);
 function nearestNode(type, x, y, maxD, bad) {
   const list = type === 'stone' ? rocks.filter(r => !r.iron && !r.gone && nearStone(r)) : (type === 'grapes' || type === 'apples') ? farms.filter(f => FIELD_TYPE[f.kind] === type && f.team === 'player') : type === 'wood' ? trees : type === 'hops' ? farms.filter(f => f.kind === 'hopfarm' && f.team === 'player') : type === 'wheat' ? farms.filter(f => f.kind === 'wheatfarm' && f.team === 'player') : bushes.concat(farms.filter(f => f.kind === 'farm' && f.team === 'player'));   // your own fields, never a rival's
@@ -424,10 +438,11 @@ function civBrain(u, dt) {
   if (spot && u.sub === 'work' && Math.hypot(spot.x - u.x, spot.y - u.y) > 24) { u.sub = 'toNode'; u.path = []; return; }   /* his place moved (the crops changed) */
   if (u.sub === 'toNode') {
     const c = nodeCenter(task.node), d = Math.hypot(c.x - u.x, c.y - u.y), reach = nodeReach(task.node);
-    if (d <= reach || stalled(u) && d <= reach + 22) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
+    const sl = u.slot && u.slot.node === task.node ? u.slot : null, ds = sl ? Math.hypot(sl.x - u.x, sl.y - u.y) : 0;   /* (4H) with a place of his own, he walks right to it */
+    if (sl ? ds <= 4 || stalled(u) && ds <= 18 || stalled(u) && d <= reach && ds <= 26 : d <= reach || stalled(u) && d <= reach + 22) { u.sub = 'work'; u.path = []; u.moving = false; u.workT = 0; return; }
     if (!u.path.length || u.repath <= 0) {
-      const a = Math.atan2(u.y - c.y, u.x - c.x), r = reach - 7;
-      u.path = findPath(u.x, u.y, c.x + Math.cos(a) * r, c.y + Math.sin(a) * r); u.repath = 3;
+      const ws = workSlot(u, task.node, c, reach), a = Math.atan2(u.y - c.y, u.x - c.x), r = reach - 7;   /* (4H: each his own place round the bush or tree: no shoving while they work) */
+      u.path = ws ? findPath(u.x, u.y, ws.x, ws.y) : findPath(u.x, u.y, c.x + Math.cos(a) * r, c.y + Math.sin(a) * r); u.repath = 3;
       const end = u.path.length ? u.path[u.path.length - 1] : u;
       if (Math.hypot(end.x - c.x, end.y - c.y) > reach + 2) { u.bad.add(task.node); task.node.unreachT = time + 90; task.node = null; u.path = []; return; } /* cannot reach it: nobody tries it for a while */
     }
@@ -697,22 +712,39 @@ function separate() {   // people standing on each other step apart; only neighb
     const aFixed = a.team !== 'player' && a.order === 'idle' && b.team !== a.team, bFixed = b.team !== 'player' && b.order === 'idle' && a.team !== b.team;   // guards hold their ground against foes, but make way for their own
     if (aFixed && bFixed) continue;
     // someone standing still holds their ground; the one walking gives way and steps around (no drifting crowds)
-    const aStill = !a.moving && (a.order === 'idle' || a.order === 'hold'), bStill = !b.moving && (b.order === 'idle' || b.order === 'hold');
+    const aStill = !a.moving && (a.order === 'idle' || a.order === 'hold' || a.sub === 'work'), bStill = !b.moving && (b.order === 'idle' || b.order === 'hold' || b.sub === 'work');   /* (4H: at work counts as standing) */
     // a guard standing at its post gives way only a little (3%), so passers-by do not slowly shove it away from the door
-    const wa = aFixed ? 0 : bFixed ? 1 : aStill && !bStill ? (a.guardOf ? 0.03 : 0.12) : bStill && !aStill ? (b.guardOf ? 0.97 : 0.88) : 0.5, wb = 1 - wa;
-    moveBy(a, -nx * push * wa, -ny * push * wa);
-    moveBy(b, nx * push * wb, ny * push * wb);
-    // someone walking into a person who stands still steps around them, instead of being pushed straight back forever
-    slideAround(a, -nx, -ny, push, true); slideAround(b, nx, ny, push, true);
+    // (4H) someone standing at his work does not budge at all, and anyone else standing hardly: the walker goes round them
+    const wa = aFixed ? 0 : bFixed ? 1 : aStill && !bStill ? (a.guardOf || a.sub === 'work' ? 0 : 0.05) : bStill && !aStill ? (b.guardOf || b.sub === 'work' ? 1 : 0.95) : 0.5, wb = 1 - wa;
+    // (4H, Gerald: "no glitching... they should just go around that person") a walker is only ever nudged aside, never
+    // back against the way he goes, and no one is shoved far in one moment: crowds part smoothly instead of shaking
+    const both = a.sub === 'work' && b.sub === 'work' && !a.moving && !b.moving;   /* two at work side by side: their places are spaced already */
+    if (both && d > min * 0.7) continue;   /* (a slight overlap of two standing at work is left alone: no endless shoving) */
+    nudge(a, -nx * push * wa, -ny * push * wa, both); nudge(b, nx * push * wb, ny * push * wb, both);
+    // someone walking into a person in his way steps around them (on one side, kept until he is past)
+    slideAround(a, -nx, -ny, push, b); slideAround(b, nx, ny, push, a);
     }
   }
 }
+const goingDir = u => { if (!u.moving || !u.path || !u.path.length) return null; const wp = u.path[0], gx = wp.x - u.x, gy = wp.y - u.y, gl = Math.hypot(gx, gy); return gl < 0.5 ? null : { x: gx / gl, y: gy / gl, l: gl }; };
+function nudge(u, px, py, atWork) {
+  const g = goingDir(u);
+  if (g) { const back = px * g.x + py * g.y; if (back < 0) { px -= back * g.x; py -= back * g.y; } }   // never pushed back against his way
+  const m = Math.hypot(px, py), cap = atWork ? 0.35 : g ? 1.1 : 2.4;   // a little at a time
+  if (m > cap) { px *= cap / m; py *= cap / m; }
+  moveBy(u, px, py);
+}
 function slideAround(u, nx, ny, push, other) {
   if (!other || !u.moving || !u.path || !u.path.length || isMachine(u)) return;
-  const wp = u.path[0], gx = wp.x - u.x, gy = wp.y - u.y, gl = Math.hypot(gx, gy); if (gl < 1) return;
-  if ((gx * -nx + gy * -ny) / gl < 0.3) return;   // only when the other one is in the way ahead
-  let tx = -ny, ty = nx; const side = tx * gx + ty * gy;
-  if (Math.abs(side) < gl * 0.05 ? u.id % 2 : side < 0) { tx = -tx; ty = -ty; }
-  const k = Math.min(1.6, push * 0.9 + 0.4); moveBy(u, tx * k, ty * k);
+  const g = goingDir(u); if (!g) return;
+  if (g.x * -nx + g.y * -ny < 0.3) return;   // only when the other one is in the way ahead
+  const og = other.kind === 'unit' ? goingDir(other) : null;
+  if (og && og.x * g.x + og.y * g.y > 0.5) return;   // walking the same way together: follow, no stepping about
+  // (4H) choose a side once for each one in the way, and keep it until past him: no zigzag
+  // (and keep that side a moment whoever comes next; two meeting head-on both keep to their right, like traffic)
+  let sd = u.slideSide && time - u.slideSide.t < 1.2 ? u.slideSide.s : 0;
+  if (!sd) { const side = -g.y * -nx + g.x * -ny; sd = og && og.x * g.x + og.y * g.y < -0.5 ? 1 : Math.abs(side) < 0.05 ? (u.id % 2 ? 1 : -1) : side < 0 ? 1 : -1; }
+  u.slideSide = { who: other.id, s: sd, t: time };
+  const k = Math.min(1.2, push * 0.6 + 0.3); moveBy(u, -g.y * sd * k, g.x * sd * k);
 }
 

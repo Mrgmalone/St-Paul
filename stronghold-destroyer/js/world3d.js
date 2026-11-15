@@ -2234,6 +2234,7 @@ const R3D = (() => {
       // face the way they move, or their target when fighting
       let want = null;
       if (u.target && alive(u.target) && (u.attackAnim > 0 || u.order === 'attack') && !u.moving) want = Math.atan2(u.target.x - u.x, u.target.y - u.y);
+      else if (u.moving && u.path && u.path.length && Math.hypot(u.path[0].x - u.x, u.path[0].y - u.y) > 2) want = Math.atan2(u.path[0].x - u.x, u.path[0].y - u.y);   /* (4H) the way he is going, not the way a passer-by nudged him: no twitching */
       else if (u.moving && md.px !== undefined) { const dx = u.x - md.px, dz = u.y - md.pz; if (dx * dx + dz * dz > 0.01) want = Math.atan2(dx, dz); }
       else if (u.type === 'civ' && u.sub === 'work' && u.task && u.task.node) { const c = nodeCenter(u.task.node); want = Math.atan2(c.x - u.x, c.y - u.y); }
       if (want === null && u.pose && u.restFace !== null && u.restFace !== undefined) want = u.restFace;
