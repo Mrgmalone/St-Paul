@@ -1166,7 +1166,7 @@ const R3D = (() => {
       vines.castShadow = true; info.wheat = vines; info.wheatN = n; add(vines);
     } else if (b.kind === 'farm' || b.kind === 'wheatfarm') {
       // (4H: fields and farms are three squares now; the Field grows strips of wheat, corn and grapes, the Farm is a pen of animals)
-      const W = b.x1 - b.x0, D = b.y1 - b.y0, hw = W / 2 - 2, hd = D / 2 - 2, pen = b.kind === 'farm' && b.team === 'player' && IND();
+      const W = b.x1 - b.x0, D = b.y1 - b.y0, hw = W / 2 - 2, hd = D / 2 - 2, pen = b.kind === 'farm' && (b.team === 'player' && IND() || b.id === -1);   /* (and the farm's picture) */
       const soil = mesh(new T.PlaneGeometry(W - 4, D - 4), pen ? std('#6f8a3a', { roughness: 1 }) : texMat('soil', 2 * W / 64, 4 * D / 64), 0, 0.6, 0, false); soil.rotation.x = -Math.PI / 2; add(soil);
       if (pen) farmPen(b, info, add, hw, hd);
       else if (b.kind === 'wheatfarm') fieldCrops(info, add, hw, hd);
@@ -2568,7 +2568,11 @@ const R3D = (() => {
     }
     const [kind, name] = key.split(':'); let obj = null;
     try {
-      if (kind === 'b') { const b = makeBuildingObj(name, 200, 200); b.done = true; b.progress = 1; b.hp = b.maxHp; b.id = -1; if (isField(name)) b.amount = b.max; const md = buildingModel(b); scene.remove(md.g); obj = md.g; }
+      if (kind === 'b') { const b = makeBuildingObj(name, 200, 200); b.done = true; b.progress = 1; b.hp = b.maxHp; b.id = -1; if (isField(name)) b.amount = b.max;
+        /* (4H) the field's picture shows its three crops, the farm's its pen and animals */
+        if (name === 'wheatfarm') b.plan = { wheat: 4, corn: 3, grapes: 3 };
+        if (name === 'farm') { b.raise = ['chickens', 'cows', 'pigs', 'ducks']; b.animals = { cows: 2, pigs: 2, chickens: 4, ducks: 3 }; }
+        const md = buildingModel(b); if (md.field) syncField(b, md); if (md.pen) syncHerd(b, md, 0); scene.remove(md.g); obj = md.g; }
       else if (kind === 'u') { const u = { kind: 'unit', type: name.split('.')[0], kit: name.split('.')[1] || null, team: 'player', x: 0, y: 0, pal: name === 'civ' ? PAL.civ : PAL.player, skin: '#d9a57a', hair: '#4a2e18', seed: 1, facing: 1, walkPhase: 0, moving: false, attackAnim: 0, order: 'idle', dead: false, deathT: 0, flash: 0, carry: 0, task: null, look: { beard: true, longHair: false, w: 1, h: 1 }, radius: 11, animDur: 1 };
         const md = name === 'ram' ? ramModel(u) : name === 'oxcart' ? oxcartModel(u) : name === 'trebuchet' ? trebuchetModel(u) : name === 'catapult' ? catapultModel(u) : name === 'ballista' ? ballistaModel(u) : personModel(u);
         md.root.rotation.y = Math.PI / 4 + 0.35; obj = md.root; }
