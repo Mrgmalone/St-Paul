@@ -635,19 +635,19 @@ const exporter = `(() => {
   const tidy = el => { const c = el.cloneNode(true); c.querySelectorAll('img,figure,.cpic,.mpic').forEach(x => x.remove()); c.querySelectorAll('*').forEach(x => { x.removeAttribute('style'); x.removeAttribute('id'); if (!(x.tagName === 'SPAN' && x.classList.contains('new'))) x.removeAttribute('class'); });
     return c.innerHTML.replace(/\\s+/g, ' ').trim(); };
   const plain = h => h.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\\s+/g, ' ').trim();
-  const out = { sections: [], articles: [] }; let sec = null, art = null; const used = new Set();
+  const out = { sections: [], articles: [] }; let sec = null, art = null, host = null; const used = new Set();   /* (host: the heading a run of cards sits under) */
   const newArt = (title, pic) => { let id = 'g-' + sec.id.replace(/^s/, '') + '-' + slug(plain(title).replace(/\\s*(NEW|CORRECTED)\\s*$/, '')); while (used.has(id)) id += 'x'; used.add(id); art = { id, cat: 'guide', sec: sec.id, secTitle: sec.title, title: plain(title).replace(/\\s*(NEW|CORRECTED)\\s*$/, ''), pic: pic || SECPIC[sec.id] || 'i:book', blocks: [] }; out.articles.push(art); return art; };
   for (const el of document.getElementById('src').children) {
-    if (el.classList.contains('sech')) { sec = { id: el.id, title: el.dataset.sec }; out.sections.push(sec); newArt(el.id === 'read' ? 'How to read this guide' : el.dataset.sec.replace(/^\\d+\\.\\s*/, '')); continue; }
+    if (el.classList.contains('sech')) { sec = { id: el.id, title: el.dataset.sec }; out.sections.push(sec); newArt(el.id === 'read' ? 'How to read this guide' : el.dataset.sec.replace(/^\\d+\\.\\s*/, '')); host = art; continue; }
     if (!sec) continue;
     if (el.classList.contains('sub') && el.tagName === 'P') { art.blocks.push({ t: 'p', h: '<i>' + tidy(el) + '</i>' }); continue; }
-    if (el.tagName === 'H3') { newArt(tidy(el)); continue; }
+    if (el.tagName === 'H3') { newArt(tidy(el)); host = art; continue; }
     if (el.classList.contains('tcap')) { art.blocks.push({ t: 'h', h: tidy(el) }); continue; }
     if (el.tagName === 'P' || el.classList.contains('note')) { const h = tidy(el); if (h) art.blocks.push({ t: 'p', h }); continue; }
     if (el.tagName === 'UL' || el.tagName === 'OL') { art.blocks.push({ t: 'ul', items: [...el.children].map(tidy) }); continue; }
     if (el.tagName === 'TABLE') { art.blocks.push({ t: 'table', head: [...el.tHead.rows[0].cells].map(tidy), rows: [...el.tBodies[0].rows].map(r => [...r.cells].map(tidy)) }); continue; }
-    if (el.classList.contains('card')) { const parent = art; const a = newArt(el.querySelector('h4').innerHTML, el.dataset.key || null); a.parent = parent.title;
-      a.blocks.push({ t: 'line', h: tidy(el.querySelector('.cl')) }, { t: 'ul', items: [...el.querySelectorAll('.ctxt li')].map(tidy) }); art = a; continue; }
+    if (el.classList.contains('card')) { const a = newArt(el.querySelector('h4').innerHTML, el.dataset.key || null); a.parent = host.title;
+      a.blocks.push({ t: 'line', h: tidy(el.querySelector('.cl')) }, { t: 'ul', items: [...el.querySelectorAll('.ctxt li')].map(tidy) }); art = host; continue; }   /* (what follows a card belongs to the heading, not to the card) */
     if (el.classList.contains('minis')) { const last = art.blocks[art.blocks.length - 1], items = [...el.querySelectorAll('.mini')].map(m => ({ pic: m.dataset.key || '', n: tidy(m.querySelector('h5')), line: m.querySelector('.cl') ? tidy(m.querySelector('.cl')) : '', d: tidy(m.querySelector('p')) }));
       if (last && last.t === 'cards') last.items.push(...items); else art.blocks.push({ t: 'cards', items }); continue; }
     if (el.classList.contains('chains')) { for (const c of el.querySelectorAll('.chain')) art.blocks.push({ t: 'p', h: [...c.querySelectorAll('.lk')].map(tidy).join(' → ') }); continue; }
