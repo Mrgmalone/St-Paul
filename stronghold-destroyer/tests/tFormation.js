@@ -28,7 +28,8 @@ const { start } = require('./lib4b');
       const l = mk().map((t, i) => { const u = makeUnit('player', t, sx + (i % 4) * 22, sy - 40 + Math.floor(i / 4) * 22); u.tag4e = true; return u; });
       window.__step(2);
       const m = commandMarch(l, tx, ty, kind); const arrived = new Map(), slot0 = new Map(l.map(u => [u, { x: u.dest.x, y: u.dest.y, path: u.path.length }]));
-      for (let s = 0; s < 20 * 40 && arrived.size < l.length; s++) { window.__step(1); for (const u of l) if (!arrived.has(u) && u.order === 'idle' && !u.march) arrived.set(u, { t: time, face: u.faceAng }); }
+      for (let s = 0; s < 20 * 40 && arrived.size < l.length; s++) { window.__step(1); for (const u of l) if (u.sick) { u.sick = 0; u.sickT = 0; u.toHeal = false; }   /* (a chance illness sends a soldier to the keep, as it should; this check is about formations) */
+        for (const u of l) if (!arrived.has(u) && u.order === 'idle' && !u.march) arrived.set(u, { t: time, face: u.faceAng }); }
       const fx = m.fx, fy = m.fy, rx = -fy, ry = fx, cx = l.reduce((a, u) => a + u.x, 0) / l.length, cy = l.reduce((a, u) => a + u.y, 0) / l.length;
       const pts = l.map(u => ({ t: u.type, l: (u.x - cx) * rx + (u.y - cy) * ry, f: (u.x - cx) * fx + (u.y - cy) * fy, d: Math.hypot(u.x - cx, u.y - cy) }));
       const rng = k2 => Math.max(...pts.map(q => q[k2])) - Math.min(...pts.map(q => q[k2]));

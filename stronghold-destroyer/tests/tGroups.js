@@ -12,11 +12,12 @@ const { start } = require('./lib4b');
     showSite(yard); window.__step(1); out.boxNeeds = /Group one[^]*needs a soldier/.test(document.getElementById('storePop').textContent); T.close();
     const [sp] = T.people(1, 'spear'); sp.cmdT = time; T.act(yard, 'escort:0');
     out.escorted = sp.escort && sp.escort.g === 0;
-    let near = 0; for (let i = 0; i < 40; i++) { T.run(1); const c = groupCenter(groupsOf(yard)[0]); if (Math.hypot(sp.x - c.x, sp.y - c.y) < 160) near++; }
+    const well = () => { sp.sick = 0; sp.sickT = 0; sp.toHeal = false; };   /* (a chance illness would send him to the keep, as it should; this check is about escorts) */
+    let near = 0; for (let i = 0; i < 40; i++) { T.run(1); well(); const c = groupCenter(groupsOf(yard)[0]); if (Math.hypot(sp.x - c.x, sp.y - c.y) < 160) near++; }
     out.keptClose = near;
     // a raider comes at the group: the escort goes for him
     const c = groupCenter(groupsOf(yard)[0]), foe = makeUnit('enemy', 'spear', c.x + 120, c.y); foe.order = 'idle'; foe.think = 99;
-    out.fought = false; for (let i = 0; i < 8 && !out.fought; i++) { T.run(0.5); out.fought = sp.order === 'attack' && sp.target === foe; }
+    out.fought = false; for (let i = 0; i < 8 && !out.fought; i++) { T.run(0.5); well(); out.fought = sp.order === 'attack' && sp.target === foe; }
     foe.dead = true; T.run(3);
     // a soldier left idle goes with the second group by himself
     const [ar] = T.people(1, 'archer'); ar.cmdT = time - 120; T.run(7); out.autoEscort = !!(ar.escort && ar.escort.site === yard);
