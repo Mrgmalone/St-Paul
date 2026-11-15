@@ -2,15 +2,16 @@
 // Stronghold Destroyer — Phase 4B, step B4: soldiers.
 // Veteran stars (one per battle survived, up to 100, a cluster above the head that lightens as it grows, each a little
 // stronger); soldier lessons at the school (five levels, numbers hidden); longbowmen, crossbowmen, flamethrower squads and
-// (for Psychana) berserkers; knights on foot from the Hold and mounted from the Castle on the stable's horses; lookout crews;
+// berserkers (every faction; Psychana's move unseen in small bands); knights on foot from the Hold and mounted from the Castle on the stable's horses; lookout crews;
 // engines for the giant towers. The numbers live in settings.js (SOLDIERS).
 let soldierLvl = 0, soldierStudy = null, solT = 0;
 const isSoldier = u => u && u.kind === 'unit' && !u.dead && u.type !== 'civ' && u.type !== 'oxcart' && !isMachine(u);
 const kitOf = u => u && u.kit && SOLDIERS.kits[u.kit];
 // how much stronger a soldier is: his stars and (yours only) the soldiers' lessons
 const lessonsOf = u => u.team === 'player' ? soldierLvl : ((rivalOf(u) || {}).soldierLvl || 0);   // a rival's soldiers take lessons at his school too
-function strongMul(u) { if (!IND() || !isSoldier(u)) return 1; return 1 + SOLDIERS.stars.dmgPer * (u.vet || 0) + SOLDIERS.lessons.dmgPer * lessonsOf(u); }
-function toughMul(u) { if (!IND() || !isSoldier(u)) return 1; return 1 + SOLDIERS.stars.toughPer * (u.vet || 0) + SOLDIERS.lessons.toughPer * lessonsOf(u); }
+// (4G: a rival's raiders on Medium and Hard carry raidMul, RIVALS.power: they hit harder and take more)
+function strongMul(u) { if (!IND() || !isSoldier(u)) return 1; return (1 + SOLDIERS.stars.dmgPer * (u.vet || 0) + SOLDIERS.lessons.dmgPer * lessonsOf(u)) * (u.raidMul || 1); }
+function toughMul(u) { if (!IND() || !isSoldier(u)) return 1; return (1 + SOLDIERS.stars.toughPer * (u.vet || 0) + SOLDIERS.lessons.toughPer * lessonsOf(u)) * (u.raidMul || 1); }
 
 // ---------- every blow, arrow and bolt passes through here (how: 'melee', 'arrow', 'bolt', 'stone') ----------
 function adjHit(t, dmg, from, how) {
@@ -45,7 +46,7 @@ function updateBattles() {
     if (u.fightT > time - 2) u.inBattle = true;
     else if (u.inBattle && time - u.fightT > SOLDIERS.stars.battleEnds) {
       u.inBattle = false; if ((u.vet || 0) < SOLDIERS.stars.max) { u.vet = (u.vet || 0) + 1; if (u.team === 'player') floatText(u.x, u.y - 64, `★ A battle survived (${u.vet})`, '#ffe08a');
-        if (u.team === 'player' && typeof CITIZEN_CALL !== 'undefined' && u.vet === CITIZEN_CALL.general.stars) showBanner(`<b>${typeof nameOf === 'function' ? nameOf(u) : 'A soldier'} is now a general</b> (${u.vet} battles). With generals about, more citizens come, and sooner.`, 5); }
+        if (u.team === 'player' && typeof CITIZEN_CALL !== 'undefined' && (u.vet === CITIZEN_CALL.general.stars || u.vet === CITIZEN_CALL.general.fiveStar)) showBanner(`<b>${typeof nameOf === 'function' ? nameOf(u) : 'A soldier'} is now a ${u.vet >= CITIZEN_CALL.general.fiveStar ? 'five-star general' : 'general'}</b> (${u.vet} battles). With generals about, more citizens come, and sooner.`, 5); }
     }
   }
 }
@@ -152,7 +153,7 @@ function updateSoldiers(dt) {
   updateBattles(); lookoutCrews(); flameMoats(); kitButtons();
   for (const u of units) if (u.kit === 'flame' && !u.dead) { u.guardOf = null; u.escort = null; }
 }
-// the Army tab's buttons for the sheet's soldiers: locked until their stage (the berserker only for Psychana)
+// the Army tab's buttons for the sheet's soldiers: locked until their stage (a kit with `only` is for that faction alone)
 document.querySelectorAll('.kb[data-kit]').forEach(b => { b.onclick = () => trainKit(b.dataset.kit); });
 function kitButtons() {
   document.querySelectorAll('.kb[data-kit]').forEach(b => { const K = SOLDIERS.kits[b.dataset.kit]; b.hidden = !IND() || (K.only && FACKEY !== K.only); b.classList.toggle('locked', stageN < K.stage);

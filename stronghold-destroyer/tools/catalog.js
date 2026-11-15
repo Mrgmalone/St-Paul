@@ -13,7 +13,7 @@ const PEOPLE = [
   ['archer.crossbow', 'Crossbowman', 'Slow but heavy bolts; a bolt can strike a mounted knight past his horse. Needs a bow, 2 iron and 15 gold.'],
   ['sword', 'Swordsman', 'Steady, well-armoured fighter for close combat. Needs a sword and 10 gold.'],
   ['maceman', 'Maceman', 'Heavy hitter in armour. Needs a mace and 10 gold.'],
-  ['maceman.berserker', 'Berserker', 'Psychana only: fierce axe fighter; small bands move unseen. Needs a mace, 2 leather and 10 gold.'],
+  ['maceman.berserker', 'Berserker', 'Every faction: fierce axe fighter; Psychana’s small bands move unseen. Needs a mace, 2 leather and 10 gold.'],
   ['archer.flame', 'Flamethrower', 'Trained as a squad of ten; sets enemies and buildings ablaze up close. Needs a sword, armour and 20 gold.'],
   ['knight.foot', 'Knight (on foot)', 'Hard to hurt: only knights, kings, ballistas and trebuchets wound him fully. Needs a sword, armour and 20 gold.'],
   ['knight', 'Mounted Knight', 'A knight on a horse from the stable: much faster; the horse takes the blows until it falls.']

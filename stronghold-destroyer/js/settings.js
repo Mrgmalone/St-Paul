@@ -114,7 +114,11 @@ const RIVALS = {
   workersPerStage: [8, 15, 24, 32, 38],   // enough people to meet each stage's needs (workers + soldiers + the lord)
   // seconds before a rival's first raid (each later rival waits 75 seconds more), and between its raids.
   // Gerald (Phase 4F): ten minutes of peace to build at the start; five on Hard.
-  raid: { first: { easy: 600, medium: 600, hard: 300 }, every: { easy: 300, medium: 240, hard: 170 }, minArmy: 4, largeArmy: 12 }
+  raid: { first: { easy: 600, medium: 600, hard: 300 }, every: { easy: 300, medium: 240, hard: 170 }, minArmy: 4, largeArmy: 12 },
+  // Gerald (after 4F): the Medium raids much stronger than the Easy ones, and the Hard raids the strongest of all.
+  // army: how many soldiers a rival may keep (times its stage's number), so how many it can send; strength: how much
+  // harder each raider hits and how much more he can take (Easy x1, Medium x1.25, Hard x1.5).
+  power: { easy: { army: 0.75, strength: 1 }, medium: { army: 1.4, strength: 1.25 }, hard: { army: 1.9, strength: 1.5 } }
 };
 
 // ---------- rogue bandits ----------
@@ -127,13 +131,14 @@ const ROGUES = { first: { easy: 600, medium: 600, hard: 300 }, every: 240, band:
 // walks in along the road after a wait. Gerald: the unhappier the people, the longer the wait and the higher the cost
 // (below 20 happiness, several minutes); winning wars makes citizens cheaper and quicker, and generals in the field or
 // in camp bring more of them, so it balances out. A war won is a raid beaten off (most of the raiders fall while your
-// keep stands) or a rival defeated; a general is a soldier with 10 or more veteran stars.
+// keep stands) or a rival defeated; a general is a soldier with 7 or more veteran stars (Gerald, after 4F), and at 10
+// he is a five-star general (each counts the same here).
 const CITIZEN_CALL = {
   base: { food: 20, gold: 10, secs: 60 },                 // with happiness 50 to 69, no wars won and no generals
   // [happiness at least, wait x, cost x]: 70 and up a little quicker and cheaper; below 20 four and a half minutes, cost x2.2
   mood: [[70, 0.75, 0.85], [50, 1, 1], [35, 1.6, 1.25], [20, 2.5, 1.6], [0, 4.5, 2.2]],
   win: { time: 0.85, cost: 0.85, max: 3, lasts: 600 },     // each war won in the last 10 minutes: 15% sooner and cheaper (up to three)
-  general: { stars: 10, time: 0.9, cost: 0.95, max: 3 },   // each general: 10% sooner, 5% cheaper (up to three); houses raise theirs sooner too
+  general: { stars: 7, fiveStar: 10, time: 0.9, cost: 0.95, max: 3 },   // each general: 10% sooner, 5% cheaper (up to three); houses raise theirs sooner too
   floor: 0.25,                                             // never sooner than a quarter of the base wait
   queue: 5                                                 // at most five called at once
 };
@@ -193,7 +198,7 @@ const SOLDIERS = {
     longbow:  { name: 'Longbowman',  base: 'archer',  stage: 2, needs: ['bow'], gold: 15, hp: 75, dmg: 11, range: 240, cd: 1.9, speed: 70, sight: 2, wage: 1 },
     crossbow: { name: 'Crossbowman', base: 'archer',  stage: 3, needs: ['bow'], iron: 2, gold: 15, hp: 85, dmg: 22, range: 160, cd: 2.9, speed: 66, wage: 2 },
     flame:    { name: 'Flamethrower', base: 'archer', stage: 4, needs: ['sword', 'armor'], gold: 20, squad: 10, hp: 80, dmg: 12, range: 36, cd: 0.8, speed: 96, wage: 1 },
-    berserker:{ name: 'Berserker',   base: 'maceman', stage: 3, needs: ['mace'], leather: 2, gold: 10, hp: 150, dmg: 21, range: 5, cd: 1.0, speed: 80, wage: 2, only: 'psychana' }
+    berserker:{ name: 'Berserker',   base: 'maceman', stage: 3, needs: ['mace'], leather: 2, gold: 10, hp: 150, dmg: 21, range: 5, cd: 1.0, speed: 80, wage: 2 }   /* (Gerald, after 4F: every faction has its own berserkers; Psychana's stealth fits theirs) */
   },
   // knights: on foot from the Hold; mounted from the Castle when the stable has a horse. The horse takes the blows
   // until it falls, unless a crossbow bolt or ballista bolt strikes the rider.

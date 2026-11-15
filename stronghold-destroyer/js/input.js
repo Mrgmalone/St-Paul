@@ -236,7 +236,7 @@ function touchUp(p) {
   if (mode === 'box') {
     const bx0 = Math.min(TOUCH.sx, p.x) - 10, bx1 = Math.max(TOUCH.sx, p.x) + 10, by0 = Math.min(TOUCH.sy, p.y) - 12, by1 = Math.max(TOUCH.sy, p.y) + 12;
     const inBox = units.filter(u => { if (u.team !== 'player' || u.dead || u.inside) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
-    if (TOUCH.add) boxPick(inBox).forEach(u => selection.add(u)); else selectOnly(boxPick(inBox));
+    if (TOUCH.add) boxPick(inBox).forEach(u => { selection.add(u); joinTouch(u, true); }); else selectOnly(boxPick(inBox));
     drag = null; return;
   }
   if (mode === 'press') touchTap(p);
@@ -250,7 +250,7 @@ function touchTap(p) {
   if (isMine(hit)) {
     if (IND() && last && last.hit === hit && now - last.t < 380 && Math.hypot(p.x - last.x, p.y - last.y) < 40) { selectOnly([hit]); showCard(hit); return; }   /* a double tap opens the person's box */
     if (last && last.hit && now - last.t < 380 && Math.hypot(p.x - last.x, p.y - last.y) < 40 && last.hit.type === hit.type) { selectOnly(onScreenPlayers().filter(u => u.type === hit.type || (hit.type !== 'civ' && u.type !== 'civ' && !isMachine(u) && !isMachine(hit)))); return; }
-    if (TOUCH.add) { if (selection.has(hit)) selection.delete(hit); else selection.add(hit); return; }
+    if (TOUCH.add) { if (selection.has(hit)) { selection.delete(hit); joinTouch(hit, false); } else { selection.add(hit); joinTouch(hit, true); } return; }
     selectOnly([hit]); talkTo(hit); return;
   }
   if (hit && hit.team === 'player' && IND_BOX[hit.kind] && !selection.size) { showIndBox(hit); return; }
@@ -263,7 +263,9 @@ function touchTap(p) {
   if (selection.size) { issueAt(p.x, p.y); return; }
   document.getElementById('storePop').hidden = true; storeShown = null;
 }
-document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; document.getElementById('camAdd').classList.toggle('on', TOUCH.add); showBanner(TOUCH.add ? 'Add mode: tap people to add them to (or take them out of) your group.' : 'Add mode off: tapping a person selects just that person.', 2.5); };
+document.getElementById('camAdd').onclick = () => { TOUCH.add = !TOUCH.add; document.getElementById('camAdd').classList.toggle('on', TOUCH.add);
+  const G = TOUCH.add ? startJoin() : (stopJoin(), null);   /* (4G: the chosen group is marked; soldiers trained now join its formation) */
+  showBanner(!TOUCH.add ? 'Add is off: tapping a person chooses just that person, and new soldiers go to the rally flag.' : G ? `Add is on: tap soldiers to add them to this group of ${G.members.length}, and every soldier you train now marches to join its ${FORMATIONS[G.kind].name.toLowerCase()}. Tap Add again to stop.` : 'Add is on: tap people to add them to your group. (Choose soldiers first, and the soldiers you train will join them too.)', 4); };
 canvas.addEventListener('pointermove', e => {
   const p = localPos(e);
   if (e.pointerType !== 'mouse') { if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p); touchMove(p); return; }
@@ -290,7 +292,7 @@ function endPointer(e) {
     if (drag.box) {
       const bx0 = Math.min(drag.sx, p.x) - 8, bx1 = Math.max(drag.sx, p.x) + 8, by0 = Math.min(drag.sy, p.y) - 10, by1 = Math.max(drag.sy, p.y) + 10;
       const inBox = units.filter(u => { if (u.team !== 'player' || u.dead || u.inside) return false; const q = screenOf(u.x, u.y, 20 + (R3D.active ? elev3D(u) : elev2D(u))); return q.x > bx0 && q.x < bx1 && q.y > by0 && q.y < by1; });
-      if (drag.shift && !drag.touch) boxPick(inBox).forEach(u => selection.add(u)); else selectOnly(boxPick(inBox));
+      if ((drag.shift || TOUCH.add) && !drag.touch) boxPick(inBox).forEach(u => { selection.add(u); if (TOUCH.add) joinTouch(u, true); }); else selectOnly(boxPick(inBox));   /* (Add works with the mouse: 4G) */
     } else {
       const hit = pickScreen(p.x, p.y);
       if (drag.touch) {
@@ -301,7 +303,7 @@ function endPointer(e) {
         if (IND() && selection.size && !isMine(hit)) issueAt(p.x, p.y);   /* real game: with someone chosen, a click sends them (and lets them go) */
         else if (IND() && isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) { selectOnly([hit]); showCard(hit); }   /* a double click opens the person's box */
         else if (isMine(hit) && now - lastClick.t < 320 && Math.hypot(p.x - lastClick.x, p.y - lastClick.y) < 10) selectOnly(onScreenPlayers());
-        else if (isMine(hit)) { if (drag.shift) { selection.has(hit) ? selection.delete(hit) : selection.add(hit); } else { selectOnly([hit]); talkTo(hit); } }
+        else if (isMine(hit)) { if (drag.shift || TOUCH.add) { const had = selection.has(hit); had ? selection.delete(hit) : selection.add(hit); if (TOUCH.add) joinTouch(hit, !had); } else { selectOnly([hit]); talkTo(hit); } }
         else if (hit && hit.team === 'player' && IND_BOX[hit.kind]) showIndBox(hit);
         else if (hit && hit.team === 'player' && STORE_KINDS[hit.kind] && hit.done !== false) showStore(hit);
         else if (hit && hit.team === 'player' && JOBS[hit.kind]) showSite(hit);

@@ -3,7 +3,7 @@
 //    banner says so.
 //  - The Citizen button in the Town list calls one citizen from the countryside: it costs food and gold and he walks in
 //    along the road when his wait is over. Unhappy people: longer and dearer (below 20 happiness, 4.5 minutes); happy
-//    people: sooner and cheaper. Each war won (a raid beaten off, a rival defeated) and each general (a soldier with 10+
+//    people: sooner and cheaper. Each war won (a raid beaten off, a rival defeated) and each general (a soldier with 7+
 //    stars) makes it sooner and cheaper, and makes the houses raise their children sooner. Full houses and five on the
 //    way stop it.
 const { chromium } = require('playwright'); const env = require('./env'); const { start } = require('./lib4b');
@@ -45,14 +45,18 @@ const { chromium } = require('playwright'); const env = require('./env'); const 
   need(arrived.after >= arrived.n0 + 1 && arrived.waiting === 0, `he arrives when his wait is over (${arrived.n0} citizens, then ${arrived.after})`);
   // wars won and generals: sooner and cheaper; houses raise children sooner too
   const boost = await p.evaluate(() => { mood = 60; const base = citizenTerms(); CALL4F.winWar('A test war.'); CALL4F.winWar('Another.'); const won = citizenTerms(), gb = CALL4F.growBoost();
-    warWins = []; const k = playerKeep(); const gens = []; for (let i = 0; i < 3; i++) { const s = makeUnit('player', 'spear', k.x + 40 * i, k.y + 150); s.vet = 10; gens.push(s); }
-    const withGen = citizenTerms(); const card = (() => { try { showCard(gens[0]); return document.getElementById('personPop').textContent; } catch (e) { return ''; } })(); UI.closePops();
-    for (const s of gens) { s.dead = true; s.hp = 0; } return { base: [base.secs, base.food], won: [won.secs, won.food, won.wins], gb: +gb.toFixed(2), gen: [withGen.secs, withGen.food, withGen.generals], card: /a general/.test(card) }; });
+    warWins = []; const k = playerKeep(); const gens = []; for (let i = 0; i < 3; i++) { const s = makeUnit('player', 'spear', k.x + 40 * i, k.y + 150); s.vet = [7, 9, 10][i]; gens.push(s); }
+    const six = makeUnit('player', 'spear', k.x - 60, k.y + 150); six.vet = 6;   /* (one short of a general: does not count) */
+    const withGen = citizenTerms(); const cardOf = u => { try { showCard(u); const t = document.getElementById('personPop').textContent; UI.closePops(); return t; } catch (e) { return ''; } };
+    const c7 = cardOf(gens[0]), c10 = cardOf(gens[2]), c6 = cardOf(six); six.dead = true; six.hp = 0;
+    for (const s of gens) { s.dead = true; s.hp = 0; } return { base: [base.secs, base.food], won: [won.secs, won.food, won.wins], gb: +gb.toFixed(2), gen: [withGen.secs, withGen.food, withGen.generals], card: /a general/.test(c7) && !/five-star/.test(c7), five: /a five-star general/.test(c10), six: !/general/.test(c6) }; });
   console.log('boost', JSON.stringify(boost));
   need(boost.won[2] === 2 && boost.won[0] < boost.base[0] && boost.won[1] < boost.base[1], `two wars won: sooner and cheaper (${boost.base[0]} s / ${boost.base[1]} food -> ${boost.won[0]} s / ${boost.won[1]} food)`);
   need(boost.gb > 1.2, `wars won make the houses raise their children sooner (x${boost.gb})`);
   need(boost.gen[2] === 3 && boost.gen[0] < boost.base[0], `three generals: sooner (${boost.base[0]} s -> ${boost.gen[0]} s)`);
-  need(boost.card, 'a soldier with 10 stars is called a general in his box');
+  need(boost.card, 'a soldier with 7 stars is called a general in his box');
+  need(boost.five, 'a soldier with 10 stars is called a five-star general in his box');
+  need(boost.six, 'a soldier with 6 stars is not a general (and does not count: three generals counted, not four)');
   // a raid beaten off counts as a war won
   const raid = await p.evaluate(() => { warWins = []; const R = REALM.rivals.find(r => !r.friend), k = playerKeep(), l = [];
     for (let i = 0; i < 5; i++) { const u = makeUnit('enemy', 'spear', k.x + 400 + i * 20, k.y + 300); u.owner = R.id; u.raider = true; u.order = 'idle'; l.push(u); }

@@ -2,7 +2,7 @@
 // Stronghold Destroyer — Phase 4F: calling citizens, wars won and generals.
 // The Citizen button in the Town list calls one more citizen from the countryside: he walks in along the road when his
 // wait is over. The wait and the cost depend on happiness (the unhappier, the slower and dearer), on the wars you have
-// won lately (each makes them quicker and cheaper) and on your generals (soldiers with 10 or more veteran stars), who
+// won lately (each makes them quicker and cheaper) and on your generals (soldiers with 7 or more veteran stars; five-star generals at 10), who
 // also make the houses raise their children sooner. The numbers live in settings.js (CITIZEN_CALL).
 
 let warWins = [];        // game times of the wars won (a raid beaten off, a rival defeated)

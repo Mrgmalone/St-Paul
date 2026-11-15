@@ -128,7 +128,7 @@ function personHtml(u) {
     lnI('Work', JOB_OF(u)) + lnI('Happiness', `<span style="color:${col}">${m.v}</span>`) +
     `<div class="why">${m.why.concat(m.town.map(t => '- the town: ' + t)).slice(0, 5).map(t => `<div>${t}</div>`).join('') || '<div>nothing special</div>'}</div>` +
     lnI('Education', edu) + lnI('Worries', c.length ? c.slice(0, 2).join('; ') : 'none') + lnI('Earns', $.earns) + ($.tax ? lnI('Pays', $.tax) : '') +
-    (isSoldier(u) ? lnI('Battles survived', `${u.vet || 0} \u2605${typeof CITIZEN_CALL !== 'undefined' && (u.vet || 0) >= CITIZEN_CALL.general.stars ? ' \u00b7 a general' : ''}`) + lnI('Enemies felled', u.kills || 0) + (u.type === 'knight' ? lnI('Horse', u.mounted ? `mounted (${Math.max(0, Math.round(u.horseHp))} strength left)` : 'on foot') : '') : '');
+    (isSoldier(u) ? lnI('Battles survived', `${u.vet || 0} \u2605${typeof CITIZEN_CALL !== 'undefined' && (u.vet || 0) >= CITIZEN_CALL.general.stars ? ((u.vet || 0) >= CITIZEN_CALL.general.fiveStar ? ' \u00b7 a five-star general' : ' \u00b7 a general') : ''}`) + lnI('Enemies felled', u.kills || 0) + (u.type === 'knight' ? lnI('Horse', u.mounted ? `mounted (${Math.max(0, Math.round(u.horseHp))} strength left)` : 'on foot') : '') : '');
 }
 function showCard(u) {
   cardOf = u; const p = document.getElementById('personPop'); p.innerHTML = personHtml(u); p.hidden = false;

@@ -163,3 +163,43 @@ function marchArrived(u) {
   }
   return false;
 }
+
+// ---------- Phase 4G (Gerald): Add puts more troops in the formation ----------
+// Tap Add with soldiers chosen and that group is marked: tapping (or clicking) more soldiers adds them to it, and every
+// soldier trained while Add is on marches to the group and takes his place in its formation (the group closes up round
+// him in the same shape, where it stands and facing the same way). Tap Add again to stop.
+let joinGroup = null;   // { members, kind }: the group new soldiers join while Add is on
+const joinable = u => u && !u.dead && u.team === 'player' && u.kind === 'unit' && u.type !== 'civ' && !isMachine(u);
+function startJoin() {
+  const list = [...selection].filter(joinable);
+  if (!list.length) { joinGroup = null; return null; }
+  const count = {}; for (const u of list) if (u.formed || (u.march && u.march.kind)) { const k = u.formed || u.march.kind; count[k] = (count[k] || 0) + 1; }
+  const kind = Object.keys(count).sort((a, b) => count[b] - count[a])[0] || formationNow;
+  joinGroup = { members: list, kind }; return joinGroup;
+}
+function stopJoin() { joinGroup = null; }
+// a soldier added to (or taken out of) the chosen group while Add is on
+function joinTouch(u, added) {
+  if (!joinGroup || !joinable(u)) return;
+  const i = joinGroup.members.indexOf(u); if (added && i < 0) joinGroup.members.push(u); else if (!added && i >= 0) joinGroup.members.splice(i, 1);
+}
+// new soldiers out of training: to the marked group, which re-forms round them. Returns true if they went.
+function joinRecruits(list) {
+  const G = joinGroup; if (!G || !TOUCH.add) return false;
+  const fresh = list.filter(joinable); if (!fresh.length) return false;
+  G.members = G.members.filter(u => !u.dead);
+  if (!G.members.length) { joinGroup = null; return false; }
+  // where the group is (or is going) and the way it faces
+  const going = G.members.find(u => u.march && u.march.at), M = going && going.march;
+  const still = G.members.filter(u => u.order === 'idle' || (u.order === 'move' && u.march));
+  const base = still.length ? still : G.members;
+  const at = M ? { x: M.at.x, y: M.at.y } : { x: base.reduce((a, u) => a + (u.dest && u.formed ? u.dest.x : u.x), 0) / base.length, y: base.reduce((a, u) => a + (u.dest && u.formed ? u.dest.y : u.y), 0) / base.length };
+  const h = M ? M.heading : (base.find(u => u.faceAng !== undefined && u.faceAng !== null) || {}).faceAng;
+  const face = h !== undefined && h !== null ? { x: Math.sin(h), y: Math.cos(h) } : null;
+  for (const u of fresh) { G.members.push(u); u.cmdT = time; if (typeof clearDuty === 'function') clearDuty(u); }
+  // those standing in it (or marching to it) close up round the newcomers; those fighting stay at it
+  commandMarch(still.concat(fresh), at.x, at.y, G.kind, face);
+  if (G.members.some(u => selection.has(u))) for (const u of fresh) selection.add(u);
+  floatText(fresh[0].x, fresh[0].y - 70, `Joining your ${FORMATIONS[G.kind] ? FORMATIONS[G.kind].name.toLowerCase() : ''} group`, '#9fe8a8');
+  return true;
+}

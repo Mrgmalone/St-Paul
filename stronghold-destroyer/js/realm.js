@@ -136,15 +136,16 @@ function placeRivalBuilding(R, kind, c, r) {
   return b;
 }
 function rivalTrain(R) {
-  const army = rivalArmy(R), cap = Math.round(ARMY_CAP[R.stage - 1] * (DIFF.size || 1));
+  const army = rivalArmy(R), cap = Math.round(ARMY_CAP[R.stage - 1] * raidPower().army);   /* (4G: Medium much stronger than Easy, Hard the strongest) */
   if (army.length >= cap) return;
   const can = Object.keys(RIVAL_COST).filter(k => stageOfItem(k, true) <= R.stage);
   const foot = can.filter(k => !MACHINE[k]), pick = foot[Math.floor(Math.random() * foot.length)]; if (!pick) return;
   const c = RIVAL_COST[pick]; for (const [k, v] of Object.entries(c)) if ((R.res[k] || 0) < v) return;
   for (const [k, v] of Object.entries(c)) R.res[k] -= v;
   const k = R.keep, fr = nearestFree(Math.floor(k.x / TILE) + 2, Math.floor(k.y1 / TILE) + 2); if (!fr) return;
-  // Psychana's swordsmen from the Hold on are berserkers (stand-in: the berserker kit) who can slip past unseen in small bands
-  const kit = R.fac === 'psychana' && pick === 'sword' && R.stage >= 3 ? 'berserker' : null;
+  // from the Hold on, swordsmen may be berserkers: every faction has them (Gerald, after 4F), half of them for most, all
+  // for Psychana, whose berserkers slip past unseen in small bands
+  const kit = pick === 'sword' && R.stage >= 3 && (R.fac === 'psychana' || Math.random() < 0.5) ? 'berserker' : null;
   rivalUnit(R, pick, fr.c * TILE + 16, fr.r * TILE + 16, kit);
 }
 function growRival(R) {
@@ -157,6 +158,7 @@ function growRival(R) {
   showBanner(`${R.friend ? 'Your friend' : 'Your rival'} <b>${R.name}</b> (${FACTIONS[R.fac].name}) has grown to stage ${R.stage}, the ${st.name}.`, 4);
 }
 // ---------- raids: from the rival's own base toward you; siege engines only with a large army ----------
+const raidPower = () => (RIVALS.power && RIVALS.power[DIFF.key]) || { army: DIFF.size || 1, strength: 1 };
 function rivalRaid(R) {
   const army = rivalArmy(R).filter(u => !u.raider && !u.onWall && !u.hk), k = playerKeep();
   R.raidT = (RIVALS.raid.every[DIFF.key] || 240) * (0.85 + Math.random() * 0.3);
@@ -173,6 +175,7 @@ function rivalRaid(R) {
   { let walked = 0, next = 380; for (let i = 1; i < pth.length; i++) { const a = pth[i - 1], b2 = pth[i], L = Math.hypot(b2.x - a.x, b2.y - a.y); while (next <= walked + L && next < total - 120) { const f = (next - walked) / L; way.push({ x: a.x + (b2.x - a.x) * f + RR(-40, 40), y: a.y + (b2.y - a.y) * f + RR(-40, 40) }); next += 380; } walked += L; } }
   if (!way.length) way.push({ x: (R.keep.x + ap.x) / 2, y: (R.keep.y1 + ap.y) / 2 });
   raidSide(R, way);   /* each raid comes at you from a different side */
+  for (const u of go) u.raidMul = Math.max(u.raidMul || 1, raidPower().strength);   /* (4G: raiders hit harder and take more on Medium and Hard) */
   for (const u of go) { u.raider = true; u.order = 'raid'; u.repath = 0; u.path = []; u.route = way.map(w => ({ x: w.x + RR(-24, 24), y: w.y + RR(-24, 24) })); }
   if (typeof noteRaid === 'function') noteRaid(R, go);   /* (4F: beating it off counts as a war won) */
   raidPing = { x: R.keep.x, y: R.keep.y, t: 0 };

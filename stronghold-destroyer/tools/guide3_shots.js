@@ -9,7 +9,7 @@ const { chromium, devices } = require('playwright'); const env = require('../tes
 const OUT = path.join(env.SP, 'guide3'); fs.mkdirSync(OUT, { recursive: true });
 const JPG = { type: 'jpeg', quality: 82 };
 const shots = {}, fails = [];
-const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;   // retake only these pictures (the others, and the numbers, are kept)
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;   // retake only these pictures (the others, and the numbers unless DATA=1, are kept)
 const save = (name, buf, kind = 'jpg') => { const f = name + '.' + kind; fs.writeFileSync(path.join(OUT, f), buf); shots[name] = f; };
 const tryShot = async (name, fn) => { if (ONLY && !ONLY.includes(name)) return; try { await fn(); } catch (e) { fails.push(name + ': ' + e.message.split('\n')[0]); console.log('  failed', name, e.message.split('\n')[0]); } };
 
@@ -151,9 +151,6 @@ async function buildTown(p, stage = 2) {
       for (const u of l) { u.x = x - 80 + Math.random() * 160; u.y = y - 10; } T.run(2.4); T.quiet(); SD.centerOn(x, y + 30); cam.z = 1.7; window.__step(1); });
     const c = await p.evaluate(() => { const g = document.getElementById('game').getBoundingClientRect(); return { x: g.left + g.width / 2 - 280, y: g.top + g.height / 2 - 180, width: 560, height: 360 }; }); save('battle', await p.screenshot({ clip: c, ...JPG })); });
 
-  if (ONLY) { const old = JSON.parse(fs.readFileSync(path.join(OUT, 'data.json'), 'utf8')); Object.assign(old.shots, shots);
-    if (ONLY.some(n => ['phone', 'phoneTown'].includes(n))) { const errsIpad = G.errs.slice(); await G.b.close(); G = await game({ ...devices['iPhone 13'], deviceScaleFactor: 2 }); p = G.p; await G.begin(); await buildTown(p, 2); await phoneShots(p); Object.assign(old.shots, shots); }
-    fs.writeFileSync(path.join(OUT, 'data.json'), JSON.stringify(old)); console.log('retaken', Object.keys(shots), 'failed', fails); await G.b.close(); return; }
   // ================= 7. the pictures of every person, engine, building, good and weapon; the numbers =================
   const data = await p.evaluate(() => {
     const pic = key => { try { const c = R3D.iconOf(key); return c ? c.toDataURL('image/png') : ''; } catch (e) { return ''; } };
@@ -179,8 +176,11 @@ async function buildTown(p, stage = 2) {
     const stages = STAGES.map(s => ({ n: s.n, name: s.name, units: s.unlock.units, buildings: s.unlock.buildings }));
     const kits = Object.fromEntries(Object.entries(SOLDIERS.kits).map(([k, v]) => [k, { name: v.name, stage: v.stage, needs: v.needs, gold: v.gold, iron: v.iron, leather: v.leather, only: v.only }]));
     return { units, blds, goods, weapons, costs, ustage, needs, call, wins, stages, kits, CITIZEN_CALL, moat: MOAT_FILLERS, towerEngine: SOLDIERS.towerEngine || null,
-      peace: { raid: RIVALS.raid.first, rogue: ROGUES.first }, helpCount: (window.HELP_DATA || (typeof HELP_DATA !== 'undefined' ? HELP_DATA : { articles: [] })).articles.length };
+      peace: { raid: RIVALS.raid.first, rogue: ROGUES.first }, raidPower: RIVALS.power || null, helpCount: (window.HELP_DATA || (typeof HELP_DATA !== 'undefined' ? HELP_DATA : { articles: [] })).articles.length };
   });
+  if (ONLY) { const old = JSON.parse(fs.readFileSync(path.join(OUT, 'data.json'), 'utf8')); Object.assign(old.shots, shots); if (process.env.DATA) old.data = data;   /* (DATA=1: the numbers are read again too) */
+    if (ONLY.some(n => ['phone', 'phoneTown'].includes(n))) { const errsIpad = G.errs.slice(); await G.b.close(); G = await game({ ...devices['iPhone 13'], deviceScaleFactor: 2 }); p = G.p; await G.begin(); await buildTown(p, 2); await phoneShots(p); Object.assign(old.shots, shots); }
+    fs.writeFileSync(path.join(OUT, 'data.json'), JSON.stringify(old)); console.log('retaken', Object.keys(shots), 'failed', fails); await G.b.close(); return; }
   // the keep has no stand-alone model: photograph it in the game
   await tryShot('keep', async () => { await p.evaluate(() => { const k = SD.keep(); cam.z = 2.2; SD.centerOn(k.x, k.y - 30); T.hideBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top']); T.quiet(); window.__step(3); });
     const kp = await p.evaluate(() => { const k = SD.keep(), s = SD.scr(k.x, (k.y0 + k.y1) / 2, 60), r = document.getElementById('game').getBoundingClientRect(); return { x: s.x + r.left, y: s.y + r.top }; });

@@ -69,7 +69,7 @@
   const patrol = take('btnPatrol'), guard = take('btnGuardA'), add = take('camAdd'), stop = take('btnStop');
   const march = document.createElement('button'); march.id = 'dMarch';
   cell(guard, ICON.guard, 'Guard', 'Then tap the place they should hold'); cell(patrol, ICON.patrol, 'Patrol', 'Then draw the route with your finger or the mouse');
-  cell(add, ICON.add, 'Add', 'Tap more soldiers to add them to the group (tap Add again to stop)'); cell(stop, ICON.stop, 'Stop', 'Stop where they are', 'stop');
+  cell(add, ICON.add, 'Add', 'Tap more soldiers to add them to the group; soldiers you train join its formation (tap Add again to stop)'); cell(stop, ICON.stop, 'Stop', 'Stop where they are', 'stop');
   cell(march, '', 'Formation', 'Choose a shape, then send them anywhere', 'mid');
   march.innerHTML = `<span class="ic">${ICON.march}</span><b id="dCount" hidden></b><i id="dForm"></i>`;
   [up, guard, right, patrol, march, stop, left, add, down].forEach(b => grid.appendChild(b));
@@ -126,7 +126,7 @@
   }
   function needSoldiers() { showBanner('Choose soldiers first: tap one, or the crossed swords beside the diamond for all of them.', 3); }
   up.onclick = () => nudge(0, -1); down.onclick = () => nudge(0, 1); left.onclick = () => nudge(-1, 0); right.onclick = () => nudge(1, 0);
-  // Add works with the mouse too now (tap or click more soldiers to add them)
+  // Add works with the mouse too (click more soldiers to add them); soldiers trained while it is on join the group (4G)
   add.classList.toggle('on', !!TOUCH.add);
 
   // dimmed while nobody is chosen; the number chosen on the middle button

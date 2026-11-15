@@ -24,7 +24,8 @@ const QUESTIONS = [
   ['bread', 'bread'], ['how many rivals', 'match-setup'], ['school', 'school'], ['my soldiers chase enemies', 'patrol-guard'], ['people mourning', 'mood'],
   ['formations', 'formations'], ['put my soldiers in a line', 'formations'], ['wedge', 'formations'], ['troop movement buttons', 'diamond'], ['the diamond', 'diamond'],
   ['close a box', 'boxes'], ['get rid of the hint', 'boxes'], ['how do I search', 'using-help'], ['the master guide', 'using-help'], ['topics drop down', 'using-help'],
-  ['how do I get more citizens', 'call-citizens'], ['buy citizens', 'call-citizens'], ['what is a general', ['call-citizens', 'veterans']]
+  ['how do I get more citizens', 'call-citizens'], ['buy citizens', 'call-citizens'], ['what is a general', ['call-citizens', 'veterans']],
+  /* (4G) */ ['five star general', 'veterans'], ['new soldiers join my formation', 'formations'], ['can cy young train berserkers', ['berserker', 'faction-psychana']], ['how strong are hard raids', ['raids', 'difficulty']]
 ];
 (async () => {
   const { p, need, done, SP } = await start('cyyoung', { start: 0 });

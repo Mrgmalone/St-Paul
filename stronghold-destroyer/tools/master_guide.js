@@ -89,7 +89,10 @@ H('What is new in version 3');
 TBL(['What', 'In short', 'Section'], [
   [`Longer peace ${NEW}`, `${mins(peace.easy)} minutes of peace before the first raid on Easy and Medium, ${mins(peace.hard)} on Hard. Bandits wait too.`, '1, 2'],
   [`Calling citizens ${NEW}`, 'The Citizen button in the Town list calls one more citizen, for food and gold. Unhappy people: slower and dearer. Wars won and generals: sooner and cheaper.', '11'],
-  [`Wars won and generals ${NEW}`, 'Beating off a raid or defeating a rival is a war won. A soldier with 10 or more stars is a general.', '6, 11, 14'],
+  [`Wars won and generals ${NEW}`, `Beating off a raid or defeating a rival is a war won. A soldier with ${CC.general.stars} or more stars is a general; at ${CC.general.fiveStar || 10} he is a five-star general.`, '6, 11, 14'],
+  [`Stronger raids ${NEW}`, 'A Medium raid is much stronger than an Easy one, and a Hard raid the strongest: more raiders, each hitting harder and taking more blows.', '1, 14'],
+  [`Berserkers for everyone ${NEW}`, 'Every faction can train berserkers now. Psychana’s are still the ones who move unseen in small bands.', '3, 6'],
+  [`Add fills a formation ${NEW}`, 'Choose a group and tap Add on the diamond: every soldier you train while Add is on marches to the group and takes his place in its formation.', '5'],
   [`The troop diamond ${NEW}`, 'All troop orders sit in one diamond at the bottom left: move, formation, patrol, guard, add, stop and the choosing buttons.', '5'],
   [`Formations ${NEW}`, 'Seven shapes (Free, Line, Column, Wedge, Square, Circle, Loose). Soldiers march together at the pace of the slowest.', '5, 7'],
   [`Tap to close ${NEW}`, 'One tap puts away a hint, a message or the Art of War advice. A double tap on any box closes it.', '5, 15'],
@@ -127,7 +130,7 @@ TBL(['', 'The rule'], [
   ['<b>You win</b>', 'Every rival who is against you has lost his keep. A trading friend does not have to fall. (Build)'],
   ['<b>You lose</b>', 'Your keep is destroyed, or all your people are gone and there is no food left to make more.'],
   [`<b>Peace time</b> ${FIXED}`, `<b>${mins(peace.easy)} minutes of peace on Easy and Medium, ${mins(peace.hard)} on Hard</b>, before the first raid. The bandits wait as long. The banner at the start says how long. Use it to gather wood, stone, iron and food, build homes, workshops, farms, walls and towers, and train soldiers. (Set)`],
-  ['<b>Raids</b>', 'Rivals send raids from different directions, each one larger, later with battering rams, catapults and ballistas. Rams and siege engines only come with a large army, never with a few riders. Each enemy rival’s first raid comes about a minute and a quarter after the one before.']]);
+  ['<b>Raids</b>', 'Rivals send raids from different directions, each one larger, later with battering rams, catapults and ballistas. Rams and siege engines only come with a large army, never with a few riders. Each enemy rival’s first raid comes about a minute and a quarter after the one before. A Medium raid is much stronger than an Easy one, and a Hard raid the strongest (section 14). ${NEW}']]);
 H('Setting up a match');
 P('Before a game begins you choose these things. You are never forced into four rivals.');
 FIG(shot('front'), 'The front page, photographed on an iPad: the four factions side by side, with the match setup.', 92);
@@ -200,7 +203,7 @@ P('Each faction has one big strength and one real weakness. A weakness can alway
 const FX = { cyyoung: ['Strength: food and money', ['The mill and bakeries make 4 to 5 times the food.', 'They sell the surplus for money, so they out-buy and out-upgrade everyone.', 'Weakness: no special power in a fight.', 'How to beat them: slow them early by raiding their farms and food, before the money snowballs.']],
   ticanologue: ['Strength: trade', ['Market prices are half of everyone else’s.', 'Weakness: the market costs a lot to build.', 'How to beat them: destroy the market. It is the most valuable building they have.']],
   hekaranok: ['Strength: staying alive', ['Wounded units run home, heal, and return to exactly where they were. A bell recalls them.', 'Double the population. Stronger abbeys.', 'Weakness: each person is weaker, and a unit that is killed cannot be healed.', 'How to beat them: kill units outright instead of wounding them.']],
-  psychana: ['Strength: seeing and sneaking', ['All units see as far as longbowmen.', 'Berserkers (a Psychana unit) can sneak up unseen in small bands.', 'Weakness: towers and palisade towers near a castle still spot them.', 'How to beat them: ring your castle with towers.']] };
+  psychana: ['Strength: seeing and sneaking', ['All units see as far as longbowmen.', 'Their berserkers can sneak up unseen in small bands (every faction has berserkers, but only Psychana’s move unseen).', 'Weakness: towers and palisade towers near a castle still spot them.', 'How to beat them: ring your castle with towers.']] };
 for (const k of ['cyyoung', 'ticanologue', 'hekaranok', 'psychana']) { const e = EM[k] || { name: k, epithet: '' }; const st = e.start || {};
   CARD(e.pic, `${e.name} — ${e.epithet}`, FX[k][0], FX[k][1].concat(st.civilians ? [`Starts with: the king, ${st.civilians} civilians, ${st.food} food and ${st.wood} wood.`] : [])); }
 H('What the front page shows');
@@ -271,12 +274,12 @@ P('All the troop orders sit in one diamond at the bottom left of the screen, on 
   else FIG(diamondPng, 'The troop diamond, photographed in the game, with each button numbered.', 96); }
 TBL(['', 'Button', 'What it does'], [
   ['1–4', 'Move up, right, down, left', 'The chosen soldiers walk a short way that way.'], ['5', 'Formation', 'Choose a shape, then send them anywhere (see below).'],
-  ['6', 'Patrol', 'Then draw the route with your finger or the mouse.'], ['7', 'Guard', 'Then tap the place they should hold.'], ['8', 'Add', 'Tap more soldiers to add them to the group (tap Add again to stop).'],
+  ['6', 'Patrol', 'Then draw the route with your finger or the mouse.'], ['7', 'Guard', 'Then tap the place they should hold.'], ['8', 'Add', `Tap more soldiers to add them to the group, and every soldier you train while Add is on marches to join its formation (tap Add again to stop). ${NEW}`],
   ['9', 'Stop', 'Stop where they are.'], ['10', 'People', 'Your people: who they are, their work and their worries (section 11).'], ['11', 'Soldiers', 'Choose all your soldiers.'],
   ['12', 'Castle', 'Back to your castle (Space).'], ['13', 'Let go', 'Let go of the chosen people.'], ['14', 'Everyone', 'Choose everyone.'], ['15', 'Citizens', 'Choose all your citizens.']], 'dia');
 H('Formations', true);
 P('Tap the two walking soldiers in the middle of the diamond: the formations open above it. Choose one and the chosen soldiers form up where they stand; then tap the ground and they march there in that shape. Any number works, from 3 to 30 or more.');
-UL(['Tap the ground with soldiers chosen and they march there in the formation you chose (or in a neat block when the formation is Free).', 'They march at the pace of the slowest, so they arrive together, and stand facing the way they went.', 'Soldiers in a formation stay in it until you give them a new order, and they are not taken for other duties.', 'Free is the old way: a neat block with no set shape.']);
+UL(['Tap the ground with soldiers chosen and they march there in the formation you chose (or in a neat block when the formation is Free).', 'They march at the pace of the slowest, so they arrive together, and stand facing the way they went.', 'Soldiers in a formation stay in it until you give them a new order, and they are not taken for other duties.', 'Free is the old way: a neat block with no set shape.', `<b>To fill a formation as you train:</b> choose the group and tap Add on the diamond. Every soldier you train while Add is on marches to the group and takes his place, and the group closes up round him in the same shape, where it stands. Tap Add again and new soldiers go to the rally flag as before. ${NEW}`]);
 FIG(art('formations-fan'), 'The formations open above the diamond.', 70);
 { const F = [['free', 'Free', 'No set shape: a neat block, the old way'], ['line', 'Line', 'Side by side, facing the enemy: the most weapons at the front'], ['column', 'Column', 'Two abreast, one behind the other: best through gates, woods and narrow ground'],
     ['wedge', 'Wedge', 'An arrowhead: one at the point, the rest fanning back: to break through'], ['square', 'Square', 'A hollow square facing every way: when you could be attacked from all sides'],
@@ -317,7 +320,7 @@ CARD(U('archer.longbow'), 'Longbowman', 'Stage 2 · a separate unit, not an upgr
 CARD(U('archer.crossbow'), 'Crossbowman', 'Stage 3 · needs a bow, 2 iron and 15 gold', ['<b>Does:</b> slow but heavy bolts. A bolt can strike a mounted knight’s rider past his horse.', 'A separate unit from the archer and the longbowman; you can keep a mix of all three.', 'Cannot be killed by a flamethrower’s knife.']);
 CARD(U('sword'), 'Swordsman', 'Stage 3 · needs a sword and 10 gold', ['<b>Does:</b> steady, well-armoured fighter for close combat.', `Dies from one spike strike, like most soldiers (your decision after Phase 4C). ${FIXED} Can fill a moat in.`]);
 CARD(U('maceman'), 'Maceman', 'Stage 3 · needs a mace and 10 gold', ['<b>Does:</b> heavy hitter in armour, made at the blacksmith from iron.']);
-CARD(U('maceman.berserker'), 'Berserker', 'Stage 3 · Psychana only · needs a mace, 2 leather and 10 gold', ['<b>Does:</b> fierce axe fighter. Sees as far as a longbowman. Small bands move unseen.', 'Leather comes from the farm’s cows and bulls. Needs two spike strikes to die. Cannot be killed by a flamethrower’s small knife. Cannot fill a moat.']);
+CARD(U('maceman.berserker'), `Berserker ${FIXED}`, 'Stage 3 · every faction · needs a mace, 2 leather and 10 gold', ['<b>Does:</b> fierce axe fighter. Sees as far as a longbowman. Psychana’s berserkers move unseen in small bands.', 'Leather comes from the farm’s cows and bulls. Needs two spike strikes to die. Cannot be killed by a flamethrower’s small knife. Cannot fill a moat.']);
 CARD(U('knight.foot'), 'Knight (on foot)', 'Stage 3 · needs a sword, armour and 20 gold', ['<b>Does:</b> hard to hurt. Takes a quarter of the damage from ordinary weapons; only knights, kings, ballistas and trebuchets wound him fully.', 'Needs two spike strikes to die. Cannot fill a moat.']);
 CARD(U('knight'), 'Mounted knight', 'Stage 4 · a knight plus a horse from the stable', ['<b>Does:</b> very hard to kill. The horse takes the blows first and must fall, then the rider, unless a crossbowman or a ballista hits the rider directly.', '<b>Moves:</b> rides the horse. Cannot fill a moat in.']);
 CARD(U('archer.flame'), 'Flamethrower squad', 'Stage 4 · attack wars only · needs a sword, armour and 20 gold', ['<b>Does:</b> one click buys a squad of 10 and it does not cost 10 people. It costs about as much as one unmounted knight.', '<b>Moves:</b> fast. Longbowmen cannot hit them. A group of 20 is hard for archers to stop.', 'Their flame hurts but cannot kill. Their real danger is setting buildings on fire, and the people inside burn.', 'They can fill a moat; they dig moats around themselves in the middle of nowhere. Melee soldiers kill them easily. They never defend and never escort.']);
@@ -332,9 +335,9 @@ H('How a soldier grows: veteran stars');
 UL(['Every soldier who survives a battle earns a star above his head when selected. Each further battle adds another, even up to a hundred, shown as a cluster.', 'Star colors change to greater, lighter colors as he advances. Each star makes him stronger.',
   'A plain spearman can end up as fast and strong as a mounted knight without a horse. Every soldier can become important.', 'A quick tap shows his stars, level and education. Press and hold shows his full record, including how many wars he has fought.']);
 H('Generals', true);
-UL([`A soldier with <b>${CC.general.stars} or more stars</b> is a <b>general</b>. A banner announces it when he earns his tenth star, and his box says “a general”. (Build: the number of stars is one setting.)`,
+UL([`A soldier with <b>${CC.general.stars} or more stars</b> is a <b>general</b>, and at <b>${CC.general.fiveStar || 10} stars</b> a <b>five-star general</b>. A banner announces each, and his box says “a general” or “a five-star general”. (Your decision after version 3; the numbers are one setting each.)`,
   `Generals in the field or in the camp encourage the countryside: each general (up to ${CC.general.max}) makes a called citizen come sooner and cost a little less, and makes the houses raise their children sooner (section 11).`, 'So keep your veterans alive: a general lost is felt in the town as well as on the field.']);
-FIG(shot('general'), 'A soldier’s box, photographed in the game: this spearman has 12 stars and is a general.', 56);
+FIG(shot('general'), 'A soldier’s box, photographed in the game: this spearman has 12 stars and is a five-star general.', 56);
 H('How a soldier grows: education');
 P('Once the school is built it has a soldiers button that educates all soldiers together. Up to level 5 they get smarter, harder to kill, and heal and repair faster. It works through hidden numbers, so they may look the same. Stars and education stack, so a soldier who survives many battles can become super strong.');
 H('The soldiers as designed');
@@ -417,7 +420,7 @@ H('How a soldier is made');
 P('Weapons come from workshops, wait in the armory, and are issued to a new soldier together with gold.');
 TBL(['Soldier', 'Workshop', 'Needs', 'Stage'], [['Spearman', 'Spear-maker', '1 spear + 10 gold', 1], ['Archer', 'Fletcher', '1 bow + 10 gold', 1], ['Longbowman', 'Fletcher', '1 bow + 15 gold', 2],
   ['Crossbowman', 'Fletcher + iron mine', '1 bow + 2 iron + 15 gold', 3], ['Swordsman', 'Blacksmith', '1 sword + 10 gold', 3], ['Maceman', 'Blacksmith', '1 mace + 10 gold', 3],
-  ['Berserker (Psychana)', 'Blacksmith + farm', '1 mace + 2 leather + 10 gold', 3], ['Knight', 'Blacksmith', '1 sword + armour + 20 gold', 3], ['Mounted knight', 'Knight + stable', 'A knight plus a horse', 4],
+  ['Berserker (every faction)', 'Blacksmith + farm', '1 mace + 2 leather + 10 gold', 3], ['Knight', 'Blacksmith', '1 sword + armour + 20 gold', 3], ['Mounted knight', 'Knight + stable', 'A knight plus a horse', 4],
   ['Flamethrower squad', 'Blacksmith', 'Sword, armour and 20 gold', 4], [`Citizen ${NEW}`, 'The Citizen button (Town list)', `About ${D.call[60] ? D.call[60].food : CC.base.food} food + ${D.call[60] ? D.call[60].gold : CC.base.gold} gold, more when unhappy (section 11)`, 1]]);
 
 // ---------- 10 ----------
@@ -449,7 +452,7 @@ H('What changes the cost and the wait');
 TBL(['', 'The rule'], [
   ['<b>Happiness</b>', 'The unhappier your people, the longer word takes to spread and the more a citizen costs. Below 20 happiness it takes about four and a half minutes. Happy people (70 or more): sooner and cheaper than the normal price.'],
   ['<b>Wars won</b>', `A raid beaten off (at least 6 in 10 of its raiders fall and your keep stands) or a rival defeated. Each war won counts for ${CC.win.lasts / 60} minutes, and up to ${CC.win.max} count at once. Each makes the wait and the cost about ${Math.round((1 - CC.win.time) * 100)}% less, and makes the houses raise their children sooner.`],
-  ['<b>Generals</b>', `Soldiers with ${CC.general.stars} or more veteran stars, in the field or in the camp. Up to ${CC.general.max} count. Each makes the wait about ${Math.round((1 - CC.general.time) * 100)}% shorter and the cost ${Math.round((1 - CC.general.cost) * 100)}% less, and makes the houses raise their children sooner.`],
+  ['<b>Generals</b>', `Soldiers with ${CC.general.stars} or more veteran stars (five-star generals too), in the field or in the camp. Up to ${CC.general.max} count. Each makes the wait about ${Math.round((1 - CC.general.time) * 100)}% shorter and the cost ${Math.round((1 - CC.general.cost) * 100)}% less, and makes the houses raise their children sooner.`],
   ['<b>Limits</b>', `Your houses must have room for him. At most ${CC.queue} can be on their way at once. However much the wars and generals help, the wait is never shorter than ${Math.round(CC.base.secs * CC.floor)} seconds.`]]);
 H('The numbers today (Build)');
 P('Happiness alone, with no wars won and no generals:');
@@ -512,6 +515,11 @@ TBL(['Stage', 'People', 'Food', 'Stone', 'Iron'], [[2, 12, 150, '—', '—'], [
 H('When the raids come', true);
 TBL(['Difficulty', 'Peace before the first raid', 'First bandits'], ['easy', 'medium', 'hard'].map(d => [d[0].toUpperCase() + d.slice(1), `${mins(peace[d])} minutes`, `${mins(D.peace.rogue[d])} minutes`]), 'narrow');
 P('After the first, each enemy rival’s first raid comes about a minute and a quarter after the one before. The trading friend never raids.');
+H('How strong the raids are', true);
+P('Your decision after version 3: the Medium raids much stronger than the Easy ones, and the Hard raids the strongest. Two things make them so: how many soldiers a rival may keep (so how many it can send), and how hard each raider hits and how many blows he can take.');
+{ const RP = D.raidPower || { easy: { army: 0.75, strength: 1 }, medium: { army: 1.4, strength: 1.25 }, hard: { army: 1.9, strength: 1.5 } }, cap = [3, 6, 10, 14, 18];
+  TBL(['Difficulty', 'Army a rival may keep (stages 1 to 5)', 'Each raider'], ['easy', 'medium', 'hard'].map(d => [`<b>${d[0].toUpperCase() + d.slice(1)}</b>`, cap.map(c => Math.round(c * RP[d].army)).join(', '), RP[d].strength === 1 ? 'as trained' : `hits ${RP[d].strength} times as hard and takes ${RP[d].strength} times the blows`]), 'narrow'); }
+P('A rival keeps two of its soldiers at home and sends the rest. Raids also come more often on harder levels (about every 5, 4 and 3 minutes).');
 H('Each faction’s weakness');
 TBL(['Faction', 'Exploit it by'], [['Cy Young', 'Raiding farms and food early, before the money snowballs.'], ['Ticanologue', 'Destroying the market they paid so much to build.'], ['Hekaranok', 'Killing units outright. A killed unit cannot be healed.'], ['Psychana', 'Ringing your castle with towers that spot their sneaking units.']]);
 
@@ -541,11 +549,11 @@ FIG(shot('saves'), 'The saved games, at the bottom of Settings, photographed in 
 // ---------- 16 ----------
 SEC('Glossary and Search Words', 'The same words the in-game Help search will understand.', 'sign:Aa');
 { const G = [['Abbey', 'Healing and happiness building. Stronger for Hekaranok.'], ['Alehouse', 'One worker. Sells ale. Stage 1.'], ['Archer', 'Ranged soldier. Stage 1.'], ['Ballista', 'Bolt thrower. Stage 3. On towers, sees as far as a longbowman.'],
-    ['Bakery', 'Five per mill, 3 people each.'], ['Bell', 'Recalls Hekaranok’s healing units.'], ['Berserker', 'Wild fighter. Stage 3. Psychana.'], ['Campfire', 'Where idle citizens go.'], ['Catapult', 'Siege stone thrower. Stage 4.'],
+    ['Bakery', 'Five per mill, 3 people each.'], ['Bell', 'Recalls Hekaranok’s healing units.'], ['Berserker', 'Wild fighter. Stage 3. Every faction.'], ['Campfire', 'Where idle citizens go.'], ['Catapult', 'Siege stone thrower. Stage 4.'],
     [`Citizen button ${NEW}`, 'Town list. Calls one more citizen for food and gold.'], ['Citizens', 'Your workers. Replace them when killed.'], ['Crossbowman', 'Ranged. Stage 3.'], [`Diamond ${NEW}`, 'The troop controls, bottom left.'], ['Education', 'School upgrades for people and soldiers.'],
     ['Engineer', 'Fast repair; builds trebuchets.'], ['Escort', 'Soldiers who protect work groups.'], [`Export ${NEW}`, 'Keep a saved game as a file.'], ['Feast', 'Costly, never automatic. Stage 3.'], ['Fire', 'Citizens fetch water; 10 seconds burns half.'],
     ['Flamethrower', 'Squad of 10. Stage 4. Attack only.'], [`Flat view ${NEW}`, 'Seen from straight above. Key V.'], ['Fog of war', 'Unexplored ground is hidden.'], [`Formation ${NEW}`, 'The shape a group marches in.'], ['Gate', 'Intentional opening in a wall.'],
-    [`General ${NEW}`, 'A soldier with 10 or more stars.'], ['Granary', 'Stores food. Expands at stage 3.'], ['Guard', 'Command: defend an area.'], ['Help (?)', 'Search keywords or activities.'], ['Keep', 'Your heart. Lose it and you lose.'],
+    [`General ${NEW}`, `A soldier with ${CC.general.stars} or more stars; five-star at ${CC.general.fiveStar || 10}.`], ['Granary', 'Stores food. Expands at stage 3.'], ['Guard', 'Command: defend an area.'], ['Help (?)', 'Search keywords or activities.'], ['Keep', 'Your heart. Lose it and you lose.'],
     ['Knight', 'Foot at stage 3, mounted at stage 4.'], ['Longbowman', 'Twice the sight. Stage 2.'], ['Market', 'Trade. Stage 3.'], ['Mill', 'Feeds five bakeries.'], ['Moat', 'Barrier. Citizens, spearmen, swordsmen, flamethrowers fill it; it becomes ground.'],
     [`Mourning ${NEW}`, 'Two minutes of sorrow after deaths.'], ['Patrol', 'Draw a route soldiers repeat.'], [`Peace time ${NEW}`, '10 minutes (5 on Hard) before the first raid.'], ['People tab', 'The face on the diamond. All people at a glance.'], ['Quarry', 'Stone. Stage 2. Max two.'],
     ['Rally flag', 'Where new units gather.'], ['Repair', 'Automatic. Rebuild takes twice as long.'], ['Save', 'Named saves in Settings.'], ['School', 'Education. Stage 3.'], ['Spikes', 'Lethal to enemies.'], ['Stable', 'Horses and oxen. Stage 3.'],
@@ -558,12 +566,8 @@ SEC('Glossary and Search Words', 'The same words the in-game Help search will un
 SEC('Still Open', 'Things still waiting on you, and things still being finished.', 'sign:✎');
 H('Waiting on your decision');
 TBL(['Item', 'What the game does now', 'Your call'], [
-  ['Raid strength on Medium and Hard', 'Raids grow with the rival’s stage and the difficulty’s pace.', 'How strong should they be?'],
-  ['Berserker', 'Psychana only, as the picture catalogue lists them. Earlier notes treated them as general.', 'Psychana only, or everyone?'],
-  [`What makes a general ${NEW}`, `${CC.general.stars} or more veteran stars.`, 'Keep 10, or another number?'],
-  [`What counts as a war won ${NEW}`, 'A raid where at least 6 in 10 of the raiders fell and your keep stands, or a rival defeated. Each counts for 10 minutes, up to 3 at once.', 'Keep, or change?'],
-  [`Calling citizens: the numbers ${NEW}`, `At happiness 60: ${D.call[60] ? `${D.call[60].food} food, ${D.call[60].gold} gold, ${mmss(D.call[60].secs)}` : ''}. Below 20: ${D.call[15] ? `${D.call[15].food} food, ${D.call[15].gold} gold, ${mmss(D.call[15].secs)}` : ''}. At most 5 on the way.`, 'Keep, or tune?'],
-  ['The diamond’s arrows and Add', 'The arrows walk the chosen soldiers a short way that way. Add lets taps add soldiers to the group.', 'Is that what you meant?']]);
+  [`The five-star general ${NEW}`, `${CC.general.stars} stars: a general. ${CC.general.fiveStar || 10} stars: a five-star general (Claude’s reading of your answer). Both count the same toward calling citizens.`, 'Is that right? Should a five-star general count for more?'],
+  [`Raid strength: the numbers ${NEW}`, (RP => `Easy: armies ${RP.easy.army} of the base number, raiders as trained. Medium: armies ${RP.medium.army} of it, each raider ${RP.medium.strength} times as strong. Hard: armies ${RP.hard.army} of it, each raider ${RP.hard.strength} times as strong (section 14).`)(D.raidPower || { easy: { army: 0.75 }, medium: { army: 1.4, strength: 1.25 }, hard: { army: 1.9, strength: 1.5 } }), 'Keep, or tune?']]);
 H('Numbers Claude Code proposed');
 P('These are in the current build. You can accept them or change them, and each is one line in the settings file.');
 TBL(['Item', 'Current build value'], [['Tower ballista', '400 gold, 150 wood (you agreed; it can change)'], ['Tower trebuchet', '800 gold, 300 wood, 100 stone'], ['Market', 'Buy at 2.5 times, sell at 1.2 times. School level 2: 2 and 1.5. Level 3: 1.8 and 1.6.'],
@@ -571,7 +575,10 @@ TBL(['Item', 'Current build value'], [['Tower ballista', '400 gold, 150 wood (yo
 H('Decided since version 2');
 TBL(['Item', 'Your decision, now in the game'], [['Moat fillers', 'Citizens, spearmen, swordsmen and flamethrowers. Never knights or anyone on a horse.'], ['Spikes', 'One strike kills, except knights, berserkers and mounted knights (two).'],
   ['Peace time', `${mins(peace.easy)} minutes, ${mins(peace.hard)} on Hard.`], ['Calling citizens', 'Back in the Town list, with happiness, wars won and generals balancing the cost.'], ['Fix button', 'The one over people: taken out. Remove &amp; rebuild stays in every building’s box.'], ['Double-click', 'Opens the person’s box.'],
-  ['Troop controls', 'The diamond at the bottom left, with formations, patrol, guard and add.'], ['Boxes', 'One tap puts hints away; a double tap closes any box.']]);
+  ['Troop controls', 'The diamond at the bottom left, with formations, patrol, guard and add.'], ['Boxes', 'One tap puts hints away; a double tap closes any box.'],
+  [`Berserkers ${NEW}`, 'Every faction has them. Psychana’s power fits theirs: in small bands they move unseen.'], [`Raids ${NEW}`, 'Medium much stronger than Easy; Hard the strongest.'],
+  [`Generals ${NEW}`, `${CC.general.stars} or more stars; a five-star general at ${CC.general.fiveStar || 10}.`], [`Wars won ${NEW}`, 'A raid where at least 6 in 10 raiders fell and your keep stands, or a rival defeated. Each counts for 10 minutes, up to 3 at once.'],
+  [`Calling citizens: the numbers ${NEW}`, 'As in section 11.'], [`The diamond ${NEW}`, 'The arrows direct which way to go. Add puts more soldiers in the formation, and soldiers trained while it is on join it.']]);
 H('Still being finished');
 UL(['Higher-resolution art: the pictures of units and buildings here are the game’s own small pictures. Sheet-quality art for the newer soldiers is listed in design/MISSING-ART.md and design/IMAGE-PROMPTS.md.',
   'All remaining stand-in art in the game is being finished.', 'The bug sweep goes on with every phase. Tell Claude Code anything that looks wrong, with where it happened.',

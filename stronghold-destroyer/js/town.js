@@ -410,7 +410,7 @@ function updateEconomy(dt) {
       if (q.t >= q.dur) {
         trainQueue.splice(trainQueue.indexOf(q), 1);
         const list = IND() ? (q.called ? [arriveCitizen(k)] : finishTraining(q, k)) : [makeUnit('player', q.kind, k.x1 + 14, k.y1 - 20)], rp = rallyFor(q.kind), u = list[0];   /* a squad of ten, a sheet soldier, a knight with or without a horse */
-        for (const v of list) commandMove([v], rp.x + RR(-25, 25), rp.y + RR(-20, 20));
+        if (q.called || typeof joinRecruits !== 'function' || !joinRecruits(list)) for (const v of list) commandMove([v], rp.x + RR(-25, 25), rp.y + RR(-20, 20));   /* (4G: with Add on, new soldiers join the marked group) */
         if (!q.called) floatText(u.x, u.y - 50, `${u.name} ready`, '#9fe8a8'); AudioSys.ui('ready');
       }
     }
