@@ -27,7 +27,7 @@ async function game(ctxOpts, fac = 'cyyoung', diff) {
     await p.evaluate(() => { window.__step(4); SD.setRaid(99999); REALM.rogueT = 1e9; for (const R of REALM.rivals) { R.raidT = 1e9; R.scoutT = 1e9; } document.getElementById('banner').style.display = 'none';
       window.T = {
         put(kind, near) { const k = SD.keep(), o = near || { c: k.c + 1, r: k.r + 1 };
-          for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r, 'player'); if (bb) { bb.done = true; bb.progress = 1; bb.hp = bb.maxHp; } return bb; } }
+          for (let rad = 3; rad < 40; rad++) for (let a = 0; a < 28; a++) { const c = o.c + Math.round(Math.cos(a / 28 * 6.283) * rad), r = o.r + Math.round(Math.sin(a / 28 * 6.283) * rad); if (canPlace(kind, c, r)) { const bb = createBuilding(kind, c, r); if (bb) { bb.done = true; bb.progress = 1; bb.hp = bb.maxHp; } return bb;   /* (4H: before, 'player' went in as the building's direction, and the 3D view could not turn it: every building placed here was left out of the pictures) */ } }
           return null; },
         people(n, type = 'civ') { const k = SD.keep(), out = []; for (let i = 0; i < n; i++) { const f = nearestFree(k.c + 2 + (i % 5), k.r + 6 + Math.floor(i / 5)); out.push(makeUnit('player', type, f.c * TILE + 16, f.r * TILE + 16)); } return out; },
         run(secs) { const d = window.__drawMs; window.__drawMs = 1e12; window.__step(Math.round(secs * 20)); window.__drawMs = d; },   /* (time runs on without drawing; pictures draw afresh) */
@@ -119,6 +119,17 @@ async function buildTown(p, stage = 2) {
     await p.waitForTimeout(150); await clipShot(p, 'card', '#personPop', 8);
     await p.evaluate(() => { UI.closePops(); const s = window.__guideSold[0]; s.vet = 12; s.wars = 12; SD.centerOn(s.x, s.y); window.__step(2); showCard(s); });
     await p.waitForTimeout(150); await clipShot(p, 'general', '#personPop', 8); await p.evaluate(() => UI.closePops()); });
+  // (4H) the field with its three crops beside the farm and its animals, the well, the lookout towers and the guards
+  await tryShot('fieldfarm', async () => {
+    const c = await p.evaluate(() => { const L = farms.filter(b => b.team === 'player' && !b.dead && (b.kind === 'wheatfarm' || b.kind === 'farm'));
+      const x0 = Math.min(...L.map(b => b.x0)), x1 = Math.max(...L.map(b => b.x1)), y0 = Math.min(...L.map(b => b.y0)), y1 = Math.max(...L.map(b => b.y1));
+      cam.z = 1.3; SD.centerOn((x0 + x1) / 2, (y0 + y1) / 2 - 20); T.hideBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top']); T.quiet(); window.__step(6);
+      /* where the two stand on the screen (the 3D view leans, so this is measured, not assumed) */
+      const r = document.getElementById('game').getBoundingClientRect(), pts = [[x0, y0, 50], [x1, y0, 50], [x0, y1, 0], [x1, y1, 0]].map(([x, y, h]) => SD.scr(x, y, h));
+      const sx0 = Math.max(0, Math.min(...pts.map(q => q.x)) - 40), sx1 = Math.min(r.width, Math.max(...pts.map(q => q.x)) + 40), sy0 = Math.max(0, Math.min(...pts.map(q => q.y)) - 60), sy1 = Math.min(r.height, Math.max(...pts.map(q => q.y)) + 30);
+      return { x: r.left + sx0, y: r.top + sy0, width: sx1 - sx0, height: sy1 - sy0 }; });
+    save('fieldfarm', await p.screenshot({ clip: c, ...JPG }));
+    await p.evaluate(() => T.showBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top'])); });
   for (const kind of ['quarry', 'farm', 'wheatfarm', 'woodhut', 'alehouse', 'house']) await tryShot('site-' + kind, async () => {
     await p.evaluate(kind => { UI.closePops(); const b = structures.concat(farms).find(b => b.kind === kind && b.team === 'player' && !b.dead); if (!b) throw new Error('no ' + kind); SD.centerOn((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2); window.__step(2); document.getElementById('storePop').dataset.site = ''; showSite(b); }, kind);
     await p.waitForTimeout(200); await clipShot(p, 'site-' + kind, '#storePop', 8); await p.evaluate(() => { UI.closePops(); T.quiet(); }); });
@@ -188,12 +199,6 @@ async function buildTown(p, stage = 2) {
     if (ONLY.some(n => ['phone', 'phoneTown'].includes(n))) { const errsIpad = G.errs.slice(); await G.b.close(); G = await game({ ...devices['iPhone 13'], deviceScaleFactor: 2 }); p = G.p; await G.begin(); await buildTown(p, 2); await phoneShots(p); Object.assign(old.shots, shots); }
     fs.writeFileSync(path.join(OUT, 'data.json'), JSON.stringify(old)); console.log('retaken', Object.keys(shots), 'failed', fails); await G.b.close(); return; }
   // the keep has no stand-alone model: photograph it in the game
-  // (4H) the field with its three crops beside the farm and its animals, the well, the lookout towers and the guards
-  await tryShot('fieldfarm', async () => { await p.evaluate(() => { const f = farms.find(b => b.kind === 'wheatfarm' && b.team === 'player'), fm = farms.find(b => b.kind === 'farm' && b.team === 'player');
-      cam.z = 1.5; SD.centerOn(((f.x0 + f.x1) / 2 + (fm.x0 + fm.x1) / 2) / 2, ((f.y0 + f.y1) / 2 + (fm.y0 + fm.y1) / 2) / 2); T.hideBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top']); T.quiet(); window.__step(6); });
-    const c = await p.evaluate(() => { const r = document.getElementById('game').getBoundingClientRect(); return { x: r.left + r.width * 0.12, y: r.top + r.height * 0.1, width: r.width * 0.76, height: r.height * 0.8 }; });
-    save('fieldfarm', await p.screenshot({ clip: c, ...JPG }));
-    await p.evaluate(() => T.showBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top'])); });
   await tryShot('keep', async () => { await p.evaluate(() => { const k = SD.keep(); cam.z = 2.2; SD.centerOn(k.x, k.y - 30); T.hideBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top']); T.quiet(); window.__step(3); });
     const kp = await p.evaluate(() => { const k = SD.keep(), s = SD.scr(k.x, (k.y0 + k.y1) / 2, 60), r = document.getElementById('game').getBoundingClientRect(); return { x: s.x + r.left, y: s.y + r.top }; });
     save('keep', await p.screenshot({ clip: { x: Math.max(0, kp.x - 190), y: Math.max(0, kp.y - 220), width: 380, height: 380 }, ...JPG }));
