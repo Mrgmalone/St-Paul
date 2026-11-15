@@ -674,9 +674,43 @@ and so on). Fixed; all 45 pictures retaken; the Field's and Farm's pictures show
 free (he said it "comes with these buildings"; it costs 25 gold now); turkeys and sheep kept; the vineyard, orchard and
 hop farm kept; the farm level times, well and lookout costs (Claude's numbers).
 
+## Phase 4I: tap a field or farm; food first; guards free (Gerald, after 4H)
+
+**What Gerald said:** "I do not see the improvement to the field yet, nor to the farm... I don't have a box that pops up
+once I click on the farm or the field... a box pops up right next to it"; people were short of food and leaving ("I keep
+getting the response that I need to send people to the farm"); "the food needs to be picked first... automatically...
+even if I build the field, they need to go back and pick the food, and then someone else gets the field"; answers: ten in
+a field is right; the guard "comes with the building... free like the knight that comes for the tower"; keep turkeys,
+sheep and the vineyard; the numbers suit.
+
+**Causes found:** the 3D view's picker (world3d.js pick) and the flat view's (input.js pickAt) looked only at people and
+`structures`; fields and farms live in `farms`, so a tap on one found nothing (on a computer a click could sometimes reach
+it through pickResource; on an iPad never), and a tap on a worker in the field chose the worker. Food: in 4H the farm's
+keepers brought food every 8 s (the old farm gave about 50 a minute; the new one about 15), a new field started on wheat
+(no food until a mill), and every new workplace called people away from picking berries.
+
+**Now:**
+- A tap or click anywhere on your field or farm (even on someone working or guarding it) opens its box; on an iPad or
+  computer it opens beside it (the view slides, and steps back a little if needed, so both fit); a phone keeps its own
+  place. The farm's box has People − and + at the top. Orders still work: people chosen and sent to a field work it.
+- Food first (settings.js FOOD_FIRST, in minutes of eating): below 4 (and 120 food), no one picking food is called away
+  and people with no job (and jobless wood and stone gatherers, unless you sent them) pick food; below 2, work that is
+  not food takes at most one; below 0.75, people leave such work to pick food, the alehouse first and the woodcutters
+  last, until enough pick (one picker for about 18 food a minute). Food work (farm, a field on corn, mill, bakeries) keeps
+  its people.
+- A new field starts with two on corn; seconds of work: wheat 4, corn 5, grapes 10; loads 10, 10, 5. Farm keepers every
+  2.5 s, loads of 10.
+- Guards come with the field (2) and farm (1) when finished, free and with no place in the houses (u.gift, as the
+  tower's knight); Reserve brings a new one free; the box shows their health and whether they are fighting.
+
+**Checks:** tests/tTapField4I.js (real mouse clicks and finger taps on the field, the farm, a worker and a guard, the box
+beside them, sending a citizen to the field; the guards; food first). tFarming4H, tIndustry and tCitizens updated (they
+switch food-first off where a town of 40 has little food, or remove the field's guards to see the sentry alert).
+Master Guide: a photograph of a tap opening the field's box beside it; the farm's and field's boxes retaken.
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4H, the fresh play link https://claude.ai/artifact/4ah7F6R1GD71CrfrJacMEK version 2):** the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+**Latest (Phase 4I, the fresh play link https://claude.ai/artifact/4ah7F6R1GD71CrfrJacMEK version 4):** a tap opens a field's or farm's box beside it; food first; guards free (section above). Before that, Phase 4H (version 2): the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
 built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
 Gerald: whether a five-star general (10 stars) should count for more, and whether the raid numbers suit (Phase 4G).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.

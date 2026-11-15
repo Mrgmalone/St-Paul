@@ -267,15 +267,19 @@ function animalBuy(k, n) { const f = mineDone('farm')[0]; if (!f) return false; 
   function beside(b) {
     const par = p.offsetParent; if (!par || window.innerWidth < 700 || window.innerHeight < 520) { home(); return; }
     const pr = par.getBoundingClientRect(), cr = canvas.getBoundingClientRect(), view = { x0: cr.left - pr.left, x1: cr.right - pr.left };
-    p.style.maxWidth = '430px'; p.style.maxHeight = (pr.height - 16) + 'px'; p.style.overflowY = 'auto';
+    p.style.maxWidth = '350px'; p.style.maxHeight = (pr.height - 16) + 'px'; p.style.overflowY = 'auto';   /* (plus its padding: about 430 across) */
     const W = p.offsetWidth, H = Math.min(p.offsetHeight, pr.height - 16);
     let S = spots(b, pr, cr);
-    const fitsRight = S.x1 + 16 + W <= view.x1 - 8, fitsLeft = S.x0 - 16 - W >= view.x0 + 8;
-    if (!fitsRight && !fitsLeft) {   /* no room on either side: the view slides so the field stands to one side and the box opens on the other */
-      const want = view.x1 - 16 - (S.x1 - S.x0) / 2, now = (S.x0 + S.x1) / 2, dx = now - want;
-      if (W + 32 + (S.x1 - S.x0) <= view.x1 - view.x0) { cam.x += dx / cam.z; if (typeof clampCam === 'function') clampCam(); S = spots(b, pr, cr); }
+    if (W + 40 + (S.x1 - S.x0) > view.x1 - view.x0 && cam.z > 0.8) {   /* the field and the box cannot both fit: step back a little */
+      const z = Math.max(0.8, cam.z * (view.x1 - view.x0 - W - 40) / (S.x1 - S.x0)); centerOn((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2); const mx = cam.x + vw / cam.z / 2, my = cam.y + vh / cam.z / 2; cam.z = z; centerOn(mx, my); S = spots(b, pr, cr); }
+    const room = () => ({ right: view.x1 - 8 - (S.x1 + 16), left: (S.x0 - 16) - (view.x0 + 8) });
+    if (room().right < W && room().left < W) {   /* no room on either side: the view slides the field toward the nearer side, the box opens on the other */
+      const now = (S.x0 + S.x1) / 2, half = (S.x1 - S.x0) / 2, want = now < (view.x0 + view.x1) / 2 ? view.x0 + 16 + half : view.x1 - 16 - half;
+      if (W + 32 + 2 * half <= view.x1 - view.x0) for (let i = 0; i < 4; i++) {   /* (the 3D view leans, so it slides in a few steps until the field is where it should be) */
+        const off = (S.x0 + S.x1) / 2 - want; if (Math.abs(off) < 3) break;
+        cam.x += off / cam.z; if (typeof clampCam === 'function') clampCam(); S = spots(b, pr, cr); }
     }
-    let left = S.x1 + 16; if (left + W > view.x1 - 8) left = S.x0 - 16 - W;   /* to the right of it, or else to the left */
+    const R = room(); let left = R.right >= W || R.right >= R.left ? S.x1 + 16 : S.x0 - 16 - W;   /* the side with room (or the most room) */
     p.style.left = clamp(left, 8, Math.max(8, pr.width - W - 8)) + 'px'; p.style.top = clamp((S.y0 + S.y1) / 2 - H / 2, 8, Math.max(8, pr.height - H - 8)) + 'px';
   }
   new MutationObserver(() => {

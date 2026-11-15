@@ -130,6 +130,13 @@ async function buildTown(p, stage = 2) {
       return { x: r.left + sx0, y: r.top + sy0, width: sx1 - sx0, height: sy1 - sy0 }; });
     save('fieldfarm', await p.screenshot({ clip: c, ...JPG }));
     await p.evaluate(() => T.showBits(['tips', 'alertBar', 'btnTrophy', 'side', 'diamond', 'mini', 'top'])); });
+  // (4I) a tap on the field: its box opens right beside it
+  await tryShot('tapbox', async () => {
+    const q = await p.evaluate(() => { UI.closePops(); const f = farms.find(b => b.kind === 'wheatfarm' && b.team === 'player'); cam.z = 1.3; SD.centerOn((f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2); T.hideBits(['tips']); T.quiet(); window.__step(3);
+      const s = SD.scr((f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2, 0), r = document.getElementById('game').getBoundingClientRect(); return { x: r.left + s.x, y: r.top + s.y }; });
+    await p.mouse.click(q.x, q.y); await p.waitForTimeout(250); await p.evaluate(() => window.__step(2));
+    const c = await p.evaluate(() => { const r = document.getElementById('game').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
+    save('tapbox', await p.screenshot({ clip: c, ...JPG })); await p.evaluate(() => { UI.closePops(); T.showBits(['tips']); }); });
   for (const kind of ['quarry', 'farm', 'wheatfarm', 'woodhut', 'alehouse', 'house']) await tryShot('site-' + kind, async () => {
     await p.evaluate(kind => { UI.closePops(); const b = structures.concat(farms).find(b => b.kind === kind && b.team === 'player' && !b.dead); if (!b) throw new Error('no ' + kind); SD.centerOn((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2); window.__step(2); document.getElementById('storePop').dataset.site = ''; showSite(b); }, kind);
     await p.waitForTimeout(200); await clipShot(p, 'site-' + kind, '#storePop', 8); await p.evaluate(() => { UI.closePops(); T.quiet(); }); });
