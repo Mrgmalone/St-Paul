@@ -50,7 +50,8 @@ const HELPUI = (() => {
     return `<table class="hlpTab"><tr><th>Stage</th><th>Needs (Easy)</th><th>Buildings</th></tr>${rows}</table><p class="hlpSm">Medium and Hard ask more of these, more at each stage. The trophy shows your own numbers.</p>`;
   }
   const fill = s => String(s).replace(/\{cost:(\w+)\}/g, (m, k) => costText(k)).replace(/\{name:(\w+)\}/g, (m, k) => (BUILD[k] && BUILD[k].name) || (KINDS[k] && KINDS[k].name) || k)
-    .replace(/\{stagetable\}/g, () => stageTable());
+    .replace(/\{stagetable\}/g, () => stageTable())
+    .replace(/\{guardGold\}/g, () => FARMING.guard.gold).replace(/\{wellWood\}/g, () => FARMING.well.wood).replace(/\{lookoutWood\}/g, () => FARMING.lookout.wood);   /* (4H) */
   // ---------- pictures ----------
   const picCache = new Map();
   function gamePic(name) {

@@ -602,9 +602,69 @@ or more troops in the formation. If you hit the add button, when I build a troop
   missed while two checks shared the machine, so the panel never opened and the next click waited); run alone it passed
   (34 to 47 seconds in earlier suites). Not caused by 4G: Add is off by default, so the mouse click works as before.
 
+## Phase 4H: the Field and the Farm; walking without glitches (Gerald, after 4G)
+
+**What Gerald asked** (voice, transcribed): more control over the fields and what is made; "there should be two separate
+things, a field and a farm"; the field holds 10, the farm 5; at most 5 fields and 2 farms; the field grows wheat (fastest),
+corn (next) and grapes (slow), up to three types; the farm holds chickens, cows, pigs, ducks, seen running about depending
+on which you pick; both can have a well; the farm can have a stable and gets better over time; happy things around make
+food faster, so distribution is faster; too much food, take workers off; a lookout tower and a person reserved to guard,
+shown in each box (two for a field, one for a farm); Reserve gives an armed soldier with a knight's strength whether or
+not knights have been made, because these buildings stand far from the keep; farm things sell for a lot more than field
+things, livestock always top dollar; "suggest any rules to fit"; remove the glitching near the greenery (go round people
+in the way); remove the "What is this?" button.
+
+**How it reads in the game** (all numbers in settings.js, FARMING):
+- **Field** (`wheatfarm`, renamed Field; 4 by 4 squares now, was 2 by 2): 5 at every stage (no more merging), 10 people.
+  The box opens on Wheat, Corn and Grapes with − and +; the field grows them in strips sized by their people; each worker
+  has his own place in his strip (js/farming.js farmSpot). Seconds of work for one: wheat 6, corn 8, grapes 15. Loads
+  carried to the stores: wheat 10, corn 8, grapes 4 (so slow grapes still come in steadily). Wheat goes to the stores
+  (mill, alehouse); corn is food (a new food kind, `corn`); grapes go to the granary. People taken off with − stay off.
+- **Farm** (4 by 4, was 2 by 2): 2 at most, 5 people; ticks for chickens, cows, pigs, ducks (Gerald's four, raised from
+  the start) and turkeys and sheep (kept: the feast needs them). Only ticked kinds are born (oxen still come from cows).
+  Keepers bring in eggs, milk and meat (food kind `farm`, every 8 s of work each, loads of 6). Levels: 2 after 6 minutes
+  of work, 3 after 15 minutes with a stable beside it; each breeds faster (x1.25, x1.5) and holds more (x1.5, x2).
+  The 3D pen has a little barn, a trough, a pond when ducks are raised, and the animals walking about (world3d.js
+  farmPen, animalModel, syncHerd). − Remove worker sticks (the farm keeps the number you set).
+- **Speed:** very happy (70+) x1.25, upset (below 40) x0.8, a well x1.25, rain and snow as before, a feast x2.
+- **Well** (30 wood): x1.25, and a full bucket for fire fighters nearby (fire.js nearestWater).
+- **Lookout tower** (40 wood): clears the fog 440 around; a banner and bell when a raider comes within 400.
+- **Reserve a guard** (25 gold, a place in the houses; a civilian is called up if they are full): a knight (260 health,
+  his blow) on foot, at any stage; 2 for a field, 1 for a farm; he stays with his field (guardOf) and goes after raiders
+  who come near. "Post one of your soldiers" (the old sentry) still works and counts toward the guards.
+- **Market:** rows for corn and the six animals. Animals always sell at the top price (the best the market ever pays:
+  the top school level's rate in the happiest town), whatever the mood or the school; buying them costs more than
+  that. Worth (cost to make): wheat 1, corn 1.5, grapes 3, chickens and ducks 8, turkeys 14, sheep 20, pigs 24, cows 40.
+- **Rivals** keep their simple fields and farms (bigger now, as BUILD sizes are shared).
+- **"What is this?"** taken off every box (help.js); the box-to-article map stays for Help's own use.
+
+**Walking (Gerald: "remove any glitching... they should just go around that person"):** measured first
+(tests/tWalk4H.js): twelve people walking through the forest, ten soldiers through a line of people standing in their way,
+ten picking berries five to a bush. Causes found by switching parts off: separate() shoved everyone apart every frame,
+backwards too, and fully in one frame; slideAround picked a side again every frame; people at work counted as "moving"
+so passers-by shoved them; the places round a bush were closer together than a person is wide. Fixes (units.js): a
+walker is only nudged aside, never back against his way, and no more than about a point a frame; one side is kept a
+moment when passing, two meeting head-on both keep right, and walkers going the same way follow; each worker gets his
+own place round a bush, tree or rock, a person's width apart, and walks right to it; a person at work does not budge for
+passers-by. 3D figures face the way they are going (the next point of their path), not the way a nudge moved them.
+
+| | back-and-forth turns a minute | sudden head turns a minute | shifting while standing (points a second) |
+|---|---|---|---|
+| forest, before → after | 59 → about 8 | 102 → about 13 | 2.9 → 0.8 |
+| through people | 52 → about 5 | 71 → 0 to 1 | 2.1 → about 1 |
+| berry picking | 10 → 7 to 13 (crowded two-way traffic) | 20 → about 6 to 9 | 4.9 → 0.5 to 0.9 |
+
+**Checks:** tests/tFarming4H.js (five fields of ten, no merging, the crops and their speeds, people on and off, mood and
+well, two farms of five, ticked animals only, farm food, levels with the stable, the lookout, the guards, the market,
+the boxes); tests/tWalk4H.js; tests/tHelp.js (no "What is this?" anywhere).
+
+**Waiting on Gerald:** ten in a field (he also said "up to five people can be in one field"); whether the guard should be
+free (he said it "comes with these buildings"; it costs 25 gold now); turkeys and sheep kept; the vineyard, orchard and
+hop farm kept; the farm level times, well and lookout costs (Claude's numbers).
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4G, play link version 58):** Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+**Latest (Phase 4H):** the Field and the Farm, guards, wells and lookouts, animals at the top price, walking without glitches, no "What is this?" (section above). Before that, Phase 4G (play link version 58): Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
 built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
 Gerald: whether a five-star general (10 stars) should count for more, and whether the raid numbers suit (Phase 4G).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.

@@ -11,7 +11,7 @@ const OUT = path.join(ROOT, 'design/Stronghold-Destroyer-Master-Guide-v3.pdf');
 const J = JSON.parse(fs.readFileSync(path.join(CACHE, 'data.json'), 'utf8')), D = J.data, SH = J.shots;
 // the number of short Help articles, read from the Help file itself (so it is never out of date)
 D.helpCount = Function(fs.readFileSync(path.join(ROOT, 'js/helpdata.js'), 'utf8') + ';return HELP_DATA')().articles.length;
-const warn = []; const DATE = 'November 14, 2026';
+const warn = []; const DATE = 'November 15, 2026';
 const uri = (file, type) => `data:${type};base64,${fs.readFileSync(file).toString('base64')}`;
 const shot = name => { const f = SH[name]; if (!f || !fs.existsSync(path.join(CACHE, f))) { warn.push('no picture: ' + name); return ''; } return uri(path.join(CACHE, f), f.endsWith('.png') ? 'image/png' : 'image/jpeg'); };
 const art = name => { const f = path.join(ART, name + '.jpg'); if (!fs.existsSync(f)) { warn.push('no art: ' + name); return ''; } return uri(f, 'image/jpeg'); };
@@ -49,6 +49,7 @@ const C = k => D.costs[k] || { name: k, cost: '', stage: 1 };
 const stageWord = n => `Stage ${n}`;
 const bline = k => `${stageWord(C(k).stage)} · ${C(k).cost}`;
 const peace = D.peace.raid, mins = s => (s / 60).toString();
+const FG = D.farming || { field: { max: 5, staff: 10 }, farm: { max: 2, staff: 5, levels: [{}, { after: 360 }, { after: 900 }] }, guard: { gold: 25, field: 2, farm: 1 }, well: { wood: 30 }, lookout: { wood: 40 } };   // (4H)
 const CC = D.CITIZEN_CALL, mmss = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 const BUILD_TEXT = {
   keep: 'Your castle’s heart. It grows through the five stages and shoots at enemies who come near.',
@@ -70,7 +71,7 @@ const BUILD_TEXT = {
   lookout: 'Tall and slim: archers on top see and shoot very far.', roundtower: 'Giant tower that carries a ballista or a trebuchet.', greattower: 'The strongest tower; can carry a siege engine.',
   moat: 'Water that stops people and engines; citizens, spearmen, swordsmen and flamethrowers can fill it.', pit: 'Hidden spikes: one strike kills an enemy (knights, berserkers and mounted knights take two).'
 };
-const BNAME = { woodhut: 'Woodcutter’s Hut', chapel: 'House of Prayer', bowyer: 'Fletcher (Bowyer)', poleturner: 'Spear-maker', smithy: 'Blacksmith', engineerhut: 'Engineer’s Hut', wheatfarm: 'Wheat Field', gtower: 'Tower', stower: 'Stone Tower', pit: 'Spike Pit', highwall: 'High Wall', roundtower: 'Round Tower', greattower: 'Great Tower', lookout: 'Lookout Tower', waterpot: 'Water Pot', hopfarm: 'Hop Farm', ironmine: 'Iron Mine' };
+const BNAME = { woodhut: 'Woodcutter’s Hut', chapel: 'House of Prayer', bowyer: 'Fletcher (Bowyer)', poleturner: 'Spear-maker', smithy: 'Blacksmith', engineerhut: 'Engineer’s Hut', wheatfarm: 'Field', gtower: 'Tower', stower: 'Stone Tower', pit: 'Spike Pit', highwall: 'High Wall', roundtower: 'Round Tower', greattower: 'Great Tower', lookout: 'Lookout Tower', waterpot: 'Water Pot', hopfarm: 'Hop Farm', ironmine: 'Iron Mine' };
 const bcards = keys => keys.map(k => ({ n: BNAME[k] || C(k).name, line: bline(k), d: BUILD_TEXT[k] || '', pic: B(k) }));
 const EM = Object.fromEntries((J.emblems || []).map(e => [e.k, e]));
 
@@ -89,6 +90,13 @@ H('What is new in version 3');
 TBL(['What', 'In short', 'Section'], [
   [`Longer peace ${NEW}`, `${mins(peace.easy)} minutes of peace before the first raid on Easy and Medium, ${mins(peace.hard)} on Hard. Bandits wait too.`, '1, 2'],
   [`Calling citizens ${NEW}`, 'The Citizen button in the Town list calls one more citizen, for food and gold. Unhappy people: slower and dearer. Wars won and generals: sooner and cheaper.', '11'],
+  [`The Field ${NEW}`, `${FG.field.max} fields, ${FG.field.staff} people each. Tap a field to choose how many grow wheat (fastest), corn (next) and grapes (slowest). All three can grow at once, in strips.`, '8, 10'],
+  [`The Farm ${NEW}`, `${FG.farm.max} farms, ${FG.farm.staff} people each. Tick the animals it raises (chickens, cows, pigs, ducks; turkeys and sheep for the feast) and watch them walk about the pen. It gets better with time, and with a stable.`, '8'],
+  [`Guards, wells and lookouts ${NEW}`, `Reserve a guard with a knight’s strength for a field (up to ${FG.guard.field}) or a farm (${FG.guard.farm}), ${FG.guard.gold} gold each. A well grows things 25% faster; a lookout tower sees around and rings the bell for raiders.`, '8'],
+  [`Happy people grow more ${NEW}`, 'Very happy people grow food 25% faster in the fields and farms; upset people 20% slower.', '8, 10'],
+  [`Animals sell at the top price ${NEW}`, 'At the market, farm animals always sell for the top price, whatever the mood or the school, far more than crops.', '10'],
+  [`Smoother walking ${NEW}`, 'People no longer shake or turn back and forth near trees, bushes or each other. They go round anyone in the way, and each picker has his own place at a bush.', '6'],
+  [`No “What is this?” ${NEW}`, 'The boxes no longer carry the “What is this?” button. Help (the ?) still answers everything.', '15'],
   [`Wars won and generals ${NEW}`, `Beating off a raid or defeating a rival is a war won. A soldier with ${CC.general.stars} or more stars is a general; at ${CC.general.fiveStar || 10} he is a five-star general.`, '6, 11, 14'],
   [`Stronger raids ${NEW}`, 'A Medium raid is much stronger than an Easy one, and a Hard raid the strongest: more raiders, each hitting harder and taking more blows.', '1, 14'],
   [`Berserkers for everyone ${NEW}`, 'Every faction can train berserkers now. Psychana’s are still the ones who move unseen in small bands.', '3, 6'],
@@ -97,7 +105,7 @@ TBL(['What', 'In short', 'Section'], [
   [`Formations ${NEW}`, 'Seven shapes (Free, Line, Column, Wedge, Square, Circle, Loose). Soldiers march together at the pace of the slowest.', '5, 7'],
   [`Tap to close ${NEW}`, 'One tap puts away a hint, a message or the Art of War advice. A double tap on any box closes it.', '5, 15'],
   [`Phones show pictures ${NEW}`, 'On a phone the top bar and the tabs show pictures and numbers; the names show when you tap.', '5'],
-  [`The Help screen ${NEW}`, `Search in plain words, ${D.helpCount || 93} short articles with pictures, the whole of this guide, a Topics drop-down when you tap the ?, and a “What is this?” link on the boxes.`, '15'],
+  [`The Help screen ${NEW}`, `Search in plain words, ${D.helpCount || 93} short articles with pictures, the whole of this guide, and a Topics drop-down when you tap the ?.`, '15'],
   [`One guide ${NEW}`, 'The Troop Controls Guide from Phase 4E is part of this guide now (section 5).', '5'],
   [`The trophy, with the numbers ${NEW}`, 'Ticks for what is done, crosses for what is not, and every stage’s numbers printed in this guide for each difficulty.', '4'],
   [`Saved games to a file ${NEW}`, 'Named saves, an automatic save, and a save you can keep as a file and load again on another device.', '15'],
@@ -157,19 +165,19 @@ P('If you are lost, read this section first. Find your problem in the left colum
 H('Your first ten minutes');
 P(`This is a suggested order, not a rule. You have <b>${mins(peace.easy)} minutes of peace on Easy and Medium, ${mins(peace.hard)} on Hard</b>, before the first raid. ${FIXED}`);
 MINI([{ n: '1. Houses', d: 'Your workers come from them.', pic: B('house') }, { n: '2. Woodcutters', d: 'Wood feeds everything you build.', pic: B('woodhut') },
-  { n: '3. Wheat field', d: 'Food for the mill, and ale.', pic: B('wheatfarm') }, { n: '4. Farm', d: 'Crops and animals: food.', pic: B('farm') },
+  { n: '3. Field', d: 'Wheat for bread and ale; corn to eat.', pic: B('wheatfarm') }, { n: '4. Farm', d: 'Animals: eggs, milk and meat.', pic: B('farm') },
   { n: '5. Alehouse', d: 'Cheer your people.', pic: B('alehouse') }, { n: '6. Spear-maker', d: 'Spears for your first soldiers.', pic: B('poleturner') },
   { n: '7. Wall and gate', d: 'Close the way in.', pic: B('wall') }, { n: '8. Tower', d: 'On the side the king warns you about.', pic: B('gtower') }]);
 UL(['<b>Houses first.</b> Each house raises a new citizen every few minutes, and your workers come from them.',
   `<b>Need people faster?</b> Call a citizen with the Citizen button in the Town list. It costs food and gold, and he walks in when his wait is over (section 11). ${NEW}`,
-  '<b>Wood, then food.</b> Woodcutters feed everything you build. Add a wheat field and a farm so you never run out of food.',
+  '<b>Wood, then food.</b> Woodcutters feed everything you build. Add a field (put people on corn and wheat) and a farm so you never run out of food.',
   '<b>Cheer your people</b> with an alehouse, and arm a few spearmen from the spear-maker.',
   '<b>Wall and gate, then a tower</b> toward the side the king warns you about. Put a <b>spike pit</b> where raiders will walk, and a <b>water pot</b> near your buildings.',
   '<b>Tap the trophy</b> under the settings button to see what the next stage needs.']);
 H('Problems and what to do');
 TBL(['The problem', 'What to do'], [
   ['People are standing around doing nothing', 'Idle citizens go to the campfire. Make sure each workplace is built and staffed (one citizen runs a building). Open the <b>People tab</b> (the face on the troop diamond) to see what everyone is doing, then press and hold one person to hear what he needs.'],
-  ['I am running out of food', 'Add wheat fields and a farm. At stage 2 build a mill; at stage 3 it comes with five bakeries. If the granary is full, expand it at stage 3 or sell the extra, because too much food brings bugs and disease.'],
+  ['I am running out of food', 'Tap your field and put more people on corn (it feeds people straight away), and build a farm. Keep your people happy: happy people grow food faster. At stage 2 build a mill; at stage 3 it comes with five bakeries. If the granary is full, expand it at stage 3 or sell the extra, because too much food brings bugs and disease.'],
   ['My people are unhappy or leaving', 'Press and hold one person: the box says <b>why</b>. Tap Mood at the top for every reason. Usual fixes: ale at a fair price, a house of prayer, a garden, lower taxes, more kinds of food, less crowding, and care for the sick (apothecary or house of prayer).'],
   [`Happiness fell and I do not know why ${NEW}`, 'If your people or soldiers were killed, the town mourns for two minutes. The mood box lists it. It passes by itself.'],
   [`I need more people now ${NEW}`, 'Tap the Citizen button in the Town list (key 1). Its label (touch it, or rest the mouse on it) shows what one costs and how long he takes. Happier people come sooner and cheaper. You need room in your houses.'],
@@ -229,7 +237,7 @@ for (const d of ['easy', 'medium', 'hard']) { const N = D.needs[d]; if (!N) cont
   add(`<h4 class="tcap">${d[0].toUpperCase() + d.slice(1)}</h4>`); TBL(['Stage', 'People', 'Happy', 'Food', 'Stone', 'Iron', 'Buildings standing'], rows, 'needs'); }
 H('What each stage brings');
 TBL(['Stage', 'What comes in'], [
-  ['<b>1. Shack</b>', 'Spearmen and archers. Houses, farms and wheat fields. Woodcutter’s huts. The alehouse, fletcher, spear-maker and armory. Wooden walls, gate, towers, spike pits and water pots.'],
+  ['<b>1. Shack</b>', 'Spearmen and archers. Houses, farms and fields. Woodcutter’s huts. The alehouse, fletcher, spear-maker and armory. Wooden walls, gate, towers, spike pits and water pots.'],
   ['<b>2. Homestead</b>', 'Longbowmen (a separate unit, not an upgrade). Stone quarries with ox carts. The tavern, brewery and hop farm. High walls and stairs, lookout towers and moats. The mill, house of prayer, apothecary and stocks.'],
   ['<b>3. Hold</b>', 'The big jump. Swordsmen, macemen, crossbowmen, berserkers and foot knights. Ballistas. The stable, blacksmith and iron mine. The school, market, church, engineer’s hut and stone tower. Bakeries (five to a mill). Vineyard and orchard. Granary expansion. Escorted work groups. The feast.'],
   [`<b>4. Castle</b> ${FIXED}`, 'Mounted knights. Rams, flamethrowers and catapults. The abbey. Round and great towers, which come empty: you buy the ballista or trebuchet for each.'],
@@ -381,13 +389,16 @@ UL([`<b>Patrol:</b> press Patrol on the troop diamond, then draw a route with a 
 // ---------- 8 ----------
 SEC('Buildings and Industries', 'What each building does, what it costs, who works in it, and how it grows.', B('house'));
 P('Click any building and a box opens whose background is a still picture of the inside of that building. The picture changes as the building grows. First, the big industries in depth, with photographs of their boxes. After them, every building at a glance with its cost.');
-FIG2([shot('site-quarry'), 'The quarry’s box, photographed in the game.'], [shot('site-farm'), 'The farm’s box.']);
+FIG(shot('site-quarry'), 'The quarry’s box, photographed in the game.', 50);
 H('The big industries');
 CARD(shot('keep') || B('keep'), 'The keep and the shack', 'From the start · your home', ['You start in a shack and the castle grows around it through five stages.', 'Your keep is the heart of the game. If it is destroyed, you lose.', 'Sick people are sent to the keep to be cared for.']);
 CARD(B('woodhut'), 'Woodcutter’s hut and the wood and iron yard', `${stageWord(C('woodhut').stage)} · ${C('woodhut').cost} · one building that grows`, ['Woodcutters fell trees near it. Huts merge into bigger buildings, even when built in separate places.', 'Stage 1: up to 4 huts of 2 people. Stage 2: up to 3 yards of 5 people. (Build)', 'Stage 3: two buildings of 10 people each, and the blacksmith joins so iron work begins.', 'Stages 4 and 5: one big yard. At stage 5 it holds 15 on wood and 10 on iron, and you choose the split.', 'From stage 3 horse-drawn wagons carry the workers to the forest. Arrows and ballista bolts still cost wood.']);
 CARD(B('quarry'), 'Quarry and ox cart', `${stageWord(C('quarry').stage)} · ${C('quarry').cost} · beside grey rocks`, ['Grows and gets more sophisticated, then stops. Maximum two quarries, 10 people in each.', 'Workers go out in sets of two with oxen, and one person always stays behind.', 'On foot, a quarryman can only gather nearby stone. Far stone needs oxen. Going from one ox to two is automatic and free as you grow.', 'Stronger workers and oxen need more food and cost more to replace.']);
-CARD(B('farm'), 'Farm and stable', `Farm ${C('farm').cost}, stage ${C('farm').stage} · stable ${C('stable').cost}, stage ${C('stable').stage}`, ['One farm has pigs, cows, oxen, hens, turkeys and sheep, a couple of soldiers, a guard and several workers. Animals are born and raised there.', 'The stable is built inside the farm and needs 4 people available. Horses live there, pull wagons and turn knights into mounted knights.', 'The farm and the field beside it merge into one block with a single set of protection.']);
-CARD(B('wheatfarm'), 'Wheat field', bline('wheatfarm'), ['Holds up to 10 workers. Starts with 2 or 3 and grows with the castle.', 'Early on up to 5 fields. They merge down to at most 2 very large fields.', 'Each field needs a sentry and, ideally, a lookout tower.']);
+FIG(shot('fieldfarm'), 'A field growing wheat, corn and grapes in strips, beside a farm with its animals, a well, lookout towers and guards. Photographed in the game.', 78);
+CARD(B('wheatfarm'), `The Field ${NEW}`, bline('wheatfarm'), [`Up to ${FG.field.max} fields at every stage (they no longer merge), each holding up to ${FG.field.staff} people. ${FIXED}`, 'Tap the field: + and − beside Wheat, Corn and Grapes put people on each crop or take them off. It can grow all three at once, in strips, and each worker has his own place in his crop’s strip.', 'Wheat grows fastest and goes to the mill (bread) and the alehouse. Corn is next and feeds your people straight from the granary. Grapes are the slowest, so they sell for the most, and the feast needs them.', 'Too much food? Take people off with −: they stay off and go back to gathering.']);
+CARD(B('farm'), `The Farm and the stable ${NEW}`, `Farm ${C('farm').cost}, stage ${C('farm').stage} · stable ${C('stable').cost}, stage ${C('stable').stage}`, [`Up to ${FG.farm.max} farms, each holding up to ${FG.farm.staff} people. Tap the farm and tick the animals it raises: chickens, cows, pigs and ducks (and turkeys and sheep, which the feast needs). You see them walking about the pen; only the ticked ones are born.`, 'The keepers bring in eggs, milk and meat (food). Cows give leather, and their bull calves become oxen for the quarries.', `The farm gets better with time: level 2 after ${Math.round(((FG.farm.levels || [])[1] || { after: 360 }).after / 60)} minutes of work, level 3 after ${Math.round(((FG.farm.levels || [])[2] || { after: 900 }).after / 60)} minutes with a stable beside it. Each level breeds faster and holds more.`, 'The stable stands beside the farm and needs 4 people. Horses live there, pull wagons and turn knights into mounted knights.']);
+CARD(B('lookout'), `Guards, wells and lookouts ${NEW}`, `Guard ${FG.guard.gold} gold · well ${FG.well.wood} wood · lookout ${FG.lookout.wood} wood`, [`Fields and farms can stand far from the keep, so each has its own protection. <b>Reserve a guard</b> in its box: a soldier with a knight’s strength, on foot, even before you can train knights. A field takes ${FG.guard.field}, a farm ${FG.guard.farm}. He takes a place in your houses and stays with his field.`, 'A <b>well</b> makes things grow 25% faster, and is water for putting out fires nearby.', 'A <b>lookout tower</b> sees the land around and rings the bell when raiders come near.', 'Happy people grow food faster (25% when very happy, 20% slower when upset).']);
+FIG2([shot('site-wheatfarm'), 'The field’s box: its crops at the top.'], [shot('site-farm'), 'The farm’s box: its animals at the top.']);
 CARD(B('mill'), 'Mill and bakeries', `Mill stage ${C('mill').stage}, ${C('mill').cost} (Build) · bakery stage ${C('bakery').stage}, ${C('bakery').cost}`, ['One mill feeds five bakeries, each holding up to 3 people. At stage 3 you build one mill and it comes with the five bakeries.', 'Before stage 3 only two mills can be built, with 2 people each.', 'Output is about enough bread for 20 people every couple of minutes. People eat bread fast. Cy Young bakes four and a half times as much.', 'Flour can be bought separately at the market only for cakes for the feast, or to sell.']);
 CARD(B('granary'), 'Granary and stockpile', `Granary ${C('granary').cost} · stockpile ${C('stockpile').cost} · stage 1`, ['The granary holds 300 food, and 800 once expanded at stage 3. Fruit and all food go in automatically.', 'Too much food without expansion brings bugs, disease and deaths. Fix it by taking workers off food (they sit by the campfire, no penalty) or by selling food.', 'The stockpile keeps wood, stone, iron and goods closer to where they are gathered.']);
 CARD(B('alehouse'), 'Alehouse, tavern and brewery', 'Alehouse stage 1 · tavern and brewery stage 2', ['The alehouse needs one worker. People buy ale there and take it home. Set its price Cheap, Fair or Dear.', 'Too cheap and some people end up drunk and strange in the streets. Too expensive and they get angry. Find the middle price. Ale costs more in wartime.', 'The tavern serves more people and people rest there on breaks. The brewery brews ale from the hop farm’s hops.']);
@@ -408,9 +419,9 @@ P(`Costs are read from the game today. The keep has no cost; its picture is a ph
 // ---------- 9 ----------
 SEC('Goods, Weapons and How Soldiers Are Made', 'Every item your people make, move and spend, and where each one goes.', D.weapons.sword || svgPic('mace'));
 H('Goods');
-const GOODS = [['food', 'Food', 'Crops, berries and bread: everyone eats.'], ['wood', 'Wood', 'For building, bows and spears.'], ['stone', 'Stone', 'For stone walls, towers and growing the castle.'], ['iron', 'Iron', 'For swords, maces, armour and crossbows.'],
+const GOODS = [['food', 'Food', 'Crops, berries, corn, eggs, milk, meat and bread: everyone eats.'], ['wood', 'Wood', 'For building, bows and spears.'], ['stone', 'Stone', 'For stone walls, towers and growing the castle.'], ['iron', 'Iron', 'For swords, maces, armour and crossbows.'],
   ['gold', 'Gold', 'From taxes and trade; pays wages, training and calling citizens.'], ['wheat', 'Wheat', 'Ground into flour; brewed into ale.'], ['flour', 'Flour', 'Baked into bread.'], ['bread', 'Bread', 'Good food that adds variety.'], ['hops', 'Hops', 'Brewed into ale.'],
-  ['ale', 'Ale', 'Served at the alehouse and tavern to cheer people.'], ['grapes', 'Grapes', 'Food, and part of a feast.'], ['apples', 'Apples', 'Food, and part of a feast.'], ['leather', 'Leather', 'From the farm’s animals; berserkers need it.']];
+  ['ale', 'Ale', 'Served at the alehouse and tavern to cheer people.'], ['grapes', 'Grapes', 'From the field (slowest crop); worth the most of the crops; part of a feast.'], ['apples', 'Apples', 'Food, and part of a feast.'], ['leather', 'Leather', 'From the farm’s animals; berserkers need it.']];
 const goodPic = k => (['iron', 'wheat', 'flour', 'bread', 'hops', 'ale', 'grapes', 'apples', 'leather'].includes(k) && svgPic(k)) || D.goods[k] || svgPic(k);
 MINI(GOODS.map(([k, n, d]) => ({ n, d, pic: goodPic(k) })));
 H('Weapons');
@@ -427,7 +438,7 @@ TBL(['Soldier', 'Workshop', 'Needs', 'Stage'], [['Spearman', 'Spear-maker', '1 s
 SEC('Economy, Mood and Trade', 'How goods move, how people feel, and how money works.', D.goods.gold);
 H('The chains that make things');
 const chain = l => `<div class="chain">${l.map((x, i) => `${i ? '<span class="ar">➜</span>' : ''}<span class="lk">${x}</span>`).join('')}</div>`;
-add(`<div class="chains">${[['<b>Bread</b>', 'Wheat field', 'Mill', '5 bakeries', 'People eat'], ['<b>Ale</b>', 'Hop farm', 'Brewery', 'Alehouse / tavern', 'People buy ale'], ['<b>Stone</b>', 'Quarry (+ oxen)', 'Stockpile', 'Walls, buildings, growing the castle'],
+add(`<div class="chains">${[['<b>Bread</b>', 'Field (wheat)', 'Mill', '5 bakeries', 'People eat'], ['<b>Corn</b>', 'Field (corn)', 'Granary', 'People eat'], ['<b>Eggs, milk, meat</b>', 'Farm (animals)', 'Granary', 'People eat'], ['<b>Animals</b>', 'Farm', 'Market', 'Top price, always'], ['<b>Ale</b>', 'Hop farm', 'Brewery', 'Alehouse / tavern', 'People buy ale'], ['<b>Stone</b>', 'Quarry (+ oxen)', 'Stockpile', 'Walls, buildings, growing the castle'],
   ['<b>Wood and iron</b>', 'Wood yard / iron mine', 'Fletcher, spear-maker, smith', 'Bows, spears, swords, maces, armour'], ['<b>Money</b>', 'Taxes, surplus food and goods', 'Market', 'Gold', 'Soldiers, upgrades, citizens']].map(chain).join('')}</div>`);
 H('What keeps people happy');
 UL(['Rations, taxes, ale, a House of Prayer, a variety of food, not too much crowding, and no sickness.', 'Unhappy people leave. Happy towns attract settlers.', 'People who eat well get fat, which makes them happier but slower.', 'Sick people are sent to the keep to be cared for.',
@@ -464,7 +475,7 @@ H('Tap and hold');
 TBL(['Quick tap', 'Press and hold'], [['A small picture of the job (a pick for the quarry). Soldiers show stars, level and education. No words.', '1 to 2 seconds. The person speaks what they do or need, and a detail box opens.']]);
 UL(['On an iPad or large screen the detail box floats small next to the person and slides over at screen edges. On a phone it slides up along the bottom.',
   'The detail box shows whether the person is happy and, if not, why, their education level once the school is built, their job, any concerns such as taxes, how much they make, and how much tax they pay.',
-  'Only the held person speaks, one at a time, so nothing talks by accident.', `“What is this?” in the box opens its Help article. ${NEW}`]);
+  'Only the held person speaks, one at a time, so nothing talks by accident.']);
 FIG(shot('card'), 'A citizen’s box, photographed in the game.', 56);
 H('The People tab');
 P(`The face on the corner of the troop diamond, at the bottom left, is always available ${FIXED}. It opens a well laid-out, scrollable panel that pauses the game. It shows how many people are growing, how many there are, their jobs, and the same information you get from holding on one person.`);
@@ -532,7 +543,7 @@ H('The Help screen', true);
 P(`Tap the <b>?</b> at the top (or press H) and Help opens with a <b>search box</b> and a <b>Topics</b> drop-down that lists every category. ${NEW} On a computer the search box is ready to type in straight away.`);
 UL(['<b>Search:</b> type what you need in plain words (“how do I get stone?”). The answers appear as you type: first the short Help articles, then the matching parts of this guide, under “In the Master Guide”. Spelling slips are forgiven.',
   '<b>Topics:</b> pick a category from the drop-down (or from the cards below it). <b>The Master Guide</b> is one of them: all of this guide, section by section, inside the game.',
-  `There are ${D.helpCount || 93} short articles, each with a picture, plus the whole of this guide. The boxes in the game have a “What is this?” link to their article.`, 'Reading Help pauses the game (unless enemies are close). A double tap on Help’s text, the X, or Esc closes it.']);
+  `There are ${D.helpCount || 93} short articles, each with a picture, plus the whole of this guide. (The “What is this?” button the boxes used to carry was taken off at your word.) ${NEW}`, 'Reading Help pauses the game (unless enemies are close). A double tap on Help’s text, the X, or Esc closes it.']);
 FIG2([shot('helpDrop') || shot('helpHome'), 'Help as it opens: the search box and the Topics drop-down.'], [shot('helpSearch'), 'A search for “stone”: Help answers first, then the guide.']);
 FIG2([shot('helpArticle'), 'A Help article: calling citizens.'], [shot('helpGuide'), 'A part of this guide, inside Help.']);
 H('Settings');
@@ -566,6 +577,11 @@ SEC('Glossary and Search Words', 'The same words the in-game Help search will un
 SEC('Still Open', 'Things still waiting on you, and things still being finished.', 'sign:✎');
 H('Waiting on your decision');
 TBL(['Item', 'What the game does now', 'Your call'], [
+  [`People in a field ${NEW}`, `A field holds ${FG.field.staff}, a farm ${FG.farm.staff} (your last word: “the field can have 10, the farm can have 5”; you also said up to five in one field).`, 'Is ten for a field right?'],
+  [`The guard’s cost ${NEW}`, `Reserve: ${FG.guard.gold} gold and a place in your houses (Claude’s suggestion). You said the guard “comes with these buildings”.`, 'Should he be free, like a tower’s door knight?'],
+  [`Turkeys and sheep ${NEW}`, 'Kept as farm choices beside your four, because the feast needs them.', 'Keep them, or change the feast?'],
+  [`Vineyard, orchard, hop farm ${NEW}`, 'Kept as they were. The field grows grapes too now.', 'Keep the vineyard, or let the field do it?'],
+  [`Farm levels, well and lookout ${NEW}`, `Level 2 after ${Math.round(((FG.farm.levels || [])[1] || { after: 360 }).after / 60)} minutes of work, level 3 after ${Math.round(((FG.farm.levels || [])[2] || { after: 900 }).after / 60)} with a stable. Well ${FG.well.wood} wood (+25%), lookout ${FG.lookout.wood} wood (Claude’s numbers).`, 'Do these suit?'],
   [`The five-star general ${NEW}`, `${CC.general.stars} stars: a general. ${CC.general.fiveStar || 10} stars: a five-star general (Claude’s reading of your answer). Both count the same toward calling citizens.`, 'Is that right? Should a five-star general count for more?'],
   [`Raid strength: the numbers ${NEW}`, (RP => `Easy: armies ${RP.easy.army} of the base number, raiders as trained. Medium: armies ${RP.medium.army} of it, each raider ${RP.medium.strength} times as strong. Hard: armies ${RP.hard.army} of it, each raider ${RP.hard.strength} times as strong (section 14).`)(D.raidPower || { easy: { army: 0.75 }, medium: { army: 1.4, strength: 1.25 }, hard: { army: 1.9, strength: 1.5 } }), 'Keep, or tune?']]);
 H('Numbers Claude Code proposed');
@@ -578,7 +594,10 @@ TBL(['Item', 'Your decision, now in the game'], [['Moat fillers', 'Citizens, spe
   ['Troop controls', 'The diamond at the bottom left, with formations, patrol, guard and add.'], ['Boxes', 'One tap puts hints away; a double tap closes any box.'],
   [`Berserkers ${NEW}`, 'Every faction has them. Psychana’s power fits theirs: in small bands they move unseen.'], [`Raids ${NEW}`, 'Medium much stronger than Easy; Hard the strongest.'],
   [`Generals ${NEW}`, `${CC.general.stars} or more stars; a five-star general at ${CC.general.fiveStar || 10}.`], [`Wars won ${NEW}`, 'A raid where at least 6 in 10 raiders fell and your keep stands, or a rival defeated. Each counts for 10 minutes, up to 3 at once.'],
-  [`Calling citizens: the numbers ${NEW}`, 'As in section 11.'], [`The diamond ${NEW}`, 'The arrows direct which way to go. Add puts more soldiers in the formation, and soldiers trained while it is on join it.']]);
+  [`Calling citizens: the numbers ${NEW}`, 'As in section 11.'], [`The diamond ${NEW}`, 'The arrows direct which way to go. Add puts more soldiers in the formation, and soldiers trained while it is on join it.'],
+  [`Field and farm ${NEW}`, `Two separate buildings. Field: up to ${FG.field.max}, wheat (fastest), corn, grapes (slowest), you choose the people on each. Farm: up to ${FG.farm.max}, chickens, cows, pigs, ducks, seen in the pen; it gets better with a stable.`],
+  [`Selling animals ${NEW}`, 'Farm animals always sell for the top price, far more than crops.'], [`Guards ${NEW}`, `A knight’s strength whether or not knights can be trained: ${FG.guard.field} for a field, ${FG.guard.farm} for a farm.`],
+  [`Happy people, more food ${NEW}`, 'Food grows faster when people are happy.'], [`Walking ${NEW}`, 'No glitching near the greenery or among people: they go round.'], [`“What is this?” ${NEW}`, 'Taken off the boxes.']]);
 H('Still being finished');
 UL(['Higher-resolution art: the pictures of units and buildings here are the game’s own small pictures. Sheet-quality art for the newer soldiers is listed in design/MISSING-ART.md and design/IMAGE-PROMPTS.md.',
   'All remaining stand-in art in the game is being finished.', 'The bug sweep goes on with every phase. Tell Claude Code anything that looks wrong, with where it happened.',
