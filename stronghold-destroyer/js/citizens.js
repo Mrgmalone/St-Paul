@@ -123,7 +123,7 @@ let cardOf = null, tapU = null, tapUntil = 0;
 const iconKey = u => u.engineer ? 'b:engineerhut' : u.inSchool ? 'b:school' : u.job ? 'b:' + u.job.kind : u.type !== 'civ' ? 'u:' + u.type : u.order === 'build' ? 'b:house' : 'r:people';
 function personHtml(u) {
   const m = personMood(u), c = personConcerns(u), $ = personMoney(u), col = m.v >= 70 ? '#9fe39a' : m.v >= 40 ? '#ffd98a' : m.v >= 20 ? '#ffb38a' : '#ff8a7a';
-  const edu = u.type === 'civ' ? ['none', 'first level', 'second level', 'third level'][Math.min(3, u.edu || 0)] : `soldiers' lessons: ${['none', 'first', 'second', 'third', 'fourth', 'fifth'][Math.min(5, soldierLvl)]} level`;
+  const edu = u.type === 'civ' ? ['none', 'first level', 'second level', 'third level'][Math.min(3, u.edu || 0)] : (soldierLvl ? `soldiers' lessons: ${['', 'first', 'second', 'third', 'fourth', 'fifth'][Math.min(5, soldierLvl)]} level` : "soldiers' lessons: none yet")   /* (was "none level") */;
   return `<button class="xbtn" data-card="close" aria-label="Close">&times;</button><h3>${nameOf(u).toUpperCase()}</h3>` +
     lnI('Work', JOB_OF(u)) + lnI('Happiness', `<span style="color:${col}">${m.v}</span>`) +
     `<div class="why">${m.why.concat(m.town.map(t => '- the town: ' + t)).slice(0, 5).map(t => `<div>${t}</div>`).join('') || '<div>nothing special</div>'}</div>` +

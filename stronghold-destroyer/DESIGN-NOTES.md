@@ -560,11 +560,50 @@ named "Master Guide version three".
   tHelp passed again after the label fix. The published files were loaded in a browser: no page errors, the Topics
   drop-down open with 15 rows, the search box ready, and "In the Master Guide" in the results.
 
+## Phase 4G: Gerald's answers after 4F
+
+Gerald's answers to the open questions (his words, by voice): "A general has 7 or more stars. That's what's called a
+5-star general. And once he has a 10..."; the war-won rule, the citizen numbers and "merge" (troop guide + v3) are
+correct; raids: "much stronger than the easy ones ... and the hardest one is the top"; "berserkers belong to everyone ...
+whatever Psychana's power is, it fits the berserker"; the arrows direct which way to go; "the add button puts more people
+or more troops in the formation. If you hit the add button, when I build a troop, it goes to that formation".
+
+- **Generals:** CITIZEN_CALL.general.stars 7 (was 10), fiveStar 10. A banner at 7 ("is now a general") and at 10 ("is now
+  a five-star general"); the box says "a general" or "a five-star general". Both count the same for calling citizens.
+  *Assumption to confirm:* the sentence was cut off; read as 7 = general, 10 = five-star general.
+- **Berserkers for everyone:** the kit has no `only` any more; the Army tab shows it for every faction. Rivals: from the
+  Hold, a Psychana rival's swordsmen are all berserkers (as before), any other rival's about half. Psychana's stealth
+  (bands under 10 unseen) still applies to Psychana's berserkers only.
+- **Raids:** RIVALS.power in settings.js. army: the soldiers a rival may keep, times ARMY_CAP for its stage (Easy 0.75 as
+  before, Medium 1.4 (was 1.0), Hard 1.9 (was 1.35)); strength: raiders carry raidMul (Easy 1, Medium 1.25, Hard 1.5),
+  which multiplies the blows they strike and divides the blows they take (strongMul, toughMul). Measured in 45-minute
+  test games (keep held, raiders removed once counted, as a defended castle would; scratch tool raidmeasure.js):
+  Medium average raid 10.2 raiders / power 1,446 before, 12.8 / 3,295 after; Hard 12.8 / 2,221 before, 14 / 4,650 after
+  (largest 26 raiders); Hard has more raids too (43 to Medium's 27). Easy is unchanged: its rivals were still at stage 1
+  or 2 after 45 minutes, with no raid or a few raids of 3. Before, with the keep left alone, Hard raids were no bigger than
+  Medium's (5.5 and 5.6 raiders on average).
+- **Add fills a formation** (js/formations.js, the end): tapping Add with soldiers chosen marks that group (joinGroup)
+  and its formation (the one most of them stand in, else the chosen one). Soldiers tapped or clicked while Add is on join
+  it; every soldier trained while Add is on marches to the group (js/town.js, where trained soldiers come out) and the
+  group re-forms round him in the same shape, where it stands (or where it is marching to), facing the same way; those
+  fighting stay where they are. Tap Add again: new soldiers go to the rally flag. Add with nobody chosen says to choose
+  soldiers first. *Correction to 4E:* Add did not work with a mouse (a click still chose only that soldier, though the
+  code's note said it worked): a click, and a drawn box, now add while Add is on.
+- A wording fault seen in the guide's photograph: a soldier's box said "soldiers' lessons: none level"; now "none yet".
+- **Help and the guide:** the Berserker, Psychana, Veteran stars, Calling citizens, Difficulty, Raids, Diamond and
+  Formations articles follow the answers (94 articles); the Master Guide too (What's new rows, the berserker card, the
+  generals, a "How strong the raids are" table in section 14, section 17's decided list). Its general's photograph was
+  retaken. tools/guide3_shots.js: DATA=1 with ONLY= reads the numbers again as well.
+- **Checks:** tests/tDecisions4G.js (berserkers for Cy Young and a Cy Young rival; raids at the Hold on each difficulty:
+  6, 12 and 17 raiders, each x1, x1.25, x1.5; Add marks the group, a mouse click adds, a trained soldier marches to the
+  wedge and all six stand in it, Add off goes to the rally flag, Add with nobody chosen explains). tests/tCallCitizens.js:
+  7 stars a general, 10 a five-star general, 6 not. tests/tHelp.js: four more questions.
+
 ## Where we left off (for a fresh session)
 
-**Latest (Phase 4F, play link version 57):** branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
+**Latest (Phase 4G, play link version 58):** Gerald's answers after 4F (generals, berserkers, raids, Add); before that, Phase 4F: branch `upgrade-v2` holds Phases 4A to 4F and the Help screen, all
 built and checked, and the Master Guide version 3; the sections above list what each step does, the tests, the speed and the art still needed. Open for
-Gerald: how strong the Medium and Hard raids should be (see D4).
+Gerald: whether a five-star general (10 stars) should count for more, and whether the raid numbers suit (Phase 4G).
 Before that: Phase 4C (steps C0 to C9); its section lists the settings, the assumptions and the art still needed.
 Earlier: Phase 4B steps B1 to B8; its section lists what each step does, the numbers to confirm, the conflicts, what was
 simplified and the art still needed. The older notes below describe the game before Phase 4 and are kept for history.
