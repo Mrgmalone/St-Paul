@@ -2,6 +2,9 @@
 // Stronghold Destroyer — the Help screen: search, category cards with pictures, short articles, and a "What is this?"
 // link in every box. All the words live in ONE file, js/helpdata.js (HELP_DATA); this file only shows them.
 // Opens with the ? button or the H key; reading it pauses the game (unless enemies are close); the big X closes it.
+// It opens on the search box with a Topics drop-down listing the categories (Gerald, Phase 4F). The whole Master Guide is
+// in it too (js/guidedata.js, GUIDE_DATA, made by tools/master_guide.js): the topic "The Master Guide", and the search
+// looks through it after the short articles ("In the Master Guide").
 // Pictures: art/help/<article id>.png (or .jpg) when you add one (used with no code change); otherwise the game's own
 // picture named in the article: b:<building>, u:<unit>, r:<goods>, w:<weapon> or i:<drawn icon>.
 const HELP_ICONS = {
@@ -34,7 +37,10 @@ const HELPUI_OPEN = { want: null };   // (an article a "What is this?" link aske
 const HELPUI = (() => {
   const H = typeof HELP_DATA !== 'undefined' ? HELP_DATA : null, box = document.querySelector('#help .box');   /* (a top-level const is not a window property) */
   if (!H || !box) { console.error('Help: the help data or the help box is missing'); return null; }
-  const byId = new Map(H.articles.map(a => [a.id, a])), catOf = new Map(H.categories.map(c => [c.id, c]));
+  const G = typeof GUIDE_DATA !== 'undefined' ? GUIDE_DATA : null;   /* (the Master Guide, word for word) */
+  const GUIDE_CAT = { id: 'guide', title: 'The Master Guide', pic: 'i:book', blurb: 'All of the guide, section by section' };
+  const CATS = H.categories.concat(G ? [GUIDE_CAT] : []), GARTS = G ? G.articles : [];
+  const byId = new Map(H.articles.concat(GARTS).map(a => [a.id, a])), catOf = new Map(CATS.map(c => [c.id, c]));
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // ---------- words from the game's own numbers ({cost:house}, {name:knight}, {stagetable}) ----------
   const costText = k => { const d = BUILD[k]; if (!d) return ''; const parts = ['wood', 'stone', 'gold'].filter(r => d[r]).map(r => `${d[r]} ${r}`); return parts.length ? parts.join(', ') : 'nothing'; };
@@ -73,16 +79,19 @@ const HELPUI = (() => {
   const stem = w => w.length > 4 ? w.replace(/(ies)$/, 'y').replace(/(ing|ers|er|es|s|ed)$/, '') : w;
   function lev(a, b) { if (Math.abs(a.length - b.length) > 2) return 9; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
     for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; }
-  const INDEX = H.articles.map(a => {
+  const blockText = b => b.t === 'ul' ? b.items.join(' ') : b.t === 'table' ? b.head.concat(...b.rows).join(' ') : b.t === 'cards' ? b.items.map(i => `${i.n} ${i.line} ${i.d}`).join(' ') : b.h || '';
+  const mkIndex = (list, guide) => list.map(a => {
     const w = new Map(), add = (text, weight) => { for (const t of norm(text).split(' ')) { if (!t || STOP.has(t)) continue; const k = stem(t); w.set(k, Math.max(w.get(k) || 0, weight)); } };
-    add(a.title, 6); for (const s of a.words || []) add(s, 5); add(a.summary, 2); for (const l of a.text || []) add(l, 1); if (a.how) { add(a.how.q, 3); for (const s of a.how.steps) add(s, 1); }
-    add((catOf.get(a.cat) || {}).title || '', 1);
+    if (guide) { add(a.title, 6); add(a.secTitle, 2); if (a.parent) add(a.parent, 2); for (const b of a.blocks) add(blockText(b), 2); }
+    else { add(a.title, 6); for (const s of a.words || []) add(s, 5); add(a.summary, 2); for (const l of a.text || []) add(l, 1); if (a.how) { add(a.how.q, 3); for (const s of a.how.steps) add(s, 1); }
+      add((catOf.get(a.cat) || {}).title || '', 1); }
     return { a, w, phrases: (a.words || []).concat([a.title]).map(norm).filter(p => p.includes(' ')) };
   });
-  function search(q) {
+  const INDEX = mkIndex(H.articles, false), GINDEX = mkIndex(GARTS, true);
+  function rank(index, q, floor, max) {
     const nq = norm(q), toks = nq.split(' ').filter(t => t && !STOP.has(t)).map(stem); if (!toks.length) return [];
     const out = [];
-    for (const it of INDEX) {
+    for (const it of index) {
       let score = 0, hit = 0;
       for (const t of toks) {
         let best = it.w.get(t) || 0;
@@ -95,8 +104,10 @@ const HELPUI = (() => {
       for (const ph of it.phrases) if (nq.includes(ph)) score += 8;
       if (hit) out.push({ a: it.a, score: score * (0.5 + 0.5 * hit / toks.length) });
     }
-    return out.sort((x, y) => y.score - x.score).filter((r, i, arr) => r.score >= Math.max(3, arr[0].score * 0.35)).slice(0, 8).map(r => r.a);
+    return out.sort((x, y) => y.score - x.score).filter((r, i, arr) => r.score >= Math.max(floor, arr[0].score * 0.35)).slice(0, max).map(r => r.a);
   }
+  const search = q => rank(INDEX, q, 3, 8);              // the short Help articles
+  const searchGuide = q => rank(GINDEX, q, 2, 6);        // then the parts of the Master Guide
   // topics near a search that found nothing: the closest titles and categories by spelling
   function nearby(q) {
     const toks = norm(q).split(' ').filter(t => t.length > 2 && !STOP.has(t));
@@ -106,14 +117,29 @@ const HELPUI = (() => {
   // ---------- the screens ----------
   let view = { kind: 'home' }, last = [];
   const body = () => document.getElementById('hlpBody');
-  const row = a => `<button class="hlpRow" data-art="${esc(a.id)}">${pic(a.id, a.pic)}<span><b>${esc(a.title)}</b><small>${esc(a.summary)}</small></span></button>`;
+  const gpic = (name, cls) => `<img class="${cls}" src="${gamePic(name)}" alt="">`;   /* (the guide's parts use the game's own pictures) */
+  const row = a => `<button class="hlpRow" data-art="${esc(a.id)}">${a.cat === 'guide' ? gpic(a.pic, 'hlpPic') : pic(a.id, a.pic)}<span><b>${esc(a.title)}</b>${a.cat === 'guide' ? `<em class="hlpSecTag">${esc(a.secTitle)}${a.parent ? ' · ' + esc(a.parent) : ''}</em>` : ''}<small>${esc(a.summary || '')}</small></span></button>`;
+  // a part of the Master Guide: its words, tables and small picture lists, as in the printed guide
+  const gBlock = b => b.t === 'p' ? `<p>${b.h}</p>` : b.t === 'h' ? `<h5 class="hlpGrp">${b.h}</h5>` : b.t === 'line' ? `<p class="hlpLine">${b.h}</p>`
+    : b.t === 'ul' ? `<ul class="hlpUl">${b.items.map(i => `<li>${i}</li>`).join('')}</ul>`
+    : b.t === 'table' ? `<div class="hlpTabWrap"><table class="hlpTab"><tr>${b.head.map(h => `<th>${h}</th>`).join('')}</tr>${b.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`
+    : b.t === 'cards' ? `<div class="hlpMinis">${b.items.map(i => `<div class="hlpMini">${i.pic ? `<img src="${gamePic(i.pic)}" alt="">` : ''}<div><b>${i.n}</b>${i.line ? `<small>${i.line}</small>` : ''}<span>${i.d}</span></div></div>`).join('')}</div>` : '';
   function show(v, push = true) {
     if (push && view) last.push(view); view = v; const B = body(); if (!B) return;
     const back = last.length ? '<button class="hlpBack" data-back="1">&#8249; Back</button>' : '';
     if (v.kind === 'home') { last = [];
-      B.innerHTML = `<p class="hlpLead">Type a question above, or pick a topic.</p><div class="hlpCards">${H.categories.map(c => `<button class="hlpCard" data-cat="${esc(c.id)}">${pic('cat-' + c.id, c.pic, 'hlpCardPic')}<b>${esc(c.title)}</b><small>${esc(c.blurb)}</small></button>`).join('')}</div>`; }
+      B.innerHTML = `<p class="hlpLead">Type a question above, or pick a topic.</p><div class="hlpCards">${CATS.map(c => `<button class="hlpCard" data-cat="${esc(c.id)}">${pic('cat-' + c.id, c.pic, 'hlpCardPic')}<b>${esc(c.title)}</b><small>${esc(c.blurb)}</small></button>`).join('')}</div>`; }
+    else if (v.kind === 'cat' && v.id === 'guide') {   /* the Master Guide: its sections, each with its parts */
+      B.innerHTML = `${back}<h4 class="hlpH">${pic('cat-guide', 'i:book', 'hlpHPic')}The Master Guide</h4><p class="hlpLead">All of the Master Guide (version 3), section by section. The search finds anything in it.</p>
+        ${G.sections.map(sc => `<h5 class="hlpGrp">${esc(sc.title)}</h5><div class="hlpList">${GARTS.filter(a => a.sec === sc.id).map(row).join('')}</div>`).join('')}`; }
     else if (v.kind === 'cat') { const c = catOf.get(v.id), list = H.articles.filter(a => a.cat === v.id);
       B.innerHTML = `${back}<h4 class="hlpH">${pic('cat-' + c.id, c.pic, 'hlpHPic')}${esc(c.title)}</h4><div class="hlpList">${list.map(row).join('')}</div>`; }
+    else if (v.kind === 'art' && (byId.get(v.id) || {}).cat === 'guide') { const a = byId.get(v.id), more = GARTS.filter(x => x.sec === a.sec && x.id !== a.id);
+      B.innerHTML = `${back}<article class="hlpArt hlpGuide" data-id="${esc(a.id)}"><div class="hlpSecTag">From the Master Guide · ${esc(a.secTitle)}</div><h4 class="hlpH">${esc(a.title)}</h4>${gpic(a.pic, 'hlpBigPic')}
+        ${a.blocks.map(gBlock).join('')}
+        ${more.length ? `<div class="hlpRel"><b>More in this section:</b> ${more.map(x => `<button class="hlpLink" data-art="${esc(x.id)}">${esc(x.title)}</button>`).join('')}</div>` : ''}
+        <div class="hlpIn">In <button class="hlpLink" data-cat="guide">The Master Guide</button></div></article>`;
+      B.scrollTop = 0; }
     else if (v.kind === 'art') { const a = byId.get(v.id); if (!a) return show({ kind: 'home' }, false); const c = catOf.get(a.cat);
       B.innerHTML = `${back}<article class="hlpArt" data-id="${esc(a.id)}"><h4 class="hlpH">${esc(a.title)}</h4>${pic(a.id, a.pic, 'hlpBigPic')}
         ${(a.text || []).map(l => `<p>${fill(l)}</p>`).join('')}
@@ -121,8 +147,10 @@ const HELPUI = (() => {
         ${(a.related || []).length ? `<div class="hlpRel"><b>Related:</b> ${a.related.filter(id => byId.has(id)).map(id => `<button class="hlpLink" data-art="${esc(id)}">${esc(byId.get(id).title)}</button>`).join('')}</div>` : ''}
         ${c ? `<div class="hlpIn">In <button class="hlpLink" data-cat="${esc(c.id)}">${esc(c.title)}</button></div>` : ''}</article>`;
       B.scrollTop = 0; }
-    else if (v.kind === 'search') { const res = search(v.q);
-      B.innerHTML = res.length ? `<p class="hlpLead">${res.length === 1 ? 'One article' : res.length + ' articles'} for “${esc(v.q)}”:</p><div class="hlpList">${res.map(row).join('')}</div>`
+    else if (v.kind === 'search') { const res = search(v.q), gres = searchGuide(v.q);
+      const nA = res.length === 1 ? 'One article' : res.length + ' articles', nG = gres.length === 1 ? 'one part' : gres.length + ' parts';
+      B.innerHTML = res.length || gres.length ? `<p class="hlpLead">${res.length ? `${nA} for “${esc(v.q)}”${gres.length ? `, and ${nG} of the Master Guide` : ''}` : `No short article for “${esc(v.q)}”, but the Master Guide has ${nG}`}:</p>
+          <div class="hlpList">${res.map(row).join('')}</div>${gres.length ? `<h5 class="hlpGrp">In the Master Guide</h5><div class="hlpList">${gres.map(row).join('')}</div>` : ''}`
         : `<p class="hlpLead">No article matches “${esc(v.q)}”.</p><p>Try one of these nearby topics, or fewer words:</p><div class="hlpList">${nearby(v.q).map(row).join('')}</div>`; }
   }
   // ---------- build it inside the old help box ----------
@@ -130,19 +158,34 @@ const HELPUI = (() => {
   box.classList.add('hlpBox'); box.innerHTML = `<div class="hlpTop"><h3>HELP</h3><div class="hlpSearch">${'<img class="hlpSIcon" alt="" src="' + gamePic('i:search') + '">'}<input id="hlpQ" type="search" autocomplete="off" placeholder="Search: how do I get stone?" aria-label="Search the help"><button id="hlpClear" aria-label="Clear the search">Clear</button></div></div><div id="hlpBody" aria-live="polite"></div>`;
   if (closeBtn) { closeBtn.classList.add('hlpCloseBtn'); box.appendChild(closeBtn); }
   const q = document.getElementById('hlpQ');
-  q.addEventListener('input', () => { const t = q.value.trim(); if (t.length >= 2) { if (view.kind !== 'search') last.push(view); view = { kind: 'search', q: t }; show(view, false); } else if (!t && view.kind === 'search') show({ kind: 'home' }, false); });
-  q.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { if (q.value) { q.value = ''; show({ kind: 'home' }, false); } else toggleHelp(); } if (e.key === 'Enter') { const first = body().querySelector('.hlpRow'); if (first) first.click(); } });
+  // ---------- the Topics drop-down: every category, open when Help opens (Gerald, Phase 4F) ----------
+  const topBar = box.querySelector('.hlpTop'), tb = document.createElement('button'); tb.id = 'hlpTopics'; tb.type = 'button'; tb.setAttribute('aria-haspopup', 'true'); tb.setAttribute('aria-expanded', 'false');
+  tb.innerHTML = 'Topics <span aria-hidden="true">&#9662;</span>'; topBar.appendChild(tb);
+  const drop = document.createElement('div'); drop.id = 'hlpDrop'; drop.className = 'hlpDrop'; drop.hidden = true; drop.setAttribute('role', 'menu');
+  const count = c => c.id === 'guide' ? `${G.sections.length} sections` : `${H.articles.filter(a => a.cat === c.id).length} articles`;
+  drop.innerHTML = `<div class="hlpDropHead">Pick a topic, or type in the search box</div>${CATS.map(c => `<button class="hlpDropRow" role="menuitem" data-cat="${esc(c.id)}">${pic('cat-' + c.id, c.pic, 'hlpDropPic')}<span><b>${esc(c.title)}</b><small>${esc(c.blurb)} · ${count(c)}</small></span></button>`).join('')}`;
+  topBar.insertAdjacentElement('afterend', drop);
+  const openDrop = () => { drop.hidden = false; tb.setAttribute('aria-expanded', 'true'); drop.style.top = (topBar.offsetTop + topBar.offsetHeight + 2) + 'px'; };
+  const closeDrop = () => { drop.hidden = true; tb.setAttribute('aria-expanded', 'false'); };
+  tb.addEventListener('click', e => { e.stopPropagation(); if (drop.hidden) openDrop(); else closeDrop(); });
+  box.addEventListener('click', e => { if (!drop.hidden && !drop.contains(e.target) && !tb.contains(e.target) && e.target !== q) closeDrop(); }, true);
+  // how Help was opened: with the mouse on the ? (or Settings' Help), the search box is ready to type in
+  let opener = null; for (const id of ['btnHelpTop', 'btnHelp']) { const b = document.getElementById(id); if (b) b.addEventListener('pointerdown', e => { opener = e.pointerType; }, true); }
+  q.addEventListener('input', () => { const t = q.value.trim(); if (t) closeDrop(); if (t.length >= 2) { if (view.kind !== 'search') last.push(view); view = { kind: 'search', q: t }; show(view, false); } else if (!t && view.kind === 'search') show({ kind: 'home' }, false); });
+  q.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape' && !drop.hidden) { closeDrop(); return; } if (e.key === 'ArrowDown' && !drop.hidden) { e.preventDefault(); const f = drop.querySelector('.hlpDropRow'); if (f) f.focus(); return; } if (e.key === 'Escape') { if (q.value) { q.value = ''; show({ kind: 'home' }, false); } else toggleHelp(); } if (e.key === 'Enter') { const first = body().querySelector('.hlpRow'); if (first) first.click(); } });
   document.getElementById('hlpClear').onclick = () => { q.value = ''; show({ kind: 'home' }, false); q.focus(); };
   box.addEventListener('click', e => {
     const t = e.target.closest('[data-art],[data-cat],[data-back]'); if (!t || !box.contains(t)) return;
     if (t.dataset.back) { const v = last.pop() || { kind: 'home' }; show(v, false); return; }
-    if (t.dataset.art) show({ kind: 'art', id: t.dataset.art }); else if (t.dataset.cat) show({ kind: 'cat', id: t.dataset.cat });
+    closeDrop(); if (t.dataset.art) show({ kind: 'art', id: t.dataset.art }); else if (t.dataset.cat) show({ kind: 'cat', id: t.dataset.cat });
   });
   show({ kind: 'home' }, false);
   // opening: fresh at the topics (unless a "What is this?" link asked for an article)
   const helpEl = document.getElementById('help');
-  new MutationObserver(() => { if (!helpEl.classList.contains('hide') && !HELPUI_OPEN.want) { q.value = ''; show({ kind: 'home' }, false); } HELPUI_OPEN.want = null; }).observe(helpEl, { attributes: true, attributeFilter: ['class'] });
-  function openArticle(id) { HELPUI_OPEN.want = id; if (helpEl.classList.contains('hide')) toggleHelp(); q.value = ''; last = []; show({ kind: byId.has(id) ? 'art' : catOf.has(id) ? 'cat' : 'home', id }, false); }
+  new MutationObserver(() => { const open = !helpEl.classList.contains('hide');
+    if (open && !HELPUI_OPEN.want) { q.value = ''; show({ kind: 'home' }, false); openDrop(); if (opener === 'mouse') setTimeout(() => q.focus(), 30); }
+    if (!open) closeDrop(); HELPUI_OPEN.want = null; opener = null; }).observe(helpEl, { attributes: true, attributeFilter: ['class'] });
+  function openArticle(id) { HELPUI_OPEN.want = id; closeDrop(); if (helpEl.classList.contains('hide')) toggleHelp(); q.value = ''; last = []; show({ kind: byId.has(id) ? 'art' : catOf.has(id) ? 'cat' : 'home', id }, false); }
   // ---------- "What is this?" in every box ----------
   const ctxOf = el => {
     const M = H.context || {};
@@ -160,5 +203,5 @@ const HELPUI = (() => {
   const watch = el => { const mo = new MutationObserver(() => { mo.disconnect(); addLink(el); mo.observe(el, { childList: true, attributes: true, attributeFilter: ['hidden'] }); }); mo.observe(el, { childList: true, attributes: true, attributeFilter: ['hidden'] }); addLink(el); };
   const watchAll = () => { for (const el of document.querySelectorAll('.pop')) if (!el.dataset.hw) { el.dataset.hw = '1'; watch(el); } };
   watchAll(); setInterval(watchAll, 2000);   // (panels made later, such as the trophy's)
-  return { search, show, openArticle, articles: H.articles, categories: H.categories, ctxOf };
+  return { search, searchGuide, show, openArticle, openDrop, closeDrop, articles: H.articles, categories: CATS, guide: GARTS, ctxOf };
 })();

@@ -9,6 +9,8 @@ const { chromium } = require('playwright'); const path = require('path'), fs = r
 const ROOT = path.join(__dirname, '..'), CACHE = path.join(ROOT, 'tests/.work/guide3'), ART = path.join(ROOT, 'design/guide3-art');
 const OUT = path.join(ROOT, 'design/Stronghold-Destroyer-Master-Guide-v3.pdf');
 const J = JSON.parse(fs.readFileSync(path.join(CACHE, 'data.json'), 'utf8')), D = J.data, SH = J.shots;
+// the number of short Help articles, read from the Help file itself (so it is never out of date)
+D.helpCount = Function(fs.readFileSync(path.join(ROOT, 'js/helpdata.js'), 'utf8') + ';return HELP_DATA')().articles.length;
 const warn = []; const DATE = 'November 14, 2026';
 const uri = (file, type) => `data:${type};base64,${fs.readFileSync(file).toString('base64')}`;
 const shot = name => { const f = SH[name]; if (!f || !fs.existsSync(path.join(CACHE, f))) { warn.push('no picture: ' + name); return ''; } return uri(path.join(CACHE, f), f.endsWith('.png') ? 'image/png' : 'image/jpeg'); };
@@ -34,13 +36,15 @@ const TBL = (heads, rows, cls = '') => add(`<table class="tbl ${cls}"><thead><tr
 const FIG = (src, cap, w = 100, extra = '') => { if (!src) return; add(`<figure style="width:${w}%">${extra ? `<div class="mkwrap"><img src="${src}">${extra}</div>` : `<img src="${src}">`}${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`); };
 const FIG2 = (a, b) => { if (!a[0] && !b[0]) return; add(`<div class="two">${[a, b].map(([s, c]) => s ? `<figure><img src="${s}"><figcaption>${c}</figcaption></figure>` : '<div></div>').join('')}</div>`); };
 // a picture card for a person, soldier or engine, as in version 2
-const CARD = (pic, name, line, bullets) => add(`<div class="card"><div class="cpic">${pic ? `<img src="${pic}">` : ''}</div><div class="ctxt"><h4>${name}</h4><div class="cl">${line}</div><ul class="dl">${bullets.map(b => `<li>${b}</li>`).join('')}</ul></div></div>`);
+const CARD = (pic, name, line, bullets) => add(`<div class="card" data-key="${KEY_OF.get(pic) || ''}"><div class="cpic">${pic ? `<img src="${pic}">` : ''}</div><div class="ctxt"><h4>${name}</h4><div class="cl">${line}</div><ul class="dl">${bullets.map(b => `<li>${b}</li>`).join('')}</ul></div></div>`);
 // small cards, two to a row (each row is one block, so a page can break between rows)
-const MINI = list => { for (let i = 0; i < list.length; i += 2) add(`<div class="minis">${list.slice(i, i + 2).map(o => `<div class="mini"><div class="mpic">${o.pic ? `<img src="${o.pic}">` : ''}</div><div><h5>${o.n}</h5>${o.line ? `<div class="cl">${o.line}</div>` : ''}<p>${o.d}</p></div></div>`).join('')}</div>`); };
+const MINI = list => { for (let i = 0; i < list.length; i += 2) add(`<div class="minis">${list.slice(i, i + 2).map(o => `<div class="mini" data-key="${KEY_OF.get(o.pic) || ''}"><div class="mpic">${o.pic ? `<img src="${o.pic}">` : ''}</div><div><h5>${o.n}</h5>${o.line ? `<div class="cl">${o.line}</div>` : ''}<p>${o.d}</p></div></div>`).join('')}</div>`); };
 const PB = () => add('<div class="pbk pb"></div>');
 
 // ---------------------------------------------------------------- the numbers, from the game
 const U = k => D.units[k] || '', B = k => D.blds[k] || '';
+// each game picture's name (u:spear, b:house, r:wood, w:sword), for the Help copy of the guide
+const KEY_OF = new Map(); for (const [set, pre] of [[D.units, 'u:'], [D.blds, 'b:'], [D.goods, 'r:'], [D.weapons, 'w:']]) for (const [k, v] of Object.entries(set)) if (v && !KEY_OF.has(v)) KEY_OF.set(v, pre + k);
 const C = k => D.costs[k] || { name: k, cost: '', stage: 1 };
 const stageWord = n => `Stage ${n}`;
 const bline = k => `${stageWord(C(k).stage)} · ${C(k).cost}`;
@@ -79,7 +83,8 @@ UL(['<b>Set</b> means you decided it. It is the rule of the game.',
   `<b>Pictures:</b> every screen, box and button in this guide is a photograph of the real game, taken by Claude Code from the game itself on ${DATE}. Every person, soldier, siege engine, building, wall, tower, good and weapon is shown as the game draws it today. The soldiers, scenes, bricks and ground from your design sheet are shown as the design pictures.`,
   '<b>Stuck?</b> Go straight to section 2. It lists the common problems, what to do, and a few Art of War ideas for winning.',
   '<b>Big text:</b> this edition uses larger letters than version 2, so it has more pages. Nothing was left out to make it shorter.']);
-P('This guide is also the source for the in-game Help screen. When a rule changes, this guide and the Help change together.');
+P(`This is the one guide to keep: it now holds the Troop Controls Guide from Phase 4E as well (the troop diamond, the formations and the phone, in section 5). ${NEW}`);
+P(`All of this guide is in the game’s Help too: tap the ? and choose <b>The Master Guide</b> from the Topics list, or type what you need in the search box, and the search looks through the whole guide as well as the Help answers. When a rule changes, this guide and the Help change together. ${NEW}`);
 H('What is new in version 3');
 TBL(['What', 'In short', 'Section'], [
   [`Longer peace ${NEW}`, `${mins(peace.easy)} minutes of peace before the first raid on Easy and Medium, ${mins(peace.hard)} on Hard. Bandits wait too.`, '1, 2'],
@@ -89,7 +94,8 @@ TBL(['What', 'In short', 'Section'], [
   [`Formations ${NEW}`, 'Seven shapes (Free, Line, Column, Wedge, Square, Circle, Loose). Soldiers march together at the pace of the slowest.', '5, 7'],
   [`Tap to close ${NEW}`, 'One tap puts away a hint, a message or the Art of War advice. A double tap on any box closes it.', '5, 15'],
   [`Phones show pictures ${NEW}`, 'On a phone the top bar and the tabs show pictures and numbers; the names show when you tap.', '5'],
-  [`The Help screen ${NEW}`, `Search in plain words, ${D.helpCount || 93} articles with pictures, and a “What is this?” link on the boxes.`, '15'],
+  [`The Help screen ${NEW}`, `Search in plain words, ${D.helpCount || 93} short articles with pictures, the whole of this guide, a Topics drop-down when you tap the ?, and a “What is this?” link on the boxes.`, '15'],
+  [`One guide ${NEW}`, 'The Troop Controls Guide from Phase 4E is part of this guide now (section 5).', '5'],
   [`The trophy, with the numbers ${NEW}`, 'Ticks for what is done, crosses for what is not, and every stage’s numbers printed in this guide for each difficulty.', '4'],
   [`Saved games to a file ${NEW}`, 'Named saves, an automatic save, and a save you can keep as a file and load again on another device.', '15'],
   [`The flat view ${NEW}`, 'The V key (or Settings) switches between the 3D view and a flat map view.', '13'],
@@ -270,7 +276,7 @@ TBL(['', 'Button', 'What it does'], [
   ['12', 'Castle', 'Back to your castle (Space).'], ['13', 'Let go', 'Let go of the chosen people.'], ['14', 'Everyone', 'Choose everyone.'], ['15', 'Citizens', 'Choose all your citizens.']], 'dia');
 H('Formations', true);
 P('Tap the two walking soldiers in the middle of the diamond: the formations open above it. Choose one and the chosen soldiers form up where they stand; then tap the ground and they march there in that shape. Any number works, from 3 to 30 or more.');
-UL(['They march at the pace of the slowest, so they arrive together, and stand facing the way they went.', 'Soldiers in a formation stay in it until you give them a new order, and they are not taken for other duties.', 'Free is the old way: a neat block with no set shape.']);
+UL(['Tap the ground with soldiers chosen and they march there in the formation you chose (or in a neat block when the formation is Free).', 'They march at the pace of the slowest, so they arrive together, and stand facing the way they went.', 'Soldiers in a formation stay in it until you give them a new order, and they are not taken for other duties.', 'Free is the old way: a neat block with no set shape.']);
 FIG(art('formations-fan'), 'The formations open above the diamond.', 70);
 { const F = [['free', 'Free', 'No set shape: a neat block, the old way'], ['line', 'Line', 'Side by side, facing the enemy: the most weapons at the front'], ['column', 'Column', 'Two abreast, one behind the other: best through gates, woods and narrow ground'],
     ['wedge', 'Wedge', 'An arrowhead: one at the point, the rest fanning back: to break through'], ['square', 'Square', 'A hollow square facing every way: when you could be attacked from all sides'],
@@ -290,8 +296,9 @@ H('On a phone');
 UL(['The item lists sit at the bottom of the screen and open upward.', 'The panel closes by itself after you pick an item, so you can drag the chosen object into place without the panel covering the battlefield.',
   'The detail box for a person slides up along the bottom of the screen.',
   `<b>Pictures instead of words</b> ${NEW}: the top bar shows the faction’s shield, food, wood, stone, gold, people, happiness (a number) and taxes (dots). The tabs show their pictures. A name shows when you tap a button or it is chosen. This saves room on the small screen.`,
-  'The same troop diamond sits above the list tabs.']);
+  'The same troop diamond sits above the five list tabs. The people count reads like 12/15 (people, and room for them), and taxes show as dots: none, one or two.']);
 FIG2([shot('phone'), 'A phone (an iPhone), photographed in the game.'], [shot('phoneTown'), 'The same phone with the Town list open from the bottom.']);
+FIG(art('phone-diamond'), 'The troop diamond on a phone, with soldiers chosen (from the Phase 4E troop guide).', 46);
 H('Placing buildings and walls');
 UL(['Turn a building before you place it, and place it facing toward or away from you. Drag and drop works with a mouse and with touch.',
   'Walls, fences and gates follow the exact route you draw. They do not reroute around trees, rocks or food. Obstacles in the way are cleared or split. Your intentional gate openings stay.']);
@@ -514,9 +521,12 @@ H('The Art of War advisor and hints');
 UL(['Always on. It cannot be turned off, even for experienced players.', 'A clear panel in a top corner that does not cover play.', 'Timely tips in the spirit of Sun Tzu’s <i>The Art of War</i>: take the high ground, set a trap, build a tower here, and where raiders are coming from.',
   'Short gameplay hints share the same panel and the same voice, one at a time. They are compact and unobtrusive, especially on phones.', `One tap puts a tip or a hint away. The next one comes later. ${NEW}`]);
 H('The Help screen', true);
-P(`The ? at the top (or the H key) opens Help. Type a question in plain words (“how do I get stone?”) or pick a topic. There are ${D.helpCount || 93} articles, each with a picture, and the boxes in the game have a “What is this?” link to theirs. A double tap on Help’s text closes it.`);
-FIG2([shot('helpHome'), 'Help: the topics.'], [shot('helpSearch'), 'Help: a search for “stone”.']);
-FIG(shot('helpArticle'), 'Help: the article on calling citizens, photographed in the game.', 64);
+P(`Tap the <b>?</b> at the top (or press H) and Help opens with a <b>search box</b> and a <b>Topics</b> drop-down that lists every category. ${NEW} On a computer the search box is ready to type in straight away.`);
+UL(['<b>Search:</b> type what you need in plain words (“how do I get stone?”). The answers appear as you type: first the short Help articles, then the matching parts of this guide, under “In the Master Guide”. Spelling slips are forgiven.',
+  '<b>Topics:</b> pick a category from the drop-down (or from the cards below it). <b>The Master Guide</b> is one of them: all of this guide, section by section, inside the game.',
+  `There are ${D.helpCount || 93} short articles, each with a picture, plus the whole of this guide. The boxes in the game have a “What is this?” link to their article.`, 'Reading Help pauses the game (unless enemies are close). A double tap on Help’s text, the X, or Esc closes it.']);
+FIG2([shot('helpDrop') || shot('helpHome'), 'Help as it opens: the search box and the Topics drop-down.'], [shot('helpSearch'), 'A search for “stone”: Help answers first, then the guide.']);
+FIG2([shot('helpArticle'), 'A Help article: calling citizens.'], [shot('helpGuide'), 'A part of this guide, inside Help.']);
 H('Settings');
 UL(['The settings icon (a gear) replaces the word “Menu”. The question mark opens Help. Quit Game is inside Settings.', 'Music starts at a low volume with sliders for music and effects. Voice, weather, outlines, trees (detailed or simple) and the view (3D or flat) are switched here.',
   `The Fix button is no longer in Settings or over people. A stuck building is mended from its own box (Remove &amp; rebuild). ${FIXED}`]);
@@ -619,6 +629,35 @@ ol.lg{margin:0 0 10px;padding-left:4px;list-style:none;columns:2;column-gap:22px
 .cg{font-size:17px;margin-top:10px;color:#e9d8b4} .cem{display:flex;gap:22px;margin-top:20px} .cem div{display:flex;flex-direction:column;align-items:center;font-size:13px;color:#d9c39a} .cem img{width:104px;height:120px;object-fit:contain}
 .cstrip{display:flex;gap:6px;margin-top:16px} .cstrip img{width:64px;height:64px;background:#efe6d2;border:1.5px solid #b8913f;border-radius:4px;object-fit:contain}
 .cscene{width:4.4in;margin-top:16px;border:2px solid #b8913f;border-radius:6px} .cfor{margin-top:14px;font-size:16px;line-height:1.5}`;
+const exporter = `(() => {
+  const SECPIC = { read: 'i:book', s1: 'i:start', s2: 'i:book', s3: 'i:crown', s4: 'i:trophy', s5: 'i:diamond', s6: 'u:spear', s7: 'b:gtower', s8: 'b:house', s9: 'w:sword', s10: 'i:coins', s11: 'u:civ', s12: 'i:fire', s13: 'i:map', s14: 'i:raid', s15: 'i:gear', s16: 'i:book', s17: 'i:book' };
+  const slug = t => t.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const tidy = el => { const c = el.cloneNode(true); c.querySelectorAll('img,figure,.cpic,.mpic').forEach(x => x.remove()); c.querySelectorAll('*').forEach(x => { x.removeAttribute('style'); x.removeAttribute('id'); if (!(x.tagName === 'SPAN' && x.classList.contains('new'))) x.removeAttribute('class'); });
+    return c.innerHTML.replace(/\\s+/g, ' ').trim(); };
+  const plain = h => h.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\\s+/g, ' ').trim();
+  const out = { sections: [], articles: [] }; let sec = null, art = null; const used = new Set();
+  const newArt = (title, pic) => { let id = 'g-' + sec.id.replace(/^s/, '') + '-' + slug(plain(title).replace(/\\s*(NEW|CORRECTED)\\s*$/, '')); while (used.has(id)) id += 'x'; used.add(id); art = { id, cat: 'guide', sec: sec.id, secTitle: sec.title, title: plain(title).replace(/\\s*(NEW|CORRECTED)\\s*$/, ''), pic: pic || SECPIC[sec.id] || 'i:book', blocks: [] }; out.articles.push(art); return art; };
+  for (const el of document.getElementById('src').children) {
+    if (el.classList.contains('sech')) { sec = { id: el.id, title: el.dataset.sec }; out.sections.push(sec); newArt(el.id === 'read' ? 'How to read this guide' : el.dataset.sec.replace(/^\\d+\\.\\s*/, '')); continue; }
+    if (!sec) continue;
+    if (el.classList.contains('sub') && el.tagName === 'P') { art.blocks.push({ t: 'p', h: '<i>' + tidy(el) + '</i>' }); continue; }
+    if (el.tagName === 'H3') { newArt(tidy(el)); continue; }
+    if (el.classList.contains('tcap')) { art.blocks.push({ t: 'h', h: tidy(el) }); continue; }
+    if (el.tagName === 'P' || el.classList.contains('note')) { const h = tidy(el); if (h) art.blocks.push({ t: 'p', h }); continue; }
+    if (el.tagName === 'UL' || el.tagName === 'OL') { art.blocks.push({ t: 'ul', items: [...el.children].map(tidy) }); continue; }
+    if (el.tagName === 'TABLE') { art.blocks.push({ t: 'table', head: [...el.tHead.rows[0].cells].map(tidy), rows: [...el.tBodies[0].rows].map(r => [...r.cells].map(tidy)) }); continue; }
+    if (el.classList.contains('card')) { const parent = art; const a = newArt(el.querySelector('h4').innerHTML, el.dataset.key || null); a.parent = parent.title;
+      a.blocks.push({ t: 'line', h: tidy(el.querySelector('.cl')) }, { t: 'ul', items: [...el.querySelectorAll('.ctxt li')].map(tidy) }); art = a; continue; }
+    if (el.classList.contains('minis')) { const last = art.blocks[art.blocks.length - 1], items = [...el.querySelectorAll('.mini')].map(m => ({ pic: m.dataset.key || '', n: tidy(m.querySelector('h5')), line: m.querySelector('.cl') ? tidy(m.querySelector('.cl')) : '', d: tidy(m.querySelector('p')) }));
+      if (last && last.t === 'cards') last.items.push(...items); else art.blocks.push({ t: 'cards', items }); continue; }
+    if (el.classList.contains('chains')) { for (const c of el.querySelectorAll('.chain')) art.blocks.push({ t: 'p', h: [...c.querySelectorAll('.lk')].map(tidy).join(' → ') }); continue; }
+    if (el.tagName === 'FIGURE' || el.classList.contains('two') || el.classList.contains('three') || el.classList.contains('sheet') || el.classList.contains('pbk')) continue;
+  }
+  out.articles = out.articles.filter(a => a.blocks.length);
+  for (const a of out.articles) { const first = a.blocks.find(b => b.t !== 'h'); const t = !first ? '' : first.t === 'ul' ? plain(first.items[0] || '') : first.t === 'cards' ? first.items.map(i => plain(i.n)).join(', ') : first.t === 'table' ? first.rows.slice(0, 3).map(r => plain(r[0])).filter(Boolean).join(', ') + '…' : plain(first.h);
+    a.summary = t.length > 110 ? t.slice(0, 107).replace(/\\s+\\S*$/, '') + '…' : t; }
+  return out;
+})();`;
 const pager = `(() => {
   const src = document.getElementById('src'), book = document.getElementById('book'), blocks = [...src.children];
   const tpl = n => { const d = document.createElement('div'); d.className = 'page'; d.innerHTML = '<div class="fr1"></div><div class="fr2"></div><div class="hdr"><span>STRONGHOLD DESTROYER</span><span class="hs"></span></div><div class="body"></div><div class="pno"><span><b>' + n + '</b></span></div>'; return d; };
@@ -674,7 +713,7 @@ const pager = `(() => {
   window.__pages = pageNo; window.__where = where;
 })();`;
 const html = `<!doctype html><html><head><meta charset="utf-8"><title>Stronghold Destroyer — Master Guide version 3</title><style>${CSS}</style></head><body>
-${cover}${tocPage}<div id="book"></div><div id="src" style="position:absolute;left:-9999px;width:7.26in">${blocks.join('\n')}</div><script>${pager}</script></body></html>`;
+${cover}${tocPage}<div id="book"></div><div id="src" style="position:absolute;left:-9999px;width:7.26in">${blocks.join('\n')}</div><script>window.__guide = ${exporter}</script><script>${pager}</script></body></html>`;
 
 (async () => {
   const tmp = path.join(CACHE, 'guide3.html'); fs.writeFileSync(tmp, html);
@@ -683,6 +722,12 @@ ${cover}${tocPage}<div id="book"></div><div id="src" style="position:absolute;le
   await pg.goto('file://' + tmp, { waitUntil: 'load' }); await pg.waitForTimeout(800);
   const info = await pg.evaluate(() => ({ pages: window.__pages, where: window.__where, missing: [...document.querySelectorAll('.tr .pn')].filter(e => e.textContent === '?').length,
     toc: [...document.querySelectorAll('.tr')].length, srcLeft: document.getElementById('src').children.length }));
+  const guide = await pg.evaluate(() => window.__guide);
+  // the whole guide for the Help screen: js/guidedata.js (made here; do not edit it by hand)
+  fs.writeFileSync(path.join(ROOT, 'js/guidedata.js'), "'use strict';\n// Stronghold Destroyer — the Master Guide, word for word, for the Help screen (its topic \"The Master Guide\" and its search).\n" +
+    `// Made by tools/master_guide.js from the same pages as design/Stronghold-Destroyer-Master-Guide-v3.pdf (${DATE}). Do not edit by hand:\n// change the guide's words in tools/master_guide.js and run it again. The pictures come from the game (u:, b:, r:, w:, i: names).\n` +
+    'const GUIDE_DATA = ' + JSON.stringify({ made: DATE, sections: guide.sections, articles: guide.articles }) + ';\n');
+  console.log('guide for Help:', guide.sections.length, 'sections,', guide.articles.length, 'parts,', (fs.statSync(path.join(ROOT, 'js/guidedata.js')).size / 1024).toFixed(0) + ' KB');
   await pg.evaluate(() => document.getElementById('src').remove());
   await pg.pdf({ path: OUT, width: '8.5in', height: '11in', printBackground: true, margin: { top: '0', bottom: '0', left: '0', right: '0' }, preferCSSPageSize: true });
   await b.close();

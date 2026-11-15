@@ -536,6 +536,20 @@ named "Master Guide version three".
   (ONLY=name,name retakes some), then tools/master_guide.js lays out the pages (tables split with their headings,
   headings kept with what follows) and prints the PDF. The design-sheet art and the 4E formation pictures it uses are
   in design/guide3-art.
+- **Gerald's follow-up: one guide, all of it in Help, a search and a drop-down on the ?.**
+  - *One PDF:* the Troop Controls Guide (4E) is folded into the Master Guide (section 5: the diamond, the formations,
+    "tap the ground and they march in the formation", the phone and its diamond picture), so design/Stronghold-
+    Destroyer-Master-Guide-v3.pdf is the one guide to keep. (Assumption: "merge together" meant these two PDFs.)
+  - *All of the guide in Help:* tools/master_guide.js also writes js/guidedata.js (GUIDE_DATA: the 18 sections in 118
+    parts, word for word, tables and picture lists included, each with the game's own picture). Help shows it as the
+    topic "The Master Guide" (sections, then parts), and its search looks through it after the short articles: the
+    results list the short articles first, then "In the Master Guide". Do not edit js/guidedata.js by hand: change the
+    guide's words in tools/master_guide.js and run it again, and the PDF and Help change together.
+  - *The ? opens on the search:* Help opens with the Topics drop-down open (every category, with how many articles each
+    has), and with a mouse the search box is ready to type in (on touch screens it is not focused, so the keyboard does
+    not cover the screen). Typing folds the drop-down away; the Topics button opens and closes it; Esc closes it first.
+  - A new short article, "Using Help" (94 articles). tests/tHelp.js: the drop-down (computer, iPad, iPhone), 15 topic
+    cards, questions only the guide answers, every part of the guide found by its title and opening with its words.
 - **Correction to 4E:** design/Troop-Diamond.png had its picture squeezed by the page layout, which hid buttons 14
   and 15 (Everyone, Citizens). tools/controls_guide.js no longer lets the picture shrink. (The 4E PDF was not affected.)
 

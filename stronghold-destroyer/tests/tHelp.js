@@ -3,6 +3,11 @@
 // card opens; every article has a picture, 3 to 6 lines, a "How do I" (most do) and related links; "What is this?" in
 // a building box, a person's box and the panels opens the matching article; nothing spills off an iPad or phone screen.
 const { start } = require('./lib4b'); const { devices } = require('playwright');
+// Phase 4F: questions only the Master Guide answers (it is all in Help now), with the part that should come first
+const GUIDE_QUESTIONS = [['ladder men', 'g-read-where-version-2-and-the-game-now-differ'], ['tower trebuchet cost', 'g-6-trebuchet'], ['what each stage needs on hard', 'g-4-what-each-stage-needs-by-difficulty'],
+  ['russia globe corner', 'g-13-the-table-the-bar-and-the-glass'], ['wedge formation', 'g-5-formations'], ['berserker psychana only', 'g-6-berserker'], ['still open decisions', 'g-17-waiting-on-your-decision'],
+  ['what changes the cost of a citizen', 'g-11-what-changes-the-cost-and-the-wait'], ['rivals growth table', 'g-14-what-a-rival-needs-to-grow'], ['first ten minutes', 'g-2-your-first-ten-minutes']];
+const innerWidthOf = dev => dev.viewport.width;
 const QUESTIONS = [
   ['how do I get stone', 'quarry'], ['how do i get more wood', 'wood-yard'], ['how do I get iron', 'iron-mine'], ['my people are unhappy', 'mood'],
   ['how to make people happy', 'mood'], ['no ale', 'ale'], ['how do I save my game', 'saving'], ['load a saved game', 'saving'],
@@ -18,7 +23,7 @@ const QUESTIONS = [
   ['quary', 'quarry'], ['knigt', 'knight'], ['granery', 'granary'], ['hapiness', 'mood'], ['turn off the voice', 'sound-voice'], ['whether', 'weather'],
   ['bread', 'bread'], ['how many rivals', 'match-setup'], ['school', 'school'], ['my soldiers chase enemies', 'patrol-guard'], ['people mourning', 'mood'],
   ['formations', 'formations'], ['put my soldiers in a line', 'formations'], ['wedge', 'formations'], ['troop movement buttons', 'diamond'], ['the diamond', 'diamond'],
-  ['close a box', 'boxes'], ['get rid of the hint', 'boxes'],
+  ['close a box', 'boxes'], ['get rid of the hint', 'boxes'], ['how do I search', 'using-help'], ['the master guide', 'using-help'], ['topics drop down', 'using-help'],
   ['how do I get more citizens', 'call-citizens'], ['buy citizens', 'call-citizens'], ['what is a general', ['call-citizens', 'veterans']]
 ];
 (async () => {
@@ -27,7 +32,18 @@ const QUESTIONS = [
   await p.click('#btnHelpTop'); await p.waitForTimeout(150);
   const o = await p.evaluate(() => { T.run(0.5); const t0 = time; T.run(5); return { open: !document.getElementById('help').classList.contains('hide'), moved: +(time - t0).toFixed(2), cards: document.querySelectorAll('.hlpCard').length, search: !!document.getElementById('hlpQ') }; });
   need(o.open && o.moved === 0, 'the ? button opens Help and the game is paused (time moved ' + o.moved + ')');
-  need(o.cards === 14 && o.search, `14 topic cards and a search box (${o.cards})`);
+  need(o.cards === 15 && o.search, `15 topic cards (with The Master Guide) and a search box (${o.cards})`);
+  // ---- Phase 4F: it opens on the search box with the Topics drop-down listing every category ----
+  const dd = await p.evaluate(() => { const d = document.getElementById('hlpDrop'); return { open: !d.hidden, rows: [...d.querySelectorAll('.hlpDropRow')].map(r => r.dataset.cat), focus: document.activeElement && document.activeElement.id }; });
+  need(dd.open && dd.rows.length === 15 && dd.rows.includes('guide') && dd.rows.includes('units') && dd.focus === 'hlpQ', 'the ? opens Help with the Topics drop-down open (every category, The Master Guide among them) and the search box ready to type in: ' + JSON.stringify(dd));
+  await p.screenshot({ path: SP + '/tHelp-drop.png' });
+  await p.click('#hlpDrop .hlpDropRow[data-cat="units"]'); await p.waitForTimeout(100);
+  const pick = await p.evaluate(() => ({ drop: !document.getElementById('hlpDrop').hidden, head: (document.querySelector('#hlpBody .hlpH') || {}).textContent, rows: document.querySelectorAll('#hlpBody .hlpRow').length }));
+  need(!pick.drop && /Units/.test(pick.head) && pick.rows >= 5, 'choosing a topic in the drop-down opens it and folds the drop-down away: ' + JSON.stringify(pick));
+  await p.click('#hlpTopics'); const re1 = await p.evaluate(() => !document.getElementById('hlpDrop').hidden); await p.click('#hlpTopics'); const re2 = await p.evaluate(() => !document.getElementById('hlpDrop').hidden);
+  need(re1 && !re2, 'the Topics button opens and closes the drop-down');
+  await p.click('#hlpTopics'); await p.click('#hlpQ'); await p.keyboard.type('qu', { delay: 10 }); const typed = await p.evaluate(() => !document.getElementById('hlpDrop').hidden);
+  need(!typed, 'typing in the search box folds the drop-down away'); await p.evaluate(() => { const q = document.getElementById('hlpQ'); q.value = ''; q.dispatchEvent(new Event('input')); });
   await p.screenshot({ path: SP + '/tHelp-home.png' });
   await p.click('#help .box > .xbtn'); await p.waitForTimeout(100);
   need(await p.evaluate(() => document.getElementById('help').classList.contains('hide')), 'the big X closes Help');
@@ -44,6 +60,18 @@ const QUESTIONS = [
   const missed = res.filter(r => !r.rank || r.rank > 3);
   need(res.length >= 40 && !missed.length, `${res.length} sample questions: the right article is in the top three for all (missed: ${JSON.stringify(missed)})`);
   console.log('SEARCH', JSON.stringify(res.map(r => `${r.q} -> ${r.top[0]}${r.rank === 1 ? '' : ' (#' + r.rank + ')'}`)));
+  // ---- Phase 4F: everything in the Master Guide is in Help, and the search finds it ----
+  const G = await p.evaluate(Q => { const r = Q.map(([q, want]) => { const l = HELPUI.searchGuide(q).map(a => a.id); return { q, want, rank: l.indexOf(want) + 1 || null, top: l.slice(0, 3) }; });
+    const titles = HELPUI.guide.map(a => { const l = HELPUI.searchGuide(a.title + ' ' + a.secTitle.replace(/^\d+\.\s*/, '')).map(x => x.id); return { id: a.id, found: l.includes(a.id) }; });
+    const parts = HELPUI.guide.map(a => { HELPUI.show({ kind: 'art', id: a.id }); const el = document.querySelector('.hlpArt.hlpGuide'); return { id: a.id, ok: !!el && el.textContent.length > 40 && !!el.querySelector('img.hlpBigPic') }; });
+    return { r, titles, parts, n: HELPUI.guide.length, secs: new Set(HELPUI.guide.map(a => a.sec)).size }; }, GUIDE_QUESTIONS);
+  console.log('GUIDE SEARCH', JSON.stringify(G.r.map(x => `${x.q} -> ${x.top[0]}${x.rank === 1 ? '' : ' (#' + x.rank + ')'}`)));
+  need(G.n >= 100 && G.secs === 18, `the whole guide is in Help: ${G.n} parts from all 18 sections (the 17 and How to read this guide)`);
+  need(G.r.every(x => x.rank && x.rank <= 3), 'questions only the guide answers find the right part in the top three: ' + JSON.stringify(G.r.filter(x => !x.rank || x.rank > 3)));
+  need(G.titles.every(t => t.found), 'every part of the guide can be found by searching for it: ' + JSON.stringify(G.titles.filter(t => !t.found).map(t => t.id)));
+  need(G.parts.every(t => t.ok), 'every part of the guide opens, with its words and a picture: ' + JSON.stringify(G.parts.filter(t => !t.ok).map(t => t.id)));
+  const both = await p.evaluate(() => { const q = document.getElementById('hlpQ'); q.value = 'ladder men'; q.dispatchEvent(new Event('input')); return { lead: document.querySelector('#hlpBody .hlpLead').textContent, grp: !!document.querySelector('#hlpBody .hlpGrp'), rows: document.querySelectorAll('#hlpBody .hlpRow').length }; });
+  need(both.grp && both.rows >= 1 && /Master Guide/.test(both.lead), 'a search shows the guide\'s parts under "In the Master Guide": ' + JSON.stringify(both));
   // ---- no match: say so and suggest nearby topics ----
   const none = await p.evaluate(() => { const q = document.getElementById('hlpQ'); q.value = 'zzqx unicorn'; q.dispatchEvent(new Event('input')); return { text: document.getElementById('hlpBody').textContent.slice(0, 80), rows: document.querySelectorAll('#hlpBody .hlpRow').length }; });
   need(/No article matches/.test(none.text) && none.rows >= 3, 'no match says so and suggests nearby topics: ' + none.text + ' (' + none.rows + ' suggestions)');
@@ -80,7 +108,9 @@ const QUESTIONS = [
     const dev = devices[devName], s = await start('cyyoung', { start: 0, viewport: dev.viewport, page: { ...dev } });
     await s.p.tap('#btnHelpTop'); await s.p.waitForTimeout(150);
     const fit = async () => s.p.evaluate(() => { const b = document.querySelector('#help .box').getBoundingClientRect(), side = document.documentElement.scrollWidth > innerWidth + 1, body = document.getElementById('hlpBody'); return { inside: b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1, side, spill: body.scrollWidth > body.clientWidth + 2, font: (e => e ? parseFloat(getComputedStyle(e).fontSize) : 0)(document.querySelector('.hlpCard b') || document.querySelector('.hlpArt p')) }; });   /* (cards on the home page, the article's own lines on an article) */
-    const f1 = await fit(); await s.p.tap('.hlpCard[data-cat="buildings"]'); await s.p.waitForTimeout(100); await s.p.tap('.hlpRow[data-art="quarry"]'); await s.p.waitForTimeout(100); const f2 = await fit();
+    const dOpen = await s.p.evaluate(() => ({ open: !document.getElementById('hlpDrop').hidden, focus: document.activeElement && document.activeElement.id, box: (r => ({ l: r.left, r: r.right, t: r.top, b: r.bottom }))(document.getElementById('hlpDrop').getBoundingClientRect()) }));
+    s.need(dOpen.open && dOpen.focus !== 'hlpQ' && dOpen.box.l >= 0 && dOpen.box.r <= innerWidthOf(dev) + 1, `${devName}: the drop-down opens with Help, inside the screen, without bringing up the keyboard (${JSON.stringify(dOpen)})`);
+    const f1 = await fit(); await s.p.tap('#hlpDrop .hlpDropRow[data-cat="buildings"]'); await s.p.waitForTimeout(100); await s.p.tap('.hlpRow[data-art="quarry"]'); await s.p.waitForTimeout(100); const f2 = await fit();
     await s.p.screenshot({ path: SP + `/tHelp-${devName.replace(/\W+/g, '-')}.png` });
     s.need(f1.inside && !f1.side && !f1.spill && f2.inside && !f2.spill && f1.font >= 17 && f2.font >= 17, `${devName}: Help fits, nothing spills sideways, large text (${JSON.stringify([f1, f2])})`);
     const x = await s.p.$('#help .box > .xbtn'); const xb = x && await x.boundingBox(); s.need(xb && xb.width >= 44 && xb.height >= 44, devName + ': the X is at least 44 points');

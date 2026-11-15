@@ -135,7 +135,9 @@ async function buildTown(p, stage = 2) {
     await p.evaluate(() => { T.quiet(); warWins = []; T.showBits(['diamond', 'btnTrophy', 'tips', 'alertBar', 'mini']); document.querySelectorAll('.dsat').forEach(e => e.style.visibility = ''); }); });
 
   // ================= 5. Help and Settings =================
-  await tryShot('helpHome', async () => { await p.evaluate(() => { UI.closePops(); toggleHelp(); }); await p.waitForTimeout(250); await clipShot(p, 'helpHome', '#help .box', 6);
+  await tryShot('helpHome', async () => { await p.evaluate(() => UI.closePops()); await p.click('#btnHelpTop'); await p.waitForTimeout(300); await clipShot(p, 'helpDrop', '#help .box', 6);   /* (as it opens from the ?: the Topics drop-down) */
+    await p.evaluate(() => HELPUI.closeDrop()); await clipShot(p, 'helpHome', '#help .box', 6);
+    await p.evaluate(() => HELPUI.openArticle('g-11-calling-more-citizens')); await p.waitForTimeout(250); await clipShot(p, 'helpGuide', '#help .box', 6);
     await p.evaluate(() => HELPUI.openArticle('call-citizens')); await p.waitForTimeout(250); await clipShot(p, 'helpArticle', '#help .box', 6);
     await p.fill('#hlpQ', 'stone'); await p.waitForTimeout(350); await clipShot(p, 'helpSearch', '#help .box', 6); await p.evaluate(() => { document.getElementById('hlpQ').value = ''; toggleHelp(); }); });
   await tryShot('settings', async () => { await p.evaluate(() => { UI.closePops(); document.getElementById('btnMenu').click(); }); await p.waitForTimeout(200);

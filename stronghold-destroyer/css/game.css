@@ -653,3 +653,31 @@ body.phone .wd{display:none}
 body.phone #status small{display:none}
 body.phone #catBar button:not(.on) span{display:none}
 body.phone #catBar button:not(.on) svg,body.phone #catBar button:not(.on) canvas{transform:scale(1.15)}
+/* ===================== Help (Phase 4F): the Topics drop-down, and the Master Guide inside Help ===================== */
+#hlpTopics{min-height:46px;font-size:18px;padding:6px 14px;border-radius:12px;border:2px solid #b08a4a;background:#26231f;color:#ffe9b0;white-space:nowrap}
+#hlpTopics[aria-expanded="true"]{background:#3a3122;border-color:#ffd77a}
+.hlpDrop{position:absolute;left:18px;right:18px;z-index:5;max-width:620px;max-height:min(62vh,560px);overflow-y:auto;overscroll-behavior:contain;background:#1d1b19;
+  border:2px solid #ffd77a;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.65);padding:6px}
+.hlpDropHead{font-size:16px;color:#e2d6bb;padding:6px 10px 8px;border-bottom:1px solid rgba(217,180,90,.35);margin-bottom:4px}
+.hlpDropRow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;min-height:56px;padding:6px 10px;border-radius:10px;border:0;background:transparent;color:#fff;cursor:pointer}
+.hlpDropRow:hover,.hlpDropRow:focus{background:#2e2920;outline:2px solid #ffd77a}
+.hlpDropRow span{display:flex;flex-direction:column;gap:1px}
+.hlpDropRow b{font-size:19px} .hlpDropRow small{font-size:15px;color:#e2d6bb}
+.hlpDropPic{width:40px;height:40px;flex:0 0 40px;object-fit:contain}
+.hlpGrp{font-size:19px;color:#ffd77a;margin:16px 0 8px;border-bottom:1px solid rgba(217,180,90,.4);padding-bottom:4px}
+.hlpSecTag{display:block;font-style:italic;font-size:15px;color:#e3c27a}
+.hlpRow .hlpSecTag{font-size:14px}
+.hlpGuide .hlpLine{font-style:italic;color:#ffe2a0}
+.hlpUl{margin:0 0 12px;padding-left:24px} .hlpUl li{margin:0 0 7px;font-size:19px;color:#fbf6ea}
+.hlpTabWrap{overflow-x:auto;margin:0 0 12px;clear:both}
+.hlpGuide .hlpTab td:first-child{font-weight:700;color:#fff0cc}
+.hlpMinis{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin:0 0 12px;clear:both}
+.hlpMini{display:flex;gap:10px;align-items:flex-start;padding:8px;border:1px solid rgba(217,180,90,.35);border-radius:10px;background:#201e1b}
+.hlpMini img{width:52px;height:52px;flex:0 0 52px;object-fit:contain} .hlpMini div{display:flex;flex-direction:column;gap:2px}
+.hlpMini b{font-size:18px} .hlpMini small{font-size:15px;color:#ffe2a0;font-style:italic} .hlpMini span{font-size:16px;color:#f0e6cf}
+#help .new{display:inline-block;background:#e2b13c;color:#1b1209;font-size:12px;font-weight:700;letter-spacing:.5px;padding:1px 6px;border-radius:4px;vertical-align:2px}
+@media (max-width:600px), (max-height:500px){
+  .hlpDrop{left:10px;right:10px;max-height:58vh} #hlpTopics{min-height:44px;font-size:17px}
+  .hlpMinis{grid-template-columns:1fr} .hlpUl li{font-size:18px}
+}
+.hlpGuide .hlpBigPic{width:min(130px,28%)}
