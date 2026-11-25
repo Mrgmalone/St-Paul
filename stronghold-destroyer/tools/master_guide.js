@@ -93,6 +93,7 @@ TBL(['What', 'In short', 'Section'], [
   [`Which building is asking ${NEW}`, 'A coloured marker with an exclamation point floats over each building that has something to say, and the same marker is in the alert, so you know which one to go to.', '4, 15'],
   [`Arrows when you place ${NEW}`, 'Drag a building where you want it and let go: four arrows appear around it and you tap the way it should face. The Turn button and its text are gone.', '5, 8'],
   [`Low Brick Wall, men on every wall ${NEW}`, 'A low brick wall you can buy (3 stone); palisades have a walkway; soldiers of any kind can stand on any wall but the low one and in the bigger towers, and idle archers climb up when raiders come.', '7'],
+  [`Gates place themselves ${NEW}`, 'Choose Gate and tap a piece of your wall: the gate takes its place and lies along the wall, so your people always walk through.', '7'],
   [`Edit Walls ${NEW}`, 'A button in the Castle list drops every wall flat so you can see and draw them, while the game keeps going. Tap anywhere else and they stand up.', '5, 7'],
   [`Ill people, the apothecary ${NEW}`, 'You are told when more than ten are ill. The apothecary holds up to five carers (more carers, faster care); tap it or the school to see who is there.', '8, 11'],
   [`Voice volume ${NEW}`, 'Settings has a Voice volume slider beside Voice on or off.', '15'],

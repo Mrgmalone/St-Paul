@@ -281,6 +281,22 @@ function wallLine(c0, r0, c1, r1) {
 }
 function placeAt(sx, sy, keepGoing) {
   const w = toWorld(sx, sy), kind = placing.kind, d = BUILD[kind]; let { c, r } = tileFor(kind, w.x, w.y);
+  // (4K, Gerald) "the gate should automatically be placed in the correct position of the wall... they should be able to walk
+  // through it every time": a gate goes into the wall piece you tap (or the nearest one), takes its place, and turns itself
+  // to lie along the wall
+  if (kind === 'gate' && IND()) {
+    let best = null, bd = 70;
+    for (const b of structures) if (!b.dead && b.team === 'player' && b.kind === 'wall' ) { const d = Math.hypot(b.x - w.x, (b.y0 + b.y1) / 2 - w.y); if (d < bd) { bd = d; best = b; } }
+    if (!best) { showBanner('Tap on a piece of your wall: the gate goes into it by itself.', 3); return; }
+    if (!afford(d)) { showBanner(`Not enough ${lacking(d)} for a gate.`, 2.5); return; }
+    const wl = (dc, dr) => structures.some(o => !o.dead && o.team === 'player' && (o.kind === 'wall' || o.kind === 'gate' || o.kind === 'highwall') && o.c === best.c + dc && o.r === best.r + dr);
+    const ew = wl(1, 0) || wl(-1, 0), ns = wl(0, 1) || wl(0, -1), dir = ns && !ew ? 1 : 0;   /* a run east-west: the gate faces north-south, and the other way round */
+    const c0 = best.c, r0 = best.r, ring = best.castleRing ? { castleRing: true, ringOf: best.ringOf } : null;
+    for (const u of units) if (u.onWall === best) dismount(u);
+    removeQuietly(best); pay(d);
+    const nb = createBuilding('gate', c0, r0, dir); if (ring) Object.assign(nb, ring); nb.dropT = performance.now(); assignBuilders(nb); AudioSys.ui('place');
+    placing = keepGoing ? { kind, start: null, dir: 0, pending: null } : null; updateHud(); return;
+  }
   if (isLine(kind)) {
     if (!placing.start) { placing.start = { c, r }; showBanner('Now click where the wall should end.', 3); return; }
     let first = null, short = false;
