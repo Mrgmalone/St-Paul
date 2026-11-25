@@ -2755,4 +2755,5 @@ function setPaused(want) {
 }
 document.getElementById('btnPause').onclick = () => setPaused(!paused);
 document.getElementById('btnResume').onclick = () => setPaused(false);
+{ const pn = document.getElementById('pauseNote'); document.getElementById('pauseP').onclick = e => { e.stopPropagation(); pn.classList.toggle('tip'); }; }   /* (a tap on the P shows or hides the words, as hovering does) */
 let camSpin = 0, zoomAnim = null; const camVel = { x: 0, y: 0 };

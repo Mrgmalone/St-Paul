@@ -18,7 +18,7 @@
 <div id="main">
 <div id="view">
   <canvas id="game"></canvas>
-  <div id="pauseNote" hidden><b>PAUSED</b><span>Place buildings and walls as you like. Workers start when you resume.</span><button id="btnResume">&#9654; Resume (P)</button></div>
+  <div id="pauseNote" hidden><i id="pauseTip" role="tooltip">Place buildings and walls as you like. Workers start when you resume.</i><b id="pauseP" tabindex="0" aria-label="Paused. Hover or tap for what you can do">P</b><small>Pause</small><button id="btnResume">&#9654; Resume (P)</button></div>
   <div id="menuNote" hidden>&#10074;&#10074; Paused while you read</div>
   <button id="btnFix" hidden title="Remove this person and rebuild them fresh">&#10005; Fix</button>
   <button id="btnTurn" hidden title="Turn the building (R or T)">&#8635; Turn <small id="turnDir"></small></button>

@@ -315,13 +315,13 @@ let compassEl = null;
 function showCompass(sx, sy) {
   if (!compassEl) {
     compassEl = document.createElement('div'); compassEl.id = 'compass'; compassEl.hidden = true;
-    compassEl.innerHTML = '<div class="cmpT">Which way should it face?</div>' + [['N', 2, 'away'], ['E', 3, 'right'], ['S', 0, 'toward you'], ['W', 1, 'left']].map(([l, d, n]) => `<button class="cmp cmp${l}" data-dir="${d}" aria-label="Face ${n}"><b>${l}</b><i>${'▲▶▼◀'['NESW'.indexOf(l)]}</i></button>`).join('') + '<button class="cmpX" aria-label="Cancel">&times;</button>';
+    compassEl.innerHTML = [['N', 2, 'away', '▲'], ['E', 3, 'right', '▶'], ['S', 0, 'toward you', '▼'], ['W', 1, 'left', '◀']].map(([l, d, n, g]) => `<button class="cmp cmp${l}" data-dir="${d}" aria-label="Face ${n}">${g}</button>`).join('') + '<button class="cmpX" aria-label="Cancel">&times;</button>';
     document.getElementById('alertBar').parentNode.appendChild(compassEl);
     compassEl.addEventListener('pointerdown', e => e.stopPropagation(), true);
     compassEl.addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (!b) return; if (b.classList.contains('cmpX')) { hideCompass(); return; } finishCompass(+b.dataset.dir); });
     compassEl.addEventListener('mouseover', e => { const b = e.target.closest('.cmp'); if (b && placing) placing.dir = lastDir = +b.dataset.dir; });   /* the building shows its front as you point */
   }
-  compassEl.style.left = sx - 80 + 'px'; compassEl.style.top = sy - 80 + 'px'; compassEl.hidden = false;
+  compassEl.style.left = sx - 110 + 'px'; compassEl.style.top = sy - 110 + 'px'; compassEl.hidden = false;
 }
 function hideCompass() { if (compassEl) compassEl.hidden = true; if (placing) placing.pending = null; }
 function finishCompass(dir) {
